@@ -1,0 +1,25 @@
+{
+  "name": "@orchentra/server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun run dist/index.js"
+  },
+  "dependencies": {
+    "@orchentra/core": "workspace:*",
+    "@orchentra/db": "workspace:*",
+    "hono": "^4.7.0",
+    "@ai-sdk/anthropic": "^1.2.0",
+    "ai": "^4.3.0",
+    "zod": "^3.24.0",
+    "@slack/web-api": "^7.9.0",
+    "@octokit/rest": "^21.1.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/js-yaml": "^4.0.9"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "orchentra",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "bun run --filter './apps/server' dev",
+    "dev:web": "bun run --filter './apps/web' dev",
+    "dev:all": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "db:generate": "bun run --filter './packages/db' generate",
+    "db:migrate": "bun run --filter './packages/db' migrate"
+  }
+}

@@ -1,0 +1,27 @@
+github:
+  webhook_secret: "your-webhook-secret"
+  token: "ghp_xxx"
+  repos:
+    - "my-org/api"
+    - "my-org/frontend"
+
+llm:
+  provider: "anthropic"
+  api_key: "sk-ant-xxx"
+  model: "claude-sonnet-4-5"
+
+integrations:
+  sentry:
+    auth_token: "sntryu_xxx"
+    org: "my-org"
+  # datadog:
+  #   api_key: "xxx"
+  #   app_key: "xxx"
+
+delivery:
+  slack:
+    bot_token: "xoxb-xxx"
+    signing_secret: "xxx"
+    channel: "#incidents"
+    # app_token: "xapp-xxx"  # for Socket Mode (optional)
+  github_comments: true
