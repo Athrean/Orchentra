@@ -1,8 +1,6 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
-  },
-  "include": ["src/**/*.ts"]
+  "extends": "@orchentra/typescript-config/base.json",
+  "compilerOptions": {},
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

@@ -1,13 +1,8 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "@orchentra/typescript-config/base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "types": ["bun-types"]
+    "outDir": "dist"
   },
-  "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../../packages/core" },
-    { "path": "../../packages/db" }
-  ]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

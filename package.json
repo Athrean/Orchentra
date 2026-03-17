@@ -1,13 +1,30 @@
 {
   "name": "orchentra",
+  "packageManager": "bun@1.3.9",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "bun run --filter './apps/server' dev",
-    "dev:web": "bun run --filter './apps/web' dev",
-    "dev:all": "bun run --filter '*' dev",
-    "build": "bun run --filter '*' build",
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "db:generate": "bun run --filter './packages/db' generate",
     "db:migrate": "bun run --filter './packages/db' migrate"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "eslint-config-next": "^16.1.7",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-config-turbo": "^2.8.17",
+    "eslint-plugin-only-warn": "^1.2.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-turbo": "^2.8.17",
+    "prettier": "^3.2.0",
+    "turbo": "^2.1.0",
+    "typescript": "^5.9.3"
   }
 }

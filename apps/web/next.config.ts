@@ -1,7 +1,10 @@
-import type { NextConfig } from "next"
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@orchentra/core", "@orchentra/db"],
+  // Only transpile core (types/utils). DB package uses native modules
+  // and should only be imported in server components when needed.
+  transpilePackages: ['@orchentra/core'],
+  serverExternalPackages: ['better-sqlite3'],
 }
 
 export default nextConfig

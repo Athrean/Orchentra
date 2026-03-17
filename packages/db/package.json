@@ -9,14 +9,19 @@
   },
   "scripts": {
     "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate"
+    "migrate": "drizzle-kit migrate",
+    "lint": "eslint ."
   },
   "dependencies": {
     "drizzle-orm": "^0.39.0",
     "better-sqlite3": "^11.8.0"
   },
   "devDependencies": {
+    "@orchentra/eslint-config": "workspace:*",
+    "@orchentra/typescript-config": "workspace:*",
+    "@types/better-sqlite3": "^7.6.12",
     "drizzle-kit": "^0.30.0",
-    "@types/better-sqlite3": "^7.6.12"
+    "eslint": "^8.57.0",
+    "typescript": "^5.0.0"
   }
 }

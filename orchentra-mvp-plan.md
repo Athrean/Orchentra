@@ -1,4 +1,5 @@
 # Orchentra — Phase-wise MVP Plan
+
 > Bootstrap to launch: GitHub Actions + Slack-native AI incident triage, fully open source
 
 ---
@@ -15,21 +16,21 @@ Orchentra is an open source AI agent that investigates CI/CD failures and produc
 
 ## Tech stack
 
-| Layer | Choice | Reason |
-|---|---|---|
-| Runtime | Bun | Fast installs, native TypeScript, built-in HTTP server, great for I/O-heavy agent loops |
-| Web framework | Hono | Lightweight, runs natively on Bun, ideal for webhook + API routes |
-| Frontend | Next.js 15 (App Router) | Dashboard UI, landing page, server components for fast initial loads |
-| Styling | Tailwind CSS + shadcn/ui | Fast UI with consistent component primitives, no design decisions needed |
-| Database | SQLite (dev) → PostgreSQL via Supabase (cloud) | Zero-setup self-hosting, Drizzle handles migration between them seamlessly |
-| ORM | Drizzle ORM | Type-safe, migration-first, works identically on SQLite and Postgres |
-| LLM orchestration | Vercel AI SDK | Model-agnostic, built-in tool calling, streaming, works with Claude + OpenAI |
-| LLM model | `claude-sonnet-4-5` | Best tool use reliability, long context for log analysis, fast enough for real-time |
-| Auth (cloud) | Supabase Auth | Google OAuth for hosted version, not needed for self-hosted |
-| Queue | BullMQ + Redis (optional) or in-memory queue | Incident processing is async, queue prevents webhook timeouts |
-| Monorepo | Bun workspaces | No extra tooling, native to Bun |
-| Containerisation | Docker + docker-compose | Self-host in one command |
-| CI/CD | GitHub Actions | Dogfooding — the product monitors itself |
+| Layer             | Choice                                         | Reason                                                                                  |
+| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Runtime           | Bun                                            | Fast installs, native TypeScript, built-in HTTP server, great for I/O-heavy agent loops |
+| Web framework     | Hono                                           | Lightweight, runs natively on Bun, ideal for webhook + API routes                       |
+| Frontend          | Next.js 15 (App Router)                        | Dashboard UI, landing page, server components for fast initial loads                    |
+| Styling           | Tailwind CSS + shadcn/ui                       | Fast UI with consistent component primitives, no design decisions needed                |
+| Database          | SQLite (dev) → PostgreSQL via Supabase (cloud) | Zero-setup self-hosting, Drizzle handles migration between them seamlessly              |
+| ORM               | Drizzle ORM                                    | Type-safe, migration-first, works identically on SQLite and Postgres                    |
+| LLM orchestration | Vercel AI SDK                                  | Model-agnostic, built-in tool calling, streaming, works with Claude + OpenAI            |
+| LLM model         | `claude-sonnet-4-5`                            | Best tool use reliability, long context for log analysis, fast enough for real-time     |
+| Auth (cloud)      | Supabase Auth                                  | Google OAuth for hosted version, not needed for self-hosted                             |
+| Queue             | BullMQ + Redis (optional) or in-memory queue   | Incident processing is async, queue prevents webhook timeouts                           |
+| Monorepo          | Bun workspaces                                 | No extra tooling, native to Bun                                                         |
+| Containerisation  | Docker + docker-compose                        | Self-host in one command                                                                |
+| CI/CD             | GitHub Actions                                 | Dogfooding — the product monitors itself                                                |
 
 ---
 
@@ -109,32 +110,32 @@ The entire self-hosted setup is one YAML file. No UI, no database migrations, no
 # Orchentra.yml
 
 github:
-  webhook_secret: "your-webhook-secret"
-  token: "ghp_xxx"              # for fetching logs + posting PR comments
+  webhook_secret: 'your-webhook-secret'
+  token: 'ghp_xxx' # for fetching logs + posting PR comments
   repos:
-    - "my-org/api"
-    - "my-org/frontend"
+    - 'my-org/api'
+    - 'my-org/frontend'
 
 llm:
-  provider: "anthropic"         # or "openai"
-  api_key: "sk-ant-xxx"
-  model: "claude-sonnet-4-5"    # optional override
+  provider: 'anthropic' # or "openai"
+  api_key: 'sk-ant-xxx'
+  model: 'claude-sonnet-4-5' # optional override
 
 integrations:
   sentry:
-    auth_token: "sntryu_xxx"
-    org: "my-org"
-  datadog:                       # optional
-    api_key: "xxx"
-    app_key: "xxx"
+    auth_token: 'sntryu_xxx'
+    org: 'my-org'
+  datadog: # optional
+    api_key: 'xxx'
+    app_key: 'xxx'
 
 delivery:
   slack:
-    bot_token: "xoxb-xxx"       # Bot User OAuth Token
-    signing_secret: "xxx"       # for verifying payloads
-    channel: "#incidents"
-    app_token: "xapp-xxx"       # for Socket Mode (optional)
-  github_comments: true          # also post on PR
+    bot_token: 'xoxb-xxx' # Bot User OAuth Token
+    signing_secret: 'xxx' # for verifying payloads
+    channel: '#incidents'
+    app_token: 'xapp-xxx' # for Socket Mode (optional)
+  github_comments: true # also post on PR
 ```
 
 ---
@@ -158,16 +159,16 @@ export interface IncidentContext {
 }
 
 export interface DataFragment {
-  source: string                 // "github-actions" | "sentry" | ...
-  summary: string                // plain text for LLM context
-  raw: Record<string, unknown>   // full data for storage
-  relevanceSignals: string[]     // ["recent_deploy", "new_error_class"]
+  source: string // "github-actions" | "sentry" | ...
+  summary: string // plain text for LLM context
+  raw: Record<string, unknown> // full data for storage
+  relevanceSignals: string[] // ["recent_deploy", "new_error_class"]
 }
 
 export interface Integration {
   id: string
   name: string
-  category: "ci" | "observability" | "alerting" | "cloud" | "comms"
+  category: 'ci' | 'observability' | 'alerting' | 'cloud' | 'comms'
 
   // LLM calls this to decide if this integration is worth querying
   // Return 0.0–1.0. Above 0.6 gets called.
@@ -189,53 +190,53 @@ A community integration for CircleCI would be one 60-line file. Nothing else cha
 
 ```typescript
 // packages/db/src/schema.ts
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core"
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
 
-export const incidents = sqliteTable("incidents", {
-  id:              text("id").primaryKey(),
-  repo:            text("repo").notNull(),
-  branch:          text("branch").notNull(),
-  commit:          text("commit").notNull(),
-  workflowName:    text("workflow_name").notNull(),
-  failedStep:      text("failed_step"),
-  status:          text("status").notNull().default("investigating"),
+export const incidents = sqliteTable('incidents', {
+  id: text('id').primaryKey(),
+  repo: text('repo').notNull(),
+  branch: text('branch').notNull(),
+  commit: text('commit').notNull(),
+  workflowName: text('workflow_name').notNull(),
+  failedStep: text('failed_step'),
+  status: text('status').notNull().default('investigating'),
   // "investigating" | "brief_ready" | "fixing" | "resolved" | "snoozed" | "dismissed"
 
   // LLM output
-  briefJson:       text("brief_json"),     // JSON stringified IncidentBrief
-  confidence:      real("confidence"),
-  rootCause:       text("root_cause"),
-  suggestedFix:    text("suggested_fix"),
+  briefJson: text('brief_json'), // JSON stringified IncidentBrief
+  confidence: real('confidence'),
+  rootCause: text('root_cause'),
+  suggestedFix: text('suggested_fix'),
 
   // Slack
-  slackChannel:    text("slack_channel"),
-  slackMessageTs:  text("slack_message_ts"),  // for chat.update
+  slackChannel: text('slack_channel'),
+  slackMessageTs: text('slack_message_ts'), // for chat.update
 
   // Timing
-  triggeredAt:     integer("triggered_at", { mode: "timestamp" }),
-  resolvedAt:      integer("resolved_at", { mode: "timestamp" }),
-  mttrSeconds:     integer("mttr_seconds"),
+  triggeredAt: integer('triggered_at', { mode: 'timestamp' }),
+  resolvedAt: integer('resolved_at', { mode: 'timestamp' }),
+  mttrSeconds: integer('mttr_seconds'),
 
-  createdAt:       integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 
-export const toolCalls = sqliteTable("tool_calls", {
-  id:          text("id").primaryKey(),
-  incidentId:  text("incident_id").references(() => incidents.id),
-  integration: text("integration").notNull(),
-  round:       integer("round").notNull(),
-  durationMs:  integer("duration_ms"),
-  resultJson:  text("result_json"),
-  createdAt:   integer("created_at", { mode: "timestamp" }).notNull(),
+export const toolCalls = sqliteTable('tool_calls', {
+  id: text('id').primaryKey(),
+  incidentId: text('incident_id').references(() => incidents.id),
+  integration: text('integration').notNull(),
+  round: integer('round').notNull(),
+  durationMs: integer('duration_ms'),
+  resultJson: text('result_json'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 
-export const resolvedPatterns = sqliteTable("resolved_patterns", {
-  id:           text("id").primaryKey(),
-  incidentId:   text("incident_id"),
-  embedding:    text("embedding"),   // JSON array for similarity search
-  pattern:      text("pattern"),
-  resolution:   text("resolution"),
-  createdAt:    integer("created_at", { mode: "timestamp" }).notNull(),
+export const resolvedPatterns = sqliteTable('resolved_patterns', {
+  id: text('id').primaryKey(),
+  incidentId: text('incident_id'),
+  embedding: text('embedding'), // JSON array for similarity search
+  pattern: text('pattern'),
+  resolution: text('resolution'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 ```
 
@@ -244,6 +245,7 @@ export const resolvedPatterns = sqliteTable("resolved_patterns", {
 ---
 
 # Phase 1 — Bootstrap (Days 1–3)
+
 > Goal: CI failure → message appears in Slack. Accuracy doesn't matter yet.
 
 ## What you're building
@@ -256,28 +258,25 @@ Set up the Bun + Hono server. Register the GitHub webhook. Verify the signature.
 
 ```typescript
 // apps/server/src/routes/webhooks.ts
-import { Hono } from "hono"
-import { createHmac } from "crypto"
+import { Hono } from 'hono'
+import { createHmac } from 'crypto'
 
 export const webhooksRouter = new Hono()
 
-webhooksRouter.post("/github", async (c) => {
+webhooksRouter.post('/github', async (c) => {
   const body = await c.req.text()
-  const sig = c.req.header("x-hub-signature-256") ?? ""
+  const sig = c.req.header('x-hub-signature-256') ?? ''
 
   // Always verify first
-  const expected = "sha256=" + createHmac("sha256", config.github.webhookSecret)
-    .update(body)
-    .digest("hex")
+  const expected = 'sha256=' + createHmac('sha256', config.github.webhookSecret).update(body).digest('hex')
 
-  if (sig !== expected) return c.json({ error: "Unauthorized" }, 401)
+  if (sig !== expected) return c.json({ error: 'Unauthorized' }, 401)
 
-  const event = c.req.header("x-github-event")
+  const event = c.req.header('x-github-event')
   const payload = JSON.parse(body)
 
   // Only care about workflow_run failures in MVP
-  if (event === "workflow_run" && payload.action === "completed"
-    && payload.workflow_run.conclusion === "failure") {
+  if (event === 'workflow_run' && payload.action === 'completed' && payload.workflow_run.conclusion === 'failure') {
     // Don't await — acknowledge GitHub immediately
     processWorkflowFailure(payload).catch(console.error)
   }
@@ -286,16 +285,19 @@ webhooksRouter.post("/github", async (c) => {
 })
 
 async function processWorkflowFailure(payload: GitHubWorkflowPayload) {
-  const incident = await db.insert(incidents).values({
-    id: crypto.randomUUID(),
-    repo: payload.repository.full_name,
-    branch: payload.workflow_run.head_branch,
-    commit: payload.workflow_run.head_sha,
-    workflowName: payload.workflow_run.name,
-    status: "investigating",
-    triggeredAt: new Date(payload.workflow_run.created_at),
-    createdAt: new Date(),
-  }).returning()
+  const incident = await db
+    .insert(incidents)
+    .values({
+      id: crypto.randomUUID(),
+      repo: payload.repository.full_name,
+      branch: payload.workflow_run.head_branch,
+      commit: payload.workflow_run.head_sha,
+      workflowName: payload.workflow_run.name,
+      status: 'investigating',
+      triggeredAt: new Date(payload.workflow_run.created_at),
+      createdAt: new Date(),
+    })
+    .returning()
 
   // Post "Investigating..." to Slack immediately
   await postInitialSlackMessage(incident[0])
@@ -311,15 +313,12 @@ No ReAct loop yet. Just: give LLM the alert, get a basic classification back.
 
 ```typescript
 // apps/server/src/agent/runner.ts
-import { generateObject } from "ai"
-import { anthropic } from "@ai-sdk/anthropic"
-import { z } from "zod"
+import { generateObject } from 'ai'
+import { anthropic } from '@ai-sdk/anthropic'
+import { z } from 'zod'
 
 const BriefSchema = z.object({
-  failureType: z.enum([
-    "flaky_test", "env_missing", "dependency_conflict",
-    "infra_timeout", "code_bug", "unknown"
-  ]),
+  failureType: z.enum(['flaky_test', 'env_missing', 'dependency_conflict', 'infra_timeout', 'code_bug', 'unknown']),
   summary: z.string(),
   likelyCause: z.string(),
   suggestedFix: z.string(),
@@ -329,7 +328,7 @@ const BriefSchema = z.object({
 export async function runIncidentAgent(incident: Incident): Promise<void> {
   // Phase 1: just classification, no tool calls yet
   const { object: brief } = await generateObject({
-    model: anthropic("claude-sonnet-4-5"),
+    model: anthropic('claude-sonnet-4-5'),
     schema: BriefSchema,
     system: CLASSIFY_PROMPT,
     prompt: `
@@ -337,23 +336,24 @@ export async function runIncidentAgent(incident: Incident): Promise<void> {
       Workflow: ${incident.workflowName}
       Branch: ${incident.branch}
       Commit: ${incident.commit}
-      Failed step: ${incident.failedStep ?? "unknown"}
+      Failed step: ${incident.failedStep ?? 'unknown'}
 
       Classify this CI failure and suggest a fix.
     `,
   })
 
-  await db.update(incidents)
+  await db
+    .update(incidents)
     .set({
       briefJson: JSON.stringify(brief),
       rootCause: brief.likelyCause,
       suggestedFix: brief.suggestedFix,
       confidence: brief.confidence,
-      status: "brief_ready",
+      status: 'brief_ready',
     })
     .where(eq(incidents.id, incident.id))
 
-  await updateSlackMessage(incident.id, { status: "brief_ready", brief })
+  await updateSlackMessage(incident.id, { status: 'brief_ready', brief })
 }
 ```
 
@@ -361,7 +361,7 @@ export async function runIncidentAgent(incident: Incident): Promise<void> {
 
 ```typescript
 // apps/server/src/slack/message.ts
-import { WebClient } from "@slack/web-api"
+import { WebClient } from '@slack/web-api'
 
 const slack = new WebClient(config.slack.botToken)
 
@@ -371,17 +371,15 @@ export async function postInitialSlackMessage(incident: Incident) {
     text: `🔴 CI failure in ${incident.repo} · ${incident.workflowName} · investigating...`,
   })
 
-  await db.update(incidents)
+  await db
+    .update(incidents)
     .set({ slackMessageTs: res.ts, slackChannel: config.slack.channel })
     .where(eq(incidents.id, incident.id))
 }
 
-export async function updateSlackMessage(
-  incidentId: string,
-  state: MessageState
-) {
+export async function updateSlackMessage(incidentId: string, state: MessageState) {
   const incident = await db.query.incidents.findFirst({
-    where: eq(incidents.id, incidentId)
+    where: eq(incidents.id, incidentId),
   })
   if (!incident?.slackMessageTs) return
 
@@ -402,6 +400,7 @@ export async function updateSlackMessage(
 ---
 
 # Phase 2 — The Real Agent (Days 4–7)
+
 > Goal: ReAct loop with GitHub Actions + Sentry tool calls. Brief is accurate and useful.
 
 ## What you're building
@@ -414,13 +413,13 @@ The agent runs a loop: think → call tool → observe result → think again �
 
 ```typescript
 // apps/server/src/agent/runner.ts (Phase 2 — full ReAct)
-import { generateText } from "ai"
-import { anthropic } from "@ai-sdk/anthropic"
+import { generateText } from 'ai'
+import { anthropic } from '@ai-sdk/anthropic'
 
 export async function runIncidentAgent(incident: Incident): Promise<void> {
   const messages: CoreMessage[] = [
-    { role: "system", content: AGENT_SYSTEM_PROMPT },
-    { role: "user", content: formatIncidentContext(incident) },
+    { role: 'system', content: AGENT_SYSTEM_PROMPT },
+    { role: 'user', content: formatIncidentContext(incident) },
   ]
 
   const toolCallLog: ToolCallRecord[] = []
@@ -428,10 +427,10 @@ export async function runIncidentAgent(incident: Incident): Promise<void> {
 
   while (round < 6) {
     const { text, toolCalls, toolResults, finishReason } = await generateText({
-      model: anthropic("claude-sonnet-4-5"),
+      model: anthropic('claude-sonnet-4-5'),
       messages,
-      tools: buildToolSet(incident),  // registered integrations as AI SDK tools
-      maxSteps: 1,  // one tool call per round for clean logging
+      tools: buildToolSet(incident), // registered integrations as AI SDK tools
+      maxSteps: 1, // one tool call per round for clean logging
     })
 
     // Log each tool call for the trace UI
@@ -440,13 +439,13 @@ export async function runIncidentAgent(incident: Incident): Promise<void> {
       toolCallLog.push(record)
     }
 
-    messages.push({ role: "assistant", content: text })
+    messages.push({ role: 'assistant', content: text })
     if (toolResults?.length) {
-      messages.push({ role: "tool", content: toolResults })
+      messages.push({ role: 'tool', content: toolResults })
     }
 
     // Model decided it has enough info
-    if (finishReason === "stop" || !toolCalls?.length) break
+    if (finishReason === 'stop' || !toolCalls?.length) break
 
     round++
   }
@@ -454,16 +453,19 @@ export async function runIncidentAgent(incident: Incident): Promise<void> {
   // Final synthesis pass — structured output from the full conversation
   const brief = await synthesizeBrief(messages, incident)
 
-  await db.update(incidents).set({
-    status: "brief_ready",
-    briefJson: JSON.stringify(brief),
-    rootCause: brief.rootCause,
-    suggestedFix: brief.suggestedFix,
-    confidence: brief.confidence,
-  }).where(eq(incidents.id, incident.id))
+  await db
+    .update(incidents)
+    .set({
+      status: 'brief_ready',
+      briefJson: JSON.stringify(brief),
+      rootCause: brief.rootCause,
+      suggestedFix: brief.suggestedFix,
+      confidence: brief.confidence,
+    })
+    .where(eq(incidents.id, incident.id))
 
-  await updateSlackMessage(incident.id, { status: "brief_ready", brief })
-  await postThreadReply(incident.id, { type: "tool_trace", calls: toolCallLog })
+  await updateSlackMessage(incident.id, { status: 'brief_ready', brief })
+  await postThreadReply(incident.id, { type: 'tool_trace', calls: toolCallLog })
 }
 ```
 
@@ -509,52 +511,57 @@ Format your final analysis before calling synthesize_brief:
 
 ```typescript
 // apps/server/src/integrations/github-actions.ts
-import { tool } from "ai"
-import { z } from "zod"
-import { Octokit } from "@octokit/rest"
+import { tool } from 'ai'
+import { z } from 'zod'
+import { Octokit } from '@octokit/rest'
 
 const octokit = new Octokit({ auth: config.github.token })
 
 export const githubActionsTool = tool({
-  description: "Fetch GitHub Actions workflow run logs for a failed CI run. " +
+  description:
+    'Fetch GitHub Actions workflow run logs for a failed CI run. ' +
     "Returns the last 300 lines of the failed step's logs.",
   parameters: z.object({
-    repo: z.string().describe("owner/repo format"),
-    runId: z.number().describe("The workflow run ID from the webhook payload"),
+    repo: z.string().describe('owner/repo format'),
+    runId: z.number().describe('The workflow run ID from the webhook payload'),
   }),
   execute: async ({ repo, runId }) => {
-    const [owner, repoName] = repo.split("/")
+    const [owner, repoName] = repo.split('/')
 
     // Get jobs to find the failed one
     const { data: jobs } = await octokit.actions.listJobsForWorkflowRun({
-      owner, repo: repoName, run_id: runId
+      owner,
+      repo: repoName,
+      run_id: runId,
     })
 
-    const failedJob = jobs.jobs.find(j => j.conclusion === "failure")
-    if (!failedJob) return { error: "No failed job found" }
+    const failedJob = jobs.jobs.find((j) => j.conclusion === 'failure')
+    if (!failedJob) return { error: 'No failed job found' }
 
     // Get logs
     const { data: logsUrl } = await octokit.actions.downloadJobLogsForWorkflowRun({
-      owner, repo: repoName, job_id: failedJob.id
+      owner,
+      repo: repoName,
+      job_id: failedJob.id,
     })
 
     const logsResponse = await fetch(logsUrl as unknown as string)
     const rawLogs = await logsResponse.text()
 
     // Return last 300 lines to keep context window manageable
-    const lines = rawLogs.split("\n")
-    const relevant = lines.slice(-300).join("\n")
+    const lines = rawLogs.split('\n')
+    const relevant = lines.slice(-300).join('\n')
 
     return {
       jobName: failedJob.name,
-      failedStep: failedJob.steps?.find(s => s.conclusion === "failure")?.name,
+      failedStep: failedJob.steps?.find((s) => s.conclusion === 'failure')?.name,
       logs: relevant,
-      duration: failedJob.completed_at && failedJob.started_at
-        ? Math.round((new Date(failedJob.completed_at).getTime() -
-            new Date(failedJob.started_at).getTime()) / 1000)
-        : null
+      duration:
+        failedJob.completed_at && failedJob.started_at
+          ? Math.round((new Date(failedJob.completed_at).getTime() - new Date(failedJob.started_at).getTime()) / 1000)
+          : null,
     }
-  }
+  },
 })
 ```
 
@@ -562,21 +569,21 @@ export const githubActionsTool = tool({
 
 ```typescript
 // apps/server/src/integrations/sentry.ts
-import { tool } from "ai"
-import { z } from "zod"
+import { tool } from 'ai'
+import { z } from 'zod'
 
 export const sentryTool = tool({
-  description: "Fetch recent errors from Sentry for a specific project. " +
-    "Returns new error classes seen in the last 2 hours.",
+  description:
+    'Fetch recent errors from Sentry for a specific project. ' + 'Returns new error classes seen in the last 2 hours.',
   parameters: z.object({
-    project: z.string().describe("Sentry project slug"),
-    since: z.string().describe("ISO timestamp — look for errors after this time"),
+    project: z.string().describe('Sentry project slug'),
+    since: z.string().describe('ISO timestamp — look for errors after this time'),
   }),
   execute: async ({ project, since }) => {
     const res = await fetch(
       `https://sentry.io/api/0/projects/${config.sentry.org}/${project}/issues/` +
-      `?query=firstSeen:>${since}&sort=date&limit=10`,
-      { headers: { Authorization: `Bearer ${config.sentry.authToken}` } }
+        `?query=firstSeen:>${since}&sort=date&limit=10`,
+      { headers: { Authorization: `Bearer ${config.sentry.authToken}` } },
     )
 
     if (!res.ok) return { error: `Sentry API error: ${res.status}` }
@@ -593,7 +600,7 @@ export const sentryTool = tool({
       })),
       totalNew: issues.length,
     }
-  }
+  },
 })
 ```
 
@@ -603,140 +610,143 @@ export const sentryTool = tool({
 // apps/server/src/slack/blocks.ts
 
 type MessageState =
-  | { status: "investigating" }
-  | { status: "brief_ready"; brief: IncidentBrief; incident: Incident }
-  | { status: "fixing"; approvedBy: string; action: string }
-  | { status: "resolved"; incident: Incident }
+  | { status: 'investigating' }
+  | { status: 'brief_ready'; brief: IncidentBrief; incident: Incident }
+  | { status: 'fixing'; approvedBy: string; action: string }
+  | { status: 'resolved'; incident: Incident }
 
 export function buildBlocks(state: MessageState): KnownBlock[] {
   switch (state.status) {
-    case "investigating":
+    case 'investigating':
       return [
         {
-          type: "section",
+          type: 'section',
           text: {
-            type: "mrkdwn",
-            text: `:hourglass_flowing_sand: *Investigating...* fetching logs and errors. This takes ~25 seconds.`
-          }
-        }
+            type: 'mrkdwn',
+            text: `:hourglass_flowing_sand: *Investigating...* fetching logs and errors. This takes ~25 seconds.`,
+          },
+        },
       ]
 
-    case "brief_ready": {
+    case 'brief_ready': {
       const { brief, incident } = state
       const confidencePct = Math.round(brief.confidence * 100)
-      const confidenceBar = "█".repeat(Math.round(brief.confidence * 10)) +
-        "░".repeat(10 - Math.round(brief.confidence * 10))
+      const confidenceBar =
+        '█'.repeat(Math.round(brief.confidence * 10)) + '░'.repeat(10 - Math.round(brief.confidence * 10))
 
       return [
         // Header
         {
-          type: "header",
-          text: { type: "plain_text", text: `🔴  ${incident.workflowName} · ${incident.repo}` }
+          type: 'header',
+          text: { type: 'plain_text', text: `🔴  ${incident.workflowName} · ${incident.repo}` },
         },
         // Key fields
         {
-          type: "section",
+          type: 'section',
           fields: [
-            { type: "mrkdwn", text: `*Workflow*\n${incident.workflowName}` },
-            { type: "mrkdwn", text: `*Failed step*\n${incident.failedStep ?? "unknown"}` },
-            { type: "mrkdwn", text: `*Branch*\n\`${incident.branch}\`` },
-            { type: "mrkdwn", text: `*Commit*\n${incident.commit.slice(0, 7)}` },
-          ]
+            { type: 'mrkdwn', text: `*Workflow*\n${incident.workflowName}` },
+            { type: 'mrkdwn', text: `*Failed step*\n${incident.failedStep ?? 'unknown'}` },
+            { type: 'mrkdwn', text: `*Branch*\n\`${incident.branch}\`` },
+            { type: 'mrkdwn', text: `*Commit*\n${incident.commit.slice(0, 7)}` },
+          ],
         },
-        { type: "divider" },
+        { type: 'divider' },
         // Root cause
         {
-          type: "section",
-          text: { type: "mrkdwn", text: `*Root cause*\n${brief.rootCause}` }
+          type: 'section',
+          text: { type: 'mrkdwn', text: `*Root cause*\n${brief.rootCause}` },
         },
         // Confidence
         {
-          type: "context",
-          elements: [{
-            type: "mrkdwn",
-            text: `Confidence: \`${confidenceBar}\` ${confidencePct}%` +
-              (brief.similarIncidentId
-                ? `  ·  Similar to <${incident.dashboardUrl}|incident #${brief.similarIncidentId}>`
-                : "")
-          }]
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text:
+                `Confidence: \`${confidenceBar}\` ${confidencePct}%` +
+                (brief.similarIncidentId
+                  ? `  ·  Similar to <${incident.dashboardUrl}|incident #${brief.similarIncidentId}>`
+                  : ''),
+            },
+          ],
         },
-        { type: "divider" },
+        { type: 'divider' },
         // Suggested fix
         {
-          type: "section",
-          text: { type: "mrkdwn", text: `*Suggested fix*\n${brief.suggestedFix}` }
+          type: 'section',
+          text: { type: 'mrkdwn', text: `*Suggested fix*\n${brief.suggestedFix}` },
         },
         // Action buttons
         {
-          type: "actions",
+          type: 'actions',
           elements: [
             {
-              type: "button",
-              text: { type: "plain_text", text: "Re-run with fix" },
-              style: "primary",
-              action_id: "approve_fix",
+              type: 'button',
+              text: { type: 'plain_text', text: 'Re-run with fix' },
+              style: 'primary',
+              action_id: 'approve_fix',
               value: incident.id,
             },
             {
-              type: "button",
-              text: { type: "plain_text", text: "Dig deeper" },
-              action_id: "dig_deeper",
+              type: 'button',
+              text: { type: 'plain_text', text: 'Dig deeper' },
+              action_id: 'dig_deeper',
               value: incident.id,
             },
             {
-              type: "button",
-              text: { type: "plain_text", text: "Snooze 1h" },
-              action_id: "snooze",
+              type: 'button',
+              text: { type: 'plain_text', text: 'Snooze 1h' },
+              action_id: 'snooze',
               value: JSON.stringify({ incidentId: incident.id, minutes: 60 }),
             },
             {
-              type: "button",
-              text: { type: "plain_text", text: "False alarm" },
-              style: "danger",
-              action_id: "false_alarm",
+              type: 'button',
+              text: { type: 'plain_text', text: 'False alarm' },
+              style: 'danger',
+              action_id: 'false_alarm',
               value: incident.id,
             },
-          ]
-        }
+          ],
+        },
       ]
     }
 
-    case "fixing":
+    case 'fixing':
       return [
         {
-          type: "section",
+          type: 'section',
           text: {
-            type: "mrkdwn",
-            text: `:wrench: *Fixing...* approved by @${state.approvedBy}\n${state.action}`
-          }
-        }
+            type: 'mrkdwn',
+            text: `:wrench: *Fixing...* approved by @${state.approvedBy}\n${state.action}`,
+          },
+        },
       ]
 
-    case "resolved": {
+    case 'resolved': {
       const mttr = state.incident.mttrSeconds
-      const mttrText = mttr
-        ? mttr < 60 ? `${mttr}s` : `${Math.round(mttr / 60)}m ${mttr % 60}s`
-        : "unknown"
+      const mttrText = mttr ? (mttr < 60 ? `${mttr}s` : `${Math.round(mttr / 60)}m ${mttr % 60}s`) : 'unknown'
 
       return [
         {
-          type: "header",
-          text: { type: "plain_text", text: `✅  Resolved · ${state.incident.workflowName}` }
+          type: 'header',
+          text: { type: 'plain_text', text: `✅  Resolved · ${state.incident.workflowName}` },
         },
         {
-          type: "section",
+          type: 'section',
           fields: [
-            { type: "mrkdwn", text: `*MTTR*\n${mttrText}` },
-            { type: "mrkdwn", text: `*Fix applied*\n${state.incident.suggestedFix}` },
-          ]
+            { type: 'mrkdwn', text: `*MTTR*\n${mttrText}` },
+            { type: 'mrkdwn', text: `*Fix applied*\n${state.incident.suggestedFix}` },
+          ],
         },
         {
-          type: "context",
-          elements: [{
-            type: "mrkdwn",
-            text: `Postmortem draft ready in thread ↓`
-          }]
-        }
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `Postmortem draft ready in thread ↓`,
+            },
+          ],
+        },
       ]
     }
   }
@@ -748,12 +758,12 @@ export function buildBlocks(state: MessageState): KnownBlock[] {
 ```typescript
 // apps/server/src/routes/interactions.ts
 
-interactionsRouter.post("/", async (c) => {
+interactionsRouter.post('/', async (c) => {
   const body = await c.req.formData()
-  const payload = JSON.parse(body.get("payload") as string) as SlackInteractionPayload
+  const payload = JSON.parse(body.get('payload') as string) as SlackInteractionPayload
 
   if (!verifySlackSignature(c.req.raw, config.slack.signingSecret)) {
-    return c.json({ error: "Unauthorized" }, 401)
+    return c.json({ error: 'Unauthorized' }, 401)
   }
 
   // Acknowledge immediately — Slack requires response < 3 seconds
@@ -771,39 +781,39 @@ async function handleInteraction(payload: SlackInteractionPayload) {
   const userId = payload.user.username
 
   switch (action_id) {
-    case "approve_fix": {
+    case 'approve_fix': {
       const incidentId = value
       await updateIncidentMessage(incidentId, {
-        status: "fixing",
+        status: 'fixing',
         approvedBy: userId,
-        action: "Re-running workflow with suggested fix"
+        action: 'Re-running workflow with suggested fix',
       })
       await postThreadReply(incidentId, {
-        type: "action_log",
-        text: `@${userId} approved auto-fix · re-run triggered`
+        type: 'action_log',
+        text: `@${userId} approved auto-fix · re-run triggered`,
       })
       await executeApprovedFix(incidentId)
       break
     }
 
-    case "dig_deeper": {
+    case 'dig_deeper': {
       await runAdditionalInvestigation(value, { broadenScope: true })
       break
     }
 
-    case "snooze": {
+    case 'snooze': {
       const { incidentId, minutes } = JSON.parse(value)
       await snoozeIncident(incidentId, minutes)
       await postThreadReply(incidentId, {
-        type: "action_log",
-        text: `@${userId} snoozed for ${minutes / 60}h`
+        type: 'action_log',
+        text: `@${userId} snoozed for ${minutes / 60}h`,
       })
       break
     }
 
-    case "false_alarm": {
+    case 'false_alarm': {
       const incidentId = value
-      await resolveIncident(incidentId, "false_alarm")
+      await resolveIncident(incidentId, 'false_alarm')
       break
     }
   }
@@ -817,6 +827,7 @@ async function handleInteraction(payload: SlackInteractionPayload) {
 ---
 
 # Phase 3 — Dashboard UI + Landing Page (Days 8–12)
+
 > Goal: visual home for the product. Incident history, trace viewer, settings.
 
 ## What you're building
@@ -835,12 +846,13 @@ export default function LandingPage() {
     <main className="max-w-3xl mx-auto px-6 py-20">
       {/* Hero */}
       <h1 className="text-4xl font-medium tracking-tight text-zinc-900 mb-4">
-        Your CI fails. Orchentra<br />investigates.
+        Your CI fails. Orchentra
+        <br />
+        investigates.
       </h1>
       <p className="text-xl text-zinc-500 mb-8">
-        AI agent that reads your GitHub Actions logs, queries Sentry,
-        and posts a root cause brief in Slack — in 30 seconds.
-        Open source. Self-host in one command.
+        AI agent that reads your GitHub Actions logs, queries Sentry, and posts a root cause brief in Slack — in 30
+        seconds. Open source. Self-host in one command.
       </p>
 
       {/* Demo GIF */}
@@ -849,11 +861,10 @@ export default function LandingPage() {
       </div>
 
       {/* Setup code */}
-      <h2 className="text-lg font-medium text-zinc-900 mb-4">
-        Set up in 60 seconds
-      </h2>
+      <h2 className="text-lg font-medium text-zinc-900 mb-4">Set up in 60 seconds</h2>
       <pre className="bg-zinc-950 text-zinc-100 rounded-xl p-6 text-sm mb-12 overflow-x-auto">
-        <code>{`git clone https://github.com/your-org/Orchentra
+        <code>
+          {`git clone https://github.com/your-org/Orchentra
 cp Orchentra.yml.example Orchentra.yml
 # fill in your GitHub token, Slack bot token, Anthropic key
 docker compose up`}
@@ -863,27 +874,34 @@ docker compose up`}
       {/* Integrations */}
       <h2 className="text-lg font-medium text-zinc-900 mb-4">Integrations</h2>
       <div className="flex flex-wrap gap-2 mb-12">
-        {integrations.map(i => (
-          <span key={i.name} className={cn(
-            "px-3 py-1 rounded-full text-sm border",
-            i.status === "stable"
-              ? "bg-green-50 text-green-800 border-green-200"
-              : "bg-zinc-50 text-zinc-500 border-zinc-200"
-          )}>
+        {integrations.map((i) => (
+          <span
+            key={i.name}
+            className={cn(
+              'px-3 py-1 rounded-full text-sm border',
+              i.status === 'stable'
+                ? 'bg-green-50 text-green-800 border-green-200'
+                : 'bg-zinc-50 text-zinc-500 border-zinc-200',
+            )}
+          >
             {i.name}
-            {i.status === "coming_soon" && " (soon)"}
+            {i.status === 'coming_soon' && ' (soon)'}
           </span>
         ))}
       </div>
 
       {/* CTA */}
       <div className="flex gap-3">
-        <a href="https://github.com/your-org/Orchentra"
-          className="px-5 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-medium">
+        <a
+          href="https://github.com/your-org/Orchentra"
+          className="px-5 py-2.5 bg-zinc-900 text-white rounded-lg text-sm font-medium"
+        >
           Star on GitHub
         </a>
-        <a href="/dashboard"
-          className="px-5 py-2.5 border border-zinc-200 text-zinc-700 rounded-lg text-sm font-medium">
+        <a
+          href="/dashboard"
+          className="px-5 py-2.5 border border-zinc-200 text-zinc-700 rounded-lg text-sm font-medium"
+        >
           Try hosted version
         </a>
       </div>
@@ -922,13 +940,17 @@ export default async function DashboardPage() {
           </tr>
         </thead>
         <tbody>
-          {incidents.map(incident => (
-            <tr key={incident.id}
+          {incidents.map((incident) => (
+            <tr
+              key={incident.id}
               className="border-b border-zinc-50 hover:bg-zinc-50 cursor-pointer"
-              onClick={() => router.push(`/dashboard/${incident.id}`)}>
+              onClick={() => router.push(`/dashboard/${incident.id}`)}
+            >
               <td className="py-3 font-mono text-xs">{incident.repo}</td>
               <td className="py-3">{incident.workflowName}</td>
-              <td className="py-3"><StatusBadge status={incident.status} /></td>
+              <td className="py-3">
+                <StatusBadge status={incident.status} />
+              </td>
               <td className="py-3">
                 <ConfidenceBar value={incident.confidence} />
               </td>
@@ -968,16 +990,10 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
       {/* The brief */}
       {brief && (
         <div className="border border-zinc-200 rounded-xl p-6 mb-6">
-          <div className="text-sm font-medium text-zinc-400 mb-1 uppercase tracking-wide">
-            Root cause
-          </div>
+          <div className="text-sm font-medium text-zinc-400 mb-1 uppercase tracking-wide">Root cause</div>
           <div className="text-zinc-900 mb-4">{brief.rootCause}</div>
-          <div className="text-sm font-medium text-zinc-400 mb-1 uppercase tracking-wide">
-            Suggested fix
-          </div>
-          <div className="text-zinc-900 font-mono text-sm bg-zinc-50 p-3 rounded-lg">
-            {brief.suggestedFix}
-          </div>
+          <div className="text-sm font-medium text-zinc-400 mb-1 uppercase tracking-wide">Suggested fix</div>
+          <div className="text-zinc-900 font-mono text-sm bg-zinc-50 p-3 rounded-lg">{brief.suggestedFix}</div>
           <ConfidenceBar value={incident.confidence} showLabel className="mt-4" />
         </div>
       )}
@@ -988,8 +1004,7 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
       </div>
       <div className="space-y-3">
         {calls.map((call, i) => (
-          <div key={call.id}
-            className="border border-zinc-100 rounded-lg overflow-hidden">
+          <div key={call.id} className="border border-zinc-100 rounded-lg overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-2.5 bg-zinc-50 border-b border-zinc-100">
               <span className="text-xs text-zinc-400">Round {call.round + 1}</span>
               <span className="text-sm font-medium font-mono">{call.integration}</span>
@@ -997,7 +1012,7 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
             </div>
             <div className="px-4 py-3">
               <pre className="text-xs text-zinc-600 whitespace-pre-wrap">
-                {JSON.stringify(JSON.parse(call.resultJson ?? "{}"), null, 2)}
+                {JSON.stringify(JSON.parse(call.resultJson ?? '{}'), null, 2)}
               </pre>
             </div>
           </div>
@@ -1015,6 +1030,7 @@ export default async function IncidentDetailPage({ params }: { params: { id: str
 ---
 
 # Phase 4 — Slash Commands + App Home (Days 13–15)
+
 > Goal: complete Slack-native experience. No dashboard required for daily use.
 
 ## Slash commands
@@ -1024,19 +1040,19 @@ Register `/pilot` in the Slack app manifest. All subcommands handled in one rout
 ```typescript
 // apps/server/src/routes/commands.ts
 
-commandsRouter.post("/", async (c) => {
+commandsRouter.post('/', async (c) => {
   const body = await c.req.formData()
-  const command = body.get("command") as string
-  const text = (body.get("text") as string ?? "").trim()
-  const userId = body.get("user_id") as string
-  const channelId = body.get("channel_id") as string
+  const command = body.get('command') as string
+  const text = ((body.get('text') as string) ?? '').trim()
+  const userId = body.get('user_id') as string
+  const channelId = body.get('channel_id') as string
 
   if (!verifySlackSignature(c.req.raw, config.slack.signingSecret)) {
-    return c.json({ error: "Unauthorized" }, 401)
+    return c.json({ error: 'Unauthorized' }, 401)
   }
 
   // Acknowledge immediately
-  const response = c.json({ response_type: "ephemeral", text: "Loading..." })
+  const response = c.json({ response_type: 'ephemeral', text: 'Loading...' })
 
   handleCommand({ text, userId, channelId }).catch(console.error)
 
@@ -1044,31 +1060,28 @@ commandsRouter.post("/", async (c) => {
 })
 
 async function handleCommand({ text, userId, channelId }: CommandContext) {
-  const [subcommand, ...args] = text.split(" ")
+  const [subcommand, ...args] = text.split(' ')
 
   switch (subcommand) {
-    case "status": {
+    case 'status': {
       const open = await db.query.incidents.findMany({
-        where: and(
-          eq(incidents.slackChannel, channelId),
-          notInArray(incidents.status, ["resolved", "dismissed"])
-        )
+        where: and(eq(incidents.slackChannel, channelId), notInArray(incidents.status, ['resolved', 'dismissed'])),
       })
       await slack.chat.postEphemeral({
         channel: channelId,
         user: userId,
         text: open.length
-          ? `${open.length} open incident(s):\n${open.map(i =>
-              `• ${i.workflowName} · ${i.status} · <${i.dashboardUrl}|view>`
-            ).join("\n")}`
-          : "No open incidents. All clear."
+          ? `${open.length} open incident(s):\n${open
+              .map((i) => `• ${i.workflowName} · ${i.status} · <${i.dashboardUrl}|view>`)
+              .join('\n')}`
+          : 'No open incidents. All clear.',
       })
       break
     }
 
-    case "history": {
+    case 'history': {
       const recent = await db.query.incidents.findMany({
-        where: eq(incidents.status, "resolved"),
+        where: eq(incidents.status, 'resolved'),
         orderBy: [desc(incidents.resolvedAt)],
         limit: 10,
       })
@@ -1076,8 +1089,8 @@ async function handleCommand({ text, userId, channelId }: CommandContext) {
       break
     }
 
-    case "snooze": {
-      const duration = args[0] ?? "1h"
+    case 'snooze': {
+      const duration = args[0] ?? '1h'
       const minutes = parseSnoozeArg(duration)
       const active = await getActiveIncident(channelId)
       if (active) {
@@ -1087,12 +1100,12 @@ async function handleCommand({ text, userId, channelId }: CommandContext) {
       break
     }
 
-    case "ask": {
+    case 'ask': {
       // Natural language query against active incident
-      const question = args.join(" ")
+      const question = args.join(' ')
       const active = await getActiveIncident(channelId)
       if (!active) {
-        await postEphemeral(channelId, userId, "No active incident to ask about.")
+        await postEphemeral(channelId, userId, 'No active incident to ask about.')
         break
       }
       const answer = await answerQuestion(active, question)
@@ -1121,51 +1134,48 @@ export async function publishHomeTab(userId: string) {
     limit: 5,
   })
 
-  const openCount = recentIncidents.filter(i =>
-    !["resolved", "dismissed"].includes(i.status)
-  ).length
+  const openCount = recentIncidents.filter((i) => !['resolved', 'dismissed'].includes(i.status)).length
 
-  const avgMttr = recentIncidents
-    .filter(i => i.mttrSeconds)
-    .reduce((sum, i) => sum + i.mttrSeconds!, 0) /
-    recentIncidents.filter(i => i.mttrSeconds).length
+  const avgMttr =
+    recentIncidents.filter((i) => i.mttrSeconds).reduce((sum, i) => sum + i.mttrSeconds!, 0) /
+    recentIncidents.filter((i) => i.mttrSeconds).length
 
   await slack.views.publish({
     user_id: userId,
     view: {
-      type: "home",
+      type: 'home',
       blocks: [
         {
-          type: "header",
-          text: { type: "plain_text", text: "Orchentra" }
+          type: 'header',
+          text: { type: 'plain_text', text: 'Orchentra' },
         },
         {
-          type: "section",
+          type: 'section',
           fields: [
-            { type: "mrkdwn", text: `*Open incidents*\n${openCount}` },
-            { type: "mrkdwn", text: `*Avg MTTR (7d)*\n${formatMttr(avgMttr)}` },
-          ]
+            { type: 'mrkdwn', text: `*Open incidents*\n${openCount}` },
+            { type: 'mrkdwn', text: `*Avg MTTR (7d)*\n${formatMttr(avgMttr)}` },
+          ],
         },
-        { type: "divider" },
+        { type: 'divider' },
         {
-          type: "section",
-          text: { type: "mrkdwn", text: "*Recent incidents*" }
+          type: 'section',
+          text: { type: 'mrkdwn', text: '*Recent incidents*' },
         },
-        ...recentIncidents.map(i => ({
-          type: "section" as const,
+        ...recentIncidents.map((i) => ({
+          type: 'section' as const,
           text: {
-            type: "mrkdwn" as const,
-            text: `*${i.workflowName}* · ${i.repo}\n${i.rootCause ?? "Investigating..."} · ${timeAgo(i.createdAt)}`
+            type: 'mrkdwn' as const,
+            text: `*${i.workflowName}* · ${i.repo}\n${i.rootCause ?? 'Investigating...'} · ${timeAgo(i.createdAt)}`,
           },
           accessory: {
-            type: "button" as const,
-            text: { type: "plain_text" as const, text: "View" },
+            type: 'button' as const,
+            text: { type: 'plain_text' as const, text: 'View' },
             url: `${config.dashboardUrl}/dashboard/${i.id}`,
             action_id: `view_incident_${i.id}`,
-          }
-        }))
-      ]
-    }
+          },
+        })),
+      ],
+    },
   })
 }
 ```
@@ -1177,6 +1187,7 @@ export async function publishHomeTab(userId: string) {
 ---
 
 # Phase 5 — Postmortems + OSS Launch (Days 16–21)
+
 > Goal: full incident lifecycle complete. Launch publicly.
 
 ## Postmortem generation
@@ -1188,7 +1199,7 @@ After every resolved incident, generate a draft postmortem from the agent's tool
 
 export async function generatePostmortem(incidentId: string): Promise<string> {
   const incident = await db.query.incidents.findFirst({
-    where: eq(incidents.id, incidentId)
+    where: eq(incidents.id, incidentId),
   })
   const calls = await db.query.toolCalls.findMany({
     where: eq(toolCalls.incidentId, incidentId),
@@ -1196,7 +1207,7 @@ export async function generatePostmortem(incidentId: string): Promise<string> {
   })
 
   const { text } = await generateText({
-    model: anthropic("claude-sonnet-4-5"),
+    model: anthropic('claude-sonnet-4-5'),
     system: `You generate blameless incident postmortems.
       Be specific. Use the evidence from the tool calls.
       Follow this exact format:
@@ -1224,9 +1235,7 @@ export async function generatePostmortem(incidentId: string): Promise<string> {
       Fix: ${incident.suggestedFix}
 
       Evidence gathered:
-      ${calls.map(c =>
-        `[${c.integration}]: ${JSON.parse(c.resultJson ?? "{}").summary ?? "no summary"}`
-      ).join("\n")}
+      ${calls.map((c) => `[${c.integration}]: ${JSON.parse(c.resultJson ?? '{}').summary ?? 'no summary'}`).join('\n')}
     `,
   })
 
@@ -1240,8 +1249,8 @@ Post the draft as a thread reply on resolution:
 // In resolveIncident():
 const postmortem = await generatePostmortem(incidentId)
 await postThreadReply(incidentId, {
-  type: "postmortem",
-  content: postmortem
+  type: 'postmortem',
+  content: postmortem,
 })
 ```
 
@@ -1277,7 +1286,7 @@ Quality
 display_information:
   name: Orchentra
   description: AI incident triage for engineering teams
-  background_color: "#1a1a2e"
+  background_color: '#1a1a2e'
 
 features:
   app_home:
@@ -1287,7 +1296,7 @@ features:
     - command: /pilot
       url: https://your-domain.com/slack/commands
       description: Interact with Orchentra
-      usage_hint: "[status|history|snooze|ask]"
+      usage_hint: '[status|history|snooze|ask]'
       should_escape: false
   bot_user:
     display_name: Orchentra
@@ -1317,13 +1326,13 @@ settings:
 
 # Phase checkpoints summary
 
-| Phase | Days | Ships | Success signal |
-|---|---|---|---|
-| 1 — Bootstrap | 1–3 | Webhook → plain Slack message | Any CI failure shows up in Slack |
-| 2 — Real agent | 4–7 | ReAct loop + GitHub + Sentry tools + Block Kit | Brief is accurate, buttons work |
-| 3 — Dashboard + landing | 8–12 | Next.js dashboard, landing page, trace view | Someone not on your team sets it up |
-| 4 — Slack-native | 13–15 | Slash commands, App Home, thread replies | Engineers operate entirely from Slack |
-| 5 — Launch | 16–21 | Postmortems, OSS launch, ProductHunt | First GitHub star from a stranger |
+| Phase                   | Days  | Ships                                          | Success signal                        |
+| ----------------------- | ----- | ---------------------------------------------- | ------------------------------------- |
+| 1 — Bootstrap           | 1–3   | Webhook → plain Slack message                  | Any CI failure shows up in Slack      |
+| 2 — Real agent          | 4–7   | ReAct loop + GitHub + Sentry tools + Block Kit | Brief is accurate, buttons work       |
+| 3 — Dashboard + landing | 8–12  | Next.js dashboard, landing page, trace view    | Someone not on your team sets it up   |
+| 4 — Slack-native        | 13–15 | Slash commands, App Home, thread replies       | Engineers operate entirely from Slack |
+| 5 — Launch              | 16–21 | Postmortems, OSS launch, ProductHunt           | First GitHub star from a stranger     |
 
 ---
 
@@ -1382,29 +1391,29 @@ The fastest way to add a new integration:
 
 // Minimum viable integration:
 export const myToolIntegration: Integration = {
-  id: "my-tool",
-  name: "My Tool",
-  category: "observability",
+  id: 'my-tool',
+  name: 'My Tool',
+  category: 'observability',
 
   async relevance(ctx) {
     // Return 0.8 if this tool is likely relevant, 0.1 if not
-    return ctx.failedStep?.includes("test") ? 0.8 : 0.3
+    return ctx.failedStep?.includes('test') ? 0.8 : 0.3
   },
 
   async fetch(ctx) {
     const data = await callMyToolApi(ctx.repo, ctx.triggeredAt)
     return {
-      source: "my-tool",
+      source: 'my-tool',
       summary: `Found ${data.errors.length} new errors since deploy`,
       raw: data,
-      relevanceSignals: data.errors.length > 0 ? ["new_errors"] : [],
+      relevanceSignals: data.errors.length > 0 ? ['new_errors'] : [],
     }
   },
 
   credentialSchema: z.object({
     apiKey: z.string(),
     orgSlug: z.string(),
-  })
+  }),
 }
 ```
 
