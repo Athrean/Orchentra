@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun --version)",
+      "Bash(docker --version)",
+      "Bash(git init:*)",
+      "Bash(bun install:*)",
+      "Bash(lsof -ti:3001)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(gh label:*)",
+      "WebFetch(domain:paperclip.ing)",
+      "Bash(npx next:*)",
+      "Bash(bun add:*)",
+      "mcp__zai-mcp-server__ui_to_artifact",
+      "Read(//Users/rushout/Desktop/apps/frontend/src/**)",
+      "Read(//Users/rushout/Desktop/apps/frontend/**)",
+      "Bash(find /Users/rushout/Desktop/orchentra/apps -type d -not -path */node_modules/*)",
+      "Bash(find /Users/rushout/Desktop/orchentra/packages -type d -not -path */node_modules/*)",
+      "Read(//Users/rushout/**)"
+    ],
+    "additionalDirectories": ["/Users/rushout"]
+  }
+}

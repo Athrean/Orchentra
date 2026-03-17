@@ -9,5 +9,14 @@
   },
   "dependencies": {
     "zod": "^3.24.0"
+  },
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@orchentra/eslint-config": "workspace:*",
+    "@orchentra/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.0.0"
   }
 }

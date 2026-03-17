@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
-    "start": "bun run dist/index.js"
+    "start": "bun run dist/index.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@orchentra/core": "workspace:*",
@@ -19,7 +20,10 @@
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
+    "@orchentra/eslint-config": "workspace:*",
+    "@orchentra/typescript-config": "workspace:*",
     "@types/bun": "latest",
-    "@types/js-yaml": "^4.0.9"
+    "@types/js-yaml": "^4.0.9",
+    "eslint": "^8.57.0"
   }
 }
