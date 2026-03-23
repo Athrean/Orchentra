@@ -1,10 +1,18 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import postgres from 'postgres'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import * as schema from './schema'
 
-const dbPath = process.env.DATABASE_URL ?? './orchentra.db'
+const connectionString = process.env.DATABASE_URL ?? 'postgresql://orchentra:orchentra@localhost:5432/orchentra'
 
-const sqlite = new Database(dbPath)
-sqlite.pragma('journal_mode = WAL')
+const sql = postgres(connectionString)
 
-export const db = drizzle(sqlite, { schema })
+export const db = drizzle(sql, { schema })
+
+export async function runMigrations() {
+  const __dirname = dirname(fileURLToPath(import.meta.url))
+  await migrate(db, { migrationsFolder: join(__dirname, 'migrations') })
+  console.log('✅ Database migrations applied')
+}

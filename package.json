@@ -12,7 +12,19 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "db:generate": "bun run --filter './packages/db' generate",
-    "db:migrate": "bun run --filter './packages/db' migrate"
+    "db:migrate": "bun run --filter './packages/db' migrate",
+    "test": "bun run --filter @orchentra/server test",
+    "typecheck": "turbo run typecheck",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix --max-warnings 0"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.1",
@@ -23,6 +35,8 @@
     "eslint-plugin-only-warn": "^1.2.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-turbo": "^2.8.17",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.2.0",
     "turbo": "^2.1.0",
     "typescript": "^5.9.3"
