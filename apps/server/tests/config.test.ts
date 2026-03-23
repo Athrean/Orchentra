@@ -20,9 +20,8 @@ github:
     - "my-org/api"
 
 llm:
-  provider: "anthropic"
   api_key: "sk-ant-test123"
-  model: "claude-sonnet-4-5"
+  model: "anthropic/claude-sonnet-4-5"
 
 delivery:
   slack:
@@ -44,8 +43,8 @@ describe('Config Loader', () => {
     expect(config.github.webhook_secret).toBe('test-secret')
     expect(config.github.token).toBe('ghp_test123')
     expect(config.github.repos).toEqual(['my-org/api'])
-    expect(config.llm.provider).toBe('anthropic')
     expect(config.llm.api_key).toBe('sk-ant-test123')
+    expect(config.llm.model).toBe('anthropic/claude-sonnet-4-5')
     expect(config.delivery.slack.bot_token).toBe('xoxb-test')
     expect(config.delivery.slack.channel).toBe('#test-incidents')
   })
@@ -102,8 +101,7 @@ delivery:
 `)
     const config = loadConfigFromPath(configPath)
 
-    expect(config.llm.provider).toBe('anthropic')
-    expect(config.llm.model).toBe('claude-sonnet-4-5')
+    expect(config.llm.model).toBe('anthropic/claude-sonnet-4-5')
     expect(config.delivery.github_comments).toBe(false)
   })
 

@@ -4,6 +4,7 @@ import { describe, test, expect, mock, beforeEach } from 'bun:test'
 let dbUpdates: Record<string, unknown>[] = []
 let slackUpdates: { incidentId: string; brief: unknown }[] = []
 let generateObjectCalls: unknown[] = []
+let shouldThrow = false
 
 const mockBrief = {
   failureType: 'code_bug' as const,
@@ -17,9 +18,8 @@ const mockBrief = {
 mock.module('../src/config', () => ({
   config: {
     llm: {
-      provider: 'anthropic',
-      api_key: 'sk-ant-test',
-      model: 'claude-sonnet-4-5',
+      api_key: 'sk-or-test',
+      model: 'anthropic/claude-sonnet-4-5',
     },
   },
 }))
@@ -49,12 +49,13 @@ mock.module('../src/slack/message', () => ({
 mock.module('ai', () => ({
   generateObject: async (opts: unknown) => {
     generateObjectCalls.push(opts)
+    if (shouldThrow) throw new Error('LLM call failed')
     return { object: mockBrief }
   },
 }))
 
-mock.module('@ai-sdk/anthropic', () => ({
-  anthropic: (model: string) => ({ modelId: model }),
+mock.module('../src/agent/llm', () => ({
+  createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
 }))
 
 const { runIncidentAgent } = await import('../src/agent/runner')
@@ -84,6 +85,7 @@ beforeEach(() => {
   dbUpdates = []
   slackUpdates = []
   generateObjectCalls = []
+  shouldThrow = false
 })
 
 describe('Agent Runner', () => {
@@ -116,8 +118,13 @@ describe('Agent Runner', () => {
     expect(slackUpdates[0].brief).toEqual(mockBrief)
   })
 
-  test('sets ANTHROPIC_API_KEY from config', async () => {
+  test('sets error status on agent failure', async () => {
+    shouldThrow = true
     await runIncidentAgent(mockIncident)
-    expect(process.env.ANTHROPIC_API_KEY).toBe('sk-ant-test')
+
+    const update = dbUpdates[0]
+    expect(update).toBeDefined()
+    expect(update.status).toBe('error')
+    expect(update.rootCause).toContain('Agent classification failed')
   })
 })

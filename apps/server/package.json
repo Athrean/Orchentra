@@ -8,7 +8,7 @@
     "start": "bun run dist/index.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "bun test tests/config.test.ts && bun test tests/webhook.test.ts && bun test tests/agent.test.ts && bun test tests/slack-message.test.ts"
+    "test": "bun test tests/"
   },
   "dependencies": {
     "@orchentra/core": "workspace:*",

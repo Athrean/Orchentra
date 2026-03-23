@@ -44,7 +44,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
     await db
       .update(incidents)
-      .set({ status: 'brief_ready', rootCause: 'Agent classification failed — check server logs' })
+      .set({ status: 'error', rootCause: 'Agent classification failed — check server logs' })
       .where(eq(incidents.id, incident.id))
   }
 }

@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
 import { config } from '../config'
 import { db, incidents } from '../db/client'
 import { runIncidentAgent } from '../agent/runner'
@@ -40,19 +39,20 @@ webhooksRouter.post('/github', async (c) => {
   const event = c.req.header('x-github-event')
   if (event !== 'workflow_run') return c.json({ ok: true })
 
-  const parsed = WorkflowRunPayload.safeParse(JSON.parse(body))
+  let payload: unknown
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    return c.json({ error: 'Malformed JSON' }, 400)
+  }
+
+  const parsed = WorkflowRunPayload.safeParse(payload)
   if (!parsed.success) return c.json({ ok: true })
 
   const { workflow_run: run, repository } = parsed.data
   if (parsed.data.action !== 'completed' || run.conclusion !== 'failure') return c.json({ ok: true })
 
-  // Deduplicate
-  const existing = await db.query.incidents.findFirst({
-    where: eq(incidents.workflowRunId, run.id),
-  })
-  if (!existing) {
-    processWorkflowFailure(run, repository.full_name).catch(console.error)
-  }
+  processWorkflowFailure(run, repository.full_name).catch(console.error)
 
   return c.json({ ok: true })
 })
@@ -70,7 +70,10 @@ async function processWorkflowFailure(run: z.infer<typeof WorkflowRunPayload>['w
       status: 'investigating',
       triggeredAt: new Date(run.created_at),
     })
+    .onConflictDoNothing({ target: incidents.workflowRunId })
     .returning()
+
+  if (!incident) return // duplicate webhook — already processing
 
   console.log(`🔍 Incident ${incident.id} — ${repo} / ${run.name}`)
 

@@ -5,12 +5,12 @@ import { z } from 'zod'
 
 export const ConfigSchema = z.object({
   github: z.object({
-    webhook_secret: z.string(),
-    token: z.string(),
-    repos: z.array(z.string()),
+    webhook_secret: z.string().min(1, 'github.webhook_secret cannot be empty'),
+    token: z.string().min(1, 'github.token cannot be empty'),
+    repos: z.array(z.string().min(1)).min(1),
   }),
   llm: z.object({
-    api_key: z.string(),
+    api_key: z.string().min(1, 'llm.api_key cannot be empty'),
     model: z.string().default('anthropic/claude-sonnet-4-5'),
     base_url: z.string().optional(),
   }),
@@ -18,24 +18,24 @@ export const ConfigSchema = z.object({
     .object({
       sentry: z
         .object({
-          auth_token: z.string(),
-          org: z.string(),
+          auth_token: z.string().min(1),
+          org: z.string().min(1),
         })
         .optional(),
       datadog: z
         .object({
-          api_key: z.string(),
-          app_key: z.string(),
+          api_key: z.string().min(1),
+          app_key: z.string().min(1),
         })
         .optional(),
     })
     .optional(),
   delivery: z.object({
     slack: z.object({
-      bot_token: z.string(),
-      signing_secret: z.string(),
-      channel: z.string(),
-      app_token: z.string().optional(),
+      bot_token: z.string().min(1, 'delivery.slack.bot_token cannot be empty'),
+      signing_secret: z.string().min(1, 'delivery.slack.signing_secret cannot be empty'),
+      channel: z.string().min(1, 'delivery.slack.channel cannot be empty'),
+      app_token: z.string().min(1).optional(),
     }),
     github_comments: z.boolean().default(false),
   }),
