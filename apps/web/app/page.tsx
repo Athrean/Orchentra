@@ -104,7 +104,7 @@ function HeroSection(): React.ReactNode {
       <div className="relative z-10 px-6">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="fade-up font-display text-[clamp(2.5rem,6.5vw,5rem)] font-bold leading-[1.08] tracking-[-0.03em] text-text-primary drop-shadow-sm">
-            <span className="bg-gradient-to-r from-accent via-emerald-500 to-teal-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-accent via-emerald-500 to-teal-500 bg-clip-text text-transparent">
               Orchentra
             </span>
             <br />
@@ -128,7 +128,7 @@ function HeroSection(): React.ReactNode {
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
 
-              <div className="h-4 w-[1px] bg-border/80" />
+              <div className="h-4 w-px bg-border/80" />
 
               <Link
                 href="https://github.com/Athrean/Orchentra"
@@ -232,7 +232,7 @@ function HowItWorksSection(): React.ReactNode {
                 backgroundPosition: 'center',
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-white via-white/60 to-transparent" />
             <div className="absolute inset-0 flex items-end justify-center px-8 pb-8">
               <SlackMockup />
             </div>
@@ -484,7 +484,7 @@ function ProblemsSolvedSection(): React.ReactNode {
                   </span>
                   <p className="mt-2 text-[13px] leading-relaxed text-text-secondary">{p.without}</p>
                 </div>
-                <div className="bg-accent/[0.03] p-6">
+                <div className="bg-accent/3 p-6">
                   <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-accent">
                     With Orchentra
                   </span>
@@ -594,7 +594,7 @@ function Footer(): React.ReactNode {
           alt=""
           className="absolute inset-x-0 bottom-0 w-full object-cover object-bottom opacity-80"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0f1b29] via-[#0f1b29]/70 to-transparent z-10" />
+        <div className="absolute inset-0 bg-linear-to-b from-[#0f1b29] via-[#0f1b29]/70 to-transparent z-10" />
         <div
           className="absolute inset-0 opacity-[0.25] mix-blend-overlay z-20"
           style={{

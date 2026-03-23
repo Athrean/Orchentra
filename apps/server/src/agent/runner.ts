@@ -38,9 +38,9 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
     await updateSlackWithBrief(incident.id, brief)
 
-    console.log(`✅ Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%)`)
+    console.log(`Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%)`)
   } catch (error) {
-    console.error(`❌ Agent failed for ${incident.id}:`, error)
+    console.error(`Agent failed for ${incident.id}:`, error)
 
     await db
       .update(incidents)

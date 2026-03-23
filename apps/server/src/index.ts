@@ -8,7 +8,7 @@ import { commandsRouter } from './routes/commands'
 import { apiRouter } from './routes/api'
 
 // Config is loaded at import time — fails fast on bad orchentra.yml
-console.log(`📋 Config loaded — watching repos: ${config.github.repos.join(', ')}`)
+console.log(`Config loaded — watching repos: ${config.github.repos.join(', ')}`)
 
 // Run database migrations on startup
 await runMigrations()
@@ -28,7 +28,7 @@ app.route('/api', apiRouter)
 
 const port = parseInt(process.env.PORT ?? '3001')
 
-console.log(`🚀 Orchentra server running on port ${port}`)
+console.log(`Orchentra server running on port ${port}`)
 
 export default {
   port,
