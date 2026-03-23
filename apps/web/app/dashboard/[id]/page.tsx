@@ -1,4 +1,8 @@
-export default async function IncidentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function IncidentDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<React.ReactNode> {
   const { id } = await params
 
   return (
