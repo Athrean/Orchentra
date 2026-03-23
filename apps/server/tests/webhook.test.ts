@@ -64,7 +64,7 @@ mock.module('../src/agent/runner', () => ({
 const { webhooksRouter } = await import('../src/routes/webhooks')
 import { Hono } from 'hono'
 
-function makeApp() {
+function makeApp(): Hono {
   const app = new Hono()
   app.route('/webhooks', webhooksRouter)
   return app
@@ -74,7 +74,7 @@ function sign(body: string): string {
   return 'sha256=' + createHmac('sha256', TEST_SECRET).update(body).digest('hex')
 }
 
-function makePayload(overrides: Record<string, unknown> = {}) {
+function makePayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     action: 'completed',
     workflow_run: {
@@ -99,7 +99,7 @@ async function sendWebhook(
   app: ReturnType<typeof makeApp>,
   body: string,
   opts: { event?: string; signature?: string } = {},
-) {
+): Promise<Response> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-github-event': opts.event ?? 'workflow_run',

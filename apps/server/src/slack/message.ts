@@ -6,7 +6,7 @@ import type { IncidentBrief } from '@orchentra/core'
 
 type IncidentRow = typeof incidents.$inferSelect
 
-export async function postInitialSlackMessage(incident: IncidentRow) {
+export async function postInitialSlackMessage(incident: IncidentRow): Promise<void> {
   try {
     const res = await slack.chat.postMessage({
       channel: config.delivery.slack.channel,
@@ -33,7 +33,7 @@ export async function postInitialSlackMessage(incident: IncidentRow) {
   }
 }
 
-export async function updateSlackWithBrief(incidentId: string, brief: IncidentBrief) {
+export async function updateSlackWithBrief(incidentId: string, brief: IncidentBrief): Promise<void> {
   const incident = await db.query.incidents.findFirst({
     where: eq(incidents.id, incidentId),
   })
