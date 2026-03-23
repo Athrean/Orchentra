@@ -7,7 +7,7 @@ const TEST_SECRET = 'test-webhook-secret-123'
 let insertedIncidents: Record<string, unknown>[] = []
 let slackCalls: string[] = []
 let agentCalls: string[] = []
-let findFirstResult: unknown = null
+let simulateDuplicate = false
 
 // Must mock ALL dependencies BEFORE importing the router
 mock.module('../src/config', () => ({
@@ -34,18 +34,16 @@ mock.module('drizzle-orm', () => ({
 mock.module('../src/db/client', () => ({
   db: {
     insert: () => ({
-      values: (val: Record<string, unknown>) => {
-        insertedIncidents.push(val)
-        return {
-          returning: () => [{ ...val }],
-        }
-      },
+      values: (val: Record<string, unknown>) => ({
+        onConflictDoNothing: () => ({
+          returning: () => {
+            if (simulateDuplicate) return []
+            insertedIncidents.push(val)
+            return [{ ...val }]
+          },
+        }),
+      }),
     }),
-    query: {
-      incidents: {
-        findFirst: () => findFirstResult,
-      },
-    },
   },
   incidents: { workflowRunId: 'workflow_run_id' },
 }))
@@ -122,7 +120,7 @@ beforeEach(() => {
   insertedIncidents = []
   slackCalls = []
   agentCalls = []
-  findFirstResult = null
+  simulateDuplicate = false
 })
 
 describe('GitHub Webhook — Signature Verification', () => {
@@ -195,6 +193,14 @@ describe('GitHub Webhook — Event Filtering', () => {
     expect(insertedIncidents.length).toBe(0)
   })
 
+  test('returns 400 on malformed JSON', async () => {
+    const app = makeApp()
+    const body = 'not valid json {'
+
+    const res = await sendWebhook(app, body)
+    expect(res.status).toBe(400)
+  })
+
   test('processes workflow_run failures', async () => {
     const app = makeApp()
     const body = JSON.stringify(makePayload())
@@ -206,6 +212,21 @@ describe('GitHub Webhook — Event Filtering', () => {
     expect(insertedIncidents[0].repo).toBe('my-org/api')
     expect(insertedIncidents[0].workflowName).toBe('CI / Build & Test')
     expect(insertedIncidents[0].status).toBe('investigating')
+  })
+})
+
+describe('GitHub Webhook — Deduplication', () => {
+  test('skips processing for duplicate workflow run IDs', async () => {
+    simulateDuplicate = true
+    const app = makeApp()
+    const body = JSON.stringify(makePayload())
+
+    await sendWebhook(app, body)
+    await Bun.sleep(100)
+
+    // Insert was attempted but onConflictDoNothing returned empty — no Slack/agent calls
+    expect(slackCalls.length).toBe(0)
+    expect(agentCalls.length).toBe(0)
   })
 })
 

@@ -19,6 +19,11 @@ export async function postInitialSlackMessage(incident: IncidentRow) {
       ].join('\n'),
     })
 
+    if (!res.ts) {
+      console.error(`Slack postMessage succeeded but returned no ts for ${incident.id}`)
+      return
+    }
+
     await db
       .update(incidents)
       .set({ slackMessageTs: res.ts, slackChannel: config.delivery.slack.channel })
