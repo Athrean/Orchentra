@@ -1,0 +1,249 @@
+import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { createHmac } from 'crypto'
+
+const TEST_SECRET = 'test-webhook-secret-123'
+
+// Tracking arrays
+let insertedIncidents: Record<string, unknown>[] = []
+let slackCalls: string[] = []
+let agentCalls: string[] = []
+let findFirstResult: unknown = null
+
+// Must mock ALL dependencies BEFORE importing the router
+mock.module('../src/config', () => ({
+  config: {
+    github: {
+      webhook_secret: TEST_SECRET,
+      token: 'ghp_test',
+      repos: ['my-org/api'],
+    },
+    delivery: {
+      slack: {
+        bot_token: 'xoxb-test',
+        signing_secret: 'slack-secret',
+        channel: '#test',
+      },
+    },
+  },
+}))
+
+mock.module('drizzle-orm', () => ({
+  eq: (_col: unknown, _val: unknown) => ({}),
+}))
+
+mock.module('../src/db/client', () => ({
+  db: {
+    insert: () => ({
+      values: (val: Record<string, unknown>) => {
+        insertedIncidents.push(val)
+        return {
+          returning: () => [{ ...val }],
+        }
+      },
+    }),
+    query: {
+      incidents: {
+        findFirst: () => findFirstResult,
+      },
+    },
+  },
+  incidents: { workflowRunId: 'workflow_run_id' },
+}))
+
+mock.module('../src/slack/message', () => ({
+  postInitialSlackMessage: async (incident: { id: string }) => {
+    slackCalls.push(incident.id)
+  },
+}))
+
+mock.module('../src/agent/runner', () => ({
+  runIncidentAgent: async (incident: { id: string }) => {
+    agentCalls.push(incident.id)
+  },
+}))
+
+// Import AFTER all mocks are set up
+const { webhooksRouter } = await import('../src/routes/webhooks')
+import { Hono } from 'hono'
+
+function makeApp() {
+  const app = new Hono()
+  app.route('/webhooks', webhooksRouter)
+  return app
+}
+
+function sign(body: string): string {
+  return 'sha256=' + createHmac('sha256', TEST_SECRET).update(body).digest('hex')
+}
+
+function makePayload(overrides: Record<string, unknown> = {}) {
+  return {
+    action: 'completed',
+    workflow_run: {
+      id: Date.now(),
+      name: 'CI / Build & Test',
+      head_branch: 'main',
+      head_sha: 'abc1234def5678',
+      conclusion: 'failure',
+      created_at: new Date().toISOString(),
+      ...(overrides.workflow_run ?? {}),
+    },
+    repository: {
+      full_name: 'my-org/api',
+      name: 'api',
+      ...(overrides.repository ?? {}),
+    },
+    ...Object.fromEntries(Object.entries(overrides).filter(([k]) => k !== 'workflow_run' && k !== 'repository')),
+  }
+}
+
+async function sendWebhook(
+  app: ReturnType<typeof makeApp>,
+  body: string,
+  opts: { event?: string; signature?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-github-event': opts.event ?? 'workflow_run',
+  }
+  if (opts.signature !== undefined) {
+    headers['x-hub-signature-256'] = opts.signature
+  } else {
+    headers['x-hub-signature-256'] = sign(body)
+  }
+  return app.request('/webhooks/github', {
+    method: 'POST',
+    headers,
+    body,
+  })
+}
+
+beforeEach(() => {
+  insertedIncidents = []
+  slackCalls = []
+  agentCalls = []
+  findFirstResult = null
+})
+
+describe('GitHub Webhook — Signature Verification', () => {
+  test('rejects invalid signature', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makePayload())
+
+    const res = await sendWebhook(app, body, { signature: 'sha256=invalid' })
+    expect(res.status).toBe(401)
+
+    const json = (await res.json()) as { error: string }
+    expect(json.error).toBe('Invalid signature')
+  })
+
+  test('rejects missing signature', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makePayload())
+
+    const res = await app.request('/webhooks/github', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-github-event': 'workflow_run',
+      },
+      body,
+    })
+    expect(res.status).toBe(401)
+  })
+
+  test('accepts valid signature', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makePayload())
+
+    const res = await sendWebhook(app, body)
+    expect(res.status).toBe(200)
+
+    const json = (await res.json()) as { ok: boolean }
+    expect(json.ok).toBe(true)
+  })
+})
+
+describe('GitHub Webhook — Event Filtering', () => {
+  test('ignores successful workflow runs', async () => {
+    const app = makeApp()
+    const payload = makePayload({
+      workflow_run: {
+        id: 99999,
+        name: 'CI',
+        head_branch: 'main',
+        head_sha: 'abc',
+        conclusion: 'success',
+        created_at: new Date().toISOString(),
+      },
+    })
+    const body = JSON.stringify(payload)
+
+    await sendWebhook(app, body)
+    await Bun.sleep(50)
+
+    expect(insertedIncidents.length).toBe(0)
+  })
+
+  test('ignores non-workflow_run events', async () => {
+    const app = makeApp()
+    const body = JSON.stringify({ action: 'opened', pull_request: {} })
+
+    await sendWebhook(app, body, { event: 'pull_request' })
+    await Bun.sleep(50)
+
+    expect(insertedIncidents.length).toBe(0)
+  })
+
+  test('processes workflow_run failures', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makePayload())
+
+    await sendWebhook(app, body)
+    await Bun.sleep(100)
+
+    expect(insertedIncidents.length).toBe(1)
+    expect(insertedIncidents[0].repo).toBe('my-org/api')
+    expect(insertedIncidents[0].workflowName).toBe('CI / Build & Test')
+    expect(insertedIncidents[0].status).toBe('investigating')
+  })
+})
+
+describe('GitHub Webhook — Pipeline', () => {
+  test('posts to Slack and runs agent after creating incident', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makePayload())
+
+    await sendWebhook(app, body)
+    await Bun.sleep(100)
+
+    expect(slackCalls.length).toBe(1)
+    expect(agentCalls.length).toBe(1)
+  })
+
+  test('extracts correct fields from payload', async () => {
+    const app = makeApp()
+    const payload = makePayload({
+      workflow_run: {
+        id: 42,
+        name: 'Deploy Production',
+        head_branch: 'release/v2.1',
+        head_sha: 'deadbeef123456',
+        conclusion: 'failure',
+        created_at: '2026-03-17T10:00:00Z',
+      },
+      repository: { full_name: 'my-org/frontend', name: 'frontend' },
+    })
+    const body = JSON.stringify(payload)
+
+    await sendWebhook(app, body)
+    await Bun.sleep(100)
+
+    const incident = insertedIncidents[0]
+    expect(incident.repo).toBe('my-org/frontend')
+    expect(incident.branch).toBe('release/v2.1')
+    expect(incident.commit).toBe('deadbeef123456')
+    expect(incident.workflowName).toBe('Deploy Production')
+    expect(incident.workflowRunId).toBe(42)
+  })
+})

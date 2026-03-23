@@ -6,18 +6,22 @@
     "dev": "bun run --hot src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "start": "bun run dist/index.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test tests/config.test.ts && bun test tests/webhook.test.ts && bun test tests/agent.test.ts && bun test tests/slack-message.test.ts"
   },
   "dependencies": {
     "@orchentra/core": "workspace:*",
     "@orchentra/db": "workspace:*",
     "hono": "^4.7.0",
-    "@ai-sdk/anthropic": "^1.2.0",
+    "@ai-sdk/openai-compatible": "^0.2.0",
+    "@openrouter/ai-sdk-provider": "^0.5.0",
     "ai": "^4.3.0",
     "zod": "^3.24.0",
     "@slack/web-api": "^7.9.0",
     "@octokit/rest": "^21.1.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "drizzle-orm": "^0.39.0"
   },
   "devDependencies": {
     "@orchentra/eslint-config": "workspace:*",
