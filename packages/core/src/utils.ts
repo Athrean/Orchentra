@@ -1,8 +1,9 @@
 export function formatMttr(seconds: number | null | undefined): string {
   if (!seconds) return '—'
   if (seconds < 60) return `${seconds}s`
-  const minutes = Math.round(seconds / 60)
+  const minutes = Math.floor(seconds / 60)
   const remaining = seconds % 60
+  if (remaining === 0) return `${minutes}m`
   return `${minutes}m ${remaining}s`
 }
 

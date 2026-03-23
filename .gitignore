@@ -4,7 +4,15 @@ dist/
 *.db
 *.db-journal
 *.db-wal
+*.db-shm
 orchentra.yml
 .env
 .env.local
 .DS_Store
+
+# Turbo cache
+.turbo/
+
+# IDE
+.vscode/
+.idea/
