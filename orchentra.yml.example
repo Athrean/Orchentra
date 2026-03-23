@@ -5,10 +5,13 @@ github:
     - "my-org/api"
     - "my-org/frontend"
 
+# Uses OpenRouter by default — access every frontier model with one key.
+# Get your key at https://openrouter.ai/settings/keys
 llm:
-  provider: "anthropic"
-  api_key: "sk-ant-xxx"
-  model: "claude-sonnet-4-5"
+  api_key: "sk-or-xxx"
+  model: "anthropic/claude-sonnet-4-5"
+  # Optional: point to any OpenAI-compatible endpoint instead (zai, Ollama, etc.)
+  # base_url: "https://api.z.ai/api/paas/v4"
 
 integrations:
   sentry:
@@ -23,5 +26,4 @@ delivery:
     bot_token: "xoxb-xxx"
     signing_secret: "xxx"
     channel: "#incidents"
-    # app_token: "xapp-xxx"  # for Socket Mode (optional)
-  github_comments: true
+  github_comments: false
