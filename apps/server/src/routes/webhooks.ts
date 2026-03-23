@@ -57,7 +57,10 @@ webhooksRouter.post('/github', async (c) => {
   return c.json({ ok: true })
 })
 
-async function processWorkflowFailure(run: z.infer<typeof WorkflowRunPayload>['workflow_run'], repo: string) {
+async function processWorkflowFailure(
+  run: z.infer<typeof WorkflowRunPayload>['workflow_run'],
+  repo: string,
+): Promise<void> {
   const [incident] = await db
     .insert(incidents)
     .values({

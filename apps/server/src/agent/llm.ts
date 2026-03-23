@@ -10,18 +10,18 @@ import { config } from '../config'
  * - With base_url → OpenAI-compatible endpoint (zai, LiteLLM, Ollama, etc.)
  */
 export function createModel(modelOverride?: string): LanguageModelV1 {
-  const { api_key, model, base_url } = config.llm
+  const { api_key: apiKey, model, base_url: baseUrl } = config.llm
   const modelId = modelOverride ?? model
 
-  if (base_url) {
+  if (baseUrl) {
     const provider = createOpenAICompatible({
       name: 'custom',
-      apiKey: api_key,
-      baseURL: base_url,
+      apiKey,
+      baseURL: baseUrl,
     })
     return provider(modelId)
   }
 
-  const provider = createOpenRouter({ apiKey: api_key })
+  const provider = createOpenRouter({ apiKey })
   return provider(modelId)
 }

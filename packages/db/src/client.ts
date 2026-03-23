@@ -11,12 +11,12 @@ const sql = postgres(connectionString)
 
 export const db = drizzle(sql, { schema })
 
-export async function runMigrations() {
+export async function runMigrations(): Promise<void> {
   const migrationClient = postgres(connectionString, { max: 1 })
   try {
     const migrationDb = drizzle(migrationClient)
-    const __dirname = dirname(fileURLToPath(import.meta.url))
-    await migrate(migrationDb, { migrationsFolder: join(__dirname, 'migrations') })
+    const migrationsDir = dirname(fileURLToPath(import.meta.url))
+    await migrate(migrationDb, { migrationsFolder: join(migrationsDir, 'migrations') })
     console.log('✅ Database migrations applied')
   } finally {
     await migrationClient.end()
