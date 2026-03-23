@@ -19,7 +19,24 @@ module.exports = {
       rules: {
         'no-unused-vars': 'off',
         '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-        '@typescript-eslint/no-explicit-any': 'warn',
+        '@typescript-eslint/no-explicit-any': 'error',
+        '@typescript-eslint/ban-ts-comment': ['error', {
+          'ts-ignore': true,
+          'ts-expect-error': 'allow-with-description',
+        }],
+        '@typescript-eslint/explicit-function-return-type': ['warn', {
+          allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+          allowHigherOrderFunctions: true,
+          allowConciseArrowFunctionExpressionsStartingWithVoid: true,
+        }],
+        '@typescript-eslint/consistent-type-definitions': ['warn', 'interface'],
+        '@typescript-eslint/naming-convention': [
+          'warn',
+          { selector: 'variable', format: ['camelCase', 'UPPER_CASE', 'PascalCase'] },
+          { selector: 'function', format: ['camelCase', 'PascalCase'] },
+          { selector: 'typeLike', format: ['PascalCase'] },
+        ],
       },
     },
   ],
