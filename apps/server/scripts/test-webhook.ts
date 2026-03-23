@@ -38,7 +38,7 @@ const signature = 'sha256=' + createHmac('sha256', secret).update(body).digest('
 
 const serverUrl = process.env.SERVER_URL ?? 'http://localhost:3001'
 
-console.log(`📤 Sending mock webhook to ${serverUrl}/webhooks/github`)
+console.log(`Sending mock webhook to ${serverUrl}/webhooks/github`)
 console.log(`   Repo: ${payload.repository.full_name}`)
 console.log(`   Workflow: ${payload.workflow_run.name}`)
 console.log(`   Branch: ${payload.workflow_run.head_branch}`)
@@ -55,13 +55,13 @@ const res = await fetch(`${serverUrl}/webhooks/github`, {
 })
 
 const result = await res.json()
-console.log(`📥 Response: ${res.status}`, result)
+console.log(`Response: ${res.status}`, result)
 
 if (res.ok) {
   console.log('')
-  console.log('✅ Webhook accepted! Check your Slack channel for the incident message.')
+  console.log('Webhook accepted! Check your Slack channel for the incident message.')
   console.log('   The LLM classification will update the message in ~10-20 seconds.')
 } else {
   console.log('')
-  console.log('❌ Webhook rejected. Check the server logs for errors.')
+  console.log('Webhook rejected. Check the server logs for errors.')
 }

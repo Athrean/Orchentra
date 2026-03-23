@@ -17,7 +17,7 @@ export async function runMigrations(): Promise<void> {
     const migrationDb = drizzle(migrationClient)
     const migrationsDir = dirname(fileURLToPath(import.meta.url))
     await migrate(migrationDb, { migrationsFolder: join(migrationsDir, 'migrations') })
-    console.log('✅ Database migrations applied')
+    console.log('Database migrations applied')
   } finally {
     await migrationClient.end()
   }

@@ -11,11 +11,11 @@ export async function postInitialSlackMessage(incident: IncidentRow): Promise<vo
     const res = await slack.chat.postMessage({
       channel: config.delivery.slack.channel,
       text: [
-        `🔴 *CI failure* in \`${incident.repo}\``,
+        `*CI failure* in \`${incident.repo}\``,
         `Workflow: *${incident.workflowName}* on \`${incident.branch}\``,
         `Commit: \`${incident.commit.slice(0, 7)}\``,
         '',
-        '⏳ _Investigating... fetching logs and classifying failure._',
+        '_Investigating... fetching logs and classifying failure._',
       ].join('\n'),
     })
 
@@ -46,13 +46,13 @@ export async function updateSlackWithBrief(incidentId: string, brief: IncidentBr
       channel: incident.slackChannel,
       ts: incident.slackMessageTs,
       text: [
-        `🔴 *CI failure* · \`${incident.repo}\` · *${incident.workflowName}*`,
+        `*CI failure* · \`${incident.repo}\` · *${incident.workflowName}*`,
         `Branch: \`${incident.branch}\` · Commit: \`${incident.commit.slice(0, 7)}\``,
         '',
-        `📋 *Classification:* ${brief.failureType.replace(/_/g, ' ')}`,
-        `🔍 *Root cause:* ${brief.rootCause}`,
-        `🔧 *Suggested fix:* ${brief.suggestedFix}`,
-        `📊 *Confidence:* ${confidencePct}%`,
+        `*Classification:* ${brief.failureType.replace(/_/g, ' ')}`,
+        `*Root cause:* ${brief.rootCause}`,
+        `*Suggested fix:* ${brief.suggestedFix}`,
+        `*Confidence:* ${confidencePct}%`,
         '',
         `> ${brief.summary}`,
       ].join('\n'),

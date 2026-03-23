@@ -78,7 +78,7 @@ async function processWorkflowFailure(
 
   if (!incident) return // duplicate webhook — already processing
 
-  console.log(`🔍 Incident ${incident.id} — ${repo} / ${run.name}`)
+  console.log(`Incident ${incident.id} — ${repo} / ${run.name}`)
 
   await postInitialSlackMessage(incident)
   await runIncidentAgent(incident)
