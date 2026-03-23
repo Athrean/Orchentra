@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** CI failure on GitHub Actions → incident created in SQLite → classified by Claude → plain-text Slack message posted and updated with results. End-to-end in <30 seconds.
+**Goal:** CI failure on GitHub Actions → incident created in PostgreSQL → classified by Claude → plain-text Slack message posted and updated with results. End-to-end in <30 seconds.
 
 **Architecture:** Hono webhook route verifies GitHub signature, inserts incident row, fires async pipeline: post "investigating..." to Slack, call Claude `generateObject` for classification, update incident + Slack message with brief. Config loaded from `orchentra.yml` at startup via Zod-validated singleton.
 
-**Tech Stack:** Bun, Hono, Drizzle ORM + SQLite, Vercel AI SDK + @ai-sdk/anthropic, @slack/web-api, js-yaml, Zod
+**Tech Stack:** Bun, Hono, Drizzle ORM + PostgreSQL, Vercel AI SDK + OpenRouter, @slack/web-api, js-yaml, Zod
 
 ---
 
@@ -405,7 +405,7 @@ git commit -m "feat: LLM-based failure classification with structured output"
 
 - [ ] **Step 1: Update server entry to import config and run migration**
 
-The server should import config (fails fast on bad config), and push the schema to SQLite on startup.
+The server should import config (fails fast on bad config), and run database migrations on startup.
 
 - [ ] **Step 2: Create a test script to simulate a webhook payload**
 
