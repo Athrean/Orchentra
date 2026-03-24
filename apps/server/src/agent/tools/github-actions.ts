@@ -25,8 +25,8 @@ export const githubActionsTool = tool({
   }),
   execute: async ({ owner, repo, runId }) => {
     try {
-      const fullName = `${owner}/${repo}`
-      if (!config.github.repos.includes(fullName)) {
+      const fullName = `${owner}/${repo}`.toLowerCase()
+      if (!config.github.repos.some((r) => r.toLowerCase() === fullName)) {
         return { error: `Repository ${fullName} is not in the allowed repos list` }
       }
 
