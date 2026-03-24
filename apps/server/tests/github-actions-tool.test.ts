@@ -129,6 +129,30 @@ describe('githubActionsTool', () => {
     expect(listJobsCalls).toHaveLength(0)
   })
 
+  test('allows repos with different casing than the allowlist', async () => {
+    mockJobs = {
+      jobs: [
+        {
+          id: 42,
+          name: 'Build',
+          conclusion: 'failure',
+          steps: [{ name: 'Test', conclusion: 'failure' }],
+          started_at: '2026-03-24T10:00:00Z',
+          completed_at: '2026-03-24T10:01:00Z',
+        },
+      ],
+    }
+    mockLogsData = 'some log output'
+
+    const result = await githubActionsTool.execute(
+      { owner: 'My-Org', repo: 'API', runId: 123 },
+      { toolCallId: 'test', messages: [], abortSignal: undefined as unknown as AbortSignal },
+    )
+
+    expect(result.jobName).toBe('Build')
+    expect(listJobsCalls[0]).toEqual({ owner: 'My-Org', repo: 'API', run_id: 123 })
+  })
+
   test('decodes binary ArrayBuffer log data', async () => {
     mockJobs = {
       jobs: [
