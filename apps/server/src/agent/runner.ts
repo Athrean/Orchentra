@@ -1,4 +1,4 @@
-import { generateText, generateObject } from 'ai'
+import { generateText, generateObject, type CoreMessage } from 'ai'
 import { eq } from 'drizzle-orm'
 import { BriefSchema } from '@orchentra/core'
 import { db, incidents, toolCalls } from '../db/client'
@@ -40,42 +40,45 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       onStepFinish: async ({ toolCalls: calls, toolResults: results }) => {
         if (!calls || calls.length === 0) return
         stepNumber++
-        for (let i = 0; i < calls.length; i++) {
-          const call = calls[i]
-          await db.insert(toolCalls).values({
-            id: crypto.randomUUID(),
-            incidentId: incident.id,
-            integration: call.toolName,
-            round: stepNumber,
-            durationMs: null,
-            resultJson: results?.[i] ? JSON.stringify(results[i].result) : null,
-          })
+        try {
+          for (let i = 0; i < calls.length; i++) {
+            const call = calls[i]
+            await db.insert(toolCalls).values({
+              id: crypto.randomUUID(),
+              incidentId: incident.id,
+              integration: call.toolName,
+              round: stepNumber,
+              durationMs: null,
+              resultJson: results?.[i] ? JSON.stringify(results[i].result) : null,
+            })
+          }
+        } catch (err) {
+          console.error(`Failed to log tool call for ${incident.id}:`, err)
         }
       },
     })
 
     // Build conversation history for synthesis — include both tool calls and results
-    const investigationMessages = [{ role: 'user' as const, content: formatIncidentContext(incident) }]
+    const investigationMessages: CoreMessage[] = [{ role: 'user', content: formatIncidentContext(incident) }]
 
     for (const step of result.steps) {
       for (const call of step.toolCalls ?? []) {
         investigationMessages.push({
-          role: 'assistant' as const,
+          role: 'assistant',
           content: `Called ${call.toolName}(${JSON.stringify(call.args)})`,
         })
       }
       for (const toolResult of step.toolResults ?? []) {
         investigationMessages.push({
-          role: 'user' as const,
+          role: 'user',
           content: `Tool result (${toolResult.toolName}): ${JSON.stringify(toolResult.result)}`,
         })
       }
     }
 
-    investigationMessages.push({
-      role: 'assistant' as const,
-      content: result.text,
-    })
+    if (result.text) {
+      investigationMessages.push({ role: 'assistant', content: result.text })
+    }
 
     // Phase B: Synthesis — generateObject for structured brief
     const { object: brief } = await generateObject({
