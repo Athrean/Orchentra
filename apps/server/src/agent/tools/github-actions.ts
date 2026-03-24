@@ -7,10 +7,17 @@ const octokit = new Octokit({ auth: config.github.token })
 
 const MAX_LOG_LINES = 300
 
+function decodeLogsData(data: unknown): string {
+  if (typeof data === 'string') return data
+  if (data instanceof ArrayBuffer) return Buffer.from(data).toString('utf-8')
+  if (Buffer.isBuffer(data)) return data.toString('utf-8')
+  return String(data)
+}
+
 export const githubActionsTool = tool({
   description:
     'Fetch GitHub Actions workflow run logs for a failed CI run. ' +
-    'Returns the last 300 lines of the failed step logs, the job name, failed step name, and duration.',
+    'Returns the last 300 lines of the failed job logs, the job name, failed step name, and duration.',
   parameters: z.object({
     owner: z.string().describe('Repository owner'),
     repo: z.string().describe('Repository name'),
@@ -18,6 +25,11 @@ export const githubActionsTool = tool({
   }),
   execute: async ({ owner, repo, runId }) => {
     try {
+      const fullName = `${owner}/${repo}`
+      if (!config.github.repos.includes(fullName)) {
+        return { error: `Repository ${fullName} is not in the allowed repos list` }
+      }
+
       const { data } = await octokit.actions.listJobsForWorkflowRun({
         owner,
         repo,
@@ -35,7 +47,7 @@ export const githubActionsTool = tool({
         job_id: failedJob.id,
       })
 
-      const rawLogs = typeof logsData === 'string' ? logsData : String(logsData)
+      const rawLogs = decodeLogsData(logsData)
       const lines = rawLogs.split('\n')
       const relevant = lines.slice(-MAX_LOG_LINES).join('\n')
 
