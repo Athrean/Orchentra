@@ -33,6 +33,23 @@ export async function postInitialSlackMessage(incident: IncidentRow): Promise<vo
   }
 }
 
+export async function postThreadReply(incidentId: string, text: string): Promise<void> {
+  const incident = await db.query.incidents.findFirst({
+    where: eq(incidents.id, incidentId),
+  })
+  if (!incident?.slackMessageTs || !incident.slackChannel) return
+
+  try {
+    await slack.chat.postMessage({
+      channel: incident.slackChannel,
+      thread_ts: incident.slackMessageTs,
+      text,
+    })
+  } catch (error) {
+    console.error(`Failed to post thread reply for ${incidentId}:`, error)
+  }
+}
+
 export async function updateSlackWithBrief(incidentId: string, brief: IncidentBrief): Promise<void> {
   const incident = await db.query.incidents.findFirst({
     where: eq(incidents.id, incidentId),
