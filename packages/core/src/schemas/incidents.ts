@@ -63,7 +63,7 @@ export const IncidentDetailResponseSchema = z.object({
 export type IncidentDetailResponse = z.infer<typeof IncidentDetailResponseSchema>
 
 export const UpdateIncidentStatusSchema = z.object({
-  status: z.enum(['resolved', 'snoozed', 'dismissed']),
+  status: IncidentStatusSchema.extract(['resolved', 'snoozed', 'dismissed']),
 })
 
 export type UpdateIncidentStatusRequest = z.infer<typeof UpdateIncidentStatusSchema>

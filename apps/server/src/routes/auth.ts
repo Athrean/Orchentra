@@ -39,7 +39,7 @@ authRouter.get('/github/callback', async (c) => {
 
     setCookie(c, SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
-      secure: true,
+      secure: IS_PRODUCTION,
       sameSite: 'Lax',
       path: '/',
       maxAge: SESSION_MAX_AGE_SECONDS,

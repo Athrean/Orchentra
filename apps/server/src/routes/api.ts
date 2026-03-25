@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, count } from 'drizzle-orm'
 import { UpdateIncidentStatusSchema } from '@orchentra/core'
 import { db, incidents, toolCalls } from '../db/client'
 import type { AppVariables } from '../types'
@@ -7,30 +7,33 @@ import type { AppVariables } from '../types'
 export const apiRouter = new Hono<{ Variables: AppVariables }>()
 
 apiRouter.get('/incidents', async (c) => {
-  const limit = Math.min(Number(c.req.query('limit') ?? 50), 100)
-  const offset = Math.max(Number(c.req.query('offset') ?? 0), 0)
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '', 10) || 50, 100)
+  const offset = Math.max(parseInt(c.req.query('offset') ?? '', 10) || 0, 0)
 
-  const rows = await db
-    .select({
-      id: incidents.id,
-      repo: incidents.repo,
-      branch: incidents.branch,
-      commit: incidents.commit,
-      workflowName: incidents.workflowName,
-      workflowRunId: incidents.workflowRunId,
-      failedStep: incidents.failedStep,
-      status: incidents.status,
-      confidence: incidents.confidence,
-      rootCause: incidents.rootCause,
-      triggeredAt: incidents.triggeredAt,
-      createdAt: incidents.createdAt,
-    })
-    .from(incidents)
-    .orderBy(desc(incidents.createdAt))
-    .limit(limit)
-    .offset(offset)
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: incidents.id,
+        repo: incidents.repo,
+        branch: incidents.branch,
+        commit: incidents.commit,
+        workflowName: incidents.workflowName,
+        workflowRunId: incidents.workflowRunId,
+        failedStep: incidents.failedStep,
+        status: incidents.status,
+        confidence: incidents.confidence,
+        rootCause: incidents.rootCause,
+        triggeredAt: incidents.triggeredAt,
+        createdAt: incidents.createdAt,
+      })
+      .from(incidents)
+      .orderBy(desc(incidents.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(incidents),
+  ])
 
-  return c.json({ incidents: rows, total: rows.length })
+  return c.json({ incidents: rows, total })
 })
 
 apiRouter.get('/incidents/:id', async (c) => {
