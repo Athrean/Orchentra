@@ -7,12 +7,13 @@ export const authRouter = new Hono()
 
 const STATE_COOKIE = 'orchentra_oauth_state'
 const STATE_MAX_AGE = 600 // 10 minutes
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
 authRouter.get('/github', (c) => {
   const { url, state } = createAuthorizationUrl()
   setCookie(c, STATE_COOKIE, state, {
     httpOnly: true,
-    secure: true,
+    secure: IS_PRODUCTION,
     sameSite: 'Lax',
     path: '/',
     maxAge: STATE_MAX_AGE,

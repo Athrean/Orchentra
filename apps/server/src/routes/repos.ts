@@ -20,7 +20,12 @@ reposRouter.get('/available', async (c) => {
 
 reposRouter.post('/monitor', async (c) => {
   const user = c.get('user')
-  const body = await c.req.json()
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
   const parsed = MonitorRepoRequestSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
@@ -39,7 +44,12 @@ reposRouter.post('/monitor', async (c) => {
 })
 
 reposRouter.delete('/monitor', async (c) => {
-  const body = await c.req.json()
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
   const parsed = MonitorRepoRequestSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
