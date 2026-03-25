@@ -1,11 +1,9 @@
 import type { Context, Next } from 'hono'
-import { getCookie } from 'hono/cookie'
+import { getCookie, deleteCookie } from 'hono/cookie'
 import { eq, and, gt, isNull, or } from 'drizzle-orm'
 import { db, apiKeys, users } from '../db/client'
-import { validateSession, SESSION_COOKIE_NAME } from './session'
-import { hashApiKey } from './session'
-
-type UserRow = typeof users.$inferSelect
+import { validateSession, SESSION_COOKIE_NAME, hashApiKey } from './session'
+import type { UserRow } from '../types'
 
 /** Require a valid session cookie. Returns 401 if missing/expired. */
 export async function requireSession(c: Context, next: Next): Promise<Response | void> {
@@ -13,7 +11,10 @@ export async function requireSession(c: Context, next: Next): Promise<Response |
   if (!sessionId) return c.json({ error: 'Authentication required' }, 401)
 
   const result = await validateSession(sessionId)
-  if (!result) return c.json({ error: 'Session expired' }, 401)
+  if (!result) {
+    deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' })
+    return c.json({ error: 'Session expired' }, 401)
+  }
 
   c.set('user', result.user)
   return next()
@@ -48,6 +49,8 @@ export async function requireAuth(c: Context, next: Next): Promise<Response | vo
       c.set('user', result.user)
       return next()
     }
+    // Clear stale cookie to avoid repeated DB lookups
+    deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' })
   }
 
   return c.json({ error: 'Authentication required' }, 401)

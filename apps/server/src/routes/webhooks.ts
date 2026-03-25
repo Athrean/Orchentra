@@ -5,6 +5,7 @@ import { config } from '../config'
 import { db, incidents } from '../db/client'
 import { runIncidentAgent } from '../agent/runner'
 import { postInitialSlackMessage } from '../slack/message'
+import { isRepoMonitored } from '../lib/repo-cache'
 
 export const webhooksRouter = new Hono()
 
@@ -61,6 +62,8 @@ async function processWorkflowFailure(
   run: z.infer<typeof WorkflowRunPayload>['workflow_run'],
   repo: string,
 ): Promise<void> {
+  if (!(await isRepoMonitored(repo))) return
+
   const [incident] = await db
     .insert(incidents)
     .values({
