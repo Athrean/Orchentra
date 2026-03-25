@@ -2,7 +2,10 @@ import { z } from 'zod'
 
 export const CreateApiKeyRequestSchema = z.object({
   name: z.string().min(1).max(100),
-  expiresAt: z.coerce.date().optional(),
+  expiresAt: z.coerce
+    .date()
+    .refine((d) => d > new Date(), { message: 'expiresAt must be in the future' })
+    .optional(),
 })
 
 export type CreateApiKeyRequest = z.infer<typeof CreateApiKeyRequestSchema>

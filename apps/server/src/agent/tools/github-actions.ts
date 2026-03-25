@@ -15,6 +15,63 @@ function decodeLogsData(data: unknown): string {
   return String(data)
 }
 
+export interface WorkflowLogResult {
+  jobName: string
+  failedStep: string | null
+  logs: string
+  durationSeconds: number | null
+}
+
+export interface WorkflowLogError {
+  error: string
+}
+
+/** Core log-fetching logic — used by both the AI tool and the runner directly. */
+export async function fetchFailedJobLogs(
+  owner: string,
+  repo: string,
+  runId: number,
+): Promise<WorkflowLogResult | WorkflowLogError> {
+  try {
+    const fullName = `${owner}/${repo}`
+    if (!(await isRepoMonitored(fullName))) {
+      return { error: `Repository ${fullName.toLowerCase()} is not in the monitored repos list` }
+    }
+
+    const { data } = await octokit.actions.listJobsForWorkflowRun({
+      owner,
+      repo,
+      run_id: runId,
+    })
+
+    const failedJob = data.jobs.find((j) => j.conclusion === 'failure')
+    if (!failedJob) {
+      return { error: 'No failed job found in this workflow run' }
+    }
+
+    const { data: logsData } = await octokit.actions.downloadJobLogsForWorkflowRun({
+      owner,
+      repo,
+      job_id: failedJob.id,
+    })
+
+    const rawLogs = decodeLogsData(logsData)
+    const lines = rawLogs.split('\n')
+    const relevant = lines.slice(-MAX_LOG_LINES).join('\n')
+
+    const failedStep = failedJob.steps?.find((s) => s.conclusion === 'failure')?.name ?? null
+
+    const durationSeconds =
+      failedJob.completed_at && failedJob.started_at
+        ? Math.round((new Date(failedJob.completed_at).getTime() - new Date(failedJob.started_at).getTime()) / 1000)
+        : null
+
+    return { jobName: failedJob.name, failedStep, logs: relevant, durationSeconds }
+  } catch (err) {
+    return { error: `Failed to fetch workflow logs: ${err instanceof Error ? err.message : String(err)}` }
+  }
+}
+
 export const githubActionsTool = tool({
   description:
     'Fetch GitHub Actions workflow run logs for a failed CI run. ' +
@@ -24,49 +81,5 @@ export const githubActionsTool = tool({
     repo: z.string().describe('Repository name'),
     runId: z.number().describe('The workflow run ID from the webhook payload'),
   }),
-  execute: async ({ owner, repo, runId }) => {
-    try {
-      const fullName = `${owner}/${repo}`
-      if (!(await isRepoMonitored(fullName))) {
-        return { error: `Repository ${fullName.toLowerCase()} is not in the monitored repos list` }
-      }
-
-      const { data } = await octokit.actions.listJobsForWorkflowRun({
-        owner,
-        repo,
-        run_id: runId,
-      })
-
-      const failedJob = data.jobs.find((j) => j.conclusion === 'failure')
-      if (!failedJob) {
-        return { error: 'No failed job found in this workflow run' }
-      }
-
-      const { data: logsData } = await octokit.actions.downloadJobLogsForWorkflowRun({
-        owner,
-        repo,
-        job_id: failedJob.id,
-      })
-
-      const rawLogs = decodeLogsData(logsData)
-      const lines = rawLogs.split('\n')
-      const relevant = lines.slice(-MAX_LOG_LINES).join('\n')
-
-      const failedStep = failedJob.steps?.find((s) => s.conclusion === 'failure')?.name ?? null
-
-      const durationSeconds =
-        failedJob.completed_at && failedJob.started_at
-          ? Math.round((new Date(failedJob.completed_at).getTime() - new Date(failedJob.started_at).getTime()) / 1000)
-          : null
-
-      return {
-        jobName: failedJob.name,
-        failedStep,
-        logs: relevant,
-        durationSeconds,
-      }
-    } catch (err) {
-      return { error: `Failed to fetch workflow logs: ${err instanceof Error ? err.message : String(err)}` }
-    }
-  },
+  execute: async ({ owner, repo, runId }) => fetchFailedJobLogs(owner, repo, runId),
 })
