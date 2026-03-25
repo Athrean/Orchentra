@@ -20,7 +20,7 @@ interface AvailableRepo {
   description: string | null
 }
 
-export async function getMonitoredRepos(): Promise<Set<string>> {
+export async function getMonitoredRepos(): Promise<ReadonlySet<string>> {
   if (monitoredCache && Date.now() < monitoredCache.expiresAt) {
     return monitoredCache.data
   }

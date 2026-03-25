@@ -46,6 +46,7 @@ export async function validateSession(sessionId: string): Promise<SessionWithUse
   if (daysRemaining < SESSION_EXTEND_THRESHOLD_DAYS) {
     const newExpiry = new Date(Date.now() + SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000)
     await db.update(sessions).set({ expiresAt: newExpiry }).where(eq(sessions.id, sessionId))
+    return { session: { ...row.sessions, expiresAt: newExpiry }, user: row.users }
   }
 
   return { session: row.sessions, user: row.users }

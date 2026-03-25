@@ -75,8 +75,12 @@ async function resolveApiKeyUser(c: Context): Promise<UserRow | null> {
 
   if (result.length === 0) return null
 
-  // Update lastUsedAt
-  await db.update(apiKeys).set({ lastUsedAt: now }).where(eq(apiKeys.id, result[0].api_keys.id))
+  // Fire-and-forget: telemetry update shouldn't fail the request
+  void db
+    .update(apiKeys)
+    .set({ lastUsedAt: now })
+    .where(eq(apiKeys.id, result[0].api_keys.id))
+    .catch(() => {})
 
   return result[0].users
 }

@@ -38,7 +38,7 @@ apiKeysRouter.post('/', async (c) => {
     userId: user.id,
     name: parsed.data.name,
     keyHash: hashApiKey(key),
-    keyPrefix: key.slice(0, 8), // "orch_" + 8 hex chars
+    keyPrefix: key.slice(0, 13), // "orch_" + 8 hex chars
     expiresAt: parsed.data.expiresAt ?? null,
   })
 
@@ -47,7 +47,7 @@ apiKeysRouter.post('/', async (c) => {
       id,
       name: parsed.data.name,
       key,
-      keyPrefix: key.slice(0, 8),
+      keyPrefix: key.slice(0, 13),
       expiresAt: parsed.data.expiresAt ?? null,
       createdAt: new Date().toISOString(),
     },
