@@ -1,4 +1,4 @@
-import { pgTable, text, integer, bigint, doublePrecision, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, bigint, doublePrecision, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
 export const incidents = pgTable(
   'incidents',
@@ -48,5 +48,55 @@ export const resolvedPatterns = pgTable('resolved_patterns', {
   embedding: text('embedding'),
   pattern: text('pattern'),
   resolution: text('resolution'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// --- Auth & product foundation tables ---
+
+export const users = pgTable('users', {
+  id: text('id').primaryKey(),
+  githubId: integer('github_id').notNull().unique(),
+  username: text('username').notNull(),
+  displayName: text('display_name'),
+  avatarUrl: text('avatar_url'),
+  email: text('email'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('sessions_user_id_idx').on(table.userId)],
+)
+
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    name: text('name').notNull(),
+    keyHash: text('key_hash').notNull(),
+    keyPrefix: text('key_prefix').notNull(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex('api_keys_key_hash_idx').on(table.keyHash), index('api_keys_user_id_idx').on(table.userId)],
+)
+
+export const monitoredRepos = pgTable('monitored_repos', {
+  id: text('id').primaryKey(),
+  repo: text('repo').notNull().unique(),
+  addedBy: text('added_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
