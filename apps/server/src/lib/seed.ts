@@ -11,7 +11,7 @@ export async function seedMonitoredRepos(): Promise<void> {
   await db.insert(monitoredRepos).values(
     repos.map((repo) => ({
       id: crypto.randomUUID(),
-      repo,
+      repo: repo.toLowerCase(),
       addedBy: null,
     })),
   )
