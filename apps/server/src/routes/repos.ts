@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm'
 import { MonitorRepoRequestSchema } from '@orchentra/core'
 import { db, monitoredRepos } from '../db/client'
 import { getAvailableRepos, getMonitoredRepos, invalidateMonitoredReposCache } from '../lib/repo-cache'
+import type { AppVariables } from '../types'
 
-export const reposRouter = new Hono()
+export const reposRouter = new Hono<{ Variables: AppVariables }>()
 
 reposRouter.get('/available', async (c) => {
   const [available, monitored] = await Promise.all([getAvailableRepos(), getMonitoredRepos()])
@@ -27,13 +28,14 @@ reposRouter.post('/monitor', async (c) => {
   const exists = available.some((r) => r.fullName.toLowerCase() === parsed.data.repo.toLowerCase())
   if (!exists) return c.json({ error: 'Repository not accessible by server PAT' }, 403)
 
+  const normalizedRepo = parsed.data.repo.toLowerCase()
   await db
     .insert(monitoredRepos)
-    .values({ id: crypto.randomUUID(), repo: parsed.data.repo, addedBy: user.id })
+    .values({ id: crypto.randomUUID(), repo: normalizedRepo, addedBy: user.id })
     .onConflictDoNothing()
 
   invalidateMonitoredReposCache()
-  return c.json({ repo: parsed.data.repo }, 201)
+  return c.json({ repo: normalizedRepo }, 201)
 })
 
 reposRouter.delete('/monitor', async (c) => {
@@ -41,7 +43,7 @@ reposRouter.delete('/monitor', async (c) => {
   const parsed = MonitorRepoRequestSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
-  await db.delete(monitoredRepos).where(eq(monitoredRepos.repo, parsed.data.repo))
+  await db.delete(monitoredRepos).where(eq(monitoredRepos.repo, parsed.data.repo.toLowerCase()))
   invalidateMonitoredReposCache()
   return c.body(null, 204)
 })

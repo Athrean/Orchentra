@@ -1,5 +1,4 @@
 import * as arctic from 'arctic'
-import { eq } from 'drizzle-orm'
 import { db, users } from '../db/client'
 import { config } from '../config'
 
@@ -35,31 +34,28 @@ export async function handleCallback(code: string): Promise<string> {
   if (!response.ok) throw new Error(`GitHub user API returned ${response.status}`)
   const profile = (await response.json()) as GitHubUserProfile
 
-  // Upsert user
-  const existing = await db.select().from(users).where(eq(users.githubId, profile.id)).limit(1)
-
-  if (existing.length > 0) {
-    await db
-      .update(users)
-      .set({
+  // Atomic upsert — avoids race condition with concurrent logins
+  const [row] = await db
+    .insert(users)
+    .values({
+      id: crypto.randomUUID(),
+      githubId: profile.id,
+      username: profile.login,
+      displayName: profile.name,
+      avatarUrl: profile.avatar_url,
+      email: profile.email,
+    })
+    .onConflictDoUpdate({
+      target: users.githubId,
+      set: {
         username: profile.login,
         displayName: profile.name,
         avatarUrl: profile.avatar_url,
         email: profile.email,
         updatedAt: new Date(),
-      })
-      .where(eq(users.githubId, profile.id))
-    return existing[0].id
-  }
+      },
+    })
+    .returning({ id: users.id })
 
-  const userId = crypto.randomUUID()
-  await db.insert(users).values({
-    id: userId,
-    githubId: profile.id,
-    username: profile.login,
-    displayName: profile.name,
-    avatarUrl: profile.avatar_url,
-    email: profile.email,
-  })
-  return userId
+  return row.id
 }

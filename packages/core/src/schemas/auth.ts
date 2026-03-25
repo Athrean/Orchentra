@@ -45,3 +45,9 @@ export const MeResponseSchema = z.object({
 })
 
 export type MeResponse = z.infer<typeof MeResponseSchema>
+
+export const LogoutResponseSchema = z.object({
+  success: z.boolean(),
+})
+
+export type LogoutResponse = z.infer<typeof LogoutResponseSchema>
