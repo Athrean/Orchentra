@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { Octokit } from '@octokit/rest'
 import { config } from '../../config'
+import { isRepoMonitored } from '../../lib/repo-cache'
 
 const octokit = new Octokit({ auth: config.github.token })
 
@@ -25,9 +26,9 @@ export const githubActionsTool = tool({
   }),
   execute: async ({ owner, repo, runId }) => {
     try {
-      const fullName = `${owner}/${repo}`.toLowerCase()
-      if (!config.github.repos.some((r) => r.toLowerCase() === fullName)) {
-        return { error: `Repository ${fullName} is not in the allowed repos list` }
+      const fullName = `${owner}/${repo}`
+      if (!(await isRepoMonitored(fullName))) {
+        return { error: `Repository ${fullName.toLowerCase()} is not in the monitored repos list` }
       }
 
       const { data } = await octokit.actions.listJobsForWorkflowRun({

@@ -7,7 +7,14 @@ export const ConfigSchema = z.object({
   github: z.object({
     webhook_secret: z.string().min(1, 'github.webhook_secret cannot be empty'),
     token: z.string().min(1, 'github.token cannot be empty'),
-    repos: z.array(z.string().min(1)).min(1),
+    repos: z.array(z.string().min(1)).default([]),
+    oauth: z
+      .object({
+        client_id: z.string().min(1, 'github.oauth.client_id cannot be empty'),
+        client_secret: z.string().min(1, 'github.oauth.client_secret cannot be empty'),
+        redirect_uri: z.string().url('github.oauth.redirect_uri must be a valid URL'),
+      })
+      .optional(),
   }),
   llm: z.object({
     api_key: z.string().min(1, 'llm.api_key cannot be empty'),
