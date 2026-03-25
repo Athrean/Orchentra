@@ -11,17 +11,18 @@
     "test": "bun test tests/"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^0.2.0",
+    "@octokit/rest": "^21.1.0",
+    "@openrouter/ai-sdk-provider": "^0.5.0",
     "@orchentra/core": "workspace:*",
     "@orchentra/db": "workspace:*",
-    "hono": "^4.7.0",
-    "@ai-sdk/openai-compatible": "^0.2.0",
-    "@openrouter/ai-sdk-provider": "^0.5.0",
-    "ai": "^4.3.0",
-    "zod": "^3.24.0",
     "@slack/web-api": "^7.9.0",
-    "@octokit/rest": "^21.1.0",
+    "ai": "^4.3.0",
+    "arctic": "^3.7.0",
+    "drizzle-orm": "^0.39.0",
+    "hono": "^4.7.0",
     "js-yaml": "^4.1.0",
-    "drizzle-orm": "^0.39.0"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@orchentra/eslint-config": "workspace:*",
