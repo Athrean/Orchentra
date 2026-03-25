@@ -163,6 +163,8 @@ beforeEach(() => {
   insertedIncidents = []
   slackCalls = []
   agentCalls = []
+  slackPostedMessages.length = 0
+  slackUpdatedMessages.length = 0
   simulateDuplicate = false
 })
 
