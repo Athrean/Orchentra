@@ -183,6 +183,15 @@ describe('Slack Interactions — Signature Verification', () => {
     expect(res.status).toBe(401)
   })
 
+  test('rejects non-numeric timestamp', async () => {
+    const app = makeApp()
+    const body = makeInteractionBody('rerun_workflow', 'inc-1')
+    const { signature } = slackSign(body)
+
+    const res = await sendInteraction(app, body, { signature, timestamp: 'not-a-number' })
+    expect(res.status).toBe(401)
+  })
+
   test('accepts valid signature', async () => {
     const app = makeApp()
     const body = makeInteractionBody('rerun_workflow', 'inc-1')
@@ -386,6 +395,17 @@ describe('Slack Interactions — Edge Cases', () => {
     expect(handlerCalls.length).toBe(0)
   })
 
+  test('ignores snooze with disallowed hours value', async () => {
+    const app = makeApp()
+    const body = makeInteractionBody('snooze_incident', 'inc-1:3')
+
+    const res = await sendInteraction(app, body)
+    expect(res.status).toBe(200)
+    await Bun.sleep(50)
+
+    expect(handlerCalls.length).toBe(0)
+  })
+
   test('ignores snooze with missing separator', async () => {
     const app = makeApp()
     const body = makeInteractionBody('snooze_incident', 'inc-1-no-colon')
@@ -397,17 +417,17 @@ describe('Slack Interactions — Edge Cases', () => {
     expect(handlerCalls.length).toBe(0)
   })
 
-  test('handles snooze value with UUID containing colons', async () => {
+  test('handles snooze value with multiple colons via lastIndexOf', async () => {
     const app = makeApp()
-    // UUID-style incident IDs shouldn't have colons, but test robustness with lastIndexOf
-    const body = makeInteractionBody('snooze_incident', 'abc-def-123:4')
+    // Test that lastIndexOf splits on the final colon, not the first
+    const body = makeInteractionBody('snooze_incident', 'abc:def:123:4')
 
     const res = await sendInteraction(app, body)
     expect(res.status).toBe(200)
     await Bun.sleep(50)
 
     expect(handlerCalls.length).toBe(1)
-    expect(handlerCalls[0].args[0]).toBe('abc-def-123')
+    expect(handlerCalls[0].args[0]).toBe('abc:def:123')
   })
 
   test('returns 200 even when no user in payload', async () => {
@@ -429,11 +449,46 @@ describe('Slack Interactions — Edge Cases', () => {
   })
 
   test('handler errors do not crash the response', async () => {
-    // The handler is dispatched async, so errors should be caught by .catch()
-    const app = makeApp()
-    const body = makeInteractionBody('rerun_workflow', 'inc-crash')
+    // Override mock to throw for this specific incident ID
+    const originalCalls = handlerCalls
+    mock.module('../src/actions/handlers', () => ({
+      rerunWorkflow: async (...args: unknown[]) => {
+        originalCalls.push({ handler: 'rerunWorkflow', args })
+        throw new Error('test handler failure')
+      },
+      createGithubIssue: async (...args: unknown[]) => {
+        originalCalls.push({ handler: 'createGithubIssue', args })
+        return { success: true, data: { issueUrl: 'https://github.com/issue/1' } }
+      },
+      updateIncidentStatus: async (...args: unknown[]) => {
+        originalCalls.push({ handler: 'updateIncidentStatus', args })
+        return { success: true, data: { status: args[1] } }
+      },
+      escalateIncident: async (...args: unknown[]) => {
+        originalCalls.push({ handler: 'escalateIncident', args })
+        return { success: true }
+      },
+      createFixPR: async (...args: unknown[]) => {
+        originalCalls.push({ handler: 'createFixPR', args })
+        return { success: true, data: { prUrl: 'https://github.com/pr/1' } }
+      },
+    }))
 
-    const res = await sendInteraction(app, body)
+    // Re-import to pick up the throwing mock
+    const { interactionsRouter: throwingRouter } = await import('../src/routes/interactions')
+    const throwApp = new Hono()
+    throwApp.route('/slack/interactions', throwingRouter)
+
+    const body = makeInteractionBody('rerun_workflow', 'inc-crash')
+    const res = await sendInteraction(throwApp, body)
+
+    // Response should still be 200 — the error is caught by .catch()
     expect(res.status).toBe(200)
+
+    // Give the async handler time to reject
+    await Bun.sleep(50)
+
+    // Verify the handler was actually called (and threw)
+    expect(handlerCalls.some((c) => c.args[0] === 'inc-crash')).toBe(true)
   })
 })
