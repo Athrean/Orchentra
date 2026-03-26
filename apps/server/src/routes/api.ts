@@ -6,9 +6,17 @@ import type { AppVariables } from '../types'
 
 export const apiRouter = new Hono<{ Variables: AppVariables }>()
 
+apiRouter.get('/me', (c) => {
+  const user = c.get('user')
+  return c.json({ user })
+})
+
 apiRouter.get('/incidents', async (c) => {
   const limit = Math.min(parseInt(c.req.query('limit') ?? '', 10) || 50, 100)
   const offset = Math.max(parseInt(c.req.query('offset') ?? '', 10) || 0, 0)
+  const repo = c.req.query('repo')
+
+  const whereClause = repo ? eq(incidents.repo, repo) : undefined
 
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -27,10 +35,11 @@ apiRouter.get('/incidents', async (c) => {
         createdAt: incidents.createdAt,
       })
       .from(incidents)
+      .where(whereClause)
       .orderBy(desc(incidents.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ total: count() }).from(incidents),
+    db.select({ total: count() }).from(incidents).where(whereClause),
   ])
 
   return c.json({ incidents: rows, total })

@@ -45,7 +45,7 @@ authRouter.get('/github/callback', async (c) => {
       maxAge: SESSION_MAX_AGE_SECONDS,
     })
 
-    return c.redirect('/dashboard')
+    return c.redirect('http://localhost:3000/onboarding')
   } catch (error) {
     console.error('OAuth callback failed:', error)
     return c.json({ error: 'Authentication failed' }, 500)
