@@ -81,7 +81,7 @@ export const queryKeys = {
 export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,
-    queryFn: () => api<{ user: User }>('/api/me').then((d) => d.user),
+    queryFn: () => api<{ user: User | null }>('/api/me').then((d) => d.user),
   })
 }
 
@@ -128,7 +128,7 @@ export function useCreateIssue(repo: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (incidentId: string) =>
-      api<{ issueUrl: string; issueNumber: number }>(`/api/incidents/${incidentId}/issue`, {
+      api<{ issueUrl: string; issueNumber?: number }>(`/api/incidents/${incidentId}/issue`, {
         method: 'POST',
       }),
     onSuccess: (_, incidentId) => {
@@ -142,7 +142,7 @@ export function useCreateFixPR(repo: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (incidentId: string) =>
-      api<{ prUrl: string; prNumber: number }>(`/api/incidents/${incidentId}/fix-pr`, {
+      api<{ prUrl: string; prNumber?: number }>(`/api/incidents/${incidentId}/fix-pr`, {
         method: 'POST',
       }),
     onSuccess: (_, incidentId) => {
@@ -220,39 +220,39 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 export function useIncidentSSE(repo: string) {
   const qc = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
+  const errorCountRef = useRef(0)
 
   useEffect(() => {
     const url = `${API_BASE}/api/incidents/stream?repo=${encodeURIComponent(repo)}`
     const source = new EventSource(url, { withCredentials: true })
     sourceRef.current = source
+    errorCountRef.current = 0
 
-    source.addEventListener('incident:created', () => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-    })
-
-    source.addEventListener('incident:updated', (e) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
+    // Server sends data-only SSE (no event: field), so all events arrive as 'message'.
+    // Route by parsed type from the JSON payload.
+    source.addEventListener('message', (e) => {
       try {
         const data = JSON.parse(e.data)
-        if (data.incidentId) {
-          qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(data.incidentId) })
+        const type: string = data.type ?? ''
+
+        if (type === 'incident:created' || type === 'incident:updated' || type === 'incident:status_changed') {
+          qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
+          if (data.incidentId) {
+            qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(data.incidentId) })
+          }
         }
       } catch {
         /* SSE data parse is best-effort */
       }
     })
 
-    source.addEventListener('incident:status_changed', (e) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      try {
-        const data = JSON.parse(e.data)
-        if (data.incidentId) {
-          qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(data.incidentId) })
-        }
-      } catch {
-        /* SSE data parse is best-effort */
+    source.onerror = () => {
+      errorCountRef.current++
+      // Close after repeated failures to prevent infinite retry loops
+      if (errorCountRef.current > 5) {
+        source.close()
       }
-    })
+    }
 
     return () => {
       source.close()

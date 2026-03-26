@@ -1,15 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Folder, Loader2 } from 'lucide-react'
+import { AlertTriangle, Check, Folder, Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useRouter } from 'next/navigation'
 import { useMe, useAvailableRepos } from '../lib/hooks'
 
 export function OrgSelector() {
   const router = useRouter()
-  const { data: user, isLoading: userLoading } = useMe()
-  const { data: repos, isLoading: reposLoading } = useAvailableRepos()
+  const { data: user, isLoading: userLoading, isError: userError } = useMe()
+  const { data: repos, isLoading: reposLoading, isError: reposError } = useAvailableRepos()
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null)
 
   const loading = userLoading || reposLoading
@@ -23,6 +23,17 @@ export function OrgSelector() {
     return (
       <div className="min-h-screen bg-[#0E1217] text-white flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (userError || reposError) {
+    return (
+      <div className="min-h-screen bg-[#0E1217] text-white flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Failed to load. Please try again.</p>
+        </div>
       </div>
     )
   }
