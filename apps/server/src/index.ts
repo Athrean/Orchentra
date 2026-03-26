@@ -12,6 +12,8 @@ import { commandsRouter } from './routes/commands'
 import { apiRouter } from './routes/api'
 import { apiKeysRouter } from './routes/api-keys'
 import { reposRouter } from './routes/repos'
+import { actionsRouter } from './routes/actions'
+import { streamRouter } from './routes/stream'
 
 console.log('Config loaded')
 
@@ -42,6 +44,8 @@ app.route('/slack/commands', commandsRouter)
 // Protected routes — require session cookie or API key
 app.use('/api/*', requireAuth)
 app.route('/api', apiRouter)
+app.route('/api', actionsRouter)
+app.route('/api', streamRouter)
 app.route('/api/keys', apiKeysRouter)
 app.route('/api/repos', reposRouter)
 
