@@ -54,7 +54,7 @@ export default function Page(): React.ReactNode {
             <div className="h-4 w-px bg-white/20" />
 
             <a
-              href="http://localhost:3001/auth/github"
+              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/github`}
               className="flex items-center gap-1.5 text-[13px] font-bold text-accent transition-colors hover:text-white"
             >
               <GithubIcon className="h-3.5 w-3.5 fill-current" />
@@ -131,7 +131,7 @@ function HeroSection(): React.ReactNode {
           <div className="fade-up-d2 mt-9 flex justify-center">
             <div className="inline-flex h-[46px] items-center gap-6 rounded-full border border-border bg-white/70 px-7 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-xl transition-all hover:bg-white/90">
               <a
-                href="http://localhost:3001/auth/github"
+                href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/github`}
                 className="group flex items-center gap-2 text-[14px] font-semibold text-text-primary transition-colors hover:text-accent"
               >
                 <GithubIcon className="h-[15px] w-[15px]" />
