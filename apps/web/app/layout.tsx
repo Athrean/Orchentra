@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Sora, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { QueryProvider } from '../lib/query-provider'
 import './globals.css'
 
 const sora = Sora({
@@ -35,7 +36,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
     <html lang="en" className={`${sora.variable} ${jakarta.variable} ${jetbrains.variable}`}>
-      <body>{children}</body>
+      <body>
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   )
 }

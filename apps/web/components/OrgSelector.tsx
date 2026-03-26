@@ -1,53 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Check, Folder, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, Check, Folder, Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useRouter } from 'next/navigation'
-import { api } from '../lib/api'
-
-interface User {
-  id: string
-  username: string
-  displayName: string | null
-  avatarUrl: string | null
-  email: string | null
-}
-
-interface Repo {
-  fullName: string
-  owner: string
-  name: string
-  private: boolean
-  description: string | null
-  monitored: boolean
-}
+import { useMe, useAvailableRepos } from '../lib/hooks'
 
 export function OrgSelector() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [repos, setRepos] = useState<Repo[]>([])
+  const { data: user, isLoading: userLoading, isError: userError } = useMe()
+  const { data: repos, isLoading: reposLoading, isError: reposError } = useAvailableRepos()
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [meData, reposData] = await Promise.all([
-          api<{ user: User }>('/api/me'),
-          api<{ repos: Repo[] }>('/api/repos/available'),
-        ])
-        setUser(meData.user)
-        setRepos(reposData.repos)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [])
+  const loading = userLoading || reposLoading
 
   function handleContinue() {
     if (!selectedRepo) return
@@ -62,10 +27,13 @@ export function OrgSelector() {
     )
   }
 
-  if (error) {
+  if (userError || reposError) {
     return (
       <div className="min-h-screen bg-[#0E1217] text-white flex items-center justify-center">
-        <p className="text-red-400 text-sm">{error}</p>
+        <div className="text-center">
+          <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Failed to load. Please try again.</p>
+        </div>
       </div>
     )
   }
@@ -101,10 +69,10 @@ export function OrgSelector() {
         <div className="bg-[#151921] rounded-2xl border border-white/5 w-full max-w-2xl overflow-hidden shadow-xl">
           <div className="p-4">
             <div className="text-[10px] font-semibold tracking-wider text-gray-500 mb-3 px-2 uppercase">
-              Repositories ({repos.length})
+              Repositories ({repos?.length ?? 0})
             </div>
             <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {repos.map((repo) => (
+              {repos?.map((repo) => (
                 <button
                   key={repo.fullName}
                   onClick={() => setSelectedRepo(repo.fullName)}
