@@ -7,8 +7,16 @@ import type { AppVariables } from '../types'
 export const apiRouter = new Hono<{ Variables: AppVariables }>()
 
 apiRouter.get('/me', (c) => {
-  const user = c.get('user')
-  return c.json({ user })
+  const user = c.get('user') as Record<string, unknown> | undefined
+  if (!user) return c.json({ user: null })
+  return c.json({
+    user: {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    },
+  })
 })
 
 apiRouter.get('/incidents', async (c) => {
