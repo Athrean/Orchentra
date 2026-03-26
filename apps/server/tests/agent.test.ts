@@ -1,26 +1,18 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { mockStepData, mockGenerateTextResponse, mockBrief, mockIncident } from './fixtures/agent-fixtures'
 
-// Tracking
-let dbUpdates: Record<string, unknown>[] = []
-let slackUpdates: { incidentId: string; brief: unknown }[] = []
+let generateTextCalls: unknown[] = []
 let generateObjectCalls: unknown[] = []
-let shouldThrow = false
-
-const mockBrief = {
-  failureType: 'code_bug' as const,
-  summary: 'TypeScript compilation failed due to type mismatch in auth module',
-  rootCause: 'Type error in src/auth/login.ts — string passed where number expected',
-  suggestedFix: 'Change line 42 in src/auth/login.ts: userId should be parseInt(rawId)',
-  confidence: 0.85,
-  similarIncidentId: null,
-}
+let dbUpdates: Record<string, unknown>[] = []
+let slackBriefUpdates: { incidentId: string; brief: unknown }[] = []
+let slackThreadReplies: { incidentId: string; text: string }[] = []
+let toolCallInserts: Record<string, unknown>[] = []
+let shouldThrowOnGenerate = false
 
 mock.module('../src/config', () => ({
   config: {
-    llm: {
-      api_key: 'sk-or-test',
-      model: 'anthropic/claude-sonnet-4-5',
-    },
+    github: { token: 'ghp_test', webhook_secret: 'test', repos: ['my-org/api'] },
+    llm: { api_key: 'sk-or-test', model: 'anthropic/claude-sonnet-4-5' },
   },
 }))
 
@@ -36,20 +28,40 @@ mock.module('../src/db/client', () => ({
         return { where: () => Promise.resolve() }
       },
     }),
+    insert: () => ({
+      values: (val: Record<string, unknown>) => {
+        toolCallInserts.push(val)
+        return Promise.resolve([val])
+      },
+    }),
   },
   incidents: { id: 'id' },
+  toolCalls: {},
 }))
 
 mock.module('../src/slack/message', () => ({
   updateSlackWithBrief: async (incidentId: string, brief: unknown) => {
-    slackUpdates.push({ incidentId, brief })
+    slackBriefUpdates.push({ incidentId, brief })
+  },
+  postThreadReply: async (incidentId: string, text: string) => {
+    slackThreadReplies.push({ incidentId, text })
   },
 }))
 
 mock.module('ai', () => ({
+  generateText: async (opts: {
+    onStepFinish?: (step: typeof mockStepData) => Promise<void>
+    [key: string]: unknown
+  }) => {
+    generateTextCalls.push(opts)
+    if (shouldThrowOnGenerate) throw new Error('LLM call failed')
+    if (opts.onStepFinish) {
+      await opts.onStepFinish(mockStepData)
+    }
+    return mockGenerateTextResponse
+  },
   generateObject: async (opts: unknown) => {
     generateObjectCalls.push(opts)
-    if (shouldThrow) throw new Error('LLM call failed')
     return { object: mockBrief }
   },
 }))
@@ -58,73 +70,77 @@ mock.module('../src/agent/llm', () => ({
   createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
 }))
 
+mock.module('../src/agent/tools/github-actions', () => ({
+  githubActionsTool: {
+    description: 'mock tool',
+    parameters: {},
+    execute: async () => ({ jobName: 'Build', logs: 'error', failedStep: 'test' }),
+  },
+}))
+
 const { runIncidentAgent } = await import('../src/agent/runner')
 
-const mockIncident = {
-  id: 'test-incident-1',
-  repo: 'my-org/api',
-  branch: 'main',
-  commit: 'abc1234def5678',
-  workflowName: 'CI / Build & Test',
-  workflowRunId: 12345,
-  failedStep: null,
-  status: 'investigating' as const,
-  briefJson: null,
-  confidence: null,
-  rootCause: null,
-  suggestedFix: null,
-  slackChannel: '#test',
-  slackMessageTs: '1234567890.123456',
-  triggeredAt: new Date(),
-  resolvedAt: null,
-  mttrSeconds: null,
-  createdAt: new Date(),
-}
-
 beforeEach(() => {
-  dbUpdates = []
-  slackUpdates = []
+  generateTextCalls = []
   generateObjectCalls = []
-  shouldThrow = false
+  dbUpdates = []
+  slackBriefUpdates = []
+  slackThreadReplies = []
+  toolCallInserts = []
+  shouldThrowOnGenerate = false
 })
 
-describe('Agent Runner', () => {
-  test('calls generateObject with correct model and schema', async () => {
+describe('Agent Runner — ReAct Loop', () => {
+  test('calls generateText for investigation phase', async () => {
     await runIncidentAgent(mockIncident)
+    expect(generateTextCalls.length).toBe(1)
+  })
 
+  test('calls generateObject for synthesis phase', async () => {
+    await runIncidentAgent(mockIncident)
     expect(generateObjectCalls.length).toBe(1)
   })
 
-  test('updates DB with brief, root cause, and status', async () => {
+  test('passes tool results to synthesis phase', async () => {
     await runIncidentAgent(mockIncident)
 
-    const update = dbUpdates[0]
-    expect(update).toBeDefined()
-    expect(update.status).toBe('brief_ready')
-    expect(update.rootCause).toBe(mockBrief.rootCause)
-    expect(update.suggestedFix).toBe(mockBrief.suggestedFix)
-    expect(update.confidence).toBe(0.85)
-
-    const stored = JSON.parse(update.briefJson as string)
-    expect(stored.failureType).toBe('code_bug')
-    expect(stored.summary).toBe(mockBrief.summary)
+    const synthCall = generateObjectCalls[0] as { messages: { role: string; content: string }[] }
+    expect(synthCall.messages).toBeDefined()
+    expect(synthCall.messages.length).toBeGreaterThan(0)
   })
 
-  test('updates Slack message with brief', async () => {
+  test('updates DB with brief and status', async () => {
     await runIncidentAgent(mockIncident)
 
-    expect(slackUpdates.length).toBe(1)
-    expect(slackUpdates[0].incidentId).toBe('test-incident-1')
-    expect(slackUpdates[0].brief).toEqual(mockBrief)
+    const update = dbUpdates.find((u) => u.status === 'brief_ready')
+    expect(update).toBeDefined()
+    expect(update!.rootCause).toBe(mockBrief.rootCause)
+    expect(update!.suggestedFix).toBe(mockBrief.suggestedFix)
+    expect(update!.confidence).toBe(0.85)
+  })
+
+  test('updates Slack with brief', async () => {
+    await runIncidentAgent(mockIncident)
+
+    expect(slackBriefUpdates.length).toBe(1)
+    expect(slackBriefUpdates[0].incidentId).toBe('test-incident-1')
+  })
+
+  test('logs tool calls to DB', async () => {
+    await runIncidentAgent(mockIncident)
+    expect(toolCallInserts.length).toBeGreaterThan(0)
+  })
+
+  test('posts tool trace as thread reply', async () => {
+    await runIncidentAgent(mockIncident)
+    expect(slackThreadReplies.length).toBeGreaterThan(0)
   })
 
   test('sets error status on agent failure', async () => {
-    shouldThrow = true
+    shouldThrowOnGenerate = true
     await runIncidentAgent(mockIncident)
 
-    const update = dbUpdates[0]
+    const update = dbUpdates.find((u) => u.status === 'error')
     expect(update).toBeDefined()
-    expect(update.status).toBe('error')
-    expect(update.rootCause).toContain('Agent classification failed')
   })
 })

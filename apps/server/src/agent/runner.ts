@@ -1,80 +1,91 @@
-import { generateObject } from 'ai'
+import { generateText, generateObject, type CoreMessage } from 'ai'
 import { eq } from 'drizzle-orm'
 import { BriefSchema } from '@orchentra/core'
 import { db, incidents, toolCalls } from '../db/client'
 import { createModel } from './llm'
-import { CLASSIFY_PROMPT } from './prompts'
-import { updateSlackWithBrief } from '../slack/message'
-import { fetchFailedJobLogs } from './tools/github-actions'
-import type { WorkflowLogResult } from './tools/github-actions'
+import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
+import { githubActionsTool } from './tools/github-actions'
+import { updateSlackWithBrief, postThreadReply } from '../slack/message'
 
 type IncidentRow = typeof incidents.$inferSelect
 
+function formatIncidentContext(incident: IncidentRow): string {
+  const [owner, repo] = incident.repo.split('/')
+  return [
+    `Incident ID: ${incident.id}`,
+    `Repository: ${incident.repo}`,
+    `Workflow: ${incident.workflowName}`,
+    `Branch: ${incident.branch}`,
+    `Commit: ${incident.commit}`,
+    `Failed step: ${incident.failedStep ?? 'unknown'}`,
+    `Workflow run ID: ${incident.workflowRunId}`,
+    `Owner: ${owner}`,
+    `Repo name: ${repo}`,
+    '',
+    'Investigate this CI failure. Start by fetching the workflow logs.',
+  ].join('\n')
+}
+
 export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
+  let stepNumber = 0
+
   try {
-    // Step 1: Fetch actual CI logs
-    const [owner, repo] = incident.repo.split('/')
-    let logContext = ''
-    let failedStep = incident.failedStep
-
-    if (owner && repo && incident.workflowRunId) {
-      const start = Date.now()
-      const result = await fetchFailedJobLogs(owner, repo, incident.workflowRunId)
-      const durationMs = Date.now() - start
-
-      // Record tool call for audit trail
-      await db.insert(toolCalls).values({
-        id: crypto.randomUUID(),
-        incidentId: incident.id,
-        integration: 'github_actions',
-        round: 1,
-        durationMs,
-        resultJson: JSON.stringify(
-          'error' in result
-            ? { error: result.error }
-            : { jobName: result.jobName, failedStep: result.failedStep, logLines: result.logs.split('\n').length },
-        ),
-      })
-
-      if (!('error' in result)) {
-        const logs = result as WorkflowLogResult
-        logContext = logs.logs
-        failedStep = failedStep ?? logs.failedStep
-
-        // Update failedStep in DB if we discovered it from logs
-        if (logs.failedStep && !incident.failedStep) {
-          await db.update(incidents).set({ failedStep: logs.failedStep }).where(eq(incidents.id, incident.id))
+    // Phase A: Investigation — generateText with tools
+    const result = await generateText({
+      model: createModel(),
+      system: AGENT_SYSTEM_PROMPT,
+      prompt: formatIncidentContext(incident),
+      tools: { get_workflow_logs: githubActionsTool },
+      maxSteps: 6,
+      onStepFinish: async ({ toolCalls: calls, toolResults: results }) => {
+        if (!calls || calls.length === 0) return
+        stepNumber++
+        try {
+          for (let i = 0; i < calls.length; i++) {
+            const call = calls[i]
+            await db.insert(toolCalls).values({
+              id: crypto.randomUUID(),
+              incidentId: incident.id,
+              integration: call.toolName,
+              round: stepNumber,
+              durationMs: null,
+              resultJson: results?.[i] ? JSON.stringify(results[i].result) : null,
+            })
+          }
+        } catch (err) {
+          console.error(`Failed to log tool call for ${incident.id}:`, err)
         }
-      } else {
-        console.warn(`Log fetch failed for ${incident.id}: ${result.error}`)
+      },
+    })
+
+    // Build conversation history for synthesis — include both tool calls and results
+    const investigationMessages: CoreMessage[] = [{ role: 'user', content: formatIncidentContext(incident) }]
+
+    for (const step of result.steps) {
+      for (const call of step.toolCalls ?? []) {
+        investigationMessages.push({
+          role: 'assistant',
+          content: `Called ${call.toolName}(${JSON.stringify(call.args)})`,
+        })
+      }
+      for (const toolResult of step.toolResults ?? []) {
+        investigationMessages.push({
+          role: 'user',
+          content: `Tool result (${toolResult.toolName}): ${JSON.stringify(toolResult.result)}`,
+        })
       }
     }
 
-    // Step 2: Classify with LLM — now with actual log data
-    const promptParts = [
-      `Repo: ${incident.repo}`,
-      `Workflow: ${incident.workflowName}`,
-      `Branch: ${incident.branch}`,
-      `Commit: ${incident.commit}`,
-      `Failed step: ${failedStep ?? 'unknown'}`,
-    ]
-
-    if (logContext) {
-      promptParts.push('', '--- CI Logs (last 300 lines) ---', logContext, '--- End Logs ---')
-    } else {
-      promptParts.push(
-        '',
-        'Note: CI logs were not available. Classify based on metadata only. Set confidence below 0.4.',
-      )
+    if (result.text) {
+      investigationMessages.push({ role: 'assistant', content: result.text })
     }
 
-    promptParts.push('', 'Classify this CI failure and suggest a fix.')
-
+    // Phase B: Synthesis — generateObject for structured brief
     const { object: brief } = await generateObject({
       model: createModel(),
       schema: BriefSchema,
-      system: CLASSIFY_PROMPT,
-      prompt: promptParts.join('\n'),
+      system: SYNTHESIS_PROMPT,
+      messages: investigationMessages,
     })
 
     // Step 3: Persist results
@@ -91,13 +102,21 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
     await updateSlackWithBrief(incident.id, brief)
 
+    // Post tool trace as thread reply
+    const traceLines = result.steps.flatMap((step) =>
+      (step.toolCalls ?? []).map((call) => `\`${call.toolName}\`(${JSON.stringify(call.args)})`),
+    )
+    if (traceLines.length > 0) {
+      await postThreadReply(incident.id, `*Investigation trace:*\n${traceLines.join('\n')}`)
+    }
+
     console.log(`Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%)`)
   } catch (error) {
     console.error(`Agent failed for ${incident.id}:`, error)
 
     await db
       .update(incidents)
-      .set({ status: 'error', rootCause: 'Agent classification failed — check server logs' })
+      .set({ status: 'error', rootCause: 'Agent investigation failed — check server logs' })
       .where(eq(incidents.id, incident.id))
   }
 }
