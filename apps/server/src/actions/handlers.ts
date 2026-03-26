@@ -10,6 +10,7 @@ const octokit = new Octokit({ auth: config.github.token })
 export interface ActionResult {
   success: boolean
   error?: string
+  httpStatus?: number
   data?: Record<string, unknown>
 }
 
@@ -39,7 +40,7 @@ async function recordAction(
 
 export async function rerunWorkflow(incidentId: string, performedBy: string | null): Promise<ActionResult> {
   const incident = await db.query.incidents.findFirst({ where: eq(incidents.id, incidentId) })
-  if (!incident) return { success: false, error: 'Incident not found' }
+  if (!incident) return { success: false, error: 'Incident not found', httpStatus: 404 }
 
   if (!incident.workflowRunId) {
     return { success: false, error: 'No workflow run ID associated with this incident' }
@@ -84,7 +85,7 @@ export async function rerunWorkflow(incidentId: string, performedBy: string | nu
 
 export async function createGithubIssue(incidentId: string, performedBy: string | null): Promise<ActionResult> {
   const incident = await db.query.incidents.findFirst({ where: eq(incidents.id, incidentId) })
-  if (!incident) return { success: false, error: 'Incident not found' }
+  if (!incident) return { success: false, error: 'Incident not found', httpStatus: 404 }
 
   if (incident.githubIssueUrl) {
     return { success: true, data: { issueUrl: incident.githubIssueUrl, alreadyExists: true } }
@@ -163,7 +164,7 @@ export async function createGithubIssue(incidentId: string, performedBy: string 
 
 export async function createFixPR(incidentId: string, performedBy: string | null): Promise<ActionResult> {
   const incident = await db.query.incidents.findFirst({ where: eq(incidents.id, incidentId) })
-  if (!incident) return { success: false, error: 'Incident not found' }
+  if (!incident) return { success: false, error: 'Incident not found', httpStatus: 404 }
 
   if (incident.githubPrUrl) {
     return { success: true, data: { prUrl: incident.githubPrUrl, alreadyExists: true } }
@@ -287,14 +288,20 @@ export async function createFixPR(incidentId: string, performedBy: string | null
 // 4. Update status (dismiss / snooze / resolve)
 // ──────────────────────────────────────────────
 
+const ALLOWED_STATUS_UPDATES = new Set(['resolved', 'snoozed', 'dismissed'])
+
 export async function updateIncidentStatus(
   incidentId: string,
   status: string,
   performedBy: string | null,
   snoozedUntil?: Date,
 ): Promise<ActionResult> {
+  if (!ALLOWED_STATUS_UPDATES.has(status)) {
+    return { success: false, error: `Invalid status: ${status}. Use dedicated handlers for escalate.` }
+  }
+
   const incident = await db.query.incidents.findFirst({ where: eq(incidents.id, incidentId) })
-  if (!incident) return { success: false, error: 'Incident not found' }
+  if (!incident) return { success: false, error: 'Incident not found', httpStatus: 404 }
 
   const updates: Record<string, unknown> = { status }
 
@@ -307,10 +314,6 @@ export async function updateIncidentStatus(
 
   if (status === 'snoozed' && snoozedUntil) {
     updates.snoozedUntil = snoozedUntil
-  }
-
-  if (status === 'escalated') {
-    updates.escalatedAt = new Date()
   }
 
   await db.update(incidents).set(updates).where(eq(incidents.id, incidentId))
@@ -345,7 +348,7 @@ export async function updateIncidentStatus(
 
 export async function escalateIncident(incidentId: string, performedBy: string | null): Promise<ActionResult> {
   const incident = await db.query.incidents.findFirst({ where: eq(incidents.id, incidentId) })
-  if (!incident) return { success: false, error: 'Incident not found' }
+  if (!incident) return { success: false, error: 'Incident not found', httpStatus: 404 }
 
   if (incident.status === 'escalated') {
     return { success: false, error: 'Incident is already escalated' }

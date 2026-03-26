@@ -10,6 +10,11 @@ export interface IncidentEvent {
 }
 
 class IncidentEventBus extends EventEmitter {
+  constructor() {
+    super()
+    this.setMaxListeners(0) // SSE clients each add a listener — no cap needed
+  }
+
   emitIncidentEvent(event: IncidentEvent): void {
     this.emit(event.type, event)
     this.emit('*', event) // wildcard for SSE streaming all events
