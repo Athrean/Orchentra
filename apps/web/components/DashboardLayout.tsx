@@ -1,17 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { AlertTriangle, Radio, Settings, Sidebar as SidebarIcon, LogOut, GitBranch } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { api } from '../lib/api'
 import { useRouter } from 'next/navigation'
-
-interface User {
-  id: string
-  username: string
-  displayName: string | null
-  avatarUrl: string | null
-}
+import { useMe } from '../lib/hooks'
+import { api } from '../lib/api'
 
 export function DashboardLayout({
   children,
@@ -23,13 +16,7 @@ export function DashboardLayout({
   rightPanel?: React.ReactNode
 }) {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-
-  useEffect(() => {
-    api<{ user: User }>('/api/me')
-      .then((d) => setUser(d.user))
-      .catch(() => {})
-  }, [])
+  const { data: user } = useMe()
 
   async function handleLogout() {
     await api('/auth/logout', { method: 'POST' }).catch(() => {})
