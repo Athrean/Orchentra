@@ -79,7 +79,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   const errors = incidents.filter((i) => i.status === 'error').length
 
   const rightPanel = selectedId ? (
-    <DetailPanel incidentId={selectedId} repo={repo} onClose={() => setSelectedId(null)} />
+    <DetailPanel key={selectedId} incidentId={selectedId} repo={repo} onClose={() => setSelectedId(null)} />
   ) : (
     // Stats overview
     <div className="flex flex-col gap-2 p-4 flex-1">
@@ -296,7 +296,7 @@ function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: 
               <ActionButton
                 icon={<BellOff className="w-3 h-3" />}
                 label="Snooze 1h"
-                loading={snooze.isPending}
+                loading={snooze.isPending && snooze.variables?.hours === 1}
                 disabled={anyActionLoading}
                 variant="muted"
                 onClick={() => snooze.mutate({ incidentId: inc.id, hours: 1 })}
@@ -304,7 +304,7 @@ function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: 
               <ActionButton
                 icon={<BellOff className="w-3 h-3" />}
                 label="Snooze 4h"
-                loading={snooze.isPending}
+                loading={snooze.isPending && snooze.variables?.hours === 4}
                 disabled={anyActionLoading}
                 variant="muted"
                 onClick={() => snooze.mutate({ incidentId: inc.id, hours: 4 })}
@@ -357,17 +357,17 @@ function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: 
         {/* Mutation success feedback */}
         {createIssue.data && (
           <div className="text-xs text-emerald-400 bg-emerald-400/10 rounded-lg px-3 py-2">
-            Issue created:{' '}
+            {createIssue.data.issueNumber ? 'Issue created: ' : 'Issue already exists: '}
             <a href={createIssue.data.issueUrl} target="_blank" rel="noopener noreferrer" className="underline">
-              #{createIssue.data.issueNumber}
+              {createIssue.data.issueNumber ? `#${createIssue.data.issueNumber}` : 'View issue'}
             </a>
           </div>
         )}
         {createFixPR.data && (
           <div className="text-xs text-emerald-400 bg-emerald-400/10 rounded-lg px-3 py-2">
-            PR created:{' '}
+            {createFixPR.data.prNumber ? 'PR created: ' : 'PR already exists: '}
             <a href={createFixPR.data.prUrl} target="_blank" rel="noopener noreferrer" className="underline">
-              #{createFixPR.data.prNumber}
+              {createFixPR.data.prNumber ? `#${createFixPR.data.prNumber}` : 'View PR'}
             </a>
           </div>
         )}
