@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { eq, desc, count } from 'drizzle-orm'
 import { UpdateIncidentStatusSchema } from '@orchentra/core'
-import { db, incidents, toolCalls } from '../db/client'
+import { db, incidents, toolCalls, incidentActions } from '../db/client'
+import { updateIncidentStatus } from '../actions/handlers'
 import type { AppVariables } from '../types'
 
 export const apiRouter = new Hono<{ Variables: AppVariables }>()
@@ -62,22 +63,38 @@ apiRouter.get('/incidents/:id', async (c) => {
 
   if (!incident) return c.json({ error: 'Incident not found' }, 404)
 
-  const calls = await db
-    .select({
-      id: toolCalls.id,
-      integration: toolCalls.integration,
-      round: toolCalls.round,
-      durationMs: toolCalls.durationMs,
-      createdAt: toolCalls.createdAt,
-    })
-    .from(toolCalls)
-    .where(eq(toolCalls.incidentId, id))
+  const [calls, actions] = await Promise.all([
+    db
+      .select({
+        id: toolCalls.id,
+        integration: toolCalls.integration,
+        round: toolCalls.round,
+        durationMs: toolCalls.durationMs,
+        createdAt: toolCalls.createdAt,
+      })
+      .from(toolCalls)
+      .where(eq(toolCalls.incidentId, id)),
+    db
+      .select({
+        id: incidentActions.id,
+        incidentId: incidentActions.incidentId,
+        actionType: incidentActions.actionType,
+        performedBy: incidentActions.performedBy,
+        metadata: incidentActions.metadata,
+        createdAt: incidentActions.createdAt,
+      })
+      .from(incidentActions)
+      .where(eq(incidentActions.incidentId, id))
+      .orderBy(desc(incidentActions.createdAt)),
+  ])
 
-  return c.json({ incident, toolCalls: calls })
+  return c.json({ incident, toolCalls: calls, actions })
 })
 
 apiRouter.patch('/incidents/:id/status', async (c) => {
   const id = c.req.param('id')
+  const user = c.get('user')
+
   let body: unknown
   try {
     body = await c.req.json()
@@ -88,18 +105,10 @@ apiRouter.patch('/incidents/:id/status', async (c) => {
   const parsed = UpdateIncidentStatusSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
-  const existing = await db.query.incidents.findFirst({ where: eq(incidents.id, id) })
-  if (!existing) return c.json({ error: 'Incident not found' }, 404)
+  const result = await updateIncidentStatus(id, parsed.data.status, user?.id ?? null, parsed.data.snoozedUntil)
 
-  const updates: Record<string, unknown> = { status: parsed.data.status }
-
-  if (parsed.data.status === 'resolved') {
-    updates.resolvedAt = new Date()
-    if (existing.triggeredAt) {
-      updates.mttrSeconds = Math.round((Date.now() - new Date(existing.triggeredAt).getTime()) / 1000)
-    }
+  if (!result.success) {
+    return c.json({ error: result.error }, result.httpStatus ?? 400)
   }
-
-  await db.update(incidents).set(updates).where(eq(incidents.id, id))
-  return c.json({ id, status: parsed.data.status })
+  return c.json({ id, ...result.data })
 })
