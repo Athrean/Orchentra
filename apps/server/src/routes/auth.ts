@@ -45,7 +45,8 @@ authRouter.get('/github/callback', async (c) => {
       maxAge: SESSION_MAX_AGE_SECONDS,
     })
 
-    return c.redirect('/dashboard')
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+    return c.redirect(`${frontendUrl}/onboarding`)
   } catch (error) {
     console.error('OAuth callback failed:', error)
     return c.json({ error: 'Authentication failed' }, 500)
