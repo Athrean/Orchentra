@@ -7,6 +7,7 @@ export const IncidentStatusSchema = z.enum([
   'resolved',
   'snoozed',
   'dismissed',
+  'escalated',
   'error',
 ])
 
@@ -41,6 +42,10 @@ export const IncidentDetailSchema = IncidentListItemSchema.extend({
   suggestedFix: z.string().nullable(),
   slackChannel: z.string().nullable(),
   slackMessageTs: z.string().nullable(),
+  githubIssueUrl: z.string().nullable(),
+  githubPrUrl: z.string().nullable(),
+  snoozedUntil: z.coerce.date().nullable(),
+  escalatedAt: z.coerce.date().nullable(),
   resolvedAt: z.coerce.date().nullable(),
   mttrSeconds: z.number().nullable(),
 })
@@ -55,15 +60,28 @@ export const ToolCallSchema = z.object({
   createdAt: z.coerce.date(),
 })
 
-export const IncidentDetailResponseSchema = z.object({
-  incident: IncidentDetailSchema,
-  toolCalls: z.array(ToolCallSchema),
-})
-
-export type IncidentDetailResponse = z.infer<typeof IncidentDetailResponseSchema>
-
 export const UpdateIncidentStatusSchema = z.object({
-  status: IncidentStatusSchema.extract(['resolved', 'snoozed', 'dismissed']),
+  status: IncidentStatusSchema.extract(['resolved', 'snoozed', 'dismissed', 'escalated']),
+  snoozedUntil: z.coerce.date().optional(),
 })
 
 export type UpdateIncidentStatusRequest = z.infer<typeof UpdateIncidentStatusSchema>
+
+export const IncidentActionSchema = z.object({
+  id: z.string(),
+  incidentId: z.string(),
+  actionType: z.string(),
+  performedBy: z.string().nullable(),
+  metadata: z.record(z.unknown()).nullable(),
+  createdAt: z.coerce.date(),
+})
+
+export type IncidentAction = z.infer<typeof IncidentActionSchema>
+
+export const IncidentDetailResponseSchema = z.object({
+  incident: IncidentDetailSchema,
+  toolCalls: z.array(ToolCallSchema),
+  actions: z.array(IncidentActionSchema),
+})
+
+export type IncidentDetailResponse = z.infer<typeof IncidentDetailResponseSchema>
