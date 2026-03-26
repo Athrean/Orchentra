@@ -75,7 +75,7 @@ export async function rerunWorkflow(incidentId: string, performedBy: string | nu
 
   const runUrl = `https://github.com/${incident.repo}/actions/runs/${incident.workflowRunId}`
 
-  await db.update(incidents).set({ status: 'investigating' }).where(eq(incidents.id, incidentId))
+  await db.update(incidents).set({ status: 'fixing' }).where(eq(incidents.id, incidentId))
   await recordAction(incidentId, 'rerun', performedBy, { runUrl })
   await postThreadReply(incidentId, `Workflow re-run triggered${performedBy ? ` by user` : ''}`)
 
@@ -88,7 +88,7 @@ export async function rerunWorkflow(incidentId: string, performedBy: string | nu
     type: 'incident:status_changed',
     incidentId,
     repo: incident.repo,
-    data: { status: 'investigating', action: 'rerun' },
+    data: { status: 'fixing', action: 'rerun' },
   })
 
   return { success: true, data: { runUrl } }
@@ -353,7 +353,8 @@ export async function updateIncidentStatus(
   await postThreadReply(incidentId, actionLabel)
 
   if (status === 'resolved') {
-    await updateSlackToResolved(incidentId, 'Manually resolved', updates.mttrSeconds as number | null)
+    const mttr = typeof updates.mttrSeconds === 'number' ? updates.mttrSeconds : null
+    await updateSlackToResolved(incidentId, 'Manually resolved', mttr)
   }
 
   incidentEvents.emitIncidentEvent({

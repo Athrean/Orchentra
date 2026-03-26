@@ -294,22 +294,22 @@ describe('fixingBlocks', () => {
     expect(text).toContain('PR #42 created')
   })
 
-  test('shows actor when provided', () => {
+  test('shows actual actor name when provided', () => {
     const blocks = fixingBlocks(incident, brief, { action: 'Workflow re-run started', actor: 'user-1' })
     const text = allText(blocks)
-    expect(text).toContain('by user')
+    expect(text).toContain('by user-1')
   })
 
   test('omits actor line when actor is null', () => {
     const blocks = fixingBlocks(incident, brief, { action: 'Workflow re-run started', actor: null })
     const text = allText(blocks)
-    expect(text).not.toContain('by user')
+    expect(text).not.toContain('by ')
   })
 
   test('omits actor line when actor is undefined', () => {
     const blocks = fixingBlocks(incident, brief, { action: 'Workflow re-run started' })
     const text = allText(blocks)
-    expect(text).not.toContain('by user')
+    expect(text).not.toContain('by ')
   })
 
   test('no action buttons (removed after action taken)', () => {
@@ -387,6 +387,11 @@ describe('resolvedBlocks', () => {
     expect(text).toContain('1h 30m')
   })
 
+  test('formats MTTR of 0 seconds as 0s', () => {
+    const blocks = resolvedBlocks(incident, { method: 'test', mttrSeconds: 0 })
+    expect(allText(blocks)).toContain('0s')
+  })
+
   test('shows N/A when no MTTR', () => {
     const blocks = resolvedBlocks(incident, { method: 'test', mttrSeconds: null })
     const text = allText(blocks)
@@ -426,6 +431,11 @@ describe('resolvedBlocks', () => {
     const fallback = resolvedFallback(incident, { method: 'Re-run succeeded', mttrSeconds: 120 })
     expect(fallback).toContain('Re-run succeeded')
     expect(fallback).toContain('2m')
+  })
+
+  test('fallback text includes MTTR of 0 seconds', () => {
+    const fallback = resolvedFallback(incident, { method: 'test', mttrSeconds: 0 })
+    expect(fallback).toContain('MTTR: 0s')
   })
 
   test('fallback text omits MTTR when not provided', () => {
