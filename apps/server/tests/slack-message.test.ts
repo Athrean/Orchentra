@@ -1,9 +1,12 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
 
-// Tracking
-let postedMessages: { channel: string; text: string }[] = []
-let updatedMessages: { channel: string; ts: string; text: string }[] = []
-let dbSetCalls: Record<string, unknown>[] = []
+// Shared state container — mutable properties captured by mock closures
+const state = {
+  postedMessages: [] as { channel: string; text: string; thread_ts?: string }[],
+  updatedMessages: [] as { channel: string; ts: string; text: string }[],
+  dbSetCalls: [] as Record<string, unknown>[],
+  queryResult: null as Record<string, unknown> | null,
+}
 
 mock.module('../src/config', () => ({
   config: {
@@ -20,12 +23,12 @@ mock.module('../src/config', () => ({
 mock.module('../src/slack/client', () => ({
   slack: {
     chat: {
-      postMessage: async (opts: { channel: string; text: string }) => {
-        postedMessages.push(opts)
+      postMessage: async (opts: { channel: string; text: string; thread_ts?: string }) => {
+        state.postedMessages.push(opts)
         return { ok: true, ts: '1234567890.123456' }
       },
       update: async (opts: { channel: string; ts: string; text: string }) => {
-        updatedMessages.push(opts)
+        state.updatedMessages.push(opts)
         return { ok: true }
       },
     },
@@ -36,25 +39,28 @@ mock.module('drizzle-orm', () => ({
   eq: (_col: unknown, _val: unknown) => ({}),
 }))
 
+const DEFAULT_QUERY_RESULT = {
+  id: 'test-incident-1',
+  repo: 'my-org/api',
+  workflowName: 'CI / Build & Test',
+  branch: 'main',
+  commit: 'abc1234def5678901234567890',
+  workflowRunId: 12345,
+  slackChannel: '#test-incidents',
+  slackMessageTs: '1234567890.123456',
+}
+
 mock.module('../src/db/client', () => ({
   db: {
     update: () => ({
       set: (values: Record<string, unknown>) => {
-        dbSetCalls.push(values)
+        state.dbSetCalls.push(values)
         return { where: () => Promise.resolve() }
       },
     }),
     query: {
       incidents: {
-        findFirst: async () => ({
-          id: 'test-incident-1',
-          repo: 'my-org/api',
-          workflowName: 'CI / Build & Test',
-          branch: 'main',
-          commit: 'abc1234def5678901234567890',
-          slackChannel: '#test-incidents',
-          slackMessageTs: '1234567890.123456',
-        }),
+        findFirst: async () => state.queryResult,
       },
     },
   },
@@ -67,8 +73,8 @@ mock.module('../src/db/client', () => ({
   monitoredRepos: {},
 }))
 
-// Import real module — mocked dependencies will be used
-const { postInitialSlackMessage, updateSlackWithBrief } = await import('../src/slack/message')
+const { postInitialSlackMessage, updateSlackWithBrief, updateSlackToFixing, updateSlackToResolved, postThreadReply } =
+  await import('../src/slack/message')
 
 const mockIncident = {
   id: 'test-incident-1',
@@ -92,31 +98,36 @@ const mockIncident = {
 }
 
 beforeEach(() => {
-  postedMessages = []
-  updatedMessages = []
-  dbSetCalls = []
+  state.postedMessages = []
+  state.updatedMessages = []
+  state.dbSetCalls = []
+  state.queryResult = { ...DEFAULT_QUERY_RESULT }
 })
+
+// ─── postInitialSlackMessage ──────────────────
 
 describe('postInitialSlackMessage', () => {
   test('posts investigating message to configured channel', async () => {
     await postInitialSlackMessage(mockIncident)
 
-    expect(postedMessages.length).toBe(1)
-    expect(postedMessages[0].channel).toBe('#test-incidents')
-    expect(postedMessages[0].text).toContain('my-org/api')
-    expect(postedMessages[0].text).toContain('CI / Build & Test')
-    expect(postedMessages[0].text).toContain('main')
-    expect(postedMessages[0].text).toContain('Investigating')
+    expect(state.postedMessages.length).toBe(1)
+    expect(state.postedMessages[0].channel).toBe('#test-incidents')
+    expect(state.postedMessages[0].text).toContain('my-org/api')
+    expect(state.postedMessages[0].text).toContain('CI / Build & Test')
+    expect(state.postedMessages[0].text).toContain('main')
+    expect(state.postedMessages[0].text).toContain('Investigating')
   })
 
   test('stores slack message timestamp in DB', async () => {
     await postInitialSlackMessage(mockIncident)
 
-    expect(dbSetCalls.length).toBe(1)
-    expect(dbSetCalls[0].slackMessageTs).toBe('1234567890.123456')
-    expect(dbSetCalls[0].slackChannel).toBe('#test-incidents')
+    expect(state.dbSetCalls.length).toBe(1)
+    expect(state.dbSetCalls[0].slackMessageTs).toBe('1234567890.123456')
+    expect(state.dbSetCalls[0].slackChannel).toBe('#test-incidents')
   })
 })
+
+// ─── updateSlackWithBrief ─────────────────────
 
 describe('updateSlackWithBrief', () => {
   test('updates existing message with classification results', async () => {
@@ -131,12 +142,12 @@ describe('updateSlackWithBrief', () => {
 
     await updateSlackWithBrief('test-incident-1', brief)
 
-    expect(updatedMessages.length).toBe(1)
-    expect(updatedMessages[0].ts).toBe('1234567890.123456')
-    expect(updatedMessages[0].channel).toBe('#test-incidents')
+    expect(state.updatedMessages.length).toBe(1)
+    expect(state.updatedMessages[0].ts).toBe('1234567890.123456')
+    expect(state.updatedMessages[0].channel).toBe('#test-incidents')
   })
 
-  test('includes root cause, fix, and confidence in updated message', async () => {
+  test('includes root cause, fix, and confidence in fallback text', async () => {
     const brief = {
       failureType: 'dependency_conflict' as const,
       summary: 'Package version mismatch',
@@ -148,14 +159,13 @@ describe('updateSlackWithBrief', () => {
 
     await updateSlackWithBrief('test-incident-1', brief)
 
-    const text = updatedMessages[0].text
+    const text = state.updatedMessages[0].text
     expect(text).toContain(brief.rootCause)
     expect(text).toContain(brief.suggestedFix)
     expect(text).toContain('92%')
-    expect(text).toContain('dependency conflict')
   })
 
-  test('shows short commit hash, not full hash', async () => {
+  test('fallback text includes repo and workflow', async () => {
     const brief = {
       failureType: 'unknown' as const,
       summary: 'Unknown failure',
@@ -167,8 +177,169 @@ describe('updateSlackWithBrief', () => {
 
     await updateSlackWithBrief('test-incident-1', brief)
 
-    const text = updatedMessages[0].text
-    expect(text).toContain('abc1234')
-    expect(text).not.toContain('abc1234def5678901234567890')
+    const text = state.updatedMessages[0].text
+    expect(text).toContain('my-org/api')
+    expect(text).toContain('CI / Build & Test')
+  })
+
+  test('no-ops when incident has no slack info', async () => {
+    state.queryResult = { ...DEFAULT_QUERY_RESULT, slackMessageTs: null, slackChannel: null }
+    await updateSlackWithBrief('test-incident-1', {
+      failureType: 'code_bug' as const,
+      summary: 's',
+      rootCause: 'r',
+      suggestedFix: 'f',
+      confidence: 0.5,
+      similarIncidentId: null,
+    })
+    expect(state.updatedMessages).toHaveLength(0)
+  })
+})
+
+// ─── updateSlackToFixing ──────────────────────
+
+describe('updateSlackToFixing', () => {
+  const brief = {
+    failureType: 'env_missing' as const,
+    summary: 'DATABASE_URL not set in CI',
+    rootCause: 'Missing DATABASE_URL environment variable',
+    suggestedFix: 'Add DATABASE_URL to CI environment secrets',
+    confidence: 0.92,
+    similarIncidentId: null,
+  }
+
+  test('updates message to fixing state with action description', async () => {
+    await updateSlackToFixing('test-incident-1', brief, 'Workflow re-run started', 'user-1')
+
+    expect(state.updatedMessages).toHaveLength(1)
+    expect(state.updatedMessages[0].ts).toBe('1234567890.123456')
+    expect(state.updatedMessages[0].channel).toBe('#test-incidents')
+    expect(state.updatedMessages[0].text).toContain('Workflow re-run started')
+  })
+
+  test('fallback text includes repo and action', async () => {
+    await updateSlackToFixing('test-incident-1', brief, 'PR #42 created', null)
+
+    expect(state.updatedMessages[0].text).toContain('my-org/api')
+    expect(state.updatedMessages[0].text).toContain('PR #42 created')
+  })
+
+  test('no-ops when incident has no slack info', async () => {
+    state.queryResult = { ...DEFAULT_QUERY_RESULT, slackMessageTs: null, slackChannel: null }
+    await updateSlackToFixing('test-incident-1', brief, 'test', null)
+    expect(state.updatedMessages).toHaveLength(0)
+  })
+
+  test('no-ops when incident not found', async () => {
+    state.queryResult = null
+    await updateSlackToFixing('nonexistent', brief, 'test', null)
+    expect(state.updatedMessages).toHaveLength(0)
+  })
+})
+
+// ─── updateSlackToResolved ────────────────────
+
+describe('updateSlackToResolved', () => {
+  test('updates message to resolved state', async () => {
+    await updateSlackToResolved('test-incident-1', 'Re-run succeeded', 120)
+
+    expect(state.updatedMessages).toHaveLength(1)
+    expect(state.updatedMessages[0].ts).toBe('1234567890.123456')
+    expect(state.updatedMessages[0].text).toContain('Resolved')
+    expect(state.updatedMessages[0].text).toContain('Re-run succeeded')
+  })
+
+  test('includes MTTR in fallback text', async () => {
+    await updateSlackToResolved('test-incident-1', 'Manually resolved', 3660)
+
+    expect(state.updatedMessages[0].text).toContain('1h 1m')
+  })
+
+  test('handles null MTTR gracefully', async () => {
+    await updateSlackToResolved('test-incident-1', 'Manually resolved', null)
+
+    expect(state.updatedMessages).toHaveLength(1)
+    expect(state.updatedMessages[0].text).toContain('Resolved')
+  })
+
+  test('no-ops when incident has no slack info', async () => {
+    state.queryResult = { ...DEFAULT_QUERY_RESULT, slackMessageTs: null, slackChannel: null }
+    await updateSlackToResolved('test-incident-1', 'test', 60)
+    expect(state.updatedMessages).toHaveLength(0)
+  })
+
+  test('no-ops when incident not found', async () => {
+    state.queryResult = null
+    await updateSlackToResolved('nonexistent', 'test', 60)
+    expect(state.updatedMessages).toHaveLength(0)
+  })
+})
+
+// ─── postThreadReply ──────────────────────────
+
+describe('postThreadReply', () => {
+  test('posts reply in thread using message timestamp', async () => {
+    await postThreadReply('test-incident-1', 'Workflow re-run triggered')
+
+    expect(state.postedMessages).toHaveLength(1)
+    expect(state.postedMessages[0].channel).toBe('#test-incidents')
+    expect(state.postedMessages[0].thread_ts).toBe('1234567890.123456')
+    expect(state.postedMessages[0].text).toBe('Workflow re-run triggered')
+  })
+
+  test('no-ops when incident has no slack info', async () => {
+    state.queryResult = { ...DEFAULT_QUERY_RESULT, slackMessageTs: null, slackChannel: null }
+    await postThreadReply('test-incident-1', 'test')
+    expect(state.postedMessages).toHaveLength(0)
+  })
+
+  test('no-ops when incident not found', async () => {
+    state.queryResult = null
+    await postThreadReply('nonexistent', 'test')
+    expect(state.postedMessages).toHaveLength(0)
+  })
+})
+
+// ─── Full Message Lifecycle ───────────────────
+
+describe('message lifecycle transitions', () => {
+  test('investigating → brief_ready updates message in-place', async () => {
+    await postInitialSlackMessage(mockIncident)
+    expect(state.postedMessages).toHaveLength(1)
+
+    const brief = {
+      failureType: 'code_bug' as const,
+      summary: 'Type error',
+      rootCause: 'Null reference',
+      suggestedFix: 'Add null check',
+      confidence: 0.8,
+      similarIncidentId: null,
+    }
+    await updateSlackWithBrief('test-incident-1', brief)
+    expect(state.updatedMessages).toHaveLength(1)
+    expect(state.updatedMessages[0].text).toContain('Null reference')
+  })
+
+  test('brief_ready → fixing updates message in-place', async () => {
+    const brief = {
+      failureType: 'env_missing' as const,
+      summary: 'Missing env',
+      rootCause: 'No API_KEY',
+      suggestedFix: 'Add API_KEY',
+      confidence: 0.9,
+      similarIncidentId: null,
+    }
+    await updateSlackToFixing('test-incident-1', brief, 'Workflow re-run started', 'user-1')
+
+    expect(state.updatedMessages).toHaveLength(1)
+    expect(state.updatedMessages[0].text).toContain('Fixing')
+  })
+
+  test('fixing → resolved updates message in-place', async () => {
+    await updateSlackToResolved('test-incident-1', 'Re-run succeeded', 180)
+
+    expect(state.updatedMessages).toHaveLength(1)
+    expect(state.updatedMessages[0].text).toContain('Resolved')
+    expect(state.updatedMessages[0].text).toContain('Re-run succeeded')
   })
 })

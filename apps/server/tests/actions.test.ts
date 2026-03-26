@@ -4,8 +4,8 @@ import { describe, test, expect, mock, beforeEach } from 'bun:test'
 let storedIncidents: Record<string, Record<string, unknown>> = {}
 let insertedActions: Record<string, unknown>[] = []
 let updatedFields: Record<string, unknown>[] = []
-let slackThreadReplies: { id: string; text: string }[] = []
-let slackPostedMessages: { channel: string; text: string }[] = []
+let slackPostedMessages: { channel: string; text: string; thread_ts?: string }[] = []
+let slackUpdatedMessages: { channel: string; ts: string; text: string }[] = []
 let githubApiCalls: { method: string; args: Record<string, unknown> }[] = []
 let emittedEvents: { type: string; incidentId: string }[] = []
 
@@ -104,22 +104,17 @@ mock.module('../src/db/client', () => ({
   monitoredRepos: {},
 }))
 
-mock.module('../src/slack/message', () => ({
-  postInitialSlackMessage: async () => {},
-  updateSlackWithBrief: async () => {},
-  postThreadReply: async (id: string, text: string) => {
-    slackThreadReplies.push({ id, text })
-  },
-}))
-
 mock.module('../src/slack/client', () => ({
   slack: {
     chat: {
-      postMessage: async (opts: { channel: string; text: string }) => {
+      postMessage: async (opts: { channel: string; text: string; thread_ts?: string }) => {
         slackPostedMessages.push(opts)
         return { ok: true, ts: '1234567890.999' }
       },
-      update: async () => ({ ok: true }),
+      update: async (opts: { channel: string; ts: string; text: string }) => {
+        slackUpdatedMessages.push(opts)
+        return { ok: true }
+      },
     },
   },
 }))
@@ -201,8 +196,8 @@ beforeEach(() => {
   storedIncidents = { 'inc-001': { ...TEST_INCIDENT } }
   insertedActions = []
   updatedFields = []
-  slackThreadReplies = []
   slackPostedMessages = []
+  slackUpdatedMessages = []
   githubApiCalls = []
   emittedEvents = []
 })
@@ -235,8 +230,9 @@ describe('rerunWorkflow', () => {
     expect(emittedEvents[0].type).toBe('incident:status_changed')
 
     // Posted Slack thread reply
-    expect(slackThreadReplies.length).toBe(1)
-    expect(slackThreadReplies[0].text).toContain('re-run')
+    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
+    expect(threadReplies.length).toBeGreaterThanOrEqual(1)
+    expect(threadReplies[0].text).toContain('re-run')
   })
 
   test('rejects if incident not found', async () => {
@@ -285,6 +281,22 @@ describe('createGithubIssue', () => {
     expect(insertedActions[0].actionType).toBe('create_issue')
   })
 
+  test('emits incident:updated event after creating issue', async () => {
+    await createGithubIssue('inc-001', 'user-1')
+
+    const event = emittedEvents.find((e) => e.type === 'incident:updated')
+    expect(event).toBeTruthy()
+    expect(event!.incidentId).toBe('inc-001')
+  })
+
+  test('posts thread reply with issue number', async () => {
+    await createGithubIssue('inc-001', 'user-1')
+
+    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
+    expect(threadReplies).toHaveLength(1)
+    expect(threadReplies[0].text).toContain('#42')
+  })
+
   test('returns existing URL if issue already created', async () => {
     storedIncidents['inc-001'] = {
       ...TEST_INCIDENT,
@@ -305,6 +317,20 @@ describe('createGithubIssue', () => {
     const result = await createGithubIssue('inc-001', null)
     expect(result.success).toBe(false)
     expect(result.error).toContain('No brief available')
+  })
+
+  test('rejects if incident not found', async () => {
+    const result = await createGithubIssue('nonexistent', null)
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Incident not found')
+    expect(result.httpStatus).toBe(404)
+  })
+
+  test('rejects if briefJson is malformed', async () => {
+    storedIncidents['inc-001'] = { ...TEST_INCIDENT, briefJson: 'not-json{{' }
+    const result = await createGithubIssue('inc-001', null)
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Failed to parse')
   })
 })
 
@@ -354,6 +380,27 @@ describe('createFixPR', () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain('No suggested fix')
   })
+
+  test('rejects if no brief available', async () => {
+    storedIncidents['inc-001'] = { ...TEST_INCIDENT, briefJson: null }
+    const result = await createFixPR('inc-001', null)
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('No brief available')
+  })
+
+  test('rejects if briefJson is malformed', async () => {
+    storedIncidents['inc-001'] = { ...TEST_INCIDENT, briefJson: '{broken' }
+    const result = await createFixPR('inc-001', null)
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Failed to parse')
+  })
+
+  test('rejects if incident not found', async () => {
+    const result = await createFixPR('nonexistent', null)
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Incident not found')
+    expect(result.httpStatus).toBe(404)
+  })
 })
 
 // ─── Update Status ──────────────────────────
@@ -398,6 +445,28 @@ describe('updateIncidentStatus', () => {
     expect(result.success).toBe(false)
     expect(result.error).toContain('Invalid status')
   })
+
+  test('emits SSE event on status change', async () => {
+    await updateIncidentStatus('inc-001', 'dismissed', 'user-1')
+    expect(emittedEvents).toHaveLength(1)
+    expect(emittedEvents[0].type).toBe('incident:status_changed')
+    expect(emittedEvents[0].incidentId).toBe('inc-001')
+  })
+
+  test('posts thread reply with human-readable action label', async () => {
+    await updateIncidentStatus('inc-001', 'dismissed', null)
+    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
+    expect(threadReplies).toHaveLength(1)
+    expect(threadReplies[0].text).toContain('dismissed')
+  })
+
+  test('resolve without triggeredAt skips MTTR', async () => {
+    storedIncidents['inc-001'] = { ...TEST_INCIDENT, triggeredAt: null }
+    const result = await updateIncidentStatus('inc-001', 'resolved', null)
+    expect(result.success).toBe(true)
+    expect(updatedFields[0]?.resolvedAt).toBeInstanceOf(Date)
+    expect(updatedFields[0]?.mttrSeconds).toBeUndefined()
+  })
 })
 
 // ─── Escalate ───────────────────────────────
@@ -408,10 +477,12 @@ describe('escalateIncident', () => {
 
     expect(result.success).toBe(true)
 
-    // Posted escalation message to Slack channel
-    expect(slackPostedMessages.length).toBe(1)
-    expect(slackPostedMessages[0].text).toContain('ESCALATED')
-    expect(slackPostedMessages[0].text).toContain('my-org/api')
+    // Posted escalation message to Slack channel (non-threaded)
+    const directMessages = slackPostedMessages.filter((m) => !m.thread_ts)
+    expect(directMessages.length).toBeGreaterThanOrEqual(1)
+    const escalationMsg = directMessages.find((m) => m.text.includes('ESCALATED'))
+    expect(escalationMsg).toBeTruthy()
+    expect(escalationMsg!.text).toContain('my-org/api')
 
     // Updated status
     expect(updatedFields[0]?.status).toBe('escalated')
