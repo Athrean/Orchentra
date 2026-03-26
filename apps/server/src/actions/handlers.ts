@@ -3,7 +3,8 @@ import { Octokit } from '@octokit/rest'
 import { config } from '../config'
 import { db, incidents, incidentActions } from '../db/client'
 import { incidentEvents } from '../events'
-import { postThreadReply } from '../slack/message'
+import { postThreadReply, updateSlackToFixing, updateSlackToResolved } from '../slack/message'
+import type { IncidentBrief } from '@orchentra/core'
 
 const octokit = new Octokit({ auth: config.github.token })
 
@@ -17,6 +18,15 @@ export interface ActionResult {
 function parseRepo(repo: string): { owner: string; name: string } {
   const [owner, name] = repo.split('/')
   return { owner, name }
+}
+
+function parseBrief(briefJson: string | null): IncidentBrief | null {
+  if (!briefJson) return null
+  try {
+    return JSON.parse(briefJson) as IncidentBrief
+  } catch {
+    return null
+  }
 }
 
 async function recordAction(
@@ -65,15 +75,20 @@ export async function rerunWorkflow(incidentId: string, performedBy: string | nu
 
   const runUrl = `https://github.com/${incident.repo}/actions/runs/${incident.workflowRunId}`
 
-  await db.update(incidents).set({ status: 'investigating' }).where(eq(incidents.id, incidentId))
+  await db.update(incidents).set({ status: 'fixing' }).where(eq(incidents.id, incidentId))
   await recordAction(incidentId, 'rerun', performedBy, { runUrl })
   await postThreadReply(incidentId, `Workflow re-run triggered${performedBy ? ` by user` : ''}`)
+
+  const brief = parseBrief(incident.briefJson)
+  if (brief) {
+    await updateSlackToFixing(incidentId, brief, 'Workflow re-run started', performedBy)
+  }
 
   incidentEvents.emitIncidentEvent({
     type: 'incident:status_changed',
     incidentId,
     repo: incident.repo,
-    data: { status: 'investigating', action: 'rerun' },
+    data: { status: 'fixing', action: 'rerun' },
   })
 
   return { success: true, data: { runUrl } }
@@ -270,6 +285,11 @@ export async function createFixPR(incidentId: string, performedBy: string | null
     await recordAction(incidentId, 'create_pr', performedBy, { prUrl, prNumber: pr.number })
     await postThreadReply(incidentId, `Fix PR created: #${pr.number}`)
 
+    const parsedBrief = parseBrief(incident.briefJson)
+    if (parsedBrief) {
+      await updateSlackToFixing(incidentId, parsedBrief, `PR #${pr.number} created`, performedBy)
+    }
+
     incidentEvents.emitIncidentEvent({
       type: 'incident:status_changed',
       incidentId,
@@ -331,6 +351,11 @@ export async function updateIncidentStatus(
           : `Status changed to ${status}`
 
   await postThreadReply(incidentId, actionLabel)
+
+  if (status === 'resolved') {
+    const mttr = typeof updates.mttrSeconds === 'number' ? updates.mttrSeconds : null
+    await updateSlackToResolved(incidentId, 'Manually resolved', mttr)
+  }
 
   incidentEvents.emitIncidentEvent({
     type: 'incident:status_changed',
