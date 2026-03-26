@@ -8,7 +8,9 @@ export const interactionsRouter = new Hono()
 function verifySlackSignature(body: string, timestamp: string, signature: string): boolean {
   const fiveMinutes = 5 * 60
   const now = Math.floor(Date.now() / 1000)
-  if (Math.abs(now - Number(timestamp)) > fiveMinutes) return false
+  const ts = Number(timestamp)
+  if (!Number.isFinite(ts)) return false
+  if (Math.abs(now - ts) > fiveMinutes) return false
 
   const basestring = `v0:${timestamp}:${body}`
   const expected = 'v0=' + createHmac('sha256', config.delivery.slack.signing_secret).update(basestring).digest('hex')
@@ -63,7 +65,8 @@ async function dispatchAction(action: SlackAction, slackUserId: string): Promise
       if (separatorIndex === -1) return
       const incidentId = raw.slice(0, separatorIndex)
       const hours = Number(raw.slice(separatorIndex + 1))
-      if (!incidentId || isNaN(hours) || hours < 1) return
+      const allowedHours = [1, 4, 24]
+      if (!incidentId || isNaN(hours) || !allowedHours.includes(hours)) return
       const snoozedUntil = new Date(Date.now() + hours * 60 * 60 * 1000)
       await updateIncidentStatus(incidentId, 'snoozed', slackUserId, snoozedUntil)
       break
