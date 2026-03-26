@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3001'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export async function api<T>(path: string, init?: globalThis.RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

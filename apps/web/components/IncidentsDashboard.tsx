@@ -87,6 +87,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
     toolCalls: ToolCall[]
   } | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState(false)
 
   useEffect(() => {
     api<{ incidents: Incident[]; total: number }>(`/api/incidents?repo=${encodeURIComponent(repo)}`)
@@ -106,6 +107,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
     }
     setSelectedId(id)
     setDetailLoading(true)
+    setDetailError(false)
     try {
       const data = await api<{
         incident: IncidentFull
@@ -114,20 +116,25 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
       setDetail(data)
     } catch {
       setDetail(null)
+      setDetailError(true)
     } finally {
       setDetailLoading(false)
     }
   }
 
   async function updateStatus(id: string, status: string) {
-    await api(`/api/incidents/${id}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    setIncidents((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)))
-    if (detail?.incident.id === id) {
-      setDetail((d) => (d ? { ...d, incident: { ...d.incident, status } } : null))
+    try {
+      await api(`/api/incidents/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      setIncidents((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)))
+      if (detail?.incident.id === id) {
+        setDetail((d) => (d ? { ...d, incident: { ...d.incident, status } } : null))
+      }
+    } catch {
+      setError('Failed to update status')
     }
   }
 
@@ -138,9 +145,13 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
 
   const rightPanel = selectedId ? (
     // Incident detail panel
-    detailLoading || !detail ? (
+    detailLoading ? (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+      </div>
+    ) : detailError || !detail ? (
+      <div className="flex-1 flex items-center justify-center px-4">
+        <p className="text-sm text-red-400 text-center">Failed to load incident details.</p>
       </div>
     ) : (
       <DetailPanel
