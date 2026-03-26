@@ -38,5 +38,3 @@ export const BriefSchema = z.object({
 })
 
 export type IncidentBrief = z.infer<typeof BriefSchema>
-
-export type IncidentStatus = 'investigating' | 'brief_ready' | 'fixing' | 'resolved' | 'snoozed' | 'dismissed'

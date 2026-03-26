@@ -16,6 +16,14 @@ mock.module('../src/config', () => ({
   },
 }))
 
+const monitoredSet = new Set(['my-org/api'])
+
+mock.module('../src/lib/repo-cache', () => ({
+  isRepoMonitored: async (fullName: string) => monitoredSet.has(fullName.toLowerCase()),
+  getMonitoredRepos: async () => monitoredSet,
+  invalidateMonitoredReposCache: () => {},
+}))
+
 mock.module('@octokit/rest', () => ({
   Octokit: class {
     actions = {
@@ -125,7 +133,7 @@ describe('githubActionsTool', () => {
     )
 
     expect(result).toHaveProperty('error')
-    expect(result.error).toContain('not in the allowed repos list')
+    expect(result.error).toContain('not in the monitored repos list')
     expect(listJobsCalls).toHaveLength(0)
   })
 

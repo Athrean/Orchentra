@@ -44,14 +44,57 @@ mock.module('../src/db/client', () => ({
         }),
       }),
     }),
+    update: () => ({
+      set: () => ({ where: () => Promise.resolve() }),
+    }),
+    query: {
+      incidents: {
+        findFirst: async () => null,
+      },
+    },
   },
-  incidents: { workflowRunId: 'workflow_run_id' },
+  incidents: { workflowRunId: 'workflow_run_id', id: 'id' },
+  toolCalls: {},
+  resolvedPatterns: {},
+  users: {},
+  sessions: {},
+  apiKeys: {},
+  monitoredRepos: {},
+}))
+
+mock.module('../src/lib/repo-cache', () => ({
+  isRepoMonitored: async () => true,
+  getMonitoredRepos: async () => new Set(['my-org/api']),
+  invalidateMonitoredReposCache: () => {},
+}))
+
+// Provide complete mock of slack/message with ALL exported functions.
+// Bun's mock.module is global — an incomplete mock here would break slack-message.test.ts
+// which imports `updateSlackWithBrief` from the same module.
+const slackPostedMessages: { channel: string; text: string }[] = []
+const slackUpdatedMessages: { channel: string; ts: string; text: string }[] = []
+
+mock.module('../src/slack/client', () => ({
+  slack: {
+    chat: {
+      postMessage: async (opts: { channel: string; text: string }) => {
+        slackPostedMessages.push(opts)
+        return { ok: true, ts: '1234567890.123456' }
+      },
+      update: async (opts: { channel: string; ts: string; text: string }) => {
+        slackUpdatedMessages.push(opts)
+        return { ok: true }
+      },
+    },
+  },
 }))
 
 mock.module('../src/slack/message', () => ({
   postInitialSlackMessage: async (incident: { id: string }) => {
     slackCalls.push(incident.id)
   },
+  updateSlackWithBrief: async (_id: string, _brief: unknown) => {},
+  postThreadReply: async (_id: string, _text: string) => {},
 }))
 
 mock.module('../src/agent/runner', () => ({
@@ -120,6 +163,8 @@ beforeEach(() => {
   insertedIncidents = []
   slackCalls = []
   agentCalls = []
+  slackPostedMessages.length = 0
+  slackUpdatedMessages.length = 0
   simulateDuplicate = false
 })
 

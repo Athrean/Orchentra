@@ -59,8 +59,15 @@ mock.module('../src/db/client', () => ({
     },
   },
   incidents: { id: 'id' },
+  toolCalls: {},
+  resolvedPatterns: {},
+  users: {},
+  sessions: {},
+  apiKeys: {},
+  monitoredRepos: {},
 }))
 
+// Import real module — mocked dependencies will be used
 const { postInitialSlackMessage, updateSlackWithBrief } = await import('../src/slack/message')
 
 const mockIncident = {

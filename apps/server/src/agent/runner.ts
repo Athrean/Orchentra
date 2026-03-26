@@ -88,6 +88,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       messages: investigationMessages,
     })
 
+    // Step 3: Persist results
     await db
       .update(incidents)
       .set({
