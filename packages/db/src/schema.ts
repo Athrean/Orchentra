@@ -1,4 +1,14 @@
-import { pgTable, text, integer, bigint, doublePrecision, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  text,
+  integer,
+  bigint,
+  doublePrecision,
+  timestamp,
+  jsonb,
+  uniqueIndex,
+  index,
+} from 'drizzle-orm/pg-core'
 
 export const incidents = pgTable(
   'incidents',
@@ -21,6 +31,12 @@ export const incidents = pgTable(
     // Slack
     slackChannel: text('slack_channel'),
     slackMessageTs: text('slack_message_ts'),
+
+    // Actions
+    githubIssueUrl: text('github_issue_url'),
+    githubPrUrl: text('github_pr_url'),
+    snoozedUntil: timestamp('snoozed_until', { withTimezone: true }),
+    escalatedAt: timestamp('escalated_at', { withTimezone: true }),
 
     // Timing
     triggeredAt: timestamp('triggered_at', { withTimezone: true }),
@@ -48,8 +64,26 @@ export const resolvedPatterns = pgTable('resolved_patterns', {
   embedding: text('embedding'),
   pattern: text('pattern'),
   resolution: text('resolution'),
+  failureType: text('failure_type'),
+  usageCount: integer('usage_count').notNull().default(0),
+  lastMatchedAt: timestamp('last_matched_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const incidentActions = pgTable(
+  'incident_actions',
+  {
+    id: text('id').primaryKey(),
+    incidentId: text('incident_id')
+      .notNull()
+      .references(() => incidents.id),
+    actionType: text('action_type').notNull(), // rerun | create_issue | create_pr | dismiss | snooze | escalate | resolve
+    performedBy: text('performed_by').references(() => users.id),
+    metadata: jsonb('metadata'), // action-specific data (URLs, durations, error messages)
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('incident_actions_incident_id_idx').on(table.incidentId)],
+)
 
 // --- Auth & product foundation tables ---
 

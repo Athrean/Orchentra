@@ -16,3 +16,6 @@ orchentra.yml
 # IDE
 .vscode/
 .idea/
+
+# Docs (superpowers specs/plans)
+docs/superpowers/
