@@ -60,10 +60,15 @@ export const ToolCallSchema = z.object({
   createdAt: z.coerce.date(),
 })
 
-export const UpdateIncidentStatusSchema = z.object({
-  status: IncidentStatusSchema.extract(['resolved', 'snoozed', 'dismissed', 'escalated']),
-  snoozedUntil: z.coerce.date().optional(),
-})
+export const UpdateIncidentStatusSchema = z
+  .object({
+    status: IncidentStatusSchema.extract(['resolved', 'snoozed', 'dismissed']),
+    snoozedUntil: z.coerce.date().optional(),
+  })
+  .refine((data) => data.status !== 'snoozed' || data.snoozedUntil !== undefined, {
+    message: 'snoozedUntil is required when status is snoozed',
+    path: ['snoozedUntil'],
+  })
 
 export type UpdateIncidentStatusRequest = z.infer<typeof UpdateIncidentStatusSchema>
 

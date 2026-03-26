@@ -108,7 +108,7 @@ apiRouter.patch('/incidents/:id/status', async (c) => {
   const result = await updateIncidentStatus(id, parsed.data.status, user?.id ?? null, parsed.data.snoozedUntil)
 
   if (!result.success) {
-    return c.json({ error: result.error }, 400)
+    return c.json({ error: result.error }, result.httpStatus ?? 400)
   }
   return c.json({ id, ...result.data })
 })
