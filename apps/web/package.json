@@ -11,9 +11,12 @@
   "dependencies": {
     "@orchentra/core": "workspace:*",
     "@orchentra/db": "workspace:*",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.6.0",
     "next": "^15.2.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@orchentra/eslint-config": "workspace:*",
