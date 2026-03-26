@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 export function middleware(request: NextRequest) {
   const session = request.cookies.get('orchentra_session')
 
-  if (!session) {
+  if (!session?.value) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
