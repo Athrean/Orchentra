@@ -390,6 +390,13 @@ describe('updateIncidentStatus', () => {
     const result = await updateIncidentStatus('nope', 'resolved', null)
     expect(result.success).toBe(false)
     expect(result.error).toBe('Incident not found')
+    expect(result.httpStatus).toBe(404)
+  })
+
+  test('rejects invalid status values', async () => {
+    const result = await updateIncidentStatus('inc-001', 'escalated', null)
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Invalid status')
   })
 })
 

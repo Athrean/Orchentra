@@ -10,25 +10,36 @@ streamRouter.get('/incidents/stream', async (c) => {
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     start(controller): void {
-      const send = (data: string): void => {
-        controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+      let closed = false
+
+      const cleanup = (): void => {
+        closed = true
+        clearInterval(heartbeat)
+        incidentEvents.off('*', listener)
+      }
+
+      const safeSend = (chunk: Uint8Array): void => {
+        if (closed) return
+        try {
+          controller.enqueue(chunk)
+        } catch {
+          cleanup()
+        }
       }
 
       const heartbeat = setInterval((): void => {
-        controller.enqueue(encoder.encode(`: heartbeat\n\n`))
+        safeSend(encoder.encode(`: heartbeat\n\n`))
       }, 30_000)
 
       const listener = (event: IncidentEvent): void => {
         if (repo && event.repo !== repo) return
-        send(JSON.stringify(event))
+        safeSend(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
       }
 
       incidentEvents.on('*', listener)
 
-      // Cleanup when client disconnects
       c.req.raw.signal.addEventListener('abort', () => {
-        clearInterval(heartbeat)
-        incidentEvents.off('*', listener)
+        cleanup()
       })
     },
   })
