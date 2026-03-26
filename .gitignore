@@ -19,3 +19,7 @@ orchentra.yml
 
 # Docs (superpowers specs/plans)
 docs/superpowers/
+
+# Claude Code plugins/skills (local only)
+.claude-plugins/
+.claude/plugins/
