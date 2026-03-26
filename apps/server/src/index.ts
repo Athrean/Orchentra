@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
+import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
 import { runMigrations } from './db/client'
 import { seedMonitoredRepos } from './lib/seed'
@@ -21,6 +22,13 @@ await seedMonitoredRepos()
 const app = new Hono()
 
 app.use('*', logger())
+app.use(
+  '*',
+  cors({
+    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    credentials: true,
+  }),
+)
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }))
