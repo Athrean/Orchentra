@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   Loader2,
   AlertTriangle,
@@ -14,40 +14,26 @@ import {
   GitBranch,
   Zap,
   X,
+  RotateCcw,
+  FileText,
+  GitPullRequest,
+  Bell,
+  BellOff,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { api } from '../lib/api'
 import { DashboardLayout } from './DashboardLayout'
-
-interface Incident {
-  id: string
-  repo: string
-  branch: string
-  commit: string
-  workflowName: string
-  workflowRunId: number | null
-  failedStep: string | null
-  status: string
-  confidence: number | null
-  rootCause: string | null
-  triggeredAt: string | null
-  createdAt: string
-}
-
-interface IncidentFull extends Incident {
-  briefJson: string | null
-  suggestedFix: string | null
-  resolvedAt: string | null
-  mttrSeconds: number | null
-}
-
-interface ToolCall {
-  id: string
-  integration: string
-  round: number
-  durationMs: number | null
-  createdAt: string
-}
+import {
+  useIncidents,
+  useIncidentDetail,
+  useIncidentSSE,
+  useRerunWorkflow,
+  useCreateIssue,
+  useCreateFixPR,
+  useEscalateIncident,
+  useSnoozeIncident,
+  useDismissIncident,
+  useResolveIncident,
+} from '../lib/hooks'
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; Icon: React.ElementType }> = {
   investigating: { label: 'Investigating', color: 'text-amber-400', bg: 'bg-amber-400/10', Icon: Clock },
@@ -56,6 +42,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; Ico
   resolved: { label: 'Resolved', color: 'text-emerald-400', bg: 'bg-emerald-400/10', Icon: CheckCircle2 },
   snoozed: { label: 'Snoozed', color: 'text-gray-400', bg: 'bg-gray-400/10', Icon: Pause },
   dismissed: { label: 'Dismissed', color: 'text-gray-500', bg: 'bg-gray-500/10', Icon: XCircle },
+  escalated: { label: 'Escalated', color: 'text-red-400', bg: 'bg-red-400/10', Icon: Bell },
   error: { label: 'Error', color: 'text-red-400', bg: 'bg-red-400/10', Icon: AlertTriangle },
 }
 
@@ -77,66 +64,14 @@ function fmtDuration(sec: number): string {
 }
 
 export function IncidentsDashboard({ repo }: { repo: string }) {
-  const [incidents, setIncidents] = useState<Incident[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, error } = useIncidents(repo)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detail, setDetail] = useState<{
-    incident: IncidentFull
-    toolCalls: ToolCall[]
-  } | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [detailError, setDetailError] = useState(false)
 
-  useEffect(() => {
-    api<{ incidents: Incident[]; total: number }>(`/api/incidents?repo=${encodeURIComponent(repo)}`)
-      .then((d) => {
-        setIncidents(d.incidents)
-        setTotal(d.total)
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load'))
-      .finally(() => setLoading(false))
-  }, [repo])
+  // SSE for real-time updates — invalidates queries automatically
+  useIncidentSSE(repo)
 
-  async function selectIncident(id: string) {
-    if (selectedId === id) {
-      setSelectedId(null)
-      setDetail(null)
-      return
-    }
-    setSelectedId(id)
-    setDetailLoading(true)
-    setDetailError(false)
-    try {
-      const data = await api<{
-        incident: IncidentFull
-        toolCalls: ToolCall[]
-      }>(`/api/incidents/${id}`)
-      setDetail(data)
-    } catch {
-      setDetail(null)
-      setDetailError(true)
-    } finally {
-      setDetailLoading(false)
-    }
-  }
-
-  async function updateStatus(id: string, status: string) {
-    try {
-      await api(`/api/incidents/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      })
-      setIncidents((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)))
-      if (detail?.incident.id === id) {
-        setDetail((d) => (d ? { ...d, incident: { ...d.incident, status } } : null))
-      }
-    } catch {
-      setError('Failed to update status')
-    }
-  }
+  const incidents = data?.incidents ?? []
+  const total = data?.total ?? 0
 
   // Stats for right panel when nothing selected
   const investigating = incidents.filter((i) => i.status === 'investigating').length
@@ -144,25 +79,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   const errors = incidents.filter((i) => i.status === 'error').length
 
   const rightPanel = selectedId ? (
-    // Incident detail panel
-    detailLoading ? (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
-      </div>
-    ) : detailError || !detail ? (
-      <div className="flex-1 flex items-center justify-center px-4">
-        <p className="text-sm text-red-400 text-center">Failed to load incident details.</p>
-      </div>
-    ) : (
-      <DetailPanel
-        detail={detail}
-        onClose={() => {
-          setSelectedId(null)
-          setDetail(null)
-        }}
-        onUpdateStatus={updateStatus}
-      />
-    )
+    <DetailPanel key={selectedId} incidentId={selectedId} repo={repo} onClose={() => setSelectedId(null)} />
   ) : (
     // Stats overview
     <div className="flex flex-col gap-2 p-4 flex-1">
@@ -181,7 +98,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   return (
     <DashboardLayout repo={repo} rightPanel={rightPanel}>
       {/* Main content: incidents list */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
         </div>
@@ -189,7 +106,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-400">{error}</p>
+            <p className="text-sm text-gray-400">{error instanceof Error ? error.message : 'Failed to load'}</p>
           </div>
         </div>
       ) : incidents.length === 0 ? (
@@ -225,7 +142,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
               return (
                 <button
                   key={inc.id}
-                  onClick={() => selectIncident(inc.id)}
+                  onClick={() => setSelectedId(selected ? null : inc.id)}
                   className={cn(
                     'w-full text-left px-6 py-4 border-b border-white/5 transition-colors hover:bg-white/3',
                     selected && 'bg-white/5 border-l-2 border-l-[#FF4500]',
@@ -275,17 +192,44 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
 
 /* ---------- Detail Panel ---------- */
 
-function DetailPanel({
-  detail,
-  onClose,
-  onUpdateStatus,
-}: {
-  detail: { incident: IncidentFull; toolCalls: ToolCall[] }
-  onClose: () => void
-  onUpdateStatus: (id: string, status: string) => void
-}) {
+function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: string; onClose: () => void }) {
+  const { data: detail, isLoading, error } = useIncidentDetail(incidentId)
+
+  const rerun = useRerunWorkflow(repo)
+  const createIssue = useCreateIssue(repo)
+  const createFixPR = useCreateFixPR(repo)
+  const escalate = useEscalateIncident(repo)
+  const snooze = useSnoozeIncident(repo)
+  const dismiss = useDismissIncident(repo)
+  const resolve = useResolveIncident(repo)
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+      </div>
+    )
+  }
+
+  if (error || !detail) {
+    return (
+      <div className="flex-1 flex items-center justify-center px-4">
+        <p className="text-sm text-red-400 text-center">Failed to load incident details.</p>
+      </div>
+    )
+  }
+
   const inc = detail.incident
   const s = STATUS_MAP[inc.status] ?? STATUS_MAP.error
+  const anyActionLoading =
+    rerun.isPending ||
+    createIssue.isPending ||
+    createFixPR.isPending ||
+    escalate.isPending ||
+    snooze.isPending ||
+    dismiss.isPending ||
+    resolve.isPending
+  const canAct = inc.status === 'brief_ready' || inc.status === 'error'
 
   return (
     <div className="flex flex-col h-full">
@@ -302,30 +246,131 @@ function DetailPanel({
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {/* Status + actions */}
+        {/* Status */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className={cn('flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full', s.bg, s.color)}>
             <s.Icon className="w-3 h-3" />
             {s.label}
           </span>
-          <div className="flex-1" />
-          {inc.status !== 'resolved' && (
+        </div>
+
+        {/* Action Buttons */}
+        {canAct && (
+          <Section title="Actions">
+            <div className="flex flex-wrap gap-2">
+              {inc.workflowRunId && (
+                <ActionButton
+                  icon={<RotateCcw className="w-3 h-3" />}
+                  label="Re-run"
+                  loading={rerun.isPending}
+                  disabled={anyActionLoading}
+                  onClick={() => rerun.mutate(inc.id)}
+                />
+              )}
+              <ActionButton
+                icon={<FileText className="w-3 h-3" />}
+                label="Create Issue"
+                loading={createIssue.isPending}
+                disabled={anyActionLoading}
+                onClick={() => createIssue.mutate(inc.id)}
+              />
+              {inc.suggestedFix && (
+                <ActionButton
+                  icon={<GitPullRequest className="w-3 h-3" />}
+                  label="Fix PR"
+                  loading={createFixPR.isPending}
+                  disabled={anyActionLoading}
+                  onClick={() => createFixPR.mutate(inc.id)}
+                />
+              )}
+              <ActionButton
+                icon={<Bell className="w-3 h-3" />}
+                label="Escalate"
+                loading={escalate.isPending}
+                disabled={anyActionLoading}
+                variant="danger"
+                onClick={() => escalate.mutate(inc.id)}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <ActionButton
+                icon={<BellOff className="w-3 h-3" />}
+                label="Snooze 1h"
+                loading={snooze.isPending && snooze.variables?.hours === 1}
+                disabled={anyActionLoading}
+                variant="muted"
+                onClick={() => snooze.mutate({ incidentId: inc.id, hours: 1 })}
+              />
+              <ActionButton
+                icon={<BellOff className="w-3 h-3" />}
+                label="Snooze 4h"
+                loading={snooze.isPending && snooze.variables?.hours === 4}
+                disabled={anyActionLoading}
+                variant="muted"
+                onClick={() => snooze.mutate({ incidentId: inc.id, hours: 4 })}
+              />
+              <ActionButton
+                icon={<XCircle className="w-3 h-3" />}
+                label="Dismiss"
+                loading={dismiss.isPending}
+                disabled={anyActionLoading}
+                variant="muted"
+                onClick={() => dismiss.mutate(inc.id)}
+              />
+            </div>
+          </Section>
+        )}
+
+        {/* Resolve / Dismiss for active incidents */}
+        {inc.status !== 'resolved' && inc.status !== 'dismissed' && !canAct && (
+          <div className="flex gap-2">
             <button
-              onClick={() => onUpdateStatus(inc.id, 'resolved')}
+              onClick={() => resolve.mutate(inc.id)}
+              disabled={resolve.isPending}
               className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
             >
-              Resolve
+              {resolve.isPending ? 'Resolving...' : 'Resolve'}
             </button>
-          )}
-          {inc.status !== 'dismissed' && inc.status !== 'resolved' && (
             <button
-              onClick={() => onUpdateStatus(inc.id, 'dismissed')}
+              onClick={() => dismiss.mutate(inc.id)}
+              disabled={dismiss.isPending}
               className="text-xs text-gray-500 hover:text-gray-300 font-medium transition-colors"
             >
-              Dismiss
+              {dismiss.isPending ? 'Dismissing...' : 'Dismiss'}
             </button>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Mutation errors */}
+        {(rerun.error ||
+          createIssue.error ||
+          createFixPR.error ||
+          escalate.error ||
+          snooze.error ||
+          dismiss.error ||
+          resolve.error) && (
+          <div className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">
+            Action failed. Please try again.
+          </div>
+        )}
+
+        {/* Mutation success feedback */}
+        {createIssue.data && (
+          <div className="text-xs text-emerald-400 bg-emerald-400/10 rounded-lg px-3 py-2">
+            {createIssue.data.issueNumber ? 'Issue created: ' : 'Issue already exists: '}
+            <a href={createIssue.data.issueUrl} target="_blank" rel="noopener noreferrer" className="underline">
+              {createIssue.data.issueNumber ? `#${createIssue.data.issueNumber}` : 'View issue'}
+            </a>
+          </div>
+        )}
+        {createFixPR.data && (
+          <div className="text-xs text-emerald-400 bg-emerald-400/10 rounded-lg px-3 py-2">
+            {createFixPR.data.prNumber ? 'PR created: ' : 'PR already exists: '}
+            <a href={createFixPR.data.prUrl} target="_blank" rel="noopener noreferrer" className="underline">
+              {createFixPR.data.prNumber ? `#${createFixPR.data.prNumber}` : 'View PR'}
+            </a>
+          </div>
+        )}
 
         {/* Root cause */}
         {inc.rootCause && (
@@ -349,7 +394,7 @@ function DetailPanel({
             <MetaCard label="Branch" value={inc.branch} mono />
             <MetaCard label="Commit" value={inc.commit.slice(0, 12)} mono />
             {inc.confidence !== null && <MetaCard label="Confidence" value={`${Math.round(inc.confidence * 100)}%`} />}
-            {inc.mttrSeconds !== null && <MetaCard label="MTTR" value={fmtDuration(inc.mttrSeconds)} />}
+            {inc.mttrSeconds != null && <MetaCard label="MTTR" value={fmtDuration(inc.mttrSeconds)} />}
           </div>
         </Section>
 
@@ -377,6 +422,43 @@ function DetailPanel({
 }
 
 /* ---------- Shared small components ---------- */
+
+function ActionButton({
+  icon,
+  label,
+  loading,
+  disabled,
+  variant = 'default',
+  onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  loading: boolean
+  disabled: boolean
+  variant?: 'default' | 'danger' | 'muted'
+  onClick: () => void
+}) {
+  const styles = {
+    default: 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/5',
+    danger: 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20',
+    muted: 'bg-white/3 hover:bg-white/5 text-gray-500 border-white/3',
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors',
+        styles[variant],
+        disabled && 'opacity-50 cursor-not-allowed',
+      )}
+    >
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : icon}
+      {label}
+    </button>
+  )
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
