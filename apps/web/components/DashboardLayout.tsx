@@ -32,7 +32,7 @@ export function DashboardLayout({
   }, [])
 
   async function handleLogout() {
-    await api('/auth/logout', { method: 'POST' })
+    await api('/auth/logout', { method: 'POST' }).catch(() => {})
     router.push('/')
   }
 
