@@ -219,7 +219,7 @@ describe('rerunWorkflow', () => {
     expect(apiCall!.args.run_id).toBe(12345)
 
     // Updated status
-    expect(updatedFields[0]?.status).toBe('investigating')
+    expect(updatedFields[0]?.status).toBe('fixing')
 
     // Recorded action
     expect(insertedActions.length).toBe(1)

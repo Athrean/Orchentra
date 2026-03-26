@@ -205,7 +205,7 @@ interface FixingContext {
 export function fixingBlocks(incident: IncidentContext, brief: IncidentBrief, fixing: FixingContext): SlackBlock[] {
   const link = dashboardUrl(incident.repo, incident.id)
   const badge = confidenceBadge(brief.confidence)
-  const actorLine = fixing.actor ? ` by user` : ''
+  const actorLine = fixing.actor ? ` by ${fixing.actor}` : ''
 
   return [
     {
@@ -248,15 +248,15 @@ interface ResolvedContext {
 
 function formatMttr(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
   const h = Math.floor(seconds / 3600)
-  const m = Math.round((seconds % 3600) / 60)
+  const m = Math.floor((seconds % 3600) / 60)
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
 export function resolvedBlocks(incident: IncidentContext, resolved: ResolvedContext): SlackBlock[] {
   const link = dashboardUrl(incident.repo, incident.id)
-  const mttrText = resolved.mttrSeconds ? formatMttr(resolved.mttrSeconds) : 'N/A'
+  const mttrText = resolved.mttrSeconds != null ? formatMttr(resolved.mttrSeconds) : 'N/A'
 
   return [
     {
@@ -280,6 +280,6 @@ export function resolvedBlocks(incident: IncidentContext, resolved: ResolvedCont
 }
 
 export function resolvedFallback(incident: IncidentContext, resolved: ResolvedContext): string {
-  const mttr = resolved.mttrSeconds ? ` (MTTR: ${formatMttr(resolved.mttrSeconds)})` : ''
+  const mttr = resolved.mttrSeconds != null ? ` (MTTR: ${formatMttr(resolved.mttrSeconds)})` : ''
   return `✅ Resolved ${incident.repo} — ${resolved.method}${mttr}`
 }
