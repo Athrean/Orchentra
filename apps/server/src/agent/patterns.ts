@@ -49,10 +49,6 @@ function buildResolutionText(incident: { suggestedFix: string | null; briefJson:
   return incident.suggestedFix ?? brief?.suggestedFix ?? 'No resolution recorded'
 }
 
-function buildEmbeddingText(patternText: string, resolutionText: string): string {
-  return `${patternText}\nresolution: ${resolutionText}`
-}
-
 export async function saveResolvedPattern(incidentId: string): Promise<void> {
   const incident = await db.query.incidents.findFirst({
     where: eq(incidents.id, incidentId),
@@ -72,7 +68,7 @@ export async function saveResolvedPattern(incidentId: string): Promise<void> {
 
   const { embedding } = await embed({
     model: createEmbeddingModel(),
-    value: buildEmbeddingText(patternText, resolutionText),
+    value: patternText,
   })
 
   await db.insert(resolvedPatterns).values({
@@ -158,10 +154,6 @@ export function formatPatternContext(matches: PatternMatch[]): string {
     lines.push(`**Failure type:** ${match.failureType ?? 'unknown'}`)
     lines.push('')
   }
-
-  lines.push(
-    'Use these past resolutions to inform your analysis. If the current failure matches a past pattern, reference the source incident ID and adjust your confidence upward.',
-  )
 
   return lines.join('\n')
 }

@@ -124,7 +124,6 @@ describe('saveResolvedPattern', () => {
     expect(embedCalls[0].value).toContain('workflow: CI / Build')
     expect(embedCalls[0].value).toContain('root_cause: TypeError in login.ts')
     expect(embedCalls[0].value).toContain('failure_type: code_bug')
-    expect(embedCalls[0].value).toContain('resolution: Fix line 42')
 
     expect(dbInserts.length).toBe(1)
     expect(dbInserts[0].incidentId).toBe('inc-1')
@@ -412,7 +411,7 @@ describe('formatPatternContext', () => {
     expect(result).toContain('fix 2')
   })
 
-  test('includes instruction to reference past resolutions', () => {
+  test('does not embed behavioral instructions in context data', () => {
     const result = formatPatternContext([
       {
         id: 'p1',
@@ -424,7 +423,7 @@ describe('formatPatternContext', () => {
       },
     ])
 
-    expect(result).toContain('past resolutions')
-    expect(result).toContain('confidence')
+    expect(result).not.toContain('Use these past resolutions')
+    expect(result).toContain('## Similar Past Incidents')
   })
 })
