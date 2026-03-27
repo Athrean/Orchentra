@@ -37,6 +37,7 @@ mock.module('../src/db/client', () => ({
   },
   incidents: { id: 'id' },
   toolCalls: {},
+  resolvedPatterns: { id: 'id', incidentId: 'incident_id' },
 }))
 
 mock.module('../src/slack/message', () => ({
@@ -68,6 +69,12 @@ mock.module('ai', () => ({
 
 mock.module('../src/agent/llm', () => ({
   createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
+  createEmbeddingModel: () => ({ modelId: 'text-embedding-3-small' }),
+}))
+
+mock.module('../src/agent/patterns', () => ({
+  findSimilarPatterns: async () => [],
+  formatPatternContext: () => '',
 }))
 
 mock.module('../src/agent/tools/github-actions', () => ({

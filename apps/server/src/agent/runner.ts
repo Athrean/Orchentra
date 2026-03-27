@@ -6,6 +6,7 @@ import { createModel } from './llm'
 import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
 import { githubActionsTool } from './tools/github-actions'
 import { updateSlackWithBrief, postThreadReply } from '../slack/message'
+import { findSimilarPatterns, formatPatternContext } from './patterns'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -78,6 +79,19 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
     if (result.text) {
       investigationMessages.push({ role: 'assistant', content: result.text })
+    }
+
+    // Pattern memory: find similar past incidents to inform synthesis
+    try {
+      const incidentText = formatIncidentContext(incident) + '\n' + (result.text ?? '')
+      const matches = await findSimilarPatterns(incidentText)
+      const patternContext = formatPatternContext(matches)
+      if (patternContext) {
+        investigationMessages.push({ role: 'user', content: patternContext })
+        console.log(`Incident ${incident.id}: found ${matches.length} similar pattern(s)`)
+      }
+    } catch (err) {
+      console.error(`Pattern lookup failed for ${incident.id}:`, err)
     }
 
     // Phase B: Synthesis — generateObject for structured brief
