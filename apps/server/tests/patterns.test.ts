@@ -21,6 +21,7 @@ mock.module('../src/config', () => ({
 
 mock.module('drizzle-orm', () => ({
   eq: (col: unknown, val: unknown) => ({ col, val }),
+  sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ __sql: true, strings, values }),
 }))
 
 mock.module('../src/db/client', () => ({
@@ -123,6 +124,7 @@ describe('saveResolvedPattern', () => {
     expect(embedCalls[0].value).toContain('workflow: CI / Build')
     expect(embedCalls[0].value).toContain('root_cause: TypeError in login.ts')
     expect(embedCalls[0].value).toContain('failure_type: code_bug')
+    expect(embedCalls[0].value).toContain('resolution: Fix line 42')
 
     expect(dbInserts.length).toBe(1)
     expect(dbInserts[0].incidentId).toBe('inc-1')
@@ -232,13 +234,11 @@ describe('findSimilarPatterns', () => {
       usageCount: 0,
     })
 
-    // Query with text that produces a different embedding
-    const matches = await findSimilarPatterns('different-workflow and totally unrelated')
+    // Query text WITHOUT "different-workflow" so embed mock returns fakeEmbedding1,
+    // which has low cosine similarity against fakeEmbeddingDifferent
+    const matches = await findSimilarPatterns('completely unrelated workflow with no match')
 
-    // fakeEmbeddingDifferent compared with fakeEmbeddingDifferent should be 1.0
-    // but the embed mock returns fakeEmbeddingDifferent for "different-workflow" text
-    // so similarity is 1.0 — this will match. Let's verify it's returned.
-    expect(matches.length).toBe(1)
+    expect(matches.length).toBe(0)
   })
 
   test('limits results to specified count', async () => {
@@ -284,9 +284,8 @@ describe('findSimilarPatterns', () => {
     )
 
     const matches = await findSimilarPatterns('some failure text')
-    if (matches.length >= 2) {
-      expect(matches[0].similarity).toBeGreaterThanOrEqual(matches[1].similarity)
-    }
+    expect(matches.length).toBe(2)
+    expect(matches[0].similarity).toBeGreaterThanOrEqual(matches[1].similarity)
   })
 
   test('updates usageCount and lastMatchedAt for matched patterns', async () => {
@@ -303,7 +302,7 @@ describe('findSimilarPatterns', () => {
     await findSimilarPatterns('CI failure crash')
 
     expect(dbUpdates.length).toBe(1)
-    expect(dbUpdates[0].values.usageCount).toBe(4)
+    expect((dbUpdates[0].values.usageCount as { __sql: boolean }).__sql).toBe(true)
     expect(dbUpdates[0].values.lastMatchedAt).toBeInstanceOf(Date)
   })
 
@@ -381,6 +380,7 @@ describe('formatPatternContext', () => {
 
     expect(result).toContain('## Similar Past Incidents')
     expect(result).toContain('92% similar')
+    expect(result).toContain('**Source incident ID:** inc-1')
     expect(result).toContain('workflow: CI\nroot_cause: TypeError')
     expect(result).toContain('Fix the import')
     expect(result).toContain('code_bug')
