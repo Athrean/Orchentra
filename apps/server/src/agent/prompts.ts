@@ -26,5 +26,12 @@ Produce a classification with:
 - rootCause: specific root cause with evidence (quote log lines if available)
 - suggestedFix: an actionable fix — a command, file change, or config value
 - confidence: 0.0-1.0 based on evidence quality
+- similarIncidentId: if a similar past incident was provided and relevant, include its incident ID
 
-If logs were available, your confidence should be higher. If only metadata was available, keep confidence below 0.6.`
+If logs were available, your confidence should be higher. If only metadata was available, keep confidence below 0.6.
+
+When similar past incidents are provided, use them to:
+- Validate your root cause analysis against known patterns
+- Suggest the same fix if the failure signature matches closely
+- Increase confidence when a past pattern strongly aligns with current evidence
+- Set similarIncidentId to the most relevant past incident's ID`
