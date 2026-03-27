@@ -96,6 +96,8 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
             '',
             patternContext,
             '</reference_material>',
+            '',
+            'Use these past resolutions to inform your analysis. If the current failure matches a past pattern, reference the source incident ID and adjust your confidence upward.',
           ].join('\n'),
         })
         console.log(`Incident ${incident.id}: found ${matches.length} similar pattern(s)`)
