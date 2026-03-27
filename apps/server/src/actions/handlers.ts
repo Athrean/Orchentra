@@ -4,6 +4,7 @@ import { config } from '../config'
 import { db, incidents, incidentActions } from '../db/client'
 import { incidentEvents } from '../events'
 import { postThreadReply, updateSlackToFixing, updateSlackToResolved } from '../slack/message'
+import { saveResolvedPattern } from '../agent/patterns'
 import type { IncidentBrief } from '@orchentra/core'
 
 const octokit = new Octokit({ auth: config.github.token })
@@ -355,6 +356,9 @@ export async function updateIncidentStatus(
   if (status === 'resolved') {
     const mttr = typeof updates.mttrSeconds === 'number' ? updates.mttrSeconds : null
     await updateSlackToResolved(incidentId, 'Manually resolved', mttr)
+    saveResolvedPattern(incidentId).catch((err) =>
+      console.error(`Failed to save resolved pattern for ${incidentId}:`, err),
+    )
   }
 
   incidentEvents.emitIncidentEvent({
