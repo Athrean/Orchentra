@@ -1,6 +1,6 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import type { LanguageModelV1 } from 'ai'
+import type { EmbeddingModelV1, LanguageModelV1 } from 'ai'
 import { config } from '../config'
 
 /**
@@ -24,4 +24,23 @@ export function createModel(modelOverride?: string): LanguageModelV1 {
 
   const provider = createOpenRouter({ apiKey })
   return provider(modelId)
+}
+
+/**
+ * Creates an embedding model via OpenAI-compatible endpoint.
+ *
+ * - With base_url → custom endpoint (zai proxy, etc.)
+ * - No base_url → OpenRouter (supports OpenAI embedding models at same pricing)
+ */
+export function createEmbeddingModel(modelOverride?: string): EmbeddingModelV1<string> {
+  const { api_key: apiKey, embedding_model: embeddingModel, base_url: baseUrl } = config.llm
+  const modelId = modelOverride ?? embeddingModel
+
+  const provider = createOpenAICompatible({
+    name: 'embeddings',
+    apiKey,
+    baseURL: baseUrl ?? 'https://openrouter.ai/api/v1',
+  })
+
+  return provider.textEmbeddingModel(modelId)
 }

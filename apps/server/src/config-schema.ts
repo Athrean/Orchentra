@@ -19,6 +19,7 @@ export const ConfigSchema = z.object({
   llm: z.object({
     api_key: z.string().min(1, 'llm.api_key cannot be empty'),
     model: z.string().default('anthropic/claude-sonnet-4-5'),
+    embedding_model: z.string().default('text-embedding-3-small'),
     base_url: z.string().optional(),
   }),
   integrations: z
