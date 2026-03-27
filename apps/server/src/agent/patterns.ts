@@ -1,5 +1,5 @@
 import { embed, cosineSimilarity } from 'ai'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { db, incidents, resolvedPatterns } from '../db/client'
 import { createEmbeddingModel } from './llm'
 import type { IncidentBrief } from '@orchentra/core'
@@ -16,26 +16,27 @@ interface PatternMatch {
   similarity: number
 }
 
+function parseBrief(briefJson: string | null): IncidentBrief | null {
+  if (!briefJson) return null
+  try {
+    return JSON.parse(briefJson) as IncidentBrief
+  } catch {
+    return null
+  }
+}
+
 function buildPatternText(incident: {
   workflowName: string
   branch: string
   rootCause: string | null
-  suggestedFix: string | null
   briefJson: string | null
 }): string {
-  let brief: IncidentBrief | null = null
-  if (incident.briefJson) {
-    try {
-      brief = JSON.parse(incident.briefJson) as IncidentBrief
-    } catch {
-      // ignore parse errors
-    }
-  }
+  const brief = parseBrief(incident.briefJson)
 
   return [
     `workflow: ${incident.workflowName}`,
     `branch: ${incident.branch}`,
-    `root_cause: ${incident.rootCause ?? 'unknown'}`,
+    `root_cause: ${incident.rootCause ?? brief?.rootCause ?? 'unknown'}`,
     brief?.summary ? `summary: ${brief.summary}` : null,
     brief?.failureType ? `failure_type: ${brief.failureType}` : null,
   ]
@@ -44,16 +45,12 @@ function buildPatternText(incident: {
 }
 
 function buildResolutionText(incident: { suggestedFix: string | null; briefJson: string | null }): string {
-  let brief: IncidentBrief | null = null
-  if (incident.briefJson) {
-    try {
-      brief = JSON.parse(incident.briefJson) as IncidentBrief
-    } catch {
-      // ignore parse errors
-    }
-  }
-
+  const brief = parseBrief(incident.briefJson)
   return incident.suggestedFix ?? brief?.suggestedFix ?? 'No resolution recorded'
+}
+
+function buildEmbeddingText(patternText: string, resolutionText: string): string {
+  return `${patternText}\nresolution: ${resolutionText}`
 }
 
 export async function saveResolvedPattern(incidentId: string): Promise<void> {
@@ -64,7 +61,6 @@ export async function saveResolvedPattern(incidentId: string): Promise<void> {
   if (!incident) return
   if (!incident.rootCause && !incident.briefJson) return
 
-  // Check if pattern already exists for this incident
   const existing = await db.query.resolvedPatterns.findFirst({
     where: eq(resolvedPatterns.incidentId, incidentId),
   })
@@ -72,19 +68,11 @@ export async function saveResolvedPattern(incidentId: string): Promise<void> {
 
   const patternText = buildPatternText(incident)
   const resolutionText = buildResolutionText(incident)
-
-  let brief: IncidentBrief | null = null
-  if (incident.briefJson) {
-    try {
-      brief = JSON.parse(incident.briefJson) as IncidentBrief
-    } catch {
-      // ignore
-    }
-  }
+  const brief = parseBrief(incident.briefJson)
 
   const { embedding } = await embed({
     model: createEmbeddingModel(),
-    value: patternText,
+    value: buildEmbeddingText(patternText, resolutionText),
   })
 
   await db.insert(resolvedPatterns).values({
@@ -141,16 +129,17 @@ export async function findSimilarPatterns(
   scored.sort((a, b) => b.similarity - a.similarity)
   const topMatches = scored.slice(0, limit)
 
-  // Update usage counts for matched patterns
-  for (const match of topMatches) {
-    await db
-      .update(resolvedPatterns)
-      .set({
-        usageCount: (allPatterns.find((p) => p.id === match.id)?.usageCount ?? 0) + 1,
-        lastMatchedAt: new Date(),
-      })
-      .where(eq(resolvedPatterns.id, match.id))
-  }
+  await Promise.all(
+    topMatches.map((match) =>
+      db
+        .update(resolvedPatterns)
+        .set({
+          usageCount: sql`${resolvedPatterns.usageCount} + 1`,
+          lastMatchedAt: new Date(),
+        })
+        .where(eq(resolvedPatterns.id, match.id)),
+    ),
+  )
 
   return topMatches
 }
@@ -163,6 +152,7 @@ export function formatPatternContext(matches: PatternMatch[]): string {
   for (const match of matches) {
     const pct = Math.round(match.similarity * 100)
     lines.push(`### Match (${pct}% similar)`)
+    lines.push(`**Source incident ID:** ${match.incidentId ?? 'unknown'}`)
     lines.push(`**Failure pattern:** ${match.pattern ?? 'unknown'}`)
     lines.push(`**Resolution:** ${match.resolution ?? 'unknown'}`)
     lines.push(`**Failure type:** ${match.failureType ?? 'unknown'}`)
@@ -170,7 +160,7 @@ export function formatPatternContext(matches: PatternMatch[]): string {
   }
 
   lines.push(
-    'Use these past resolutions to inform your analysis. If the current failure matches a past pattern, reference it and adjust your confidence upward.',
+    'Use these past resolutions to inform your analysis. If the current failure matches a past pattern, reference the source incident ID and adjust your confidence upward.',
   )
 
   return lines.join('\n')
