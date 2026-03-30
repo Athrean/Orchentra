@@ -5,6 +5,7 @@ export type IncidentEventType = 'incident:created' | 'incident:updated' | 'incid
 export interface IncidentEvent {
   type: IncidentEventType
   incidentId: string
+  orgId: string
   repo: string
   data?: Record<string, unknown>
 }
