@@ -61,19 +61,10 @@ export async function requireAuth(c: Context, next: Next): Promise<Response | vo
  * Must run after requireAuth. Sets `orgId` in context on success.
  */
 export async function requireOrgMember(c: Context, next: Next): Promise<Response | void> {
-  const user = c.get('user')
-  const orgId = c.req.param('orgId')
-  if (!orgId) return c.json({ error: 'Missing orgId' }, 400)
+  const result = await resolveOrgMembership(c)
+  if (result instanceof Response) return result
 
-  const [membership] = await db
-    .select({ role: orgMembers.role })
-    .from(orgMembers)
-    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, user.id)))
-    .limit(1)
-
-  if (!membership) return c.json({ error: 'Forbidden' }, 403)
-
-  c.set('orgId', orgId)
+  c.set('orgId', result.orgId)
   return next()
 }
 
@@ -82,7 +73,19 @@ export async function requireOrgMember(c: Context, next: Next): Promise<Response
  * Must run after requireAuth. Sets `orgId` in context on success.
  */
 export async function requireOrgAdmin(c: Context, next: Next): Promise<Response | void> {
+  const result = await resolveOrgMembership(c)
+  if (result instanceof Response) return result
+
+  if (result.role !== 'owner' && result.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+
+  c.set('orgId', result.orgId)
+  return next()
+}
+
+async function resolveOrgMembership(c: Context): Promise<{ orgId: string; role: string } | Response> {
   const user = c.get('user')
+  if (!user) return c.json({ error: 'Authentication required' }, 401)
+
   const orgId = c.req.param('orgId')
   if (!orgId) return c.json({ error: 'Missing orgId' }, 400)
 
@@ -93,10 +96,8 @@ export async function requireOrgAdmin(c: Context, next: Next): Promise<Response 
     .limit(1)
 
   if (!membership) return c.json({ error: 'Forbidden' }, 403)
-  if (membership.role !== 'owner' && membership.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
 
-  c.set('orgId', orgId)
-  return next()
+  return { orgId, role: membership.role }
 }
 
 async function resolveApiKeyUser(c: Context): Promise<UserRow | null> {
