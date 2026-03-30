@@ -22,10 +22,15 @@ interface SessionWithUser {
   user: typeof users.$inferSelect
 }
 
-export async function createSession(userId: string): Promise<string> {
+interface SessionMetadata {
+  ipAddress?: string
+  userAgent?: string
+}
+
+export async function createSession(userId: string, metadata: SessionMetadata = {}): Promise<string> {
   const id = generateSessionToken()
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000)
-  await db.insert(sessions).values({ id, userId, expiresAt })
+  await db.insert(sessions).values({ id, userId, expiresAt, ...metadata })
   return id
 }
 
