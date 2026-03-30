@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AlertTriangle, Check, Folder, Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useRouter } from 'next/navigation'
-import { useMe, useAvailableRepos } from '../lib/hooks'
+import { useMe, useAvailableRepos, useMonitorRepo } from '../lib/hooks'
 
 export function OrgSelector() {
   const router = useRouter()
@@ -12,11 +12,15 @@ export function OrgSelector() {
   const user = me?.user
   const { data: repos, isLoading: reposLoading, isError: reposError } = useAvailableRepos()
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null)
+  const monitorRepo = useMonitorRepo()
 
   const loading = userLoading || reposLoading
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!selectedRepo) return
+    // Ensure the repo is monitored (idempotent — server ignores if already exists)
+    // This also triggers the historical backfill for new repos
+    await monitorRepo.mutateAsync(selectedRepo).catch(() => {})
     router.push(`/dashboard/${encodeURIComponent(selectedRepo)}`)
   }
 
@@ -120,15 +124,23 @@ export function OrgSelector() {
 
         <button
           onClick={handleContinue}
-          disabled={!selectedRepo}
+          disabled={!selectedRepo || monitorRepo.isPending}
           className={cn(
             'mt-8 px-5 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 transition-all',
-            selectedRepo
+            selectedRepo && !monitorRepo.isPending
               ? 'bg-[#2EA043] text-white hover:bg-[#2C974B] hover:scale-105 cursor-pointer'
               : 'bg-[#2EA043]/30 text-white/50 cursor-not-allowed',
           )}
         >
-          Continue <span className="text-lg leading-none">&rarr;</span>
+          {monitorRepo.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Setting up...
+            </>
+          ) : (
+            <>
+              Continue <span className="text-lg leading-none">&rarr;</span>
+            </>
+          )}
         </button>
       </main>
     </div>

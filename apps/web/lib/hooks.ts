@@ -97,6 +97,25 @@ function useOrgId(): string | undefined {
   return data?.org?.id ?? undefined
 }
 
+export function useMonitorRepo() {
+  const qc = useQueryClient()
+  const orgId = useOrgId()
+  return useMutation({
+    mutationFn: (repo: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/repos/monitor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo }),
+      })
+    },
+    onSuccess: () => {
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.repos(orgId) })
+    },
+  })
+}
+
 export function useAvailableRepos() {
   const orgId = useOrgId()
   return useQuery({
