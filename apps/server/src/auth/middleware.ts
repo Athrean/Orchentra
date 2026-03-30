@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono'
 import { getCookie, deleteCookie } from 'hono/cookie'
 import { eq, and, gt, isNull, or } from 'drizzle-orm'
-import { db, apiKeys, users } from '../db/client'
+import { db, apiKeys, orgMembers, users } from '../db/client'
 import { validateSession, SESSION_COOKIE_NAME, hashApiKey } from './session'
 import type { UserRow } from '../types'
 
@@ -54,6 +54,49 @@ export async function requireAuth(c: Context, next: Next): Promise<Response | vo
   }
 
   return c.json({ error: 'Authentication required' }, 401)
+}
+
+/**
+ * Require the authenticated user to be a member of the org in `:orgId`.
+ * Must run after requireAuth. Sets `orgId` in context on success.
+ */
+export async function requireOrgMember(c: Context, next: Next): Promise<Response | void> {
+  const user = c.get('user')
+  const orgId = c.req.param('orgId')
+  if (!orgId) return c.json({ error: 'Missing orgId' }, 400)
+
+  const [membership] = await db
+    .select({ role: orgMembers.role })
+    .from(orgMembers)
+    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, user.id)))
+    .limit(1)
+
+  if (!membership) return c.json({ error: 'Forbidden' }, 403)
+
+  c.set('orgId', orgId)
+  return next()
+}
+
+/**
+ * Require the authenticated user to be an owner or admin of the org in `:orgId`.
+ * Must run after requireAuth. Sets `orgId` in context on success.
+ */
+export async function requireOrgAdmin(c: Context, next: Next): Promise<Response | void> {
+  const user = c.get('user')
+  const orgId = c.req.param('orgId')
+  if (!orgId) return c.json({ error: 'Missing orgId' }, 400)
+
+  const [membership] = await db
+    .select({ role: orgMembers.role })
+    .from(orgMembers)
+    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, user.id)))
+    .limit(1)
+
+  if (!membership) return c.json({ error: 'Forbidden' }, 403)
+  if (membership.role !== 'owner' && membership.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+
+  c.set('orgId', orgId)
+  return next()
 }
 
 async function resolveApiKeyUser(c: Context): Promise<UserRow | null> {
