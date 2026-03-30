@@ -15,6 +15,9 @@ export const incidents = pgTable(
   'incidents',
   {
     id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
     repo: text('repo').notNull(),
     branch: text('branch').notNull(),
     commit: text('commit').notNull(),
@@ -46,12 +49,15 @@ export const incidents = pgTable(
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex('incidents_workflow_run_id_idx').on(table.workflowRunId)],
+  (table) => [
+    uniqueIndex('incidents_workflow_run_id_idx').on(table.orgId, table.workflowRunId),
+    index('incidents_org_id_idx').on(table.orgId),
+  ],
 )
 
 export const toolCalls = pgTable('tool_calls', {
   id: text('id').primaryKey(),
-  incidentId: text('incident_id').references(() => incidents.id),
+  incidentId: text('incident_id').references(() => incidents.id, { onDelete: 'cascade' }),
   integration: text('integration').notNull(),
   round: integer('round').notNull(),
   durationMs: integer('duration_ms'),
@@ -61,6 +67,9 @@ export const toolCalls = pgTable('tool_calls', {
 
 export const resolvedPatterns = pgTable('resolved_patterns', {
   id: text('id').primaryKey(),
+  orgId: text('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
   incidentId: text('incident_id').references(() => incidents.id),
   embedding: text('embedding'),
   pattern: text('pattern'),
@@ -77,7 +86,7 @@ export const incidentActions = pgTable(
     id: text('id').primaryKey(),
     incidentId: text('incident_id')
       .notNull()
-      .references(() => incidents.id),
+      .references(() => incidents.id, { onDelete: 'cascade' }),
     actionType: text('action_type').notNull(), // rerun | create_issue | create_pr | dismiss | snooze | escalate | resolve
     performedBy: text('performed_by').references(() => users.id),
     metadata: jsonb('metadata'), // action-specific data (URLs, durations, error messages)
