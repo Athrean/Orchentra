@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { config } from '../config'
-import { db, incidents } from '../db/client'
+import { eq } from 'drizzle-orm'
+import { db, incidents, monitoredRepos } from '../db/client'
 import { runIncidentAgent } from '../agent/runner'
 import { postInitialSlackMessage } from '../slack/message'
 import { isRepoMonitored } from '../lib/repo-cache'
@@ -64,25 +65,35 @@ async function processWorkflowFailure(
 ): Promise<void> {
   if (!(await isRepoMonitored(repo))) return
 
-  const [incident] = await db
-    .insert(incidents)
-    .values({
-      id: crypto.randomUUID(),
-      repo,
-      branch: run.head_branch,
-      commit: run.head_sha,
-      workflowName: run.name,
-      workflowRunId: run.id,
-      status: 'investigating',
-      triggeredAt: new Date(run.created_at),
-    })
-    .onConflictDoNothing({ target: incidents.workflowRunId })
-    .returning()
+  const monitoredRepoRows = await db.query.monitoredRepos.findMany({
+    where: eq(monitoredRepos.repo, repo.toLowerCase()),
+  })
+  if (monitoredRepoRows.length === 0) return
 
-  if (!incident) return // duplicate webhook — already processing
+  await Promise.all(
+    monitoredRepoRows.map(async (monitoredRepo) => {
+      const [incident] = await db
+        .insert(incidents)
+        .values({
+          id: crypto.randomUUID(),
+          orgId: monitoredRepo.orgId,
+          repo,
+          branch: run.head_branch,
+          commit: run.head_sha,
+          workflowName: run.name,
+          workflowRunId: run.id,
+          status: 'investigating',
+          triggeredAt: new Date(run.created_at),
+        })
+        .onConflictDoNothing({ target: [incidents.orgId, incidents.workflowRunId] })
+        .returning()
 
-  console.log(`Incident ${incident.id} — ${repo} / ${run.name}`)
+      if (!incident) return // duplicate webhook for this org — already processing
 
-  await postInitialSlackMessage(incident)
-  await runIncidentAgent(incident)
+      console.log(`Incident ${incident.id} — ${repo} / ${run.name} (org: ${monitoredRepo.orgId})`)
+
+      await postInitialSlackMessage(incident)
+      await runIncidentAgent(incident)
+    }),
+  )
 }

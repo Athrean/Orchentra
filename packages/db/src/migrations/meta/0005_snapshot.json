@@ -1,6 +1,6 @@
 {
-  "id": "38d16bce-24a6-4e42-baa5-28a72d78e7ca",
-  "prevId": "612b7cea-c581-45b1-88bc-6aa4844e9ad0",
+  "id": "173774f3-2b91-4452-9fc5-809aedfbacbf",
+  "prevId": "9aee7300-1b76-4808-a5a7-c433cb1a71a3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -173,7 +173,7 @@
           "tableTo": "incidents",
           "columnsFrom": ["incident_id"],
           "columnsTo": ["id"],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "incident_actions_performed_by_users_id_fk": {
@@ -200,6 +200,12 @@
           "name": "id",
           "type": "text",
           "primaryKey": true,
+          "notNull": true
+        },
+        "org_id": {
+          "name": "org_id",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
         },
         "repo": {
@@ -336,6 +342,12 @@
           "name": "incidents_workflow_run_id_idx",
           "columns": [
             {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
               "expression": "workflow_run_id",
               "isExpression": false,
               "asc": true,
@@ -346,9 +358,34 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "incidents_org_id_idx": {
+          "name": "incidents_org_id_idx",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "incidents_org_id_organizations_id_fk": {
+          "name": "incidents_org_id_organizations_id_fk",
+          "tableFrom": "incidents",
+          "tableTo": "organizations",
+          "columnsFrom": ["org_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -572,6 +609,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "org_id": {
+          "name": "org_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "incident_id": {
           "name": "incident_id",
           "type": "text",
@@ -625,6 +668,15 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "resolved_patterns_org_id_organizations_id_fk": {
+          "name": "resolved_patterns_org_id_organizations_id_fk",
+          "tableFrom": "resolved_patterns",
+          "tableTo": "organizations",
+          "columnsFrom": ["org_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "resolved_patterns_incident_id_incidents_id_fk": {
           "name": "resolved_patterns_incident_id_incidents_id_fk",
           "tableFrom": "resolved_patterns",
@@ -761,7 +813,7 @@
           "tableTo": "incidents",
           "columnsFrom": ["incident_id"],
           "columnsTo": ["id"],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
