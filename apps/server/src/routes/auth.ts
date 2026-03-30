@@ -37,7 +37,9 @@ authRouter.get('/github/callback', async (c) => {
   try {
     const userId = await handleCallback(code)
     await ensureUserOrg(userId)
-    const sessionId = await createSession(userId)
+    const ipAddress = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-real-ip')
+    const userAgent = c.req.header('user-agent')
+    const sessionId = await createSession(userId, { ipAddress, userAgent })
 
     setCookie(c, SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
