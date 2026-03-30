@@ -160,9 +160,12 @@ export const monitoredRepos = pgTable(
     orgId: text('org_id')
       .notNull()
       .references(() => organizations.id, { onDelete: 'cascade' }),
-    repo: text('repo').notNull().unique(),
+    repo: text('repo').notNull(),
     addedBy: text('added_by').references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('monitored_repos_org_id_idx').on(table.orgId)],
+  (table) => [
+    uniqueIndex('monitored_repos_org_repo_unique').on(table.orgId, table.repo),
+    index('monitored_repos_org_id_idx').on(table.orgId),
+  ],
 )
