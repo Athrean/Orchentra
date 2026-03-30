@@ -4,5 +4,5 @@ export type UserRow = typeof users.$inferSelect
 
 export interface AppVariables {
   user: UserRow
-  orgId: string
+  orgId?: string
 }
