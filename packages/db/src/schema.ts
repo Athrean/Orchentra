@@ -8,6 +8,7 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 
 export const incidents = pgTable(
@@ -83,6 +84,30 @@ export const incidentActions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index('incident_actions_incident_id_idx').on(table.incidentId)],
+)
+
+// --- Org & multi-tenancy tables ---
+
+export const organizations = pgTable('organizations', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const orgMembers = pgTable(
+  'org_members',
+  {
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: text('role').notNull(), // 'owner' | 'admin' | 'member'
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.orgId, table.userId] }), index('org_members_user_id_idx').on(table.userId)],
 )
 
 // --- Auth & product foundation tables ---
