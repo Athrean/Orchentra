@@ -1,6 +1,6 @@
 {
-  "id": "9aee7300-1b76-4808-a5a7-c433cb1a71a3",
-  "prevId": "38d16bce-24a6-4e42-baa5-28a72d78e7ca",
+  "id": "173774f3-2b91-4452-9fc5-809aedfbacbf",
+  "prevId": "9aee7300-1b76-4808-a5a7-c433cb1a71a3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -173,7 +173,7 @@
           "tableTo": "incidents",
           "columnsFrom": ["incident_id"],
           "columnsTo": ["id"],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "incident_actions_performed_by_users_id_fk": {
@@ -341,6 +341,12 @@
         "incidents_workflow_run_id_idx": {
           "name": "incidents_workflow_run_id_idx",
           "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
             {
               "expression": "workflow_run_id",
               "isExpression": false,
@@ -807,7 +813,7 @@
           "tableTo": "incidents",
           "columnsFrom": ["incident_id"],
           "columnsTo": ["id"],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
