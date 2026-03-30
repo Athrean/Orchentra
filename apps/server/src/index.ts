@@ -57,9 +57,10 @@ app.route('/api', apiRouter) // GET /api/me
 app.route('/api/keys', apiKeysRouter)
 
 // Org-scoped API routes — all live under /api/orgs/:orgId/
+// streamRouter must be registered before incidentsRouter: /incidents/:id would otherwise match /incidents/stream
+app.route('/api/orgs/:orgId', streamRouter) // SSE stream
 app.route('/api/orgs/:orgId', incidentsRouter) // incidents CRUD
 app.route('/api/orgs/:orgId', actionsRouter) // incident actions
-app.route('/api/orgs/:orgId', streamRouter) // SSE stream
 app.route('/api/orgs/:orgId/repos', reposRouter) // repo management
 app.route('/api/orgs/:orgId', orgsRouter) // org + member management
 

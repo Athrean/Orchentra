@@ -76,9 +76,9 @@ export interface IncidentAction {
 
 export const queryKeys = {
   me: ['me'] as const,
-  repos: ['repos'] as const,
-  incidents: (repo: string) => ['incidents', repo] as const,
-  incidentDetail: (id: string) => ['incident', id] as const,
+  repos: (orgId: string) => ['repos', orgId] as const,
+  incidents: (orgId: string, repo: string) => ['incidents', orgId, repo] as const,
+  incidentDetail: (orgId: string, id: string) => ['incident', orgId, id] as const,
 }
 
 // ──────────────────────────────────────────────
@@ -100,7 +100,7 @@ function useOrgId(): string | undefined {
 export function useAvailableRepos() {
   const orgId = useOrgId()
   return useQuery({
-    queryKey: queryKeys.repos,
+    queryKey: orgId ? queryKeys.repos(orgId) : ['repos'],
     queryFn: () => api<{ repos: Repo[] }>(`/api/orgs/${orgId}/repos/available`).then((d) => d.repos),
     enabled: !!orgId,
   })
@@ -109,7 +109,7 @@ export function useAvailableRepos() {
 export function useIncidents(repo: string) {
   const orgId = useOrgId()
   return useQuery({
-    queryKey: queryKeys.incidents(repo),
+    queryKey: orgId ? queryKeys.incidents(orgId, repo) : ['incidents', repo],
     queryFn: () =>
       api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?repo=${encodeURIComponent(repo)}`),
     enabled: !!orgId,
@@ -119,7 +119,7 @@ export function useIncidents(repo: string) {
 export function useIncidentDetail(id: string | null) {
   const orgId = useOrgId()
   return useQuery({
-    queryKey: queryKeys.incidentDetail(id!),
+    queryKey: orgId && id ? queryKeys.incidentDetail(orgId, id) : ['incident', id],
     queryFn: () =>
       api<{ incident: IncidentFull; toolCalls: ToolCall[]; actions: IncidentAction[] }>(
         `/api/orgs/${orgId}/incidents/${id}`,
@@ -136,11 +136,14 @@ export function useRerunWorkflow(repo: string) {
   const qc = useQueryClient()
   const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api<{ runUrl: string }>(`/api/orgs/${orgId}/incidents/${incidentId}/rerun`, { method: 'POST' }),
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api<{ runUrl: string }>(`/api/orgs/${orgId}/incidents/${incidentId}/rerun`, { method: 'POST' })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -149,13 +152,16 @@ export function useCreateIssue(repo: string) {
   const qc = useQueryClient()
   const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api<{ issueUrl: string; issueNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/issue`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api<{ issueUrl: string; issueNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/issue`, {
         method: 'POST',
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -164,13 +170,16 @@ export function useCreateFixPR(repo: string) {
   const qc = useQueryClient()
   const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api<{ prUrl: string; prNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/fix-pr`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api<{ prUrl: string; prNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/fix-pr`, {
         method: 'POST',
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -179,10 +188,14 @@ export function useEscalateIncident(repo: string) {
   const qc = useQueryClient()
   const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) => api(`/api/orgs/${orgId}/incidents/${incidentId}/escalate`, { method: 'POST' }),
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/escalate`, { method: 'POST' })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -191,15 +204,18 @@ export function useSnoozeIncident(repo: string) {
   const qc = useQueryClient()
   const orgId = useOrgId()
   return useMutation({
-    mutationFn: ({ incidentId, hours }: { incidentId: string; hours: number }) =>
-      api(`/api/orgs/${orgId}/incidents/${incidentId}/snooze`, {
+    mutationFn: ({ incidentId, hours }: { incidentId: string; hours: number }) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/snooze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hours }),
-      }),
+      })
+    },
     onSuccess: (_, { incidentId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -208,15 +224,18 @@ export function useDismissIncident(repo: string) {
   const qc = useQueryClient()
   const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'dismissed' }),
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -225,15 +244,18 @@ export function useResolveIncident(repo: string) {
   const qc = useQueryClient()
   const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved' }),
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -266,9 +288,9 @@ export function useIncidentSSE(repo: string) {
         const type: string = data.type ?? ''
 
         if (type === 'incident:created' || type === 'incident:updated' || type === 'incident:status_changed') {
-          qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
+          qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
           if (data.incidentId) {
-            qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(data.incidentId) })
+            qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, data.incidentId) })
           }
         }
       } catch {
