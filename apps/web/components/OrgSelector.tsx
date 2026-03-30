@@ -8,7 +8,8 @@ import { useMe, useAvailableRepos } from '../lib/hooks'
 
 export function OrgSelector() {
   const router = useRouter()
-  const { data: user, isLoading: userLoading, isError: userError } = useMe()
+  const { data: me, isLoading: userLoading, isError: userError } = useMe()
+  const user = me?.user
   const { data: repos, isLoading: reposLoading, isError: reposError } = useAvailableRepos()
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null)
 

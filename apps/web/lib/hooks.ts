@@ -16,6 +16,13 @@ export interface User {
   email: string | null
 }
 
+export interface Org {
+  id: string
+  name: string
+  slug: string
+  role: string
+}
+
 export interface Repo {
   fullName: string
   owner: string
@@ -81,30 +88,43 @@ export const queryKeys = {
 export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,
-    queryFn: () => api<{ user: User | null }>('/api/me').then((d) => d.user),
+    queryFn: () => api<{ user: User | null; org: Org | null }>('/api/me'),
   })
 }
 
+function useOrgId(): string | undefined {
+  const { data } = useMe()
+  return data?.org?.id ?? undefined
+}
+
 export function useAvailableRepos() {
+  const orgId = useOrgId()
   return useQuery({
     queryKey: queryKeys.repos,
-    queryFn: () => api<{ repos: Repo[] }>('/api/repos/available').then((d) => d.repos),
+    queryFn: () => api<{ repos: Repo[] }>(`/api/orgs/${orgId}/repos/available`).then((d) => d.repos),
+    enabled: !!orgId,
   })
 }
 
 export function useIncidents(repo: string) {
+  const orgId = useOrgId()
   return useQuery({
     queryKey: queryKeys.incidents(repo),
-    queryFn: () => api<{ incidents: Incident[]; total: number }>(`/api/incidents?repo=${encodeURIComponent(repo)}`),
+    queryFn: () =>
+      api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?repo=${encodeURIComponent(repo)}`),
+    enabled: !!orgId,
   })
 }
 
 export function useIncidentDetail(id: string | null) {
+  const orgId = useOrgId()
   return useQuery({
     queryKey: queryKeys.incidentDetail(id!),
     queryFn: () =>
-      api<{ incident: IncidentFull; toolCalls: ToolCall[]; actions: IncidentAction[] }>(`/api/incidents/${id}`),
-    enabled: !!id,
+      api<{ incident: IncidentFull; toolCalls: ToolCall[]; actions: IncidentAction[] }>(
+        `/api/orgs/${orgId}/incidents/${id}`,
+      ),
+    enabled: !!id && !!orgId,
   })
 }
 
@@ -114,9 +134,10 @@ export function useIncidentDetail(id: string | null) {
 
 export function useRerunWorkflow(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
     mutationFn: (incidentId: string) =>
-      api<{ runUrl: string }>(`/api/incidents/${incidentId}/rerun`, { method: 'POST' }),
+      api<{ runUrl: string }>(`/api/orgs/${orgId}/incidents/${incidentId}/rerun`, { method: 'POST' }),
     onSuccess: (_, incidentId) => {
       qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
@@ -126,9 +147,10 @@ export function useRerunWorkflow(repo: string) {
 
 export function useCreateIssue(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
     mutationFn: (incidentId: string) =>
-      api<{ issueUrl: string; issueNumber?: number }>(`/api/incidents/${incidentId}/issue`, {
+      api<{ issueUrl: string; issueNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/issue`, {
         method: 'POST',
       }),
     onSuccess: (_, incidentId) => {
@@ -140,9 +162,10 @@ export function useCreateIssue(repo: string) {
 
 export function useCreateFixPR(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
     mutationFn: (incidentId: string) =>
-      api<{ prUrl: string; prNumber?: number }>(`/api/incidents/${incidentId}/fix-pr`, {
+      api<{ prUrl: string; prNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/fix-pr`, {
         method: 'POST',
       }),
     onSuccess: (_, incidentId) => {
@@ -154,8 +177,9 @@ export function useCreateFixPR(repo: string) {
 
 export function useEscalateIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) => api(`/api/incidents/${incidentId}/escalate`, { method: 'POST' }),
+    mutationFn: (incidentId: string) => api(`/api/orgs/${orgId}/incidents/${incidentId}/escalate`, { method: 'POST' }),
     onSuccess: (_, incidentId) => {
       qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
@@ -165,9 +189,10 @@ export function useEscalateIncident(repo: string) {
 
 export function useSnoozeIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
     mutationFn: ({ incidentId, hours }: { incidentId: string; hours: number }) =>
-      api(`/api/incidents/${incidentId}/snooze`, {
+      api(`/api/orgs/${orgId}/incidents/${incidentId}/snooze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hours }),
@@ -181,9 +206,10 @@ export function useSnoozeIncident(repo: string) {
 
 export function useDismissIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
     mutationFn: (incidentId: string) =>
-      api(`/api/incidents/${incidentId}/status`, {
+      api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'dismissed' }),
@@ -197,9 +223,10 @@ export function useDismissIncident(repo: string) {
 
 export function useResolveIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
     mutationFn: (incidentId: string) =>
-      api(`/api/incidents/${incidentId}/status`, {
+      api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved' }),
@@ -219,11 +246,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export function useIncidentSSE(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   const sourceRef = useRef<EventSource | null>(null)
   const errorCountRef = useRef(0)
 
   useEffect(() => {
-    const url = `${API_BASE}/api/incidents/stream?repo=${encodeURIComponent(repo)}`
+    if (!orgId) return
+
+    const url = `${API_BASE}/api/orgs/${orgId}/incidents/stream?repo=${encodeURIComponent(repo)}`
     const source = new EventSource(url, { withCredentials: true })
     sourceRef.current = source
     errorCountRef.current = 0
@@ -258,5 +288,5 @@ export function useIncidentSSE(repo: string) {
       source.close()
       sourceRef.current = null
     }
-  }, [repo, qc])
+  }, [repo, orgId, qc])
 }
