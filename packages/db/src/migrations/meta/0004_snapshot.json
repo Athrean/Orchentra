@@ -1,6 +1,6 @@
 {
-  "id": "612b7cea-c581-45b1-88bc-6aa4844e9ad0",
-  "prevId": "176a38fa-f620-4df5-8c27-7eff93355680",
+  "id": "38d16bce-24a6-4e42-baa5-28a72d78e7ca",
+  "prevId": "612b7cea-c581-45b1-88bc-6aa4844e9ad0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -409,21 +409,6 @@
             }
           ],
           "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "monitored_repos_org_id_idx": {
-          "name": "monitored_repos_org_id_idx",
-          "columns": [
-            {
-              "expression": "org_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
