@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { config } from '../config'
-import { db, incidents } from '../db/client'
+import { eq } from 'drizzle-orm'
+import { db, incidents, monitoredRepos } from '../db/client'
 import { runIncidentAgent } from '../agent/runner'
 import { postInitialSlackMessage } from '../slack/message'
 import { isRepoMonitored } from '../lib/repo-cache'
@@ -64,10 +65,16 @@ async function processWorkflowFailure(
 ): Promise<void> {
   if (!(await isRepoMonitored(repo))) return
 
+  const monitoredRepo = await db.query.monitoredRepos.findFirst({
+    where: eq(monitoredRepos.repo, repo.toLowerCase()),
+  })
+  if (!monitoredRepo) return
+
   const [incident] = await db
     .insert(incidents)
     .values({
       id: crypto.randomUUID(),
+      orgId: monitoredRepo.orgId,
       repo,
       branch: run.head_branch,
       commit: run.head_sha,
