@@ -75,11 +75,11 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; Ico
   investigating: { label: 'Investigating', color: 'text-amber-400', bg: 'bg-amber-400/10', Icon: Clock },
   brief_ready: { label: 'Brief Ready', color: 'text-blue-400', bg: 'bg-blue-400/10', Icon: Eye },
   fixing: { label: 'Fixing', color: 'text-purple-400', bg: 'bg-purple-400/10', Icon: Zap },
-  resolved: { label: 'Resolved', color: 'text-emerald-400', bg: 'bg-emerald-400/10', Icon: CheckCircle2 },
+  resolved: { label: 'Passed', color: 'text-emerald-400', bg: 'bg-emerald-400/10', Icon: CheckCircle2 },
   snoozed: { label: 'Snoozed', color: 'text-gray-400', bg: 'bg-gray-400/10', Icon: Pause },
-  dismissed: { label: 'Dismissed', color: 'text-gray-500', bg: 'bg-gray-500/10', Icon: XCircle },
+  dismissed: { label: 'Cancelled', color: 'text-gray-500', bg: 'bg-gray-500/10', Icon: XCircle },
   escalated: { label: 'Escalated', color: 'text-red-400', bg: 'bg-red-400/10', Icon: Bell },
-  error: { label: 'Error', color: 'text-red-400', bg: 'bg-red-400/10', Icon: AlertTriangle },
+  error: { label: 'Failed', color: 'text-red-400', bg: 'bg-red-400/10', Icon: AlertTriangle },
 }
 
 function timeAgo(date: string): string {
@@ -112,9 +112,9 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   const total = data?.total ?? 0
 
   // Stats for right panel when nothing selected
-  const investigating = incidents.filter((i) => i.status === 'investigating').length
-  const resolved = incidents.filter((i) => i.status === 'resolved').length
-  const errors = incidents.filter((i) => i.status === 'error').length
+  const investigating = incidents.filter((i) => i.status === 'investigating' || i.status === 'brief_ready').length
+  const passed = incidents.filter((i) => i.status === 'resolved').length
+  const failed = incidents.filter((i) => i.status === 'error' || i.status === 'escalated').length
 
   const rightPanel = selectedId ? (
     <DetailPanel key={selectedId} incidentId={selectedId} repo={repo} onClose={() => setSelectedId(null)} />
@@ -122,10 +122,10 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
     // Stats overview
     <div className="flex flex-col gap-2 p-4 flex-1">
       <div className="text-[10px] font-bold text-[#FF4500] tracking-wider mb-2">OVERVIEW</div>
-      <StatCard label="Total Incidents" value={total} />
+      <StatCard label="Total Runs" value={total} />
       <StatCard label="Investigating" value={investigating} color="text-amber-400" />
-      <StatCard label="Resolved" value={resolved} color="text-emerald-400" />
-      <StatCard label="Errors" value={errors} color="text-red-400" />
+      <StatCard label="Passed" value={passed} color="text-emerald-400" />
+      <StatCard label="Failed" value={failed} color="text-red-400" />
       <div className="flex-1" />
       <div className="bg-[#21242C] p-3 rounded-xl text-xs text-gray-500 border border-white/5 leading-relaxed">
         Select an incident to view root cause analysis, suggested fixes, and agent activity.
