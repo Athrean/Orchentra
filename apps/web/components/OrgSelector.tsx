@@ -20,8 +20,9 @@ export function OrgSelector() {
     if (!selectedRepo) return
     // Ensure the repo is monitored (idempotent — server ignores if already exists)
     // This also triggers the historical backfill for new repos
-    await monitorRepo.mutateAsync(selectedRepo).catch(() => {})
-    router.push(`/dashboard/${encodeURIComponent(selectedRepo)}`)
+    const normalizedRepo = selectedRepo.toLowerCase()
+    await monitorRepo.mutateAsync(normalizedRepo).catch(() => {})
+    router.push(`/dashboard/${encodeURIComponent(normalizedRepo)}`)
   }
 
   if (loading) {

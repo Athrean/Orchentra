@@ -6,7 +6,7 @@ export const streamRouter = new Hono<{ Variables: AppVariables }>()
 
 streamRouter.get('/incidents/stream', async (c) => {
   const orgId = c.get('orgId')!
-  const repo = c.req.query('repo')
+  const repo = c.req.query('repo')?.toLowerCase()
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
