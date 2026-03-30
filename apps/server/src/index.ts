@@ -4,16 +4,18 @@ import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
 import { runMigrations } from './db/client'
 import { seedMonitoredRepos } from './lib/seed'
-import { requireAuth } from './auth/middleware'
+import { requireAuth, requireOrgMember } from './auth/middleware'
 import { authRouter } from './routes/auth'
 import { webhooksRouter } from './routes/webhooks'
 import { interactionsRouter } from './routes/interactions'
 import { commandsRouter } from './routes/commands'
 import { apiRouter } from './routes/api'
+import { incidentsRouter } from './routes/incidents'
 import { apiKeysRouter } from './routes/api-keys'
 import { reposRouter } from './routes/repos'
 import { actionsRouter } from './routes/actions'
 import { streamRouter } from './routes/stream'
+import { orgsRouter } from './routes/orgs'
 
 console.log('Config loaded')
 
@@ -41,13 +43,23 @@ app.route('/webhooks', webhooksRouter)
 app.route('/slack/interactions', interactionsRouter)
 app.route('/slack/commands', commandsRouter)
 
-// Protected routes — require session cookie or API key
+// All /api/* routes require authentication
 app.use('/api/*', requireAuth)
-app.route('/api', apiRouter)
-app.route('/api', actionsRouter)
-app.route('/api', streamRouter)
+
+// Org-scoped routes additionally require org membership
+// requireOrgMember reads :orgId from the URL and verifies the user belongs to that org
+app.use('/api/orgs/:orgId/*', requireOrgMember)
+
+// Non-org API routes
+app.route('/api', apiRouter) // GET /api/me
 app.route('/api/keys', apiKeysRouter)
-app.route('/api/repos', reposRouter)
+
+// Org-scoped API routes — all live under /api/orgs/:orgId/
+app.route('/api/orgs/:orgId', incidentsRouter) // incidents CRUD
+app.route('/api/orgs/:orgId', actionsRouter) // incident actions
+app.route('/api/orgs/:orgId', streamRouter) // SSE stream
+app.route('/api/orgs/:orgId/repos', reposRouter) // repo management
+app.route('/api/orgs/:orgId', orgsRouter) // org + member management
 
 const port = parseInt(process.env.PORT ?? '3001')
 
