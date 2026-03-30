@@ -88,6 +88,7 @@ export async function rerunWorkflow(incidentId: string, performedBy: string | nu
   incidentEvents.emitIncidentEvent({
     type: 'incident:status_changed',
     incidentId,
+    orgId: incident.orgId,
     repo: incident.repo,
     data: { status: 'fixing', action: 'rerun' },
   })
@@ -163,6 +164,7 @@ export async function createGithubIssue(incidentId: string, performedBy: string 
     incidentEvents.emitIncidentEvent({
       type: 'incident:updated',
       incidentId,
+      orgId: incident.orgId,
       repo: incident.repo,
       data: { issueUrl, issueNumber: issue.number },
     })
@@ -294,6 +296,7 @@ export async function createFixPR(incidentId: string, performedBy: string | null
     incidentEvents.emitIncidentEvent({
       type: 'incident:status_changed',
       incidentId,
+      orgId: incident.orgId,
       repo: incident.repo,
       data: { status: 'fixing', prUrl, prNumber: pr.number },
     })
@@ -364,6 +367,7 @@ export async function updateIncidentStatus(
   incidentEvents.emitIncidentEvent({
     type: 'incident:status_changed',
     incidentId,
+    orgId: incident.orgId,
     repo: incident.repo,
     data: { status },
   })
@@ -412,6 +416,7 @@ export async function escalateIncident(incidentId: string, performedBy: string |
   incidentEvents.emitIncidentEvent({
     type: 'incident:status_changed',
     incidentId,
+    orgId: incident.orgId,
     repo: incident.repo,
     data: { status: 'escalated' },
   })
