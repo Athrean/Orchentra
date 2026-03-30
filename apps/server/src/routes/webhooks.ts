@@ -65,31 +65,35 @@ async function processWorkflowFailure(
 ): Promise<void> {
   if (!(await isRepoMonitored(repo))) return
 
-  const monitoredRepo = await db.query.monitoredRepos.findFirst({
+  const monitoredRepoRows = await db.query.monitoredRepos.findMany({
     where: eq(monitoredRepos.repo, repo.toLowerCase()),
   })
-  if (!monitoredRepo) return
+  if (monitoredRepoRows.length === 0) return
 
-  const [incident] = await db
-    .insert(incidents)
-    .values({
-      id: crypto.randomUUID(),
-      orgId: monitoredRepo.orgId,
-      repo,
-      branch: run.head_branch,
-      commit: run.head_sha,
-      workflowName: run.name,
-      workflowRunId: run.id,
-      status: 'investigating',
-      triggeredAt: new Date(run.created_at),
-    })
-    .onConflictDoNothing({ target: incidents.workflowRunId })
-    .returning()
+  await Promise.all(
+    monitoredRepoRows.map(async (monitoredRepo) => {
+      const [incident] = await db
+        .insert(incidents)
+        .values({
+          id: crypto.randomUUID(),
+          orgId: monitoredRepo.orgId,
+          repo,
+          branch: run.head_branch,
+          commit: run.head_sha,
+          workflowName: run.name,
+          workflowRunId: run.id,
+          status: 'investigating',
+          triggeredAt: new Date(run.created_at),
+        })
+        .onConflictDoNothing({ target: [incidents.orgId, incidents.workflowRunId] })
+        .returning()
 
-  if (!incident) return // duplicate webhook — already processing
+      if (!incident) return // duplicate webhook for this org — already processing
 
-  console.log(`Incident ${incident.id} — ${repo} / ${run.name}`)
+      console.log(`Incident ${incident.id} — ${repo} / ${run.name} (org: ${monitoredRepo.orgId})`)
 
-  await postInitialSlackMessage(incident)
-  await runIncidentAgent(incident)
+      await postInitialSlackMessage(incident)
+      await runIncidentAgent(incident)
+    }),
+  )
 }
