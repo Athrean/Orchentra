@@ -1,6 +1,6 @@
 {
-  "id": "173774f3-2b91-4452-9fc5-809aedfbacbf",
-  "prevId": "9aee7300-1b76-4808-a5a7-c433cb1a71a3",
+  "id": "1a3a988c-dca5-4939-ae90-67de9190ed29",
+  "prevId": "173774f3-2b91-4452-9fc5-809aedfbacbf",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -721,6 +721,18 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
