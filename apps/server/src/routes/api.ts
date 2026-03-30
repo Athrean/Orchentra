@@ -4,6 +4,7 @@ import { UpdateIncidentStatusSchema } from '@orchentra/core'
 import { db, incidents, toolCalls, incidentActions } from '../db/client'
 import { updateIncidentStatus } from '../actions/handlers'
 import type { AppVariables } from '../types'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 export const apiRouter = new Hono<{ Variables: AppVariables }>()
 
@@ -108,7 +109,7 @@ apiRouter.patch('/incidents/:id/status', async (c) => {
   const result = await updateIncidentStatus(id, parsed.data.status, user?.id ?? null, parsed.data.snoozedUntil)
 
   if (!result.success) {
-    return c.json({ error: result.error }, result.httpStatus ?? 400)
+    return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json({ id, ...result.data })
 })
