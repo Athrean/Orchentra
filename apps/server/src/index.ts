@@ -70,5 +70,6 @@ console.log(`Orchentra server running on port ${port}`)
 
 export default {
   port,
+  idleTimeout: 0,
   fetch: app.fetch,
 }
