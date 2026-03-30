@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
-import { runMigrations } from './db/client'
+import { runMigrations, db, monitoredRepos, incidents } from './db/client'
 import { seedMonitoredRepos } from './lib/seed'
+import { backfillRepoIncidents } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
 import { authRouter } from './routes/auth'
 import { webhooksRouter } from './routes/webhooks'
@@ -22,6 +23,18 @@ console.log('Config loaded')
 // Run database migrations and seed on startup
 await runMigrations()
 await seedMonitoredRepos()
+
+// Backfill historical incidents for any monitored repo that has none yet
+;(async () => {
+  const { eq, notExists } = await import('drizzle-orm')
+  const repos = await db
+    .select({ repo: monitoredRepos.repo, orgId: monitoredRepos.orgId })
+    .from(monitoredRepos)
+    .where(notExists(db.select({ id: incidents.id }).from(incidents).where(eq(incidents.repo, monitoredRepos.repo))))
+  for (const { repo, orgId } of repos) {
+    backfillRepoIncidents(repo, orgId).catch(console.error)
+  }
+})().catch(console.error)
 
 const app = new Hono()
 
