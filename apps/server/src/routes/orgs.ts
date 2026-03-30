@@ -79,7 +79,13 @@ orgsRouter.post('/members', requireOrgAdmin, async (c) => {
 
   if (existing) return c.json({ error: 'User is already a member' }, 409)
 
-  await db.insert(orgMembers).values({ orgId, userId: targetUser.id, role: parsed.data.role })
+  try {
+    await db.insert(orgMembers).values({ orgId, userId: targetUser.id, role: parsed.data.role })
+  } catch (err) {
+    const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: string }).code : null
+    if (code === '23505') return c.json({ error: 'User is already a member' }, 409)
+    throw err
+  }
 
   return c.json({ userId: targetUser.id, role: parsed.data.role }, 201)
 })

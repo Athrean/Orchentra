@@ -10,7 +10,7 @@ export const incidentsRouter = new Hono<{ Variables: AppVariables }>()
 
 incidentsRouter.get('/incidents', async (c) => {
   const orgId = c.get('orgId')!
-  const limit = Math.min(parseInt(c.req.query('limit') ?? '', 10) || 50, 100)
+  const limit = Math.min(Math.max(parseInt(c.req.query('limit') ?? '', 10) || 50, 1), 100)
   const offset = Math.max(parseInt(c.req.query('offset') ?? '', 10) || 0, 0)
   const repo = c.req.query('repo')
 

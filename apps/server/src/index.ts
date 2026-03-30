@@ -48,6 +48,8 @@ app.use('/api/*', requireAuth)
 
 // Org-scoped routes additionally require org membership
 // requireOrgMember reads :orgId from the URL and verifies the user belongs to that org
+// Both patterns needed: wildcard covers /api/orgs/:orgId/anything, exact covers /api/orgs/:orgId itself
+app.use('/api/orgs/:orgId', requireOrgMember)
 app.use('/api/orgs/:orgId/*', requireOrgMember)
 
 // Non-org API routes
