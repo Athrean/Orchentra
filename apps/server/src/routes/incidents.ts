@@ -13,7 +13,8 @@ incidentsRouter.get('/incidents', async (c) => {
   const offset = Math.max(parseInt(c.req.query('offset') ?? '', 10) || 0, 0)
   const repo = c.req.query('repo')
 
-  const [rows, [{ total }]] = await listIncidents(orgId, limit, offset, repo)
+  const [rows, totals] = await listIncidents(orgId, limit, offset, repo)
+  const total = totals[0]?.total ?? 0
 
   return c.json({ incidents: rows, total })
 })

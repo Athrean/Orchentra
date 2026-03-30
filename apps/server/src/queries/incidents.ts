@@ -7,7 +7,7 @@ interface IncidentRow {
   branch: string
   commit: string
   workflowName: string
-  workflowRunId: number
+  workflowRunId: number | null
   failedStep: string | null
   status: string
   confidence: number | null
@@ -29,7 +29,7 @@ interface ActionRow {
   incidentId: string
   actionType: string
   performedBy: string | null
-  metadata: Record<string, unknown> | null
+  metadata: unknown | null
   createdAt: Date
 }
 
@@ -38,10 +38,10 @@ export async function listIncidents(
   limit: number,
   offset: number,
   repo?: string,
-): Promise<[IncidentRow[], [{ total: number }]]> {
+): Promise<[IncidentRow[], { total: number }[]]> {
   const whereClause = repo ? and(eq(incidents.orgId, orgId), eq(incidents.repo, repo)) : eq(incidents.orgId, orgId)
 
-  return Promise.all([
+  const [rows, totals] = await Promise.all([
     db
       .select({
         id: incidents.id,
@@ -63,7 +63,8 @@ export async function listIncidents(
       .limit(limit)
       .offset(offset),
     db.select({ total: count() }).from(incidents).where(whereClause),
-  ]) as Promise<[IncidentRow[], [{ total: number }]]>
+  ])
+  return [rows, totals]
 }
 
 export async function findIncident(id: string, orgId: string): Promise<typeof incidents.$inferSelect | undefined> {
@@ -83,7 +84,7 @@ export async function findIncidentForOrg(id: string, orgId: string): Promise<{ i
 }
 
 export async function getIncidentRelations(id: string): Promise<[ToolCallRow[], ActionRow[]]> {
-  return Promise.all([
+  const [calls, actions] = await Promise.all([
     db
       .select({
         id: toolCalls.id,
@@ -106,5 +107,25 @@ export async function getIncidentRelations(id: string): Promise<[ToolCallRow[], 
       .from(incidentActions)
       .where(eq(incidentActions.incidentId, id))
       .orderBy(desc(incidentActions.createdAt)),
-  ]) as Promise<[ToolCallRow[], ActionRow[]]>
+  ])
+  return [calls, actions]
+}
+
+export async function createIncident(values: {
+  id: string
+  orgId: string
+  repo: string
+  branch: string
+  commit: string
+  workflowName: string
+  workflowRunId: number
+  status: string
+  triggeredAt: Date
+}): Promise<typeof incidents.$inferSelect | null> {
+  const [row] = await db
+    .insert(incidents)
+    .values(values)
+    .onConflictDoNothing({ target: [incidents.orgId, incidents.workflowRunId] })
+    .returning()
+  return row ?? null
 }
