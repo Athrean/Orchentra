@@ -73,6 +73,7 @@ export async function saveResolvedPattern(incidentId: string): Promise<void> {
 
   await db.insert(resolvedPatterns).values({
     id: crypto.randomUUID(),
+    orgId: incident.orgId,
     incidentId,
     embedding: JSON.stringify(embedding),
     pattern: patternText,
