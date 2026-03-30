@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { createAuthorizationUrl, handleCallback } from '../auth/oauth'
+import { ensureUserOrg } from '../auth/org'
 import { createSession, deleteSession, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '../auth/session'
 
 export const authRouter = new Hono()
@@ -35,6 +36,7 @@ authRouter.get('/github/callback', async (c) => {
 
   try {
     const userId = await handleCallback(code)
+    await ensureUserOrg(userId)
     const sessionId = await createSession(userId)
 
     setCookie(c, SESSION_COOKIE_NAME, sessionId, {
