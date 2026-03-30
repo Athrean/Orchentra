@@ -1,5 +1,5 @@
 {
-  "id": "c41fce8c-2824-4204-b5b7-42162d65f945",
+  "id": "612b7cea-c581-45b1-88bc-6aa4844e9ad0",
   "prevId": "176a38fa-f620-4df5-8c27-7eff93355680",
   "version": "7",
   "dialect": "postgresql",
@@ -392,6 +392,27 @@
         }
       },
       "indexes": {
+        "monitored_repos_org_repo_unique": {
+          "name": "monitored_repos_org_repo_unique",
+          "columns": [
+            {
+              "expression": "org_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "repo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "monitored_repos_org_id_idx": {
           "name": "monitored_repos_org_id_idx",
           "columns": [
@@ -429,13 +450,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "monitored_repos_repo_unique": {
-          "name": "monitored_repos_repo_unique",
-          "nullsNotDistinct": false,
-          "columns": ["repo"]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
