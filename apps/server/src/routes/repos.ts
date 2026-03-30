@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { eq, asc } from 'drizzle-orm'
 import { MonitorRepoRequestSchema } from '@orchentra/core'
 import { db, monitoredRepos, orgMembers } from '../db/client'
 import { getAvailableRepos, getMonitoredRepos, invalidateMonitoredReposCache } from '../lib/repo-cache'
@@ -37,6 +37,7 @@ reposRouter.post('/monitor', async (c) => {
     .select({ orgId: orgMembers.orgId })
     .from(orgMembers)
     .where(eq(orgMembers.userId, user.id))
+    .orderBy(asc(orgMembers.createdAt))
     .limit(1)
 
   if (membership.length === 0) return c.json({ error: 'User has no organization' }, 403)
