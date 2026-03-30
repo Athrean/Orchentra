@@ -15,6 +15,13 @@
       "when": 1774509803459,
       "tag": "0001_old_blacklash",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774856015459,
+      "tag": "0002_handy_cloak",
+      "breakpoints": true
     }
   ]
 }
