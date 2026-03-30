@@ -1,6 +1,10 @@
 import { eq } from 'drizzle-orm'
 import { db, orgMembers, organizations, users } from '../db/client'
 
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === '23505'
+}
+
 function toSlug(username: string): string {
   return username
     .toLowerCase()
@@ -28,8 +32,9 @@ export async function ensureUserOrg(userId: string): Promise<void> {
       await tx.insert(organizations).values({ id: orgId, name: user.username, slug: baseSlug })
       await tx.insert(orgMembers).values({ orgId, userId, role: 'owner' })
     })
-  } catch {
-    // Slug collision — append random suffix and retry
+  } catch (err) {
+    // Only retry on unique-constraint violation (PostgreSQL error code 23505)
+    if (!isUniqueViolation(err)) throw err
     const slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`
     await db.transaction(async (tx) => {
       await tx.insert(organizations).values({ id: orgId, name: user.username, slug })

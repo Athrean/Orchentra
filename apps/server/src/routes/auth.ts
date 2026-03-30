@@ -36,7 +36,7 @@ authRouter.get('/github/callback', async (c) => {
 
   try {
     const userId = await handleCallback(code)
-    await ensureUserOrg(userId)
+    await ensureUserOrg(userId).catch((err) => console.error('ensureUserOrg failed:', err))
     const sessionId = await createSession(userId)
 
     setCookie(c, SESSION_COOKIE_NAME, sessionId, {
