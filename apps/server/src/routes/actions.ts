@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { rerunWorkflow, createGithubIssue, createFixPR, escalateIncident } from '../actions/handlers'
 import type { AppVariables } from '../types'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 export const actionsRouter = new Hono<{ Variables: AppVariables }>()
 
@@ -11,7 +12,7 @@ actionsRouter.post('/incidents/:id/rerun', async (c) => {
   const result = await rerunWorkflow(id, user?.id ?? null)
 
   if (!result.success) {
-    return c.json({ error: result.error }, result.httpStatus ?? 400)
+    return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json(result.data)
 })
@@ -22,7 +23,7 @@ actionsRouter.post('/incidents/:id/issue', async (c) => {
   const result = await createGithubIssue(id, user?.id ?? null)
 
   if (!result.success) {
-    return c.json({ error: result.error }, result.httpStatus ?? 400)
+    return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json(result.data)
 })
@@ -33,7 +34,7 @@ actionsRouter.post('/incidents/:id/fix-pr', async (c) => {
   const result = await createFixPR(id, user?.id ?? null)
 
   if (!result.success) {
-    return c.json({ error: result.error }, result.httpStatus ?? 400)
+    return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json(result.data)
 })
@@ -44,7 +45,7 @@ actionsRouter.post('/incidents/:id/escalate', async (c) => {
   const result = await escalateIncident(id, user?.id ?? null)
 
   if (!result.success) {
-    return c.json({ error: result.error }, result.httpStatus ?? 400)
+    return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json({ success: true })
 })
@@ -74,7 +75,7 @@ actionsRouter.post('/incidents/:id/snooze', async (c) => {
   const result = await updateIncidentStatus(id, 'snoozed', user?.id ?? null, snoozedUntil)
 
   if (!result.success) {
-    return c.json({ error: result.error }, result.httpStatus ?? 400)
+    return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json({ ...result.data, snoozedUntil: snoozedUntil.toISOString() })
 })
