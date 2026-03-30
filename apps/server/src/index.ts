@@ -3,6 +3,7 @@ import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
 import { runMigrations, db, monitoredRepos, incidents } from './db/client'
+import { count } from 'drizzle-orm'
 import { seedMonitoredRepos } from './lib/seed'
 import { backfillRepoIncidents } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
@@ -26,13 +27,15 @@ await seedMonitoredRepos()
 
 // Backfill historical incidents for any monitored repo that has none yet
 ;(async () => {
-  const { eq, notExists } = await import('drizzle-orm')
-  const repos = await db
-    .select({ repo: monitoredRepos.repo, orgId: monitoredRepos.orgId })
-    .from(monitoredRepos)
-    .where(notExists(db.select({ id: incidents.id }).from(incidents).where(eq(incidents.repo, monitoredRepos.repo))))
-  for (const { repo, orgId } of repos) {
-    backfillRepoIncidents(repo, orgId).catch(console.error)
+  const [allRepos, incidentCounts] = await Promise.all([
+    db.select({ repo: monitoredRepos.repo, orgId: monitoredRepos.orgId }).from(monitoredRepos),
+    db.select({ repo: incidents.repo, total: count() }).from(incidents).groupBy(incidents.repo),
+  ])
+  const hasIncidents = new Set(incidentCounts.filter((r) => r.total > 0).map((r) => r.repo))
+  for (const { repo, orgId } of allRepos) {
+    if (!hasIncidents.has(repo)) {
+      backfillRepoIncidents(repo, orgId).catch(console.error)
+    }
   }
 })().catch(console.error)
 
