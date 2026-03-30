@@ -77,7 +77,7 @@ export interface IncidentAction {
 export const queryKeys = {
   me: ['me'] as const,
   repos: (orgId: string) => ['repos', orgId] as const,
-  incidents: (orgId: string, repo: string) => ['incidents', orgId, repo] as const,
+  incidents: (orgId: string, repo: string, from?: string, to?: string) => ['incidents', orgId, repo, from, to] as const,
   incidentDetail: (orgId: string, id: string) => ['incident', orgId, id] as const,
 }
 
@@ -106,12 +106,16 @@ export function useAvailableRepos() {
   })
 }
 
-export function useIncidents(repo: string) {
+export function useIncidents(repo: string, from?: string, to?: string) {
   const orgId = useOrgId()
   return useQuery({
-    queryKey: orgId ? queryKeys.incidents(orgId, repo) : ['incidents', repo],
-    queryFn: () =>
-      api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?repo=${encodeURIComponent(repo)}`),
+    queryKey: orgId ? queryKeys.incidents(orgId, repo, from, to) : ['incidents', repo],
+    queryFn: () => {
+      const params = new URLSearchParams({ repo })
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      return api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?${params}`)
+    },
     enabled: !!orgId,
   })
 }
@@ -142,7 +146,7 @@ export function useRerunWorkflow(repo: string) {
     },
     onSuccess: (_, incidentId) => {
       if (!orgId) return
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
@@ -160,7 +164,7 @@ export function useCreateIssue(repo: string) {
     },
     onSuccess: (_, incidentId) => {
       if (!orgId) return
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
@@ -178,7 +182,7 @@ export function useCreateFixPR(repo: string) {
     },
     onSuccess: (_, incidentId) => {
       if (!orgId) return
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
@@ -194,7 +198,7 @@ export function useEscalateIncident(repo: string) {
     },
     onSuccess: (_, incidentId) => {
       if (!orgId) return
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
@@ -214,7 +218,7 @@ export function useSnoozeIncident(repo: string) {
     },
     onSuccess: (_, { incidentId }) => {
       if (!orgId) return
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
@@ -234,7 +238,7 @@ export function useDismissIncident(repo: string) {
     },
     onSuccess: (_, incidentId) => {
       if (!orgId) return
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
@@ -254,7 +258,7 @@ export function useResolveIncident(repo: string) {
     },
     onSuccess: (_, incidentId) => {
       if (!orgId) return
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Loader2,
   AlertTriangle,
@@ -35,6 +35,42 @@ import {
   useResolveIncident,
 } from '../lib/hooks'
 
+type Period = 'today' | 'yesterday' | 'week' | 'month' | 'all'
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'yesterday', label: 'Yesterday' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'all', label: 'All' },
+]
+
+function getPeriodRange(period: Period): { from?: string; to?: string } {
+  const now = new Date()
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString()
+  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString()
+
+  if (period === 'today') {
+    return { from: startOfDay(now), to: endOfDay(now) }
+  }
+  if (period === 'yesterday') {
+    const y = new Date(now)
+    y.setDate(y.getDate() - 1)
+    return { from: startOfDay(y), to: endOfDay(y) }
+  }
+  if (period === 'week') {
+    const w = new Date(now)
+    w.setDate(w.getDate() - 7)
+    return { from: w.toISOString() }
+  }
+  if (period === 'month') {
+    const m = new Date(now)
+    m.setDate(m.getDate() - 30)
+    return { from: m.toISOString() }
+  }
+  return {}
+}
+
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; Icon: React.ElementType }> = {
   investigating: { label: 'Investigating', color: 'text-amber-400', bg: 'bg-amber-400/10', Icon: Clock },
   brief_ready: { label: 'Brief Ready', color: 'text-blue-400', bg: 'bg-blue-400/10', Icon: Eye },
@@ -64,8 +100,10 @@ function fmtDuration(sec: number): string {
 }
 
 export function IncidentsDashboard({ repo }: { repo: string }) {
-  const { data, isLoading, error } = useIncidents(repo)
+  const [period, setPeriod] = useState<Period>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { from, to } = useMemo(() => getPeriodRange(period), [period])
+  const { data, isLoading, error } = useIncidents(repo, from, to)
 
   // SSE for real-time updates — invalidates queries automatically
   useIncidentSSE(repo)
@@ -97,6 +135,24 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
 
   return (
     <DashboardLayout repo={repo} rightPanel={rightPanel}>
+      {/* Period filter header — always visible */}
+      <div className="px-6 py-3 border-b border-white/5 flex items-center gap-1 shrink-0">
+        {PERIODS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setPeriod(key)}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              period === key
+                ? 'bg-white/10 text-white border border-white/10'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Main content: incidents list */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
@@ -124,14 +180,11 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
         </div>
       ) : (
         <>
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
-            <div>
-              <h1 className="text-lg font-semibold">Incidents</h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {total} total &middot; {repo}
-              </p>
-            </div>
+          {/* List header */}
+          <div className="px-6 py-3 border-b border-white/5 shrink-0">
+            <p className="text-xs text-gray-500">
+              {total} incident{total !== 1 ? 's' : ''} &middot; {repo}
+            </p>
           </div>
 
           {/* List */}

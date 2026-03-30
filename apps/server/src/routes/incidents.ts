@@ -11,9 +11,17 @@ incidentsRouter.get('/incidents', async (c) => {
   const orgId = c.get('orgId')!
   const limit = Math.min(Math.max(parseInt(c.req.query('limit') ?? '', 10) || 50, 1), 100)
   const offset = Math.max(parseInt(c.req.query('offset') ?? '', 10) || 0, 0)
-  const repo = c.req.query('repo')
+  const repo = c.req.query('repo')?.toLowerCase()
+  const fromParam = c.req.query('from')
+  const toParam = c.req.query('to')
 
-  const [rows, totals] = await listIncidents(orgId, limit, offset, repo)
+  const fromDate = fromParam ? new Date(fromParam) : null
+  const toDate = toParam ? new Date(toParam) : null
+
+  if (fromDate && isNaN(fromDate.getTime())) return c.json({ error: 'Invalid from date' }, 400)
+  if (toDate && isNaN(toDate.getTime())) return c.json({ error: 'Invalid to date' }, 400)
+
+  const [rows, totals] = await listIncidents(orgId, limit, offset, repo, fromDate, toDate)
   const total = totals[0]?.total ?? 0
 
   return c.json({ incidents: rows, total })
