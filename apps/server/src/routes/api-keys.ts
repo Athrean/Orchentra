@@ -1,26 +1,14 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
 import { CreateApiKeyRequestSchema } from '@orchentra/core'
-import { db, apiKeys } from '../db/client'
 import { generateApiKey, hashApiKey } from '../auth/session'
+import { getUserApiKeys, insertApiKey, findApiKeyById, deleteApiKey } from '../queries/api-keys'
 import type { AppVariables } from '../types'
 
 export const apiKeysRouter = new Hono<{ Variables: AppVariables }>()
 
 apiKeysRouter.get('/', async (c) => {
   const user = c.get('user')
-  const keys = await db
-    .select({
-      id: apiKeys.id,
-      name: apiKeys.name,
-      keyPrefix: apiKeys.keyPrefix,
-      lastUsedAt: apiKeys.lastUsedAt,
-      expiresAt: apiKeys.expiresAt,
-      createdAt: apiKeys.createdAt,
-    })
-    .from(apiKeys)
-    .where(eq(apiKeys.userId, user.id))
-
+  const keys = await getUserApiKeys(user.id)
   return c.json({ keys })
 })
 
@@ -33,7 +21,7 @@ apiKeysRouter.post('/', async (c) => {
   const key = generateApiKey()
   const id = crypto.randomUUID()
 
-  await db.insert(apiKeys).values({
+  await insertApiKey({
     id,
     userId: user.id,
     name: parsed.data.name,
@@ -59,11 +47,11 @@ apiKeysRouter.delete('/:id', async (c) => {
   const user = c.get('user')
   const keyId = c.req.param('id')
 
-  const existing = await db.select().from(apiKeys).where(eq(apiKeys.id, keyId)).limit(1)
-  if (existing.length === 0 || existing[0].userId !== user.id) {
+  const existing = await findApiKeyById(keyId)
+  if (!existing || existing.userId !== user.id) {
     return c.json({ error: 'API key not found' }, 404)
   }
 
-  await db.delete(apiKeys).where(eq(apiKeys.id, keyId))
+  await deleteApiKey(keyId)
   return c.body(null, 204)
 })

@@ -1,8 +1,7 @@
 import { Hono } from 'hono'
-import { eq, and } from 'drizzle-orm'
 import { MonitorRepoRequestSchema } from '@orchentra/core'
-import { db, monitoredRepos } from '../db/client'
 import { getAvailableRepos, invalidateMonitoredReposCache } from '../lib/repo-cache'
+import { getOrgMonitoredRepos, insertMonitoredRepo, deleteMonitoredRepo } from '../queries/repos'
 import type { AppVariables } from '../types'
 
 export const reposRouter = new Hono<{ Variables: AppVariables }>()
@@ -10,10 +9,7 @@ export const reposRouter = new Hono<{ Variables: AppVariables }>()
 reposRouter.get('/available', async (c) => {
   const orgId = c.get('orgId')!
 
-  const [available, orgMonitoredRows] = await Promise.all([
-    getAvailableRepos(),
-    db.select({ repo: monitoredRepos.repo }).from(monitoredRepos).where(eq(monitoredRepos.orgId, orgId)),
-  ])
+  const [available, orgMonitoredRows] = await Promise.all([getAvailableRepos(), getOrgMonitoredRepos(orgId)])
 
   const monitored = new Set(orgMonitoredRows.map((r) => r.repo.toLowerCase()))
 
@@ -43,10 +39,7 @@ reposRouter.post('/monitor', async (c) => {
   if (!exists) return c.json({ error: 'Repository not accessible by server PAT' }, 403)
 
   const normalizedRepo = parsed.data.repo.toLowerCase()
-  await db
-    .insert(monitoredRepos)
-    .values({ id: crypto.randomUUID(), orgId, repo: normalizedRepo, addedBy: user.id })
-    .onConflictDoNothing()
+  await insertMonitoredRepo(orgId, normalizedRepo, user.id)
 
   invalidateMonitoredReposCache()
   return c.json({ repo: normalizedRepo }, 201)
@@ -66,11 +59,7 @@ reposRouter.delete('/monitor', async (c) => {
 
   const normalizedRepo = parsed.data.repo.toLowerCase()
 
-  // Only delete if the repo belongs to this org
-  const deleted = await db
-    .delete(monitoredRepos)
-    .where(and(eq(monitoredRepos.repo, normalizedRepo), eq(monitoredRepos.orgId, orgId)))
-    .returning({ id: monitoredRepos.id })
+  const deleted = await deleteMonitoredRepo(orgId, normalizedRepo)
 
   if (deleted.length === 0) return c.json({ error: 'Repo not found in your organization' }, 404)
 
