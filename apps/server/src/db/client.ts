@@ -8,4 +8,6 @@ export {
   sessions,
   apiKeys,
   monitoredRepos,
+  organizations,
+  orgMembers,
 } from '@orchentra/db'
