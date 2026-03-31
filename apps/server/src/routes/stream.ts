@@ -6,7 +6,7 @@ export const streamRouter = new Hono<{ Variables: AppVariables }>()
 
 streamRouter.get('/incidents/stream', async (c) => {
   const orgId = c.get('orgId')!
-  const repo = c.req.query('repo')
+  const repo = c.req.query('repo')?.toLowerCase()
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
@@ -34,7 +34,7 @@ streamRouter.get('/incidents/stream', async (c) => {
 
       const listener = (event: IncidentEvent): void => {
         if (event.orgId !== orgId) return
-        if (repo && event.repo !== repo) return
+        if (repo && event.repo.toLowerCase() !== repo) return
         safeSend(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
       }
 
