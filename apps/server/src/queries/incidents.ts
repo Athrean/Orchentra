@@ -119,6 +119,24 @@ export async function getIncidentRelations(id: string): Promise<[ToolCallRow[], 
   return [calls, actions]
 }
 
+export async function findIncidentByPrUrl(prUrl: string): Promise<typeof incidents.$inferSelect | undefined> {
+  return db.query.incidents.findFirst({
+    where: (t, { eq: e }) => e(t.githubPrUrl, prUrl),
+  })
+}
+
+/** Find the most recent 'fixing' incident with a fix PR for this repo+branch — used for auto-resolve after CI passes. */
+export async function findFixingIncidentForRepoBranch(
+  repo: string,
+  branch: string,
+): Promise<typeof incidents.$inferSelect | undefined> {
+  return db.query.incidents.findFirst({
+    where: (t, { and: a, eq: e, isNotNull: n }) =>
+      a(e(t.repo, repo), e(t.branch, branch), e(t.status, 'fixing'), n(t.githubPrUrl)),
+    orderBy: (t, { desc: d }) => d(t.createdAt),
+  })
+}
+
 export async function createIncident(values: {
   id: string
   orgId: string

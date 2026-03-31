@@ -5,6 +5,7 @@ import { db, incidents, incidentActions } from '../db/client'
 import { incidentEvents } from '../events'
 import { postThreadReply, updateSlackToFixing, updateSlackToResolved } from '../slack/message'
 import { saveResolvedPattern } from '../agent/patterns'
+import { findIncidentByPrUrl, findFixingIncidentForRepoBranch } from '../queries/incidents'
 import type { IncidentBrief } from '@orchentra/core'
 
 const octokit = new Octokit({ auth: config.github.token })
@@ -422,4 +423,60 @@ export async function escalateIncident(incidentId: string, performedBy: string |
   })
 
   return { success: true }
+}
+
+// ──────────────────────────────────────────────
+// 6. Handle fix PR merged (notify + prepare for auto-resolve)
+// ──────────────────────────────────────────────
+
+export async function handleFixPRMerged(prUrl: string, prNumber: number): Promise<void> {
+  const incident = await findIncidentByPrUrl(prUrl)
+  if (!incident) return
+
+  await recordAction(incident.id, 'pr_merged', null, { prUrl, prNumber })
+  await postThreadReply(incident.id, `Fix PR #${prNumber} merged — waiting for CI to confirm the fix`)
+
+  console.log(`Incident ${incident.id}: fix PR #${prNumber} merged, awaiting CI confirmation`)
+}
+
+// ──────────────────────────────────────────────
+// 7. Auto-resolve incident when CI passes after a fix PR
+// ──────────────────────────────────────────────
+
+export async function autoResolveAfterCIPass(repo: string, branch: string, runId: number): Promise<void> {
+  const incident = await findFixingIncidentForRepoBranch(repo, branch)
+  if (!incident) return
+
+  const mttrSeconds = incident.triggeredAt
+    ? Math.round((Date.now() - new Date(incident.triggeredAt).getTime()) / 1000)
+    : null
+
+  const updates: Record<string, unknown> = {
+    status: 'resolved',
+    resolvedAt: new Date(),
+  }
+  if (mttrSeconds !== null) updates.mttrSeconds = mttrSeconds
+
+  await db.update(incidents).set(updates).where(eq(incidents.id, incident.id))
+  await recordAction(incident.id, 'auto_resolved', null, { triggeredByRunId: runId })
+  await postThreadReply(incident.id, `CI passed after fix — incident auto-resolved`)
+
+  const brief = parseBrief(incident.briefJson)
+  if (brief) {
+    await updateSlackToResolved(incident.id, 'CI passed after fix PR merge', mttrSeconds)
+  }
+
+  saveResolvedPattern(incident.id).catch((err) =>
+    console.error(`Failed to save pattern for auto-resolved incident ${incident.id}:`, err),
+  )
+
+  incidentEvents.emitIncidentEvent({
+    type: 'incident:status_changed',
+    incidentId: incident.id,
+    orgId: incident.orgId,
+    repo: incident.repo,
+    data: { status: 'resolved' },
+  })
+
+  console.log(`Incident ${incident.id}: auto-resolved after CI pass on ${repo}/${branch}`)
 }
