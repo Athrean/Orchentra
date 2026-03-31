@@ -7,6 +7,7 @@ import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
 import { githubActionsTool } from './tools/github-actions'
 import { updateSlackWithBrief, postThreadReply } from '../slack/message'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
+import { incidentEvents } from '../events'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -126,6 +127,14 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       })
       .where(eq(incidents.id, incident.id))
 
+    incidentEvents.emitIncidentEvent({
+      type: 'incident:updated',
+      incidentId: incident.id,
+      orgId: incident.orgId,
+      repo: incident.repo,
+      data: { status: 'brief_ready' },
+    })
+
     await updateSlackWithBrief(incident.id, brief)
 
     // Post tool trace as thread reply
@@ -144,5 +153,13 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       .update(incidents)
       .set({ status: 'error', rootCause: 'Agent investigation failed — check server logs' })
       .where(eq(incidents.id, incident.id))
+
+    incidentEvents.emitIncidentEvent({
+      type: 'incident:updated',
+      incidentId: incident.id,
+      orgId: incident.orgId,
+      repo: incident.repo,
+      data: { status: 'error' },
+    })
   }
 }

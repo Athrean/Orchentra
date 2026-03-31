@@ -158,8 +158,8 @@ export function useIncidents(repo: string, from?: string, to?: string) {
       return api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?${params}`)
     },
     enabled: !!orgId,
-    // Poll every 60s so new runs appear without relying solely on webhooks
-    refetchInterval: 60_000,
+    // SSE handles real-time updates; poll at 5m as a safety net only
+    refetchInterval: 5 * 60_000,
     refetchOnWindowFocus: true,
   })
 }
@@ -331,6 +331,7 @@ export function useIncidentSSE(repo: string) {
     // Server sends data-only SSE (no event: field), so all events arrive as 'message'.
     // Route by parsed type from the JSON payload.
     source.addEventListener('message', (e) => {
+      errorCountRef.current = 0 // reset on successful message
       try {
         const data = JSON.parse(e.data)
         const type: string = data.type ?? ''
@@ -348,8 +349,9 @@ export function useIncidentSSE(repo: string) {
 
     source.onerror = () => {
       errorCountRef.current++
-      // Close after repeated failures to prevent infinite retry loops
-      if (errorCountRef.current > 5) {
+      // Only permanently close after sustained failures (>10 consecutive errors with no recovery)
+      // to avoid killing real-time updates on transient network blips
+      if (errorCountRef.current > 10) {
         source.close()
       }
     }
