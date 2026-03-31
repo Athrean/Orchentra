@@ -17,7 +17,7 @@ export function OrgSelector() {
   useEffect(() => {
     if (!repos || selectedRepo) return
     const first = repos.find((r) => r.monitored)
-    if (first) setSelectedRepo(first.fullName.toLowerCase())
+    if (first) setSelectedRepo(first.fullName)
   }, [repos, selectedRepo])
   const [search, setSearch] = useState('')
   const [publicInput, setPublicInput] = useState('')

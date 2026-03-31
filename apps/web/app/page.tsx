@@ -21,6 +21,7 @@ export default async function Page(): Promise<React.ReactNode> {
 
   if (session?.value) {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    let shouldRedirect = false
     try {
       const res = await fetch(`${apiBase}/api/me`, {
         headers: { Cookie: `orchentra_session=${session.value}` },
@@ -28,13 +29,12 @@ export default async function Page(): Promise<React.ReactNode> {
       })
       if (res.ok) {
         const data = (await res.json()) as { org?: { id?: string } }
-        if (data.org?.id) {
-          redirect('/onboarding')
-        }
+        if (data.org?.id) shouldRedirect = true
       }
     } catch {
       // Network error — fall through to landing page
     }
+    if (shouldRedirect) redirect('/onboarding')
   }
 
   return (
