@@ -1,4 +1,4 @@
-import { IncidentsDashboard } from '../../../components/IncidentsDashboard'
+import { IncidentsDashboard } from '../../../components/dashboard/IncidentsDashboard'
 
 export default async function DashboardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

@@ -20,6 +20,9 @@ orchentra.yml
 # Docs (superpowers specs/plans)
 docs/superpowers/
 
+# Vision & internal strategy (local only)
+VISION.md
+
 # Claude Code plugins/skills (local only)
 .claude-plugins/
 .claude/plugins/
