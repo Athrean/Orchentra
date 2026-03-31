@@ -37,7 +37,7 @@ export function DashboardLayout({
 
   async function handleLogout() {
     await api('/auth/logout', { method: 'POST' }).catch(() => {})
-    router.push('/')
+    window.location.href = '/'
   }
 
   function handleRepoSelect(r: string) {

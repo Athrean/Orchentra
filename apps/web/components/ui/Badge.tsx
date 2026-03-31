@@ -1,10 +1,9 @@
 import { cn } from '../../lib/utils'
 
-type Variant = 'brand' | 'green' | 'amber' | 'blue' | 'purple' | 'emerald' | 'red' | 'muted' | 'default'
+type Variant = 'brand' | 'amber' | 'blue' | 'purple' | 'emerald' | 'red' | 'muted' | 'default'
 
 const variantStyles: Record<Variant, string> = {
   brand: 'bg-[--color-brand-dim] text-[--color-brand] border border-[--color-brand-border]',
-  green: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
   amber: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
   blue: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
   purple: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',

@@ -160,12 +160,12 @@ export function OrgSelector() {
                   </p>
                 )}
                 {filteredRepos.map((repo) => {
-                  const selected = selectedRepo === repo.fullName
+                  const selected = selectedRepo === repo.fullName.toLowerCase()
                   return (
                     <button
                       key={repo.fullName}
                       onClick={() => {
-                        setSelectedRepo(repo.fullName)
+                        setSelectedRepo(repo.fullName.toLowerCase())
                         setValidatedPublic(null)
                       }}
                       className={cn(
