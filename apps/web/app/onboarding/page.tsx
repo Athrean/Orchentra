@@ -1,4 +1,4 @@
-import { OrgSelector } from '../../components/OrgSelector'
+import { OrgSelector } from '../../components/onboarding/OrgSelector'
 
 export default function Home() {
   return <OrgSelector />
