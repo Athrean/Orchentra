@@ -1,7 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-  /* Light theme (default) */
+  /* ── App Shell (dark-first palette) ── */
+  --color-app-bg: #0E1217;
+  --color-app-panel: #1A1D24;
+  --color-app-raised: #21242C;
+  --color-app-deep: #0A0D11;
+  --color-app-card: #151921;
+  --color-app-selected: #1E232B;
+
+  /* ── Borders ── */
+  --color-app-border: rgba(255, 255, 255, 0.05);
+  --color-app-border-hover: rgba(255, 255, 255, 0.10);
+  --color-app-border-subtle: rgba(255, 255, 255, 0.03);
+
+  /* ── Text ── */
+  --color-app-text: #FAFAFA;
+  --color-app-text-secondary: #A1A1AA;
+  --color-app-text-muted: #71717A;
+  --color-app-text-subtle: #52525B;
+
+  /* ── Brand (orange-red) ── */
+  --color-brand: #FF4500;
+  --color-brand-dim: rgba(255, 69, 0, 0.12);
+  --color-brand-border: rgba(255, 69, 0, 0.20);
+
+  /* ── Green (positive / action) ── */
+  --color-green: #2EA043;
+  --color-green-hover: #2C974B;
+  --color-green-dim: rgba(46, 160, 67, 0.15);
+
+  /* ── Legacy surface tokens (used by landing page) ── */
   --color-surface-0: #ffffff;
   --color-surface-1: #f8f8f8;
   --color-surface-2: #f0f0f0;
@@ -16,31 +45,23 @@
   --color-accent-hover: #059669;
   --color-accent-dim: rgba(16, 185, 129, 0.08);
 
-  /* Dark theme tokens */
-  --color-dark-0: #09090b;
-  --color-dark-1: #111113;
-  --color-dark-2: #18181b;
-  --color-dark-3: #1f1f23;
-  --color-dark-4: #27272a;
-  --color-dark-border: rgba(255, 255, 255, 0.06);
-  --color-dark-border-hover: rgba(255, 255, 255, 0.12);
-  --color-dark-text-primary: #fafafa;
-  --color-dark-text-secondary: #a1a1aa;
-  --color-dark-text-muted: #52525b;
-  --color-dark-accent: #10b981;
-  --color-dark-accent-hover: #34d399;
-  --color-dark-accent-dim: rgba(16, 185, 129, 0.12);
+  /* ── Status ── */
+  --color-status-investigating: #F59E0B;
+  --color-status-fixing: #A78BFA;
+  --color-status-resolved: #34D399;
+  --color-status-error: #F87171;
+  --color-status-info: #60A5FA;
+  --color-status-muted: #6B7280;
 
-  /* Status colors */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
-
-  /* Fonts */
+  /* ── Fonts ── */
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* ── Radius ── */
+  --radius-panel: 1rem;
+  --radius-card: 0.75rem;
+  --radius-chip: 9999px;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -57,8 +78,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   .dark body {
-    background-color: var(--color-dark-0);
-    color: var(--color-dark-text-primary);
+    background-color: #09090b;
+    color: #fafafa;
   }
   ::selection {
     background-color: var(--color-accent);
@@ -66,13 +87,13 @@
   }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 3px; }
-.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.14); }
 
-/* Animations */
+/* ── Animations ── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
@@ -93,6 +114,16 @@
   50% { opacity: 0.6; }
 }
 
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .fade-up { animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .fade-up-d1 { animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both; }
 .fade-up-d2 { animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.16s both; }
@@ -102,7 +133,7 @@
 .pulse-subtle { animation: pulse-subtle 2s ease-in-out infinite; }
 .blink { animation: blink 1s step-end infinite; }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
+/* ── App shell utility ── */
+.app-bg { background-color: var(--color-app-bg); }
+.app-panel { background-color: var(--color-app-panel); }
+.app-border { border-color: var(--color-app-border); }
