@@ -2,8 +2,10 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
-import { runMigrations } from './db/client'
+import { runMigrations, db, monitoredRepos, incidents } from './db/client'
+import { max } from 'drizzle-orm'
 import { seedMonitoredRepos } from './lib/seed'
+import { backfillRepoIncidents } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
 import { authRouter } from './routes/auth'
 import { webhooksRouter } from './routes/webhooks'
@@ -22,6 +24,36 @@ console.log('Config loaded')
 // Run database migrations and seed on startup
 await runMigrations()
 await seedMonitoredRepos()
+
+async function syncAllRepos(): Promise<void> {
+  const [allRepos, latestPerRepo] = await Promise.all([
+    db.select({ repo: monitoredRepos.repo, orgId: monitoredRepos.orgId }).from(monitoredRepos),
+    db
+      .select({ repo: incidents.repo, latest: max(incidents.triggeredAt) })
+      .from(incidents)
+      .groupBy(incidents.repo),
+  ])
+  const latestMap = new Map(latestPerRepo.map((r) => [r.repo, r.latest]))
+  // Sequential to avoid spiking GitHub rate limits and DB connections
+  for (const { repo, orgId } of allRepos) {
+    await backfillRepoIncidents(repo, orgId, latestMap.get(repo)).catch(console.error)
+  }
+}
+
+// Incremental sync on startup — fetches only runs newer than the latest we already have
+syncAllRepos().catch(console.error)
+
+// Periodic sync: trailing setTimeout ensures the next run only starts after the previous finishes
+function scheduleSyncAllRepos(): void {
+  setTimeout(
+    async () => {
+      await syncAllRepos().catch(console.error)
+      scheduleSyncAllRepos()
+    },
+    5 * 60 * 1000,
+  )
+}
+scheduleSyncAllRepos()
 
 const app = new Hono()
 
@@ -57,9 +89,10 @@ app.route('/api', apiRouter) // GET /api/me
 app.route('/api/keys', apiKeysRouter)
 
 // Org-scoped API routes — all live under /api/orgs/:orgId/
+// streamRouter must be registered before incidentsRouter: /incidents/:id would otherwise match /incidents/stream
+app.route('/api/orgs/:orgId', streamRouter) // SSE stream
 app.route('/api/orgs/:orgId', incidentsRouter) // incidents CRUD
 app.route('/api/orgs/:orgId', actionsRouter) // incident actions
-app.route('/api/orgs/:orgId', streamRouter) // SSE stream
 app.route('/api/orgs/:orgId/repos', reposRouter) // repo management
 app.route('/api/orgs/:orgId', orgsRouter) // org + member management
 
@@ -69,5 +102,6 @@ console.log(`Orchentra server running on port ${port}`)
 
 export default {
   port,
+  idleTimeout: 0,
   fetch: app.fetch,
 }

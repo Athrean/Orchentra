@@ -16,7 +16,8 @@ export function DashboardLayout({
   rightPanel?: React.ReactNode
 }) {
   const router = useRouter()
-  const { data: user } = useMe()
+  const { data: me } = useMe()
+  const user = me?.user
 
   async function handleLogout() {
     await api('/auth/logout', { method: 'POST' }).catch(() => {})

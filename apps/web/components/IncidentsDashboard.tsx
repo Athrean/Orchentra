@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Loader2,
   AlertTriangle,
@@ -35,15 +35,51 @@ import {
   useResolveIncident,
 } from '../lib/hooks'
 
+type Period = 'today' | 'yesterday' | 'week' | 'month' | 'all'
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'yesterday', label: 'Yesterday' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'all', label: 'All' },
+]
+
+function getPeriodRange(period: Period): { from?: string; to?: string } {
+  const now = new Date()
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString()
+  const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString()
+
+  if (period === 'today') {
+    return { from: startOfDay(now), to: endOfDay(now) }
+  }
+  if (period === 'yesterday') {
+    const y = new Date(now)
+    y.setDate(y.getDate() - 1)
+    return { from: startOfDay(y), to: endOfDay(y) }
+  }
+  if (period === 'week') {
+    const w = new Date(now)
+    w.setDate(w.getDate() - 7)
+    return { from: w.toISOString() }
+  }
+  if (period === 'month') {
+    const m = new Date(now)
+    m.setDate(m.getDate() - 30)
+    return { from: m.toISOString() }
+  }
+  return {}
+}
+
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; Icon: React.ElementType }> = {
   investigating: { label: 'Investigating', color: 'text-amber-400', bg: 'bg-amber-400/10', Icon: Clock },
   brief_ready: { label: 'Brief Ready', color: 'text-blue-400', bg: 'bg-blue-400/10', Icon: Eye },
   fixing: { label: 'Fixing', color: 'text-purple-400', bg: 'bg-purple-400/10', Icon: Zap },
-  resolved: { label: 'Resolved', color: 'text-emerald-400', bg: 'bg-emerald-400/10', Icon: CheckCircle2 },
+  resolved: { label: 'Passed', color: 'text-emerald-400', bg: 'bg-emerald-400/10', Icon: CheckCircle2 },
   snoozed: { label: 'Snoozed', color: 'text-gray-400', bg: 'bg-gray-400/10', Icon: Pause },
-  dismissed: { label: 'Dismissed', color: 'text-gray-500', bg: 'bg-gray-500/10', Icon: XCircle },
+  dismissed: { label: 'Cancelled', color: 'text-gray-500', bg: 'bg-gray-500/10', Icon: XCircle },
   escalated: { label: 'Escalated', color: 'text-red-400', bg: 'bg-red-400/10', Icon: Bell },
-  error: { label: 'Error', color: 'text-red-400', bg: 'bg-red-400/10', Icon: AlertTriangle },
+  error: { label: 'Failed', color: 'text-red-400', bg: 'bg-red-400/10', Icon: AlertTriangle },
 }
 
 function timeAgo(date: string): string {
@@ -64,8 +100,10 @@ function fmtDuration(sec: number): string {
 }
 
 export function IncidentsDashboard({ repo }: { repo: string }) {
-  const { data, isLoading, error } = useIncidents(repo)
+  const [period, setPeriod] = useState<Period>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { from, to } = useMemo(() => getPeriodRange(period), [period])
+  const { data, isLoading, error } = useIncidents(repo, from, to)
 
   // SSE for real-time updates — invalidates queries automatically
   useIncidentSSE(repo)
@@ -74,9 +112,9 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   const total = data?.total ?? 0
 
   // Stats for right panel when nothing selected
-  const investigating = incidents.filter((i) => i.status === 'investigating').length
-  const resolved = incidents.filter((i) => i.status === 'resolved').length
-  const errors = incidents.filter((i) => i.status === 'error').length
+  const investigating = incidents.filter((i) => i.status === 'investigating' || i.status === 'brief_ready').length
+  const passed = incidents.filter((i) => i.status === 'resolved').length
+  const failed = incidents.filter((i) => i.status === 'error' || i.status === 'escalated').length
 
   const rightPanel = selectedId ? (
     <DetailPanel key={selectedId} incidentId={selectedId} repo={repo} onClose={() => setSelectedId(null)} />
@@ -84,10 +122,10 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
     // Stats overview
     <div className="flex flex-col gap-2 p-4 flex-1">
       <div className="text-[10px] font-bold text-[#FF4500] tracking-wider mb-2">OVERVIEW</div>
-      <StatCard label="Total Incidents" value={total} />
+      <StatCard label="Total Runs" value={total} />
       <StatCard label="Investigating" value={investigating} color="text-amber-400" />
-      <StatCard label="Resolved" value={resolved} color="text-emerald-400" />
-      <StatCard label="Errors" value={errors} color="text-red-400" />
+      <StatCard label="Passed" value={passed} color="text-emerald-400" />
+      <StatCard label="Failed" value={failed} color="text-red-400" />
       <div className="flex-1" />
       <div className="bg-[#21242C] p-3 rounded-xl text-xs text-gray-500 border border-white/5 leading-relaxed">
         Select an incident to view root cause analysis, suggested fixes, and agent activity.
@@ -97,6 +135,24 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
 
   return (
     <DashboardLayout repo={repo} rightPanel={rightPanel}>
+      {/* Period filter header — always visible */}
+      <div className="px-6 py-3 border-b border-white/5 flex items-center gap-1 shrink-0">
+        {PERIODS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setPeriod(key)}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              period === key
+                ? 'bg-white/10 text-white border border-white/10'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border border-transparent',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Main content: incidents list */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
@@ -124,14 +180,11 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
         </div>
       ) : (
         <>
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between shrink-0">
-            <div>
-              <h1 className="text-lg font-semibold">Incidents</h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {total} total &middot; {repo}
-              </p>
-            </div>
+          {/* List header */}
+          <div className="px-6 py-3 border-b border-white/5 shrink-0">
+            <p className="text-xs text-gray-500">
+              {total} incident{total !== 1 ? 's' : ''} &middot; {repo}
+            </p>
           </div>
 
           {/* List */}
@@ -153,12 +206,15 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
                       <s.Icon className={cn('w-3.5 h-3.5', s.color)} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium truncate">{inc.workflowName}</span>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-sm font-medium truncate">{inc.commitMessage || inc.workflowName}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-xs text-gray-500 truncate">{inc.workflowName}</span>
                         {inc.failedStep && (
                           <>
                             <ChevronRight className="w-3 h-3 text-gray-600 shrink-0" />
-                            <span className="text-sm text-gray-400 truncate">{inc.failedStep}</span>
+                            <span className="text-xs text-gray-500 truncate">{inc.failedStep}</span>
                           </>
                         )}
                       </div>

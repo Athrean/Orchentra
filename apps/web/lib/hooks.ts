@@ -16,6 +16,13 @@ export interface User {
   email: string | null
 }
 
+export interface Org {
+  id: string
+  name: string
+  slug: string
+  role: string
+}
+
 export interface Repo {
   fullName: string
   owner: string
@@ -31,6 +38,7 @@ export interface Incident {
   branch: string
   commit: string
   workflowName: string
+  commitMessage: string | null
   workflowRunId: number | null
   failedStep: string | null
   status: string
@@ -69,9 +77,9 @@ export interface IncidentAction {
 
 export const queryKeys = {
   me: ['me'] as const,
-  repos: ['repos'] as const,
-  incidents: (repo: string) => ['incidents', repo] as const,
-  incidentDetail: (id: string) => ['incident', id] as const,
+  repos: (orgId: string) => ['repos', orgId] as const,
+  incidents: (orgId: string, repo: string, from?: string, to?: string) => ['incidents', orgId, repo, from, to] as const,
+  incidentDetail: (orgId: string, id: string) => ['incident', orgId, id] as const,
 }
 
 // ──────────────────────────────────────────────
@@ -81,30 +89,90 @@ export const queryKeys = {
 export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,
-    queryFn: () => api<{ user: User | null }>('/api/me').then((d) => d.user),
+    queryFn: () => api<{ user: User | null; org: Org | null }>('/api/me'),
+  })
+}
+
+function useOrgId(): string | undefined {
+  const { data } = useMe()
+  return data?.org?.id ?? undefined
+}
+
+export function useMonitorRepo() {
+  const qc = useQueryClient()
+  const orgId = useOrgId()
+  return useMutation({
+    mutationFn: (repo: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/repos/monitor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo }),
+      })
+    },
+    onSuccess: () => {
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.repos(orgId) })
+    },
+  })
+}
+
+export interface ValidatedRepo {
+  fullName: string
+  description: string | null
+  private: boolean
+}
+
+export function useValidateRepo() {
+  const orgId = useOrgId()
+  return useMutation({
+    mutationFn: async (input: string): Promise<{ valid: boolean; repo?: ValidatedRepo }> => {
+      if (!orgId) throw new Error('No org')
+      // Accept full GitHub URLs too
+      const match = input.match(/(?:github\.com\/)?([\w.-]+\/[\w.-]+)/)
+      const repo = match?.[1] ?? input
+      return api<{ valid: boolean; repo?: ValidatedRepo }>(
+        `/api/orgs/${orgId}/repos/validate?repo=${encodeURIComponent(repo)}`,
+      )
+    },
   })
 }
 
 export function useAvailableRepos() {
+  const orgId = useOrgId()
   return useQuery({
-    queryKey: queryKeys.repos,
-    queryFn: () => api<{ repos: Repo[] }>('/api/repos/available').then((d) => d.repos),
+    queryKey: orgId ? queryKeys.repos(orgId) : ['repos'],
+    queryFn: () => api<{ repos: Repo[] }>(`/api/orgs/${orgId}/repos/available`).then((d) => d.repos),
+    enabled: !!orgId,
   })
 }
 
-export function useIncidents(repo: string) {
+export function useIncidents(repo: string, from?: string, to?: string) {
+  const orgId = useOrgId()
   return useQuery({
-    queryKey: queryKeys.incidents(repo),
-    queryFn: () => api<{ incidents: Incident[]; total: number }>(`/api/incidents?repo=${encodeURIComponent(repo)}`),
+    queryKey: orgId ? queryKeys.incidents(orgId, repo, from, to) : ['incidents', repo],
+    queryFn: () => {
+      const params = new URLSearchParams({ repo })
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      return api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?${params}`)
+    },
+    enabled: !!orgId,
+    // Poll every 60s so new runs appear without relying solely on webhooks
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   })
 }
 
 export function useIncidentDetail(id: string | null) {
+  const orgId = useOrgId()
   return useQuery({
-    queryKey: queryKeys.incidentDetail(id!),
+    queryKey: orgId && id ? queryKeys.incidentDetail(orgId, id) : ['incident', id],
     queryFn: () =>
-      api<{ incident: IncidentFull; toolCalls: ToolCall[]; actions: IncidentAction[] }>(`/api/incidents/${id}`),
-    enabled: !!id,
+      api<{ incident: IncidentFull; toolCalls: ToolCall[]; actions: IncidentAction[] }>(
+        `/api/orgs/${orgId}/incidents/${id}`,
+      ),
+    enabled: !!id && !!orgId,
   })
 }
 
@@ -114,99 +182,128 @@ export function useIncidentDetail(id: string | null) {
 
 export function useRerunWorkflow(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api<{ runUrl: string }>(`/api/incidents/${incidentId}/rerun`, { method: 'POST' }),
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api<{ runUrl: string }>(`/api/orgs/${orgId}/incidents/${incidentId}/rerun`, { method: 'POST' })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
 
 export function useCreateIssue(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api<{ issueUrl: string; issueNumber?: number }>(`/api/incidents/${incidentId}/issue`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api<{ issueUrl: string; issueNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/issue`, {
         method: 'POST',
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
 
 export function useCreateFixPR(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api<{ prUrl: string; prNumber?: number }>(`/api/incidents/${incidentId}/fix-pr`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api<{ prUrl: string; prNumber?: number }>(`/api/orgs/${orgId}/incidents/${incidentId}/fix-pr`, {
         method: 'POST',
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
 
 export function useEscalateIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) => api(`/api/incidents/${incidentId}/escalate`, { method: 'POST' }),
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/escalate`, { method: 'POST' })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
 
 export function useSnoozeIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: ({ incidentId, hours }: { incidentId: string; hours: number }) =>
-      api(`/api/incidents/${incidentId}/snooze`, {
+    mutationFn: ({ incidentId, hours }: { incidentId: string; hours: number }) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/snooze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hours }),
-      }),
+      })
+    },
     onSuccess: (_, { incidentId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
 
 export function useDismissIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api(`/api/incidents/${incidentId}/status`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'dismissed' }),
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
 
 export function useResolveIncident(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   return useMutation({
-    mutationFn: (incidentId: string) =>
-      api(`/api/incidents/${incidentId}/status`, {
+    mutationFn: (incidentId: string) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/incidents/${incidentId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved' }),
-      }),
+      })
+    },
     onSuccess: (_, incidentId) => {
-      qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
-      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(incidentId) })
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
+      qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
 }
@@ -219,11 +316,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export function useIncidentSSE(repo: string) {
   const qc = useQueryClient()
+  const orgId = useOrgId()
   const sourceRef = useRef<EventSource | null>(null)
   const errorCountRef = useRef(0)
 
   useEffect(() => {
-    const url = `${API_BASE}/api/incidents/stream?repo=${encodeURIComponent(repo)}`
+    if (!orgId) return
+
+    const url = `${API_BASE}/api/orgs/${orgId}/incidents/stream?repo=${encodeURIComponent(repo)}`
     const source = new EventSource(url, { withCredentials: true })
     sourceRef.current = source
     errorCountRef.current = 0
@@ -236,9 +336,9 @@ export function useIncidentSSE(repo: string) {
         const type: string = data.type ?? ''
 
         if (type === 'incident:created' || type === 'incident:updated' || type === 'incident:status_changed') {
-          qc.invalidateQueries({ queryKey: queryKeys.incidents(repo) })
+          qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
           if (data.incidentId) {
-            qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(data.incidentId) })
+            qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, data.incidentId) })
           }
         }
       } catch {
@@ -258,5 +358,5 @@ export function useIncidentSSE(repo: string) {
       source.close()
       sourceRef.current = null
     }
-  }, [repo, qc])
+  }, [repo, orgId, qc])
 }

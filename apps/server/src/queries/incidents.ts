@@ -1,4 +1,4 @@
-import { eq, and, desc, count } from 'drizzle-orm'
+import { eq, and, desc, count, gte, lte } from 'drizzle-orm'
 import { db, incidents, toolCalls, incidentActions } from '../db/client'
 
 interface IncidentRow {
@@ -7,6 +7,7 @@ interface IncidentRow {
   branch: string
   commit: string
   workflowName: string
+  commitMessage: string | null
   workflowRunId: number | null
   failedStep: string | null
   status: string
@@ -38,8 +39,14 @@ export async function listIncidents(
   limit: number,
   offset: number,
   repo?: string,
+  fromDate?: Date | null,
+  toDate?: Date | null,
 ): Promise<[IncidentRow[], { total: number }[]]> {
-  const whereClause = repo ? and(eq(incidents.orgId, orgId), eq(incidents.repo, repo)) : eq(incidents.orgId, orgId)
+  const whereClause = and(
+    repo ? and(eq(incidents.orgId, orgId), eq(incidents.repo, repo)) : eq(incidents.orgId, orgId),
+    fromDate ? gte(incidents.triggeredAt, fromDate) : undefined,
+    toDate ? lte(incidents.triggeredAt, toDate) : undefined,
+  )
 
   const [rows, totals] = await Promise.all([
     db
@@ -49,6 +56,7 @@ export async function listIncidents(
         branch: incidents.branch,
         commit: incidents.commit,
         workflowName: incidents.workflowName,
+        commitMessage: incidents.commitMessage,
         workflowRunId: incidents.workflowRunId,
         failedStep: incidents.failedStep,
         status: incidents.status,
@@ -59,7 +67,7 @@ export async function listIncidents(
       })
       .from(incidents)
       .where(whereClause)
-      .orderBy(desc(incidents.createdAt))
+      .orderBy(desc(incidents.triggeredAt), desc(incidents.createdAt))
       .limit(limit)
       .offset(offset),
     db.select({ total: count() }).from(incidents).where(whereClause),
@@ -118,6 +126,7 @@ export async function createIncident(values: {
   branch: string
   commit: string
   workflowName: string
+  commitMessage?: string | null
   workflowRunId: number
   status: string
   triggeredAt: Date
