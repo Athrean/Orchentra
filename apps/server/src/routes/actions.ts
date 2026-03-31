@@ -1,7 +1,5 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { eq, and } from 'drizzle-orm'
-import { db, incidents } from '../db/client'
 import {
   rerunWorkflow,
   createGithubIssue,
@@ -9,26 +7,18 @@ import {
   escalateIncident,
   updateIncidentStatus,
 } from '../actions/handlers'
+import { findIncidentForOrg } from '../queries/incidents'
 import type { AppVariables } from '../types'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 export const actionsRouter = new Hono<{ Variables: AppVariables }>()
-
-async function resolveOrgIncident(incidentId: string, orgId: string): Promise<{ id: string } | null> {
-  const [row] = await db
-    .select({ id: incidents.id })
-    .from(incidents)
-    .where(and(eq(incidents.id, incidentId), eq(incidents.orgId, orgId)))
-    .limit(1)
-  return row ?? null
-}
 
 actionsRouter.post('/incidents/:id/rerun', async (c) => {
   const id = c.req.param('id')
   const orgId = c.get('orgId')!
   const user = c.get('user')
 
-  if (!(await resolveOrgIncident(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
+  if (!(await findIncidentForOrg(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
 
   const result = await rerunWorkflow(id, user?.id ?? null)
   if (!result.success) {
@@ -42,7 +32,7 @@ actionsRouter.post('/incidents/:id/issue', async (c) => {
   const orgId = c.get('orgId')!
   const user = c.get('user')
 
-  if (!(await resolveOrgIncident(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
+  if (!(await findIncidentForOrg(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
 
   const result = await createGithubIssue(id, user?.id ?? null)
   if (!result.success) {
@@ -56,7 +46,7 @@ actionsRouter.post('/incidents/:id/fix-pr', async (c) => {
   const orgId = c.get('orgId')!
   const user = c.get('user')
 
-  if (!(await resolveOrgIncident(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
+  if (!(await findIncidentForOrg(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
 
   const result = await createFixPR(id, user?.id ?? null)
   if (!result.success) {
@@ -70,7 +60,7 @@ actionsRouter.post('/incidents/:id/escalate', async (c) => {
   const orgId = c.get('orgId')!
   const user = c.get('user')
 
-  if (!(await resolveOrgIncident(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
+  if (!(await findIncidentForOrg(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
 
   const result = await escalateIncident(id, user?.id ?? null)
   if (!result.success) {
@@ -88,7 +78,7 @@ actionsRouter.post('/incidents/:id/snooze', async (c) => {
   const orgId = c.get('orgId')!
   const user = c.get('user')
 
-  if (!(await resolveOrgIncident(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
+  if (!(await findIncidentForOrg(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
 
   let body: unknown
   try {

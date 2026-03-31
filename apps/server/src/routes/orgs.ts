@@ -1,8 +1,15 @@
 import { Hono } from 'hono'
-import { eq, and } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, orgMembers, organizations, users } from '../db/client'
 import { requireOrgAdmin } from '../auth/middleware'
+import {
+  findOrgById,
+  findOrgMemberRole,
+  listOrgMembers,
+  findUserByUsername,
+  insertOrgMember,
+  updateOrgMemberRole,
+  deleteOrgMember,
+} from '../queries/orgs'
 import type { AppVariables } from '../types'
 
 export const orgsRouter = new Hono<{ Variables: AppVariables }>()
@@ -12,14 +19,10 @@ orgsRouter.get('/', async (c) => {
   const orgId = c.get('orgId')!
   const user = c.get('user')
 
-  const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1)
+  const org = await findOrgById(orgId)
   if (!org) return c.json({ error: 'Organization not found' }, 404)
 
-  const [membership] = await db
-    .select({ role: orgMembers.role })
-    .from(orgMembers)
-    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, user.id)))
-    .limit(1)
+  const membership = await findOrgMemberRole(orgId, user.id)
 
   return c.json({ org, role: membership?.role ?? null })
 })
@@ -27,20 +30,7 @@ orgsRouter.get('/', async (c) => {
 // GET /api/orgs/:orgId/members — list members with roles
 orgsRouter.get('/members', async (c) => {
   const orgId = c.get('orgId')!
-
-  const members = await db
-    .select({
-      userId: orgMembers.userId,
-      role: orgMembers.role,
-      joinedAt: orgMembers.createdAt,
-      username: users.username,
-      displayName: users.displayName,
-      avatarUrl: users.avatarUrl,
-    })
-    .from(orgMembers)
-    .innerJoin(users, eq(orgMembers.userId, users.id))
-    .where(eq(orgMembers.orgId, orgId))
-
+  const members = await listOrgMembers(orgId)
   return c.json({ members })
 })
 
@@ -63,24 +53,14 @@ orgsRouter.post('/members', requireOrgAdmin, async (c) => {
   const parsed = AddMemberSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
-  const [targetUser] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.username, parsed.data.username))
-    .limit(1)
-
+  const targetUser = await findUserByUsername(parsed.data.username)
   if (!targetUser) return c.json({ error: 'User not found — they must sign in to Orchentra first' }, 404)
 
-  const [existing] = await db
-    .select({ role: orgMembers.role })
-    .from(orgMembers)
-    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, targetUser.id)))
-    .limit(1)
-
+  const existing = await findOrgMemberRole(orgId, targetUser.id)
   if (existing) return c.json({ error: 'User is already a member' }, 409)
 
   try {
-    await db.insert(orgMembers).values({ orgId, userId: targetUser.id, role: parsed.data.role })
+    await insertOrgMember(orgId, targetUser.id, parsed.data.role)
   } catch (err) {
     const code = typeof err === 'object' && err !== null && 'code' in err ? (err as { code: string }).code : null
     if (code === '23505') return c.json({ error: 'User is already a member' }, 409)
@@ -100,12 +80,7 @@ orgsRouter.patch('/members/:userId', requireOrgAdmin, async (c) => {
   const targetUserId = c.req.param('userId')
   if (!targetUserId) return c.json({ error: 'Missing userId' }, 400)
 
-  const [target] = await db
-    .select({ role: orgMembers.role })
-    .from(orgMembers)
-    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, targetUserId)))
-    .limit(1)
-
+  const target = await findOrgMemberRole(orgId, targetUserId)
   if (!target) return c.json({ error: 'Member not found' }, 404)
   if (target.role === 'owner') return c.json({ error: 'Cannot change role of org owner' }, 403)
 
@@ -119,10 +94,7 @@ orgsRouter.patch('/members/:userId', requireOrgAdmin, async (c) => {
   const parsed = UpdateRoleSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
-  await db
-    .update(orgMembers)
-    .set({ role: parsed.data.role })
-    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, targetUserId)))
+  await updateOrgMemberRole(orgId, targetUserId, parsed.data.role)
 
   return c.json({ userId: targetUserId, role: parsed.data.role })
 })
@@ -134,17 +106,12 @@ orgsRouter.delete('/members/:userId', requireOrgAdmin, async (c) => {
   if (!targetUserId) return c.json({ error: 'Missing userId' }, 400)
   const currentUser = c.get('user')
 
-  const [target] = await db
-    .select({ role: orgMembers.role })
-    .from(orgMembers)
-    .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, targetUserId)))
-    .limit(1)
-
+  const target = await findOrgMemberRole(orgId, targetUserId)
   if (!target) return c.json({ error: 'Member not found' }, 404)
   if (target.role === 'owner') return c.json({ error: 'Cannot remove org owner' }, 403)
   if (targetUserId === currentUser.id) return c.json({ error: 'Cannot remove yourself' }, 403)
 
-  await db.delete(orgMembers).where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, targetUserId)))
+  await deleteOrgMember(orgId, targetUserId)
 
   return c.body(null, 204)
 })
