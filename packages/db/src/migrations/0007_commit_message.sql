@@ -1,1 +1,1 @@
-ALTER TABLE "incidents" ADD COLUMN "commit_message" text;
+ALTER TABLE "incidents" ADD COLUMN IF NOT EXISTS "commit_message" text;
