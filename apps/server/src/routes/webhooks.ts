@@ -2,11 +2,11 @@ import { Hono } from 'hono'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { config } from '../config'
-import { eq } from 'drizzle-orm'
-import { db, incidents, monitoredRepos } from '../db/client'
 import { runIncidentAgent } from '../agent/runner'
 import { postInitialSlackMessage } from '../slack/message'
 import { isRepoMonitored } from '../lib/repo-cache'
+import { findMonitoredReposByRepo } from '../queries/repos'
+import { createIncident } from '../queries/incidents'
 
 export const webhooksRouter = new Hono()
 
@@ -65,28 +65,22 @@ async function processWorkflowFailure(
 ): Promise<void> {
   if (!(await isRepoMonitored(repo))) return
 
-  const monitoredRepoRows = await db.query.monitoredRepos.findMany({
-    where: eq(monitoredRepos.repo, repo.toLowerCase()),
-  })
+  const monitoredRepoRows = await findMonitoredReposByRepo(repo)
   if (monitoredRepoRows.length === 0) return
 
   await Promise.all(
     monitoredRepoRows.map(async (monitoredRepo) => {
-      const [incident] = await db
-        .insert(incidents)
-        .values({
-          id: crypto.randomUUID(),
-          orgId: monitoredRepo.orgId,
-          repo,
-          branch: run.head_branch,
-          commit: run.head_sha,
-          workflowName: run.name,
-          workflowRunId: run.id,
-          status: 'investigating',
-          triggeredAt: new Date(run.created_at),
-        })
-        .onConflictDoNothing({ target: [incidents.orgId, incidents.workflowRunId] })
-        .returning()
+      const incident = await createIncident({
+        id: crypto.randomUUID(),
+        orgId: monitoredRepo.orgId,
+        repo,
+        branch: run.head_branch,
+        commit: run.head_sha,
+        workflowName: run.name,
+        workflowRunId: run.id,
+        status: 'investigating',
+        triggeredAt: new Date(run.created_at),
+      })
 
       if (!incident) return // duplicate webhook for this org — already processing
 
