@@ -1,3 +1,5 @@
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { GithubIcon, ArrowRight, StarIcon, OrchentraLogo } from './components/icons'
 import { SectionHeading, Divider } from './components/landing-ui'
@@ -13,7 +15,28 @@ import {
   footerCols,
 } from './data/landing'
 
-export default function Page(): React.ReactNode {
+export default async function Page(): Promise<React.ReactNode> {
+  const cookieStore = await cookies()
+  const session = cookieStore.get('orchentra_session')
+
+  if (session?.value) {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    let shouldRedirect = false
+    try {
+      const res = await fetch(`${apiBase}/api/me`, {
+        headers: { Cookie: `orchentra_session=${session.value}` },
+        cache: 'no-store',
+      })
+      if (res.ok) {
+        const data = (await res.json()) as { org?: { id?: string } }
+        if (data.org?.id) shouldRedirect = true
+      }
+    } catch {
+      // Network error — fall through to landing page
+    }
+    if (shouldRedirect) redirect('/onboarding')
+  }
+
   return (
     <div className="min-h-screen">
       {/* ── Nav ── */}
