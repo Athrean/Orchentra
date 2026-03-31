@@ -22,6 +22,7 @@ export const incidents = pgTable(
     branch: text('branch').notNull(),
     commit: text('commit').notNull(),
     workflowName: text('workflow_name').notNull(),
+    commitMessage: text('commit_message'),
     workflowRunId: bigint('workflow_run_id', { mode: 'number' }),
     failedStep: text('failed_step'),
     status: text('status').notNull().default('investigating'),

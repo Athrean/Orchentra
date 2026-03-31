@@ -20,6 +20,12 @@ const WorkflowRunPayload = z.object({
     head_sha: z.string(),
     conclusion: z.string().nullable(),
     created_at: z.string(),
+    head_commit: z
+      .object({
+        message: z.string(),
+      })
+      .nullable()
+      .optional(),
   }),
   repository: z.object({
     full_name: z.string(),
@@ -77,6 +83,7 @@ async function processWorkflowFailure(
         branch: run.head_branch,
         commit: run.head_sha,
         workflowName: run.name,
+        commitMessage: run.head_commit?.message?.split('\n')[0] ?? null,
         workflowRunId: run.id,
         status: 'investigating',
         triggeredAt: new Date(run.created_at),
