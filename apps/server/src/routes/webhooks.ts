@@ -7,6 +7,7 @@ import { postInitialSlackMessage } from '../slack/message'
 import { isRepoMonitored } from '../lib/repo-cache'
 import { findMonitoredReposByRepo } from '../queries/repos'
 import { createIncident } from '../queries/incidents'
+import { incidentEvents } from '../events'
 
 export const webhooksRouter = new Hono()
 
@@ -92,6 +93,13 @@ async function processWorkflowFailure(
       if (!incident) return // duplicate webhook for this org — already processing
 
       console.log(`Incident ${incident.id} — ${repo} / ${run.name} (org: ${monitoredRepo.orgId})`)
+
+      incidentEvents.emitIncidentEvent({
+        type: 'incident:created',
+        incidentId: incident.id,
+        orgId: monitoredRepo.orgId,
+        repo,
+      })
 
       await postInitialSlackMessage(incident)
       await runIncidentAgent(incident)
