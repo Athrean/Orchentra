@@ -29,20 +29,32 @@ export function OrgSelector() {
     )
   }, [repos, search])
 
+  const [monitorError, setMonitorError] = useState<string | null>(null)
+
   async function handleValidatePublic() {
     if (!publicInput.trim()) return
     setValidatedPublic(null)
-    const result = await validateRepo.mutateAsync(publicInput.trim())
-    if (result.valid && result.repo) {
-      setValidatedPublic(result.repo)
-      setSelectedRepo(result.repo.fullName.toLowerCase())
+    try {
+      const result = await validateRepo.mutateAsync(publicInput.trim())
+      if (result.valid && result.repo) {
+        setValidatedPublic(result.repo)
+        setSelectedRepo(result.repo.fullName.toLowerCase())
+      }
+    } catch {
+      // validateRepo.isError will show the error message
     }
   }
 
   async function handleContinue() {
     if (!selectedRepo) return
+    setMonitorError(null)
     const normalizedRepo = selectedRepo.toLowerCase()
-    await monitorRepo.mutateAsync(normalizedRepo).catch(() => {})
+    try {
+      await monitorRepo.mutateAsync(normalizedRepo)
+    } catch {
+      setMonitorError('Failed to set up monitoring. Please try again.')
+      return
+    }
     router.push(`/dashboard/${encodeURIComponent(normalizedRepo)}`)
   }
 
@@ -189,6 +201,7 @@ export function OrgSelector() {
                     onChange={(e) => {
                       setPublicInput(e.target.value)
                       setValidatedPublic(null)
+                      validateRepo.reset()
                     }}
                     onKeyDown={(e) => e.key === 'Enter' && handleValidatePublic()}
                     className="w-full bg-[#0A0D11] border border-white/5 rounded-xl pl-8 pr-4 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-white/15 transition-colors"
@@ -270,6 +283,7 @@ export function OrgSelector() {
             </>
           )}
         </button>
+        {monitorError && <p className="mt-3 text-xs text-red-400">{monitorError}</p>}
       </main>
     </div>
   )

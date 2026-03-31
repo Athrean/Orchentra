@@ -34,7 +34,7 @@ streamRouter.get('/incidents/stream', async (c) => {
 
       const listener = (event: IncidentEvent): void => {
         if (event.orgId !== orgId) return
-        if (repo && event.repo !== repo) return
+        if (repo && event.repo.toLowerCase() !== repo) return
         safeSend(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
       }
 

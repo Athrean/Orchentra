@@ -34,16 +34,26 @@ async function syncAllRepos(): Promise<void> {
       .groupBy(incidents.repo),
   ])
   const latestMap = new Map(latestPerRepo.map((r) => [r.repo, r.latest]))
+  // Sequential to avoid spiking GitHub rate limits and DB connections
   for (const { repo, orgId } of allRepos) {
-    backfillRepoIncidents(repo, orgId, latestMap.get(repo)).catch(console.error)
+    await backfillRepoIncidents(repo, orgId, latestMap.get(repo)).catch(console.error)
   }
 }
 
 // Incremental sync on startup — fetches only runs newer than the latest we already have
 syncAllRepos().catch(console.error)
 
-// Periodic sync every 5 minutes — keeps public repos (no webhooks) up to date
-setInterval(() => syncAllRepos().catch(console.error), 5 * 60 * 1000)
+// Periodic sync: trailing setTimeout ensures the next run only starts after the previous finishes
+function scheduleSyncAllRepos(): void {
+  setTimeout(
+    async () => {
+      await syncAllRepos().catch(console.error)
+      scheduleSyncAllRepos()
+    },
+    5 * 60 * 1000,
+  )
+}
+scheduleSyncAllRepos()
 
 const app = new Hono()
 

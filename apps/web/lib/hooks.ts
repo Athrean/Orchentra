@@ -336,7 +336,7 @@ export function useIncidentSSE(repo: string) {
         const type: string = data.type ?? ''
 
         if (type === 'incident:created' || type === 'incident:updated' || type === 'incident:status_changed') {
-          qc.invalidateQueries({ queryKey: queryKeys.incidents(orgId, repo) })
+          qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
           if (data.incidentId) {
             qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, data.incidentId) })
           }
