@@ -206,12 +206,15 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
                       <s.Icon className={cn('w-3.5 h-3.5', s.color)} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium truncate">{inc.workflowName}</span>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-sm font-medium truncate">{inc.commitMessage || inc.workflowName}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-xs text-gray-500 truncate">{inc.workflowName}</span>
                         {inc.failedStep && (
                           <>
                             <ChevronRight className="w-3 h-3 text-gray-600 shrink-0" />
-                            <span className="text-sm text-gray-400 truncate">{inc.failedStep}</span>
+                            <span className="text-xs text-gray-500 truncate">{inc.failedStep}</span>
                           </>
                         )}
                       </div>

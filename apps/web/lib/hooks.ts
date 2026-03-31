@@ -38,6 +38,7 @@ export interface Incident {
   branch: string
   commit: string
   workflowName: string
+  commitMessage: string | null
   workflowRunId: number | null
   failedStep: string | null
   status: string
@@ -116,6 +117,27 @@ export function useMonitorRepo() {
   })
 }
 
+export interface ValidatedRepo {
+  fullName: string
+  description: string | null
+  private: boolean
+}
+
+export function useValidateRepo() {
+  const orgId = useOrgId()
+  return useMutation({
+    mutationFn: async (input: string): Promise<{ valid: boolean; repo?: ValidatedRepo }> => {
+      if (!orgId) throw new Error('No org')
+      // Accept full GitHub URLs too
+      const match = input.match(/(?:github\.com\/)?([\w.-]+\/[\w.-]+)/)
+      const repo = match?.[1] ?? input
+      return api<{ valid: boolean; repo?: ValidatedRepo }>(
+        `/api/orgs/${orgId}/repos/validate?repo=${encodeURIComponent(repo)}`,
+      )
+    },
+  })
+}
+
 export function useAvailableRepos() {
   const orgId = useOrgId()
   return useQuery({
@@ -136,6 +158,9 @@ export function useIncidents(repo: string, from?: string, to?: string) {
       return api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?${params}`)
     },
     enabled: !!orgId,
+    // Poll every 60s so new runs appear without relying solely on webhooks
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   })
 }
 

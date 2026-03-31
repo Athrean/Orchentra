@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { AlertTriangle, Check, Folder, Loader2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { AlertTriangle, Check, Folder, Loader2, Search, Globe, X } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useRouter } from 'next/navigation'
-import { useMe, useAvailableRepos, useMonitorRepo } from '../lib/hooks'
+import { useMe, useAvailableRepos, useMonitorRepo, useValidateRepo, type ValidatedRepo } from '../lib/hooks'
 
 export function OrgSelector() {
   const router = useRouter()
@@ -12,14 +12,35 @@ export function OrgSelector() {
   const user = me?.user
   const { data: repos, isLoading: reposLoading, isError: reposError } = useAvailableRepos()
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [publicInput, setPublicInput] = useState('')
+  const [validatedPublic, setValidatedPublic] = useState<ValidatedRepo | null>(null)
   const monitorRepo = useMonitorRepo()
+  const validateRepo = useValidateRepo()
 
   const loading = userLoading || reposLoading
 
+  const filteredRepos = useMemo(() => {
+    if (!repos) return []
+    const q = search.toLowerCase()
+    if (!q) return repos
+    return repos.filter(
+      (r) => r.fullName.toLowerCase().includes(q) || (r.description?.toLowerCase().includes(q) ?? false),
+    )
+  }, [repos, search])
+
+  async function handleValidatePublic() {
+    if (!publicInput.trim()) return
+    setValidatedPublic(null)
+    const result = await validateRepo.mutateAsync(publicInput.trim())
+    if (result.valid && result.repo) {
+      setValidatedPublic(result.repo)
+      setSelectedRepo(result.repo.fullName.toLowerCase())
+    }
+  }
+
   async function handleContinue() {
     if (!selectedRepo) return
-    // Ensure the repo is monitored (idempotent — server ignores if already exists)
-    // This also triggers the historical backfill for new repos
     const normalizedRepo = selectedRepo.toLowerCase()
     await monitorRepo.mutateAsync(normalizedRepo).catch(() => {})
     router.push(`/dashboard/${encodeURIComponent(normalizedRepo)}`)
@@ -60,8 +81,8 @@ export function OrgSelector() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center pt-24 pb-12 px-4">
-        <div className="flex flex-col items-center max-w-2xl w-full text-center mb-10">
+      <main className="flex-1 flex flex-col items-center pt-16 pb-12 px-4">
+        <div className="flex flex-col items-center max-w-2xl w-full text-center mb-8">
           <div className="w-10 h-10 mb-6 rounded-full border-2 border-white/80 relative flex items-center justify-center">
             <div className="w-3 h-3 bg-white rounded-full absolute -right-1.5"></div>
           </div>
@@ -71,54 +92,160 @@ export function OrgSelector() {
           </p>
         </div>
 
-        {/* Repos List */}
-        <div className="bg-[#151921] rounded-2xl border border-white/5 w-full max-w-2xl overflow-hidden shadow-xl">
-          <div className="p-4">
-            <div className="text-[10px] font-semibold tracking-wider text-gray-500 mb-3 px-2 uppercase">
-              Repositories ({repos?.length ?? 0})
+        <div className="w-full max-w-2xl flex flex-col gap-4">
+          {/* Your Repositories */}
+          <div className="bg-[#151921] rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+            {/* Search */}
+            <div className="p-4 pb-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search repositories…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-[#0A0D11] border border-white/5 rounded-xl pl-8 pr-4 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-white/15 transition-colors"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {repos?.map((repo) => (
+
+            <div className="px-4 pb-4">
+              <div className="text-[10px] font-semibold tracking-wider text-gray-500 mb-2 px-1 uppercase">
+                Your Repositories ({filteredRepos.length})
+              </div>
+              <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto pr-1 custom-scrollbar">
+                {filteredRepos.length === 0 && (
+                  <p className="text-xs text-gray-600 text-center py-4">No repositories match</p>
+                )}
+                {filteredRepos.map((repo) => (
+                  <button
+                    key={repo.fullName}
+                    onClick={() => {
+                      setSelectedRepo(repo.fullName)
+                      setValidatedPublic(null)
+                    }}
+                    className={cn(
+                      'flex items-center justify-between p-3 rounded-xl text-left transition-colors',
+                      selectedRepo === repo.fullName
+                        ? 'bg-[#1E232B] border border-white/5'
+                        : 'bg-[#0A0D11] hover:bg-[#1E232B]/50 border border-transparent',
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center shrink-0">
+                        <Folder className="w-3.5 h-3.5 text-gray-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">{repo.fullName}</div>
+                        {repo.description && (
+                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{repo.description}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {repo.monitored && (
+                        <span className="text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                          monitored
+                        </span>
+                      )}
+                      {repo.private && (
+                        <span className="text-[10px] font-medium text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">
+                          private
+                        </span>
+                      )}
+                      {selectedRepo === repo.fullName && (
+                        <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
+                          <Check className="w-3 h-3 text-black" strokeWidth={3} />
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Track any public repo */}
+          <div className="bg-[#151921] rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+            <div className="p-4">
+              <div className="text-[10px] font-semibold tracking-wider text-gray-500 mb-3 px-1 uppercase">
+                Track any public repo
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="owner/repo or github.com/owner/repo"
+                    value={publicInput}
+                    onChange={(e) => {
+                      setPublicInput(e.target.value)
+                      setValidatedPublic(null)
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleValidatePublic()}
+                    className="w-full bg-[#0A0D11] border border-white/5 rounded-xl pl-8 pr-4 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-white/15 transition-colors"
+                  />
+                </div>
                 <button
-                  key={repo.fullName}
-                  onClick={() => setSelectedRepo(repo.fullName)}
+                  onClick={handleValidatePublic}
+                  disabled={!publicInput.trim() || validateRepo.isPending}
                   className={cn(
-                    'flex items-center justify-between p-3 rounded-xl text-left transition-colors',
-                    selectedRepo === repo.fullName
+                    'px-4 py-2 rounded-xl text-sm font-medium transition-colors shrink-0',
+                    publicInput.trim() && !validateRepo.isPending
+                      ? 'bg-white/10 text-gray-200 hover:bg-white/15 cursor-pointer'
+                      : 'bg-white/5 text-gray-600 cursor-not-allowed',
+                  )}
+                >
+                  {validateRepo.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Validate'}
+                </button>
+              </div>
+
+              {/* Validation result */}
+              {validateRepo.isSuccess && !validatedPublic && (
+                <p className="text-xs text-red-400 mt-2 px-1">Repository not found or not accessible.</p>
+              )}
+              {validateRepo.isError && <p className="text-xs text-red-400 mt-2 px-1">Validation failed. Try again.</p>}
+              {validatedPublic && (
+                <button
+                  onClick={() => setSelectedRepo(validatedPublic.fullName.toLowerCase())}
+                  className={cn(
+                    'mt-3 flex items-center justify-between w-full p-3 rounded-xl text-left transition-colors',
+                    selectedRepo === validatedPublic.fullName.toLowerCase()
                       ? 'bg-[#1E232B] border border-white/5'
                       : 'bg-[#0A0D11] hover:bg-[#1E232B]/50 border border-transparent',
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center shrink-0">
-                      <Folder className="w-3.5 h-3.5 text-gray-400" />
+                      <Globe className="w-3.5 h-3.5 text-emerald-400" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium">{repo.fullName}</div>
-                      {repo.description && (
-                        <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{repo.description}</div>
+                      <div className="text-sm font-medium">{validatedPublic.fullName}</div>
+                      {validatedPublic.description && (
+                        <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{validatedPublic.description}</div>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {repo.monitored && (
-                      <span className="text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
-                        monitored
-                      </span>
-                    )}
-                    {repo.private && (
-                      <span className="text-[10px] font-medium text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">
-                        private
-                      </span>
-                    )}
-                    {selectedRepo === repo.fullName && (
+                    <span className="text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                      valid
+                    </span>
+                    {selectedRepo === validatedPublic.fullName.toLowerCase() && (
                       <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
                         <Check className="w-3 h-3 text-black" strokeWidth={3} />
                       </div>
                     )}
                   </div>
                 </button>
-              ))}
+              )}
             </div>
           </div>
         </div>

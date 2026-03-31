@@ -3,7 +3,7 @@ import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
 import { runMigrations, db, monitoredRepos, incidents } from './db/client'
-import { count } from 'drizzle-orm'
+import { max } from 'drizzle-orm'
 import { seedMonitoredRepos } from './lib/seed'
 import { backfillRepoIncidents } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
@@ -25,19 +25,25 @@ console.log('Config loaded')
 await runMigrations()
 await seedMonitoredRepos()
 
-// Backfill historical incidents for any monitored repo that has none yet
-;(async () => {
-  const [allRepos, incidentCounts] = await Promise.all([
+async function syncAllRepos(): Promise<void> {
+  const [allRepos, latestPerRepo] = await Promise.all([
     db.select({ repo: monitoredRepos.repo, orgId: monitoredRepos.orgId }).from(monitoredRepos),
-    db.select({ repo: incidents.repo, total: count() }).from(incidents).groupBy(incidents.repo),
+    db
+      .select({ repo: incidents.repo, latest: max(incidents.triggeredAt) })
+      .from(incidents)
+      .groupBy(incidents.repo),
   ])
-  const hasIncidents = new Set(incidentCounts.filter((r) => r.total > 0).map((r) => r.repo))
+  const latestMap = new Map(latestPerRepo.map((r) => [r.repo, r.latest]))
   for (const { repo, orgId } of allRepos) {
-    if (!hasIncidents.has(repo)) {
-      backfillRepoIncidents(repo, orgId).catch(console.error)
-    }
+    backfillRepoIncidents(repo, orgId, latestMap.get(repo)).catch(console.error)
   }
-})().catch(console.error)
+}
+
+// Incremental sync on startup — fetches only runs newer than the latest we already have
+syncAllRepos().catch(console.error)
+
+// Periodic sync every 5 minutes — keeps public repos (no webhooks) up to date
+setInterval(() => syncAllRepos().catch(console.error), 5 * 60 * 1000)
 
 const app = new Hono()
 
