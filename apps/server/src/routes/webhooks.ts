@@ -7,9 +7,21 @@ import { postInitialSlackMessage } from '../slack/message'
 import { isRepoMonitored } from '../lib/repo-cache'
 import { findMonitoredReposByRepo } from '../queries/repos'
 import { createIncident } from '../queries/incidents'
+import { handleFixPRMerged, autoResolveAfterCIPass } from '../actions/handlers'
 import { incidentEvents } from '../events'
 
 export const webhooksRouter = new Hono()
+
+const PullRequestPayload = z.object({
+  action: z.string(),
+  number: z.number(),
+  pull_request: z.object({
+    html_url: z.string(),
+    merged: z.boolean().nullable(),
+    base: z.object({ ref: z.string() }),
+  }),
+  repository: z.object({ full_name: z.string() }),
+})
 
 // Validate the parts of the GitHub webhook payload we actually use
 const WorkflowRunPayload = z.object({
@@ -46,7 +58,6 @@ webhooksRouter.post('/github', async (c) => {
   }
 
   const event = c.req.header('x-github-event')
-  if (event !== 'workflow_run') return c.json({ ok: true })
 
   let payload: unknown
   try {
@@ -55,13 +66,27 @@ webhooksRouter.post('/github', async (c) => {
     return c.json({ error: 'Malformed JSON' }, 400)
   }
 
-  const parsed = WorkflowRunPayload.safeParse(payload)
-  if (!parsed.success) return c.json({ ok: true })
+  if (event === 'pull_request') {
+    const parsed = PullRequestPayload.safeParse(payload)
+    if (parsed.success && parsed.data.action === 'closed' && parsed.data.pull_request.merged) {
+      const { pull_request: pr, number } = parsed.data
+      handleFixPRMerged(pr.html_url, number).catch(console.error)
+    }
+    return c.json({ ok: true })
+  }
 
-  const { workflow_run: run, repository } = parsed.data
-  if (parsed.data.action !== 'completed' || run.conclusion !== 'failure') return c.json({ ok: true })
+  if (event === 'workflow_run') {
+    const parsed = WorkflowRunPayload.safeParse(payload)
+    if (!parsed.success || parsed.data.action !== 'completed') return c.json({ ok: true })
 
-  processWorkflowFailure(run, repository.full_name).catch(console.error)
+    const { workflow_run: run, repository } = parsed.data
+
+    if (run.conclusion === 'failure') {
+      processWorkflowFailure(run, repository.full_name).catch(console.error)
+    } else if (run.conclusion === 'success' && (await isRepoMonitored(repository.full_name))) {
+      autoResolveAfterCIPass(repository.full_name.toLowerCase(), run.head_branch, run.id).catch(console.error)
+    }
+  }
 
   return c.json({ ok: true })
 })

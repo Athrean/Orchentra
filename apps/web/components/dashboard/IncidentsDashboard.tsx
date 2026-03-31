@@ -88,7 +88,7 @@ const STATUS_CONFIG: Record<
 > = {
   investigating: { label: 'Investigating', badgeVariant: 'amber', Icon: Clock },
   brief_ready: { label: 'Brief Ready', badgeVariant: 'blue', Icon: Eye },
-  fixing: { label: 'Fixing', badgeVariant: 'purple', Icon: Zap },
+  fixing: { label: 'Fix in Progress', badgeVariant: 'purple', Icon: Zap },
   resolved: { label: 'Passed', badgeVariant: 'emerald', Icon: CheckCircle2 },
   snoozed: { label: 'Snoozed', badgeVariant: 'muted', Icon: Pause },
   dismissed: { label: 'Cancelled', badgeVariant: 'muted', Icon: XCircle },
