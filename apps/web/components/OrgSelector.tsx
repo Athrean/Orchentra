@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { AlertTriangle, Check, Folder, Loader2, Search, Globe, X } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useRouter } from 'next/navigation'
@@ -12,6 +12,13 @@ export function OrgSelector() {
   const user = me?.user
   const { data: repos, isLoading: reposLoading, isError: reposError } = useAvailableRepos()
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null)
+
+  // Auto-select the first already-monitored repo on load
+  useEffect(() => {
+    if (!repos || selectedRepo) return
+    const first = repos.find((r) => r.monitored)
+    if (first) setSelectedRepo(first.fullName)
+  }, [repos, selectedRepo])
   const [search, setSearch] = useState('')
   const [publicInput, setPublicInput] = useState('')
   const [validatedPublic, setValidatedPublic] = useState<ValidatedRepo | null>(null)
@@ -49,11 +56,14 @@ export function OrgSelector() {
     if (!selectedRepo) return
     setMonitorError(null)
     const normalizedRepo = selectedRepo.toLowerCase()
-    try {
-      await monitorRepo.mutateAsync(normalizedRepo)
-    } catch {
-      setMonitorError('Failed to set up monitoring. Please try again.')
-      return
+    const alreadyMonitored = repos?.find((r) => r.fullName.toLowerCase() === normalizedRepo)?.monitored ?? false
+    if (!alreadyMonitored) {
+      try {
+        await monitorRepo.mutateAsync(normalizedRepo)
+      } catch {
+        setMonitorError('Failed to set up monitoring. Please try again.')
+        return
+      }
     }
     router.push(`/dashboard/${encodeURIComponent(normalizedRepo)}`)
   }
