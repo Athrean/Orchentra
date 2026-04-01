@@ -9,6 +9,9 @@ export interface WsData {
   orgId: string
   userId: string
   repo?: string
+  /** Unix ms of the last pong received. Set to Date.now() on connect so the
+   *  first ping interval doesn't immediately evict a freshly-connected client. */
+  lastPongAt: number
 }
 
 /**
@@ -79,7 +82,7 @@ export async function authenticateWsUpgrade(req: Request, orgId: string): Promis
   const url = new URL(req.url)
   const repo = url.searchParams.get('repo')?.toLowerCase() ?? undefined
 
-  return { orgId, userId: result.user.id, repo }
+  return { orgId, userId: result.user.id, repo, lastPongAt: Date.now() }
 }
 
 /** Returns total number of connected WebSocket clients across all orgs. */
