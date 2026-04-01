@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import type {} from 'react'
 import { api } from './api'
 
 // ──────────────────────────────────────────────
@@ -306,59 +306,4 @@ export function useResolveIncident(repo: string) {
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
   })
-}
-
-// ──────────────────────────────────────────────
-// SSE — real-time incident updates
-// ──────────────────────────────────────────────
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-export function useIncidentSSE(repo: string) {
-  const qc = useQueryClient()
-  const orgId = useOrgId()
-  const sourceRef = useRef<EventSource | null>(null)
-  const errorCountRef = useRef(0)
-
-  useEffect(() => {
-    if (!orgId) return
-
-    const url = `${API_BASE}/api/orgs/${orgId}/incidents/stream?repo=${encodeURIComponent(repo)}`
-    const source = new EventSource(url, { withCredentials: true })
-    sourceRef.current = source
-    errorCountRef.current = 0
-
-    // Server sends data-only SSE (no event: field), so all events arrive as 'message'.
-    // Route by parsed type from the JSON payload.
-    source.addEventListener('message', (e) => {
-      errorCountRef.current = 0 // reset on successful message
-      try {
-        const data = JSON.parse(e.data)
-        const type: string = data.type ?? ''
-
-        if (type === 'incident:created' || type === 'incident:updated' || type === 'incident:status_changed') {
-          qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
-          if (data.incidentId) {
-            qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, data.incidentId) })
-          }
-        }
-      } catch {
-        /* SSE data parse is best-effort */
-      }
-    })
-
-    source.onerror = () => {
-      errorCountRef.current++
-      // Only permanently close after sustained failures (>10 consecutive errors with no recovery)
-      // to avoid killing real-time updates on transient network blips
-      if (errorCountRef.current > 10) {
-        source.close()
-      }
-    }
-
-    return () => {
-      source.close()
-      sourceRef.current = null
-    }
-  }, [repo, orgId, qc])
 }
