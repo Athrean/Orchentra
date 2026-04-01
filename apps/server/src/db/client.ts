@@ -10,4 +10,5 @@ export {
   monitoredRepos,
   organizations,
   orgMembers,
+  chatMessages,
 } from '@orchentra/db'
