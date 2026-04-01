@@ -18,6 +18,7 @@ import { reposRouter } from './routes/repos'
 import { actionsRouter } from './routes/actions'
 import { streamRouter } from './routes/stream'
 import { orgsRouter } from './routes/orgs'
+import { registerWsClient, unregisterWsClient, authenticateWsUpgrade, getWsClientCount, type WsData } from './ws'
 
 console.log('Config loaded')
 
@@ -66,8 +67,8 @@ app.use(
   }),
 )
 
-// Health check
-app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }))
+// Health check — includes live WebSocket client count for observability
+app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString(), wsClients: getWsClientCount() }))
 
 // Public routes
 app.route('/auth', authRouter)
@@ -100,8 +101,55 @@ const port = parseInt(process.env.PORT ?? '3001')
 
 console.log(`Orchentra server running on port ${port}`)
 
+/**
+ * WebSocket handlers — Bun receives the upgrade outside of Hono's request lifecycle.
+ * Route pattern: /ws/orgs/:orgId  (optionally ?repo=owner/name)
+ */
+const wsHandlers = {
+  async open(ws: import('bun').ServerWebSocket<WsData>) {
+    registerWsClient(ws)
+  },
+  message(_ws: import('bun').ServerWebSocket<WsData>, _msg: string | Buffer) {
+    // Clients are receive-only — no messages expected from them for now
+  },
+  close(ws: import('bun').ServerWebSocket<WsData>) {
+    unregisterWsClient(ws)
+  },
+  error(ws: import('bun').ServerWebSocket<WsData>) {
+    unregisterWsClient(ws)
+  },
+}
+
 export default {
   port,
   idleTimeout: 0,
-  fetch: app.fetch,
+
+  websocket: wsHandlers,
+
+  async fetch(req: Request, server: import('bun').Server<WsData>) {
+    const url = new URL(req.url)
+
+    // Intercept WebSocket upgrade requests before Hono.
+    // Guard on the Upgrade header first so plain HTTP requests to /ws/orgs/:orgId
+    // are forwarded to Hono (or returned as 426) rather than hitting the DB unnecessarily.
+    const wsMatch = url.pathname.match(/^\/ws\/orgs\/([^/]+)$/)
+    if (wsMatch) {
+      if (req.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+        return new Response('Upgrade Required', { status: 426, headers: { Upgrade: 'websocket' } })
+      }
+
+      const orgId = wsMatch[1]
+      const data = await authenticateWsUpgrade(req, orgId)
+      if (!data) return new Response('Unauthorized', { status: 401 })
+
+      // upgrade() returns false only when the request has already been responded to
+      const upgraded = server.upgrade(req, { data })
+      if (upgraded) return undefined as unknown as Response
+
+      // Should not reach here under normal circumstances
+      return new Response('WebSocket upgrade failed', { status: 500 })
+    }
+
+    return app.fetch(req)
+  },
 }
