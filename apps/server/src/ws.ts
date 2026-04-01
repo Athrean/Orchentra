@@ -3,7 +3,7 @@ import { validateSession, SESSION_COOKIE_NAME } from './auth/session'
 import { db, orgMembers } from './db/client'
 import { eq, and } from 'drizzle-orm'
 
-const ALLOWED_ORIGIN = process.env.FRONTEND_URL ?? 'http://localhost:3000'
+const ALLOWED_ORIGIN = Bun.env.FRONTEND_URL ?? 'http://localhost:3000'
 
 export interface WsData {
   orgId: string
@@ -91,8 +91,12 @@ export function getWsClientCount(): number {
 
 function parseCookie(header: string, name: string): string | undefined {
   for (const part of header.split(';')) {
-    const [k, v] = part.trim().split('=')
-    if (k === name) return decodeURIComponent(v ?? '')
+    const trimmed = part.trim()
+    const eqIdx = trimmed.indexOf('=')
+    if (eqIdx === -1) continue
+    const k = trimmed.slice(0, eqIdx)
+    const v = trimmed.slice(eqIdx + 1) // preserve all '=' in value (e.g. base64-encoded tokens)
+    if (k === name) return decodeURIComponent(v)
   }
   return undefined
 }
