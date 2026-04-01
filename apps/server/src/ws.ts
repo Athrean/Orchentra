@@ -3,6 +3,8 @@ import { validateSession, SESSION_COOKIE_NAME } from './auth/session'
 import { db, orgMembers } from './db/client'
 import { eq, and } from 'drizzle-orm'
 
+const ALLOWED_ORIGIN = process.env.FRONTEND_URL ?? 'http://localhost:3000'
+
 export interface WsData {
   orgId: string
   userId: string
@@ -55,6 +57,10 @@ export function broadcastToOrg(orgId: string, payload: unknown, repo?: string): 
  * Reads session cookie from the Upgrade request headers.
  */
 export async function authenticateWsUpgrade(req: Request, orgId: string): Promise<WsData | null> {
+  // Reject cross-origin upgrade requests
+  const origin = req.headers.get('Origin')
+  if (origin && origin !== ALLOWED_ORIGIN) return null
+
   const cookieHeader = req.headers.get('Cookie') ?? ''
   const sessionId = parseCookie(cookieHeader, SESSION_COOKIE_NAME)
   if (!sessionId) return null
