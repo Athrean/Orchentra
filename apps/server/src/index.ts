@@ -19,6 +19,7 @@ import { actionsRouter } from './routes/actions'
 import { orgsRouter } from './routes/orgs'
 import { chatRouter } from './routes/chat'
 import { workflowsRouter } from './routes/workflows'
+import { analyticsRouter } from './routes/analytics'
 import {
   registerWsClient,
   unregisterWsClient,
@@ -108,6 +109,7 @@ app.route('/api/orgs/:orgId/repos', reposRouter) // repo management
 app.route('/api/orgs/:orgId', orgsRouter) // org + member management
 app.route('/api/orgs/:orgId', chatRouter) // natural language chat
 app.route('/api/orgs/:orgId', workflowsRouter) // CI/CD workflow management
+app.route('/api/orgs/:orgId', analyticsRouter) // CI/CD health analytics
 
 const port = parseInt(process.env.PORT ?? '3001')
 
