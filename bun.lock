@@ -52,6 +52,7 @@
         "@orchentra/core": "workspace:*",
         "@orchentra/db": "workspace:*",
         "@tanstack/react-query": "^5.95.2",
+        "ai": "^4.3.0",
         "clsx": "^2.1.1",
         "lucide-react": "^1.6.0",
         "next": "^15.2.0",
