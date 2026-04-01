@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 export type WsIncidentEventType =
@@ -39,7 +39,8 @@ const queryKeys = {
  * Uses stable refs for mutable state so the effect only re-runs when
  * orgId or repo actually change — not on every render.
  */
-export function useIncidentWebSocket(orgId: string | undefined, repo: string): void {
+/** Returns a stable ref to the active WebSocket so callers can read readyState for UI indicators. */
+export function useIncidentWebSocket(orgId: string | undefined, repo: string): RefObject<WebSocket | null> {
   const qc = useQueryClient()
 
   // Stable refs — mutations to these never trigger re-renders
@@ -111,4 +112,6 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): v
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- orgId and repo trigger reconnect; qc is stable
   }, [orgId, repo])
+
+  return wsRef
 }
