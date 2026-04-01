@@ -17,7 +17,15 @@ import { apiKeysRouter } from './routes/api-keys'
 import { reposRouter } from './routes/repos'
 import { actionsRouter } from './routes/actions'
 import { orgsRouter } from './routes/orgs'
-import { registerWsClient, unregisterWsClient, authenticateWsUpgrade, getWsClientCount, type WsData } from './ws'
+import {
+  registerWsClient,
+  unregisterWsClient,
+  authenticateWsUpgrade,
+  getWsClientCount,
+  startHeartbeat,
+  handlePong,
+  type WsData,
+} from './ws'
 
 console.log('Config loaded')
 
@@ -42,6 +50,9 @@ async function syncAllRepos(): Promise<void> {
 
 // Incremental sync on startup — fetches only runs newer than the latest we already have
 syncAllRepos().catch(console.error)
+
+// Start WebSocket heartbeat — pings every 25 s, evicts unresponsive clients after 55 s
+startHeartbeat()
 
 // Periodic sync: trailing setTimeout ensures the next run only starts after the previous finishes
 function scheduleSyncAllRepos(): void {
@@ -106,8 +117,14 @@ const wsHandlers = {
   async open(ws: import('bun').ServerWebSocket<WsData>) {
     registerWsClient(ws)
   },
-  message(_ws: import('bun').ServerWebSocket<WsData>, _msg: string | Buffer) {
-    // Clients are receive-only — no messages expected from them for now
+  message(ws: import('bun').ServerWebSocket<WsData>, msg: string | Buffer) {
+    // Only pong frames are expected from clients; ignore everything else
+    try {
+      const data = JSON.parse(typeof msg === 'string' ? msg : msg.toString('utf8'))
+      if (data?.type === 'pong') handlePong(ws)
+    } catch {
+      // Malformed JSON — silently ignore
+    }
   },
   close(ws: import('bun').ServerWebSocket<WsData>) {
     unregisterWsClient(ws)
