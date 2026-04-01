@@ -6,15 +6,18 @@ import { cn } from '../../lib/utils'
 import { useRouter } from 'next/navigation'
 import { useMe, useAvailableRepos } from '../../lib/hooks'
 import { api } from '../../lib/api'
+import { ConnectionStatusBadge, type WsConnectionState } from './ConnectionStatusBadge'
 
 export function DashboardLayout({
   children,
   repo,
   rightPanel,
+  wsState,
 }: {
   children: React.ReactNode
   repo: string
   rightPanel?: React.ReactNode
+  wsState?: WsConnectionState
 }) {
   const router = useRouter()
   const { data: me } = useMe()
@@ -144,6 +147,13 @@ export function DashboardLayout({
           <NavItem icon={<Radio className="w-3.5 h-3.5" />} label="Monitoring" />
           <NavItem icon={<Settings className="w-3.5 h-3.5" />} label="Settings" />
         </nav>
+
+        {/* Connection status */}
+        {wsState && (
+          <div className="px-4 pb-1">
+            <ConnectionStatusBadge state={wsState} />
+          </div>
+        )}
 
         {/* User card */}
         <div className="p-3 mt-auto">

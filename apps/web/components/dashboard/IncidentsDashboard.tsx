@@ -27,7 +27,6 @@ import { Badge } from '../ui/Badge'
 import {
   useIncidents,
   useIncidentDetail,
-  useIncidentSSE,
   useRerunWorkflow,
   useCreateIssue,
   useCreateFixPR,
@@ -35,7 +34,10 @@ import {
   useSnoozeIncident,
   useDismissIncident,
   useResolveIncident,
+  useMe,
 } from '../../lib/hooks'
+import { useIncidentWebSocket } from '../../lib/hooks/useIncidentWebSocket'
+import { useWsConnectionState } from './ConnectionStatusBadge'
 import { useDashboardStore } from '../../stores/dashboard'
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'all'
@@ -117,8 +119,10 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   const { selectedIncidentId, period, setSelectedIncidentId, setPeriod } = useDashboardStore()
   const { from, to } = useMemo(() => getPeriodRange(period), [period])
   const { data, isLoading, error } = useIncidents(repo, from, to)
+  const { data: me } = useMe()
 
-  useIncidentSSE(repo)
+  const wsHandle = useIncidentWebSocket(me?.org?.id, repo)
+  const wsState = useWsConnectionState(wsHandle)
 
   const incidents = data?.incidents ?? []
   const total = data?.total ?? 0
@@ -139,7 +143,7 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   )
 
   return (
-    <DashboardLayout repo={repo} rightPanel={rightPanel}>
+    <DashboardLayout repo={repo} rightPanel={rightPanel} wsState={wsState}>
       {/* ── Period filter ── */}
       <div
         className="px-4 py-2.5 flex items-center gap-1 shrink-0 border-b"
