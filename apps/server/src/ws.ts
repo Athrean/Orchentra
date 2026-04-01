@@ -92,6 +92,56 @@ export function getWsClientCount(): number {
   return total
 }
 
+// ── Heartbeat ─────────────────────────────────────────────────────────────────
+
+const PING_INTERVAL_MS = 25_000
+const PING_TIMEOUT_MS = 55_000 // 2 missed pings (25 s each) + buffer
+
+const PING_MESSAGE = JSON.stringify({ type: 'ping' })
+
+/**
+ * Sends a ping to every connected client every 25 s.
+ * Any client that has not sent a pong within 55 s (2 missed pings + buffer)
+ * is considered stale and forcibly terminated.
+ *
+ * Called once at server startup — the trailing setTimeout pattern ensures
+ * the next ping only fires after the current sweep finishes.
+ */
+export function startHeartbeat(): void {
+  function sweep(): void {
+    const now = Date.now()
+    const stale: Array<ServerWebSocket<WsData>> = []
+
+    for (const clients of clientsByOrg.values()) {
+      for (const ws of clients) {
+        if (now - ws.data.lastPongAt > PING_TIMEOUT_MS) {
+          stale.push(ws)
+        } else {
+          try {
+            ws.send(PING_MESSAGE)
+          } catch {
+            stale.push(ws)
+          }
+        }
+      }
+    }
+
+    for (const ws of stale) {
+      ws.close(1001, 'Heartbeat timeout')
+      unregisterWsClient(ws)
+    }
+
+    setTimeout(sweep, PING_INTERVAL_MS)
+  }
+
+  setTimeout(sweep, PING_INTERVAL_MS)
+}
+
+/** Handle an incoming pong from a client — updates lastPongAt in-place. */
+export function handlePong(ws: ServerWebSocket<WsData>): void {
+  ws.data.lastPongAt = Date.now()
+}
+
 function parseCookie(header: string, name: string): string | undefined {
   for (const part of header.split(';')) {
     const trimmed = part.trim()
