@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import { broadcastToOrg } from './ws'
 
 export type IncidentEventType = 'incident:created' | 'incident:updated' | 'incident:status_changed' | 'incident:action'
 
@@ -19,6 +20,8 @@ class IncidentEventBus extends EventEmitter {
   emitIncidentEvent(event: IncidentEvent): void {
     this.emit(event.type, event)
     this.emit('*', event) // wildcard for SSE streaming all events
+    // Fan-out to all WebSocket clients in the same org
+    broadcastToOrg(event.orgId, event, event.repo)
   }
 }
 
