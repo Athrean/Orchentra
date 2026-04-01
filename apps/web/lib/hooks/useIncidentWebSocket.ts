@@ -94,6 +94,11 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): R
 
       ws.onclose = () => {
         if (unmountedRef.current) return
+        // Guard against stale closure: if orgId/repo changed, cleanup already nulled wsRef
+        // and the new effect opened a fresh socket. Don't let this old onclose trigger a
+        // second reconnect loop that would orphan the new legitimate connection.
+        if (ws !== wsRef.current) return
+        wsRef.current = null // null during backoff so the status badge can distinguish states
         scheduleReconnect()
       }
 
