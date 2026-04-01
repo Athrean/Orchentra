@@ -82,6 +82,13 @@ export async function authenticateWsUpgrade(req: Request, orgId: string): Promis
   return { orgId, userId: result.user.id, repo }
 }
 
+/** Returns total number of connected WebSocket clients across all orgs. */
+export function getWsClientCount(): number {
+  let total = 0
+  for (const set of clientsByOrg.values()) total += set.size
+  return total
+}
+
 function parseCookie(header: string, name: string): string | undefined {
   for (const part of header.split(';')) {
     const [k, v] = part.trim().split('=')

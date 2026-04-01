@@ -18,7 +18,7 @@ import { reposRouter } from './routes/repos'
 import { actionsRouter } from './routes/actions'
 import { streamRouter } from './routes/stream'
 import { orgsRouter } from './routes/orgs'
-import { registerWsClient, unregisterWsClient, authenticateWsUpgrade, type WsData } from './ws'
+import { registerWsClient, unregisterWsClient, authenticateWsUpgrade, getWsClientCount, type WsData } from './ws'
 
 console.log('Config loaded')
 
@@ -67,8 +67,8 @@ app.use(
   }),
 )
 
-// Health check
-app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }))
+// Health check — includes live WebSocket client count for observability
+app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString(), wsClients: getWsClientCount() }))
 
 // Public routes
 app.route('/auth', authRouter)
