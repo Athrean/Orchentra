@@ -121,8 +121,8 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   const { data, isLoading, error } = useIncidents(repo, from, to)
   const { data: me } = useMe()
 
-  const wsRef = useIncidentWebSocket(me?.org?.id, repo)
-  const wsState = useWsConnectionState(wsRef)
+  const wsHandle = useIncidentWebSocket(me?.org?.id, repo)
+  const wsState = useWsConnectionState(wsHandle)
 
   const incidents = data?.incidents ?? []
   const total = data?.total ?? 0

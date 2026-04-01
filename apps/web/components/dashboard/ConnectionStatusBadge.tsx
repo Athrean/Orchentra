@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '../../lib/utils'
+import type { WsHandle } from '../../lib/hooks/useIncidentWebSocket'
 
 export type WsConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
 
@@ -28,20 +29,29 @@ export function ConnectionStatusBadge({ state }: Props) {
 }
 
 /**
- * Hook that tracks WebSocket state transitions and exposes WsConnectionState.
- * Companion to useIncidentWebSocket — pass the same ws ref.
+ * Derives WsConnectionState from a WsHandle returned by useIncidentWebSocket.
+ *
+ * State machine:
+ *   wsRef !== null, CONNECTING  → 'connecting'
+ *   wsRef !== null, OPEN        → 'connected'
+ *   wsRef === null, reconnecting → 'reconnecting'   (backoff timer is pending)
+ *   wsRef === null, !reconnecting → 'disconnected'  (unmounted / no retry scheduled)
+ *
+ * Polls every 1 s — cheap and avoids prop-drilling a state value through multiple layers.
  */
-export function useWsConnectionState(wsRef: React.RefObject<WebSocket | null>): WsConnectionState {
+export function useWsConnectionState({ wsRef, reconnectingRef }: WsHandle): WsConnectionState {
   const [state, setState] = useState<WsConnectionState>('connecting')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     function poll() {
       const ws = wsRef.current
+
       if (!ws) {
-        setState('disconnected')
+        setState(reconnectingRef.current ? 'reconnecting' : 'disconnected')
         return
       }
+
       switch (ws.readyState) {
         case WebSocket.CONNECTING:
           setState('connecting')
@@ -50,7 +60,11 @@ export function useWsConnectionState(wsRef: React.RefObject<WebSocket | null>): 
           setState('connected')
           break
         case WebSocket.CLOSING:
+          setState('reconnecting')
+          break
         case WebSocket.CLOSED:
+          // wsRef is still non-null during the brief window between close firing and
+          // onclose nulling it — treat as reconnecting since a retry is already queued.
           setState('reconnecting')
           break
       }
@@ -62,7 +76,7 @@ export function useWsConnectionState(wsRef: React.RefObject<WebSocket | null>): 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [wsRef])
+  }, [wsRef, reconnectingRef])
 
   return state
 }

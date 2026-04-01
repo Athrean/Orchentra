@@ -17,6 +17,16 @@ export interface WsIncidentEvent {
   data?: Record<string, unknown>
 }
 
+export interface WsHandle {
+  /** Ref to the live WebSocket — null during backoff window or after unmount. */
+  wsRef: RefObject<WebSocket | null>
+  /**
+   * True while a reconnect timer is scheduled (backoff window).
+   * Lets the status badge distinguish "null because reconnecting" from "null because offline".
+   */
+  reconnectingRef: RefObject<boolean>
+}
+
 const WS_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/^http/, 'ws')
 
 const BACKOFF_INITIAL_MS = 100
@@ -33,22 +43,21 @@ const queryKeys = {
  * Opens a WebSocket connection to `/ws/orgs/:orgId?repo=...` and invalidates
  * React Query caches on every incident event.
  *
- * Reconnects automatically with exponential backoff (100ms → 30s cap).
- * Cleans up on unmount.
+ * Returns a `WsHandle` with:
+ * - `wsRef` — the active WebSocket, null during backoff window or after unmount
+ * - `reconnectingRef` — true while a retry timer is pending so callers can distinguish
+ *   "offline and retrying" from "permanently disconnected"
  *
- * Uses stable refs for mutable state so the effect only re-runs when
- * orgId or repo actually change — not on every render.
+ * Uses stable refs so the effect only re-runs when orgId or repo actually change.
  */
-/** Returns a stable ref to the active WebSocket so callers can read readyState for UI indicators. */
-export function useIncidentWebSocket(orgId: string | undefined, repo: string): RefObject<WebSocket | null> {
+export function useIncidentWebSocket(orgId: string | undefined, repo: string): WsHandle {
   const qc = useQueryClient()
 
-  // Stable refs — mutations to these never trigger re-renders
   const wsRef = useRef<WebSocket | null>(null)
+  const reconnectingRef = useRef(false)
   const backoffRef = useRef(BACKOFF_INITIAL_MS)
   const unmountedRef = useRef(false)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Keep latest orgId/repo/qc accessible inside long-lived closures without re-creating them
   const orgIdRef = useRef(orgId)
   const repoRef = useRef(repo)
   orgIdRef.current = orgId
@@ -61,6 +70,7 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): R
 
     function scheduleReconnect(): void {
       if (unmountedRef.current) return
+      reconnectingRef.current = true
       const delay = backoffRef.current
       backoffRef.current = Math.min(backoffRef.current * BACKOFF_MULTIPLIER, BACKOFF_MAX_MS)
       retryTimerRef.current = setTimeout(openConnection, delay)
@@ -68,6 +78,7 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): R
 
     function openConnection(): void {
       if (!orgIdRef.current || unmountedRef.current) return
+      reconnectingRef.current = false
 
       const url = `${WS_BASE}/ws/orgs/${orgIdRef.current}?repo=${encodeURIComponent(repoRef.current)}`
       const ws = new WebSocket(url)
@@ -95,15 +106,15 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): R
       ws.onclose = () => {
         if (unmountedRef.current) return
         // Guard against stale closure: if orgId/repo changed, cleanup already nulled wsRef
-        // and the new effect opened a fresh socket. Don't let this old onclose trigger a
-        // second reconnect loop that would orphan the new legitimate connection.
+        // and the new effect opened a fresh socket. Prevent this old onclose from triggering
+        // a spurious reconnect that would orphan the new legitimate connection.
         if (ws !== wsRef.current) return
-        wsRef.current = null // null during backoff so the status badge can distinguish states
+        wsRef.current = null
         scheduleReconnect()
       }
 
       ws.onerror = () => {
-        // onclose fires after onerror — reconnect is handled there
+        // onclose always fires after onerror — reconnect handled there
       }
     }
 
@@ -111,6 +122,7 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): R
 
     return () => {
       unmountedRef.current = true
+      reconnectingRef.current = false
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
       wsRef.current?.close()
       wsRef.current = null
@@ -118,5 +130,5 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): R
     // eslint-disable-next-line react-hooks/exhaustive-deps -- orgId and repo trigger reconnect; qc is stable
   }, [orgId, repo])
 
-  return wsRef
+  return { wsRef, reconnectingRef }
 }
