@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../hooks'
 
 export type WsIncidentEventType =
   | 'incident:created'
@@ -32,12 +33,6 @@ const WS_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').rep
 const BACKOFF_INITIAL_MS = 100
 const BACKOFF_MAX_MS = 30_000
 const BACKOFF_MULTIPLIER = 2
-
-/** Shared query key helpers — mirrors the shape used in hooks.ts */
-const queryKeys = {
-  incidents: (orgId: string, repo: string) => ['incidents', orgId, repo] as const,
-  incidentDetail: (orgId: string, id: string) => ['incident', orgId, id] as const,
-}
 
 /**
  * Opens a WebSocket connection to `/ws/orgs/:orgId?repo=...` and invalidates

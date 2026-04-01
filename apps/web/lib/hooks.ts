@@ -1,7 +1,6 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type {} from 'react'
 import { api } from './api'
 
 // ──────────────────────────────────────────────
