@@ -127,6 +127,7 @@ export function startHeartbeat(): void {
     }
 
     for (const ws of stale) {
+      console.warn(`[ws] evicting stale client — org=${ws.data.orgId} user=${ws.data.userId}`)
       ws.close(1001, 'Heartbeat timeout')
       unregisterWsClient(ws)
     }
@@ -134,6 +135,9 @@ export function startHeartbeat(): void {
     setTimeout(sweep, PING_INTERVAL_MS)
   }
 
+  console.log(
+    `[ws] heartbeat started — ping every ${PING_INTERVAL_MS / 1_000}s, timeout after ${PING_TIMEOUT_MS / 1_000}s`,
+  )
   setTimeout(sweep, PING_INTERVAL_MS)
 }
 
