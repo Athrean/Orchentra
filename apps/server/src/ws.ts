@@ -130,9 +130,9 @@ export function startHeartbeat(): void {
       console.warn(`[ws] evicting stale client — org=${ws.data.orgId} user=${ws.data.userId}`)
       try {
         ws.close(1001, 'Heartbeat timeout')
-        unregisterWsClient(ws)
       } catch (err) {
         console.warn(`[ws] error evicting client — org=${ws.data.orgId}:`, err)
+      } finally {
         unregisterWsClient(ws)
       }
     }
