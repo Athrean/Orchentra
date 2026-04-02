@@ -179,9 +179,19 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
   } catch (error) {
     console.error(`Agent failed for ${incident.id}:`, error)
 
+    const errorCost = totalInputTokens > 0 ? estimateCostUsd(modelId, totalInputTokens, totalOutputTokens) : null
+
     await db
       .update(incidents)
-      .set({ status: 'error', rootCause: 'Agent investigation failed — check server logs' })
+      .set({
+        status: 'error',
+        rootCause: 'Agent investigation failed — check server logs',
+        ...(totalInputTokens > 0 && {
+          tokenInputs: totalInputTokens,
+          tokenOutputs: totalOutputTokens,
+          estimatedCostUsd: errorCost,
+        }),
+      })
       .where(eq(incidents.id, incident.id))
 
     incidentEvents.emitIncidentEvent({

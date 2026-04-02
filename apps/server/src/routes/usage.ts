@@ -21,10 +21,16 @@ usageRouter.get('/usage', async (c) => {
   const toParam = c.req.query('to')
 
   const toDate = toParam ? new Date(toParam) : new Date()
-  const fromDate = fromParam ? new Date(fromParam) : new Date(toDate.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-  if (isNaN(fromDate.getTime())) return c.json({ error: 'Invalid from date' }, 400)
   if (isNaN(toDate.getTime())) return c.json({ error: 'Invalid to date' }, 400)
+
+  // Normalise date-only values (e.g. "2024-01-31" → midnight UTC) to end-of-day
+  // so the entire to-day is included in the query range.
+  if (toParam && /^\d{4}-\d{2}-\d{2}$/.test(toParam)) {
+    toDate.setUTCHours(23, 59, 59, 999)
+  }
+
+  const fromDate = fromParam ? new Date(fromParam) : new Date(toDate.getTime() - 30 * 24 * 60 * 60 * 1000)
+  if (isNaN(fromDate.getTime())) return c.json({ error: 'Invalid from date' }, 400)
   if (fromDate >= toDate) return c.json({ error: 'from must be before to' }, 400)
 
   const result = await getTokenUsage(orgId, fromDate, toDate, repo)
