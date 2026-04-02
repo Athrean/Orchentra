@@ -1,9 +1,19 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { AlertTriangle, Radio, Settings, LogOut, GitBranch, ChevronDown, Check, Loader2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  Radio,
+  Settings,
+  LogOut,
+  GitBranch,
+  ChevronDown,
+  Check,
+  Loader2,
+  MessageSquare,
+} from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useMe, useAvailableRepos } from '../../lib/hooks'
 import { api } from '../../lib/api'
 import { ConnectionStatusBadge, type WsConnectionState } from './ConnectionStatusBadge'
@@ -20,11 +30,14 @@ export function DashboardLayout({
   wsState?: WsConnectionState
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { data: me } = useMe()
   const { data: repos, isLoading: reposLoading } = useAvailableRepos()
   const user = me?.user
   const [repoPickerOpen, setRepoPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
+
+  const activeNav = pathname.endsWith('/chat') ? 'chat' : pathname.endsWith('/monitoring') ? 'monitoring' : 'incidents'
 
   const monitoredRepos = repos?.filter((r) => r.monitored) ?? []
 
@@ -143,8 +156,24 @@ export function DashboardLayout({
 
         {/* Nav */}
         <nav className="flex flex-col gap-0.5 px-3 flex-1">
-          <NavItem icon={<AlertTriangle className="w-3.5 h-3.5" />} label="Incidents" active />
-          <NavItem icon={<Radio className="w-3.5 h-3.5" />} label="Monitoring" />
+          <NavItem
+            icon={<AlertTriangle className="w-3.5 h-3.5" />}
+            label="Incidents"
+            active={activeNav === 'incidents'}
+            onClick={() => router.push(`/dashboard/${encodeURIComponent(repo)}`)}
+          />
+          <NavItem
+            icon={<MessageSquare className="w-3.5 h-3.5" />}
+            label="Chat"
+            active={activeNav === 'chat'}
+            onClick={() => router.push(`/dashboard/${encodeURIComponent(repo)}/chat`)}
+          />
+          <NavItem
+            icon={<Radio className="w-3.5 h-3.5" />}
+            label="Monitoring"
+            active={activeNav === 'monitoring'}
+            onClick={() => router.push(`/dashboard/${encodeURIComponent(repo)}/monitoring`)}
+          />
           <NavItem icon={<Settings className="w-3.5 h-3.5" />} label="Settings" />
         </nav>
 
@@ -238,9 +267,20 @@ function LogoMark() {
   )
 }
 
-function NavItem({ icon, label, active }: { icon: React.ReactNode; label: string; active?: boolean }) {
+function NavItem({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  active?: boolean
+  onClick?: () => void
+}): React.ReactElement {
   return (
     <button
+      onClick={onClick}
       className={cn(
         'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors w-full text-left',
         active ? 'bg-white/6 border border-white/8 text-white' : 'border border-transparent hover:bg-white/4',
