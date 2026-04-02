@@ -70,6 +70,30 @@ export interface IncidentAction {
   createdAt: string
 }
 
+export interface WorkflowSummary {
+  id: number
+  name: string
+  path: string
+  state: string
+  latestRunAt: string | null
+  latestConclusion: string | null
+}
+
+export interface WorkflowRun {
+  id: number
+  name: string | null
+  headBranch: string | null
+  headSha: string
+  status: string | null
+  conclusion: string | null
+  runNumber: number
+  event: string
+  createdAt: string
+  updatedAt: string
+  htmlUrl: string
+  durationSeconds: number | null
+}
+
 // ──────────────────────────────────────────────
 // Query keys
 // ──────────────────────────────────────────────
@@ -80,6 +104,9 @@ export const queryKeys = {
   incidents: (orgId: string, repo: string, from?: string, to?: string) => ['incidents', orgId, repo, from, to] as const,
   incidentDetail: (orgId: string, id: string) => ['incident', orgId, id] as const,
   chatHistory: (orgId: string, sessionId: string) => ['chat', orgId, sessionId] as const,
+  workflows: (orgId: string, repo: string) => ['workflows', orgId, repo] as const,
+  workflowRuns: (orgId: string, repo: string, workflowId: number) =>
+    ['workflow-runs', orgId, repo, workflowId] as const,
 }
 
 // ──────────────────────────────────────────────
@@ -326,5 +353,74 @@ export function useChatHistory(sessionId: string | null) {
       ),
     enabled: !!orgId && !!sessionId,
     staleTime: Infinity, // history doesn't change after a session ends
+  })
+}
+
+// ──────────────────────────────────────────────
+// Workflow hooks
+// ──────────────────────────────────────────────
+
+export function useWorkflows(repo: string) {
+  const orgId = useOrgId()
+  return useQuery({
+    queryKey: orgId ? queryKeys.workflows(orgId, repo) : ['workflows', repo],
+    queryFn: () =>
+      api<{ workflows: WorkflowSummary[] }>(`/api/orgs/${orgId}/workflows?repo=${encodeURIComponent(repo)}`).then(
+        (d) => d.workflows,
+      ),
+    enabled: !!orgId,
+    refetchInterval: 60_000,
+  })
+}
+
+export function useWorkflowRuns(repo: string, workflowId: number | null) {
+  const orgId = useOrgId()
+  return useQuery({
+    queryKey: orgId && workflowId ? queryKeys.workflowRuns(orgId, repo, workflowId) : ['workflow-runs', repo],
+    queryFn: () =>
+      api<{ runs: WorkflowRun[] }>(
+        `/api/orgs/${orgId}/workflows/${workflowId}/runs?repo=${encodeURIComponent(repo)}`,
+      ).then((d) => d.runs),
+    enabled: !!orgId && !!workflowId,
+  })
+}
+
+export function useTriggerWorkflow(repo: string) {
+  const qc = useQueryClient()
+  const orgId = useOrgId()
+  return useMutation({
+    mutationFn: ({ workflowId, ref, inputs }: { workflowId: number; ref: string; inputs?: Record<string, string> }) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/workflows/${workflowId}/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo, ref, inputs }),
+      })
+    },
+    onSuccess: (_data, { workflowId }) => {
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.workflows(orgId, repo) })
+      qc.invalidateQueries({ queryKey: queryKeys.workflowRuns(orgId, repo, workflowId) })
+    },
+  })
+}
+
+export function useCancelRun(repo: string) {
+  const qc = useQueryClient()
+  const orgId = useOrgId()
+  return useMutation({
+    mutationFn: (runId: number) => {
+      if (!orgId) throw new Error('No org')
+      return api(`/api/orgs/${orgId}/workflows/runs/${runId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo }),
+      })
+    },
+    onSuccess: () => {
+      if (!orgId) return
+      qc.invalidateQueries({ queryKey: queryKeys.workflows(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['workflow-runs', orgId, repo] })
+    },
   })
 }
