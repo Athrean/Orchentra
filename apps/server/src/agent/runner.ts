@@ -3,12 +3,14 @@ import { eq } from 'drizzle-orm'
 import { BriefSchema } from '@orchentra/core'
 import { db, incidents, toolCalls } from '../db/client'
 import { createModel } from './llm'
+import { estimateCostUsd } from './token-cost'
 import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
 import { githubActionsTool } from './tools/github-actions'
 import { getCommitChangesTool, getFileContentTool } from './tools/github-repo'
 import { updateSlackWithBrief, postThreadReply } from '../slack/message'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
 import { incidentEvents } from '../events'
+import { config } from '../config'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -31,6 +33,9 @@ function formatIncidentContext(incident: IncidentRow): string {
 
 export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
   let stepNumber = 0
+  const modelId = config.llm.model
+  let totalInputTokens = 0
+  let totalOutputTokens = 0
 
   try {
     // Phase A: Investigation — generateText with tools
@@ -112,15 +117,29 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       console.error(`Pattern lookup failed for ${incident.id}:`, err)
     }
 
+    // Accumulate Phase A token usage
+    if (result.usage) {
+      totalInputTokens += result.usage.promptTokens ?? 0
+      totalOutputTokens += result.usage.completionTokens ?? 0
+    }
+
     // Phase B: Synthesis — generateObject for structured brief
-    const { object: brief } = await generateObject({
+    const { object: brief, usage: synthesisUsage } = await generateObject({
       model: createModel(),
       schema: BriefSchema,
       system: SYNTHESIS_PROMPT,
       messages: investigationMessages,
     })
 
-    // Step 3: Persist results
+    // Accumulate Phase B token usage
+    if (synthesisUsage) {
+      totalInputTokens += synthesisUsage.promptTokens ?? 0
+      totalOutputTokens += synthesisUsage.completionTokens ?? 0
+    }
+
+    const estimatedCost = estimateCostUsd(modelId, totalInputTokens, totalOutputTokens)
+
+    // Step 3: Persist results + token usage
     await db
       .update(incidents)
       .set({
@@ -129,6 +148,9 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         suggestedFix: brief.suggestedFix,
         confidence: brief.confidence,
         status: 'brief_ready',
+        tokenInputs: totalInputTokens,
+        tokenOutputs: totalOutputTokens,
+        estimatedCostUsd: estimatedCost,
       })
       .where(eq(incidents.id, incident.id))
 
@@ -150,13 +172,26 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       await postThreadReply(incident.id, `*Investigation trace:*\n${traceLines.join('\n')}`)
     }
 
-    console.log(`Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%)`)
+    console.log(
+      `Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%) — ` +
+        `${totalInputTokens + totalOutputTokens} tokens, ~$${estimatedCost.toFixed(4)}`,
+    )
   } catch (error) {
     console.error(`Agent failed for ${incident.id}:`, error)
 
+    const errorCost = totalInputTokens > 0 ? estimateCostUsd(modelId, totalInputTokens, totalOutputTokens) : null
+
     await db
       .update(incidents)
-      .set({ status: 'error', rootCause: 'Agent investigation failed — check server logs' })
+      .set({
+        status: 'error',
+        rootCause: 'Agent investigation failed — check server logs',
+        ...(totalInputTokens > 0 && {
+          tokenInputs: totalInputTokens,
+          tokenOutputs: totalOutputTokens,
+          estimatedCostUsd: errorCost,
+        }),
+      })
       .where(eq(incidents.id, incident.id))
 
     incidentEvents.emitIncidentEvent({
