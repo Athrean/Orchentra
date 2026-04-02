@@ -113,7 +113,7 @@ chatRouter.post('/chat', async (c) => {
 chatRouter.get('/chat/history', async (c) => {
   const orgId = c.get('orgId')!
   const sessionId = c.req.query('sessionId')
-  if (!sessionId) return c.json({ error: 'sessionId required' }, 400)
+  if (!sessionId || sessionId.length > 128) return c.json({ error: 'sessionId is required (max 128 chars)' }, 400)
 
   const rows = await db
     .select({

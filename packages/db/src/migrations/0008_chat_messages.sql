@@ -7,5 +7,4 @@ CREATE TABLE IF NOT EXISTS "chat_messages" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS "chat_messages_org_session_idx" ON "chat_messages" ("org_id", "session_id");
-CREATE INDEX IF NOT EXISTS "chat_messages_created_at_idx" ON "chat_messages" ("created_at");
+CREATE INDEX IF NOT EXISTS "chat_messages_org_session_created_idx" ON "chat_messages" ("org_id", "session_id", "created_at");
