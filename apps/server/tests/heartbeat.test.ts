@@ -39,7 +39,16 @@ const { registerWsClient, unregisterWsClient, broadcastToOrg, handlePong, getWsC
 
 // ── Fake WebSocket ─────────────────────────────────────────────────────────────
 
-interface WsData { orgId: string; userId: string; repo?: string; lastPongAt: number }
+interface WsData {
+  orgId: string
+  userId: string
+  repo?: string
+  lastPongAt: number
+}
+
+// Track all clients registered during a test so afterEach can clean them up
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const registeredInTest: any[] = []
 
 function makeFakeWs(
   orgId: string,
@@ -94,11 +103,15 @@ describe('handlePong', () => {
 
 describe('registerWsClient / unregisterWsClient', () => {
   beforeEach(() => {
-    // Reset client count for isolation
+    registeredInTest.length = 0
   })
 
   afterEach(() => {
-    // clean up after each test
+    for (const ws of registeredInTest) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      unregisterWsClient(ws as any)
+    }
+    registeredInTest.length = 0
   })
 
   test('getWsClientCount increases on register', () => {
@@ -106,9 +119,8 @@ describe('registerWsClient / unregisterWsClient', () => {
     const ws = makeFakeWs('org-count')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerWsClient(ws as any)
+    registeredInTest.push(ws)
     expect(getWsClientCount()).toBe(before + 1)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    unregisterWsClient(ws as any)
   })
 
   test('getWsClientCount decreases on unregister', () => {
@@ -119,6 +131,7 @@ describe('registerWsClient / unregisterWsClient', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     unregisterWsClient(ws as any)
     expect(getWsClientCount()).toBe(after - 1)
+    // Already unregistered — don't push to registeredInTest
   })
 
   test('unregistering unknown client is a no-op', () => {
@@ -131,24 +144,33 @@ describe('registerWsClient / unregisterWsClient', () => {
 })
 
 describe('broadcastToOrg', () => {
+  beforeEach(() => {
+    registeredInTest.length = 0
+  })
+
+  afterEach(() => {
+    for (const ws of registeredInTest) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      unregisterWsClient(ws as any)
+    }
+    registeredInTest.length = 0
+  })
+
   test('sends JSON-encoded payload to all org clients', () => {
     const ws1 = makeFakeWs('org-bcast')
     const ws2 = makeFakeWs('org-bcast')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerWsClient(ws1 as any)
+    registeredInTest.push(ws1)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerWsClient(ws2 as any)
+    registeredInTest.push(ws2)
 
     broadcastToOrg('org-bcast', { type: 'incident:created', incidentId: 'x' })
 
     const expected = JSON.stringify({ type: 'incident:created', incidentId: 'x' })
     expect(ws1.sent).toContain(expected)
     expect(ws2.sent).toContain(expected)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    unregisterWsClient(ws1 as any)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    unregisterWsClient(ws2 as any)
   })
 
   test('skips clients subscribed to a different repo', () => {
@@ -166,18 +188,15 @@ describe('broadcastToOrg', () => {
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerWsClient(wsA as any)
+    registeredInTest.push(wsA)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     registerWsClient(wsB as any)
+    registeredInTest.push(wsB)
 
     broadcastToOrg('org-repo-filter', { type: 'test' }, 'owner/repoA')
 
     expect(wsA.sent.length).toBeGreaterThan(0)
     expect(wsB.sent.length).toBe(0)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    unregisterWsClient(wsA as any)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    unregisterWsClient(wsB as any)
   })
 
   test('does nothing for unknown orgId', () => {
