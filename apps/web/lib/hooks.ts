@@ -52,6 +52,9 @@ export interface IncidentFull extends Incident {
   suggestedFix: string | null
   resolvedAt: string | null
   mttrSeconds: number | null
+  tokenInputs: number | null
+  tokenOutputs: number | null
+  estimatedCostUsd: number | null
 }
 
 export interface ToolCall {
