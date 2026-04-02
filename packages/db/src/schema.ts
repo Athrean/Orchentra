@@ -43,6 +43,11 @@ export const incidents = pgTable(
     snoozedUntil: timestamp('snoozed_until', { withTimezone: true }),
     escalatedAt: timestamp('escalated_at', { withTimezone: true }),
 
+    // Token usage & cost tracking
+    tokenInputs: integer('token_inputs'),
+    tokenOutputs: integer('token_outputs'),
+    estimatedCostUsd: doublePrecision('estimated_cost_usd'),
+
     // Timing
     triggeredAt: timestamp('triggered_at', { withTimezone: true }),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
