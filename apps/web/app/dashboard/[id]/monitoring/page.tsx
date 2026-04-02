@@ -1,4 +1,4 @@
-import { WorkflowsDashboard } from '../../../../components/dashboard/WorkflowsDashboard'
+import { AnalyticsDashboard } from '../../../../components/dashboard/AnalyticsDashboard'
 
 export default async function MonitoringPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -8,5 +8,5 @@ export default async function MonitoringPage({ params }: { params: Promise<{ id:
   } catch {
     return <div className="p-6 text-red-400">Invalid repository identifier.</div>
   }
-  return <WorkflowsDashboard repo={repo} />
+  return <AnalyticsDashboard repo={repo} />
 }

@@ -95,6 +95,49 @@ export interface WorkflowRun {
 }
 
 // ──────────────────────────────────────────────
+// Analytics types
+// ──────────────────────────────────────────────
+
+export interface DailyFailureRate {
+  date: string
+  total: number
+  failed: number
+  failureRate: number
+}
+
+export interface MttrByWorkflow {
+  workflowName: string
+  avgMttrSeconds: number
+  incidentCount: number
+}
+
+export interface TopFailingWorkflow {
+  workflowName: string
+  repo: string
+  failureCount: number
+}
+
+export interface FailedStepFrequency {
+  failedStep: string
+  count: number
+}
+
+export interface AnalyticsSummary {
+  totalIncidents: number
+  resolvedIncidents: number
+  avgConfidence: number | null
+  resolutionRate: number | null
+}
+
+export interface Analytics {
+  dailyFailureRate: DailyFailureRate[]
+  mttrByWorkflow: MttrByWorkflow[]
+  topFailingWorkflows: TopFailingWorkflow[]
+  topFailedSteps: FailedStepFrequency[]
+  summary: AnalyticsSummary
+}
+
+// ──────────────────────────────────────────────
 // Query keys
 // ──────────────────────────────────────────────
 
@@ -107,6 +150,7 @@ export const queryKeys = {
   workflows: (orgId: string, repo: string) => ['workflows', orgId, repo] as const,
   workflowRuns: (orgId: string, repo: string, workflowId: number) =>
     ['workflow-runs', orgId, repo, workflowId] as const,
+  analytics: (orgId: string, repo: string, from: string, to: string) => ['analytics', orgId, repo, from, to] as const,
 }
 
 // ──────────────────────────────────────────────
@@ -422,5 +466,29 @@ export function useCancelRun(repo: string) {
       qc.invalidateQueries({ queryKey: queryKeys.workflows(orgId, repo) })
       qc.invalidateQueries({ queryKey: ['workflow-runs', orgId, repo] })
     },
+  })
+}
+
+// ──────────────────────────────────────────────
+// Analytics hook
+// ──────────────────────────────────────────────
+
+/**
+ * Fetch aggregated CI/CD health metrics.
+ * Defaults to the last 30 days if from/to are not provided.
+ */
+export function useAnalytics(repo: string, from?: string, to?: string) {
+  const orgId = useOrgId()
+  const toStr = to ?? new Date().toISOString().slice(0, 10)
+  const fromStr = from ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  return useQuery({
+    queryKey: orgId ? queryKeys.analytics(orgId, repo, fromStr, toStr) : ['analytics', repo],
+    queryFn: () => {
+      const params = new URLSearchParams({ from: fromStr, to: toStr })
+      if (repo) params.set('repo', repo)
+      return api<Analytics>(`/api/orgs/${orgId}/analytics?${params}`)
+    },
+    enabled: !!orgId,
+    staleTime: 5 * 60_000,
   })
 }
