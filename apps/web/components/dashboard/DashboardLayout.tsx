@@ -23,13 +23,11 @@ export function DashboardLayout({
   repo,
   rightPanel,
   wsState,
-  activeNav = 'incidents',
 }: {
   children: React.ReactNode
   repo: string
   rightPanel?: React.ReactNode
   wsState?: WsConnectionState
-  activeNav?: 'incidents' | 'chat' | 'monitoring' | 'settings'
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -39,7 +37,13 @@ export function DashboardLayout({
   const [repoPickerOpen, setRepoPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
 
-  const activeNav = pathname.endsWith('/chat') ? 'chat' : pathname.endsWith('/monitoring') ? 'monitoring' : 'incidents'
+  const activeNav = pathname.endsWith('/chat')
+    ? 'chat'
+    : pathname.endsWith('/monitoring')
+      ? 'monitoring'
+      : pathname.endsWith('/settings')
+        ? 'settings'
+        : 'incidents'
 
   const monitoredRepos = repos?.filter((r) => r.monitored) ?? []
 
