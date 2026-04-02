@@ -134,7 +134,7 @@ export function AnalyticsDashboard({ repo }: { repo: string }): React.ReactEleme
               <StatCard
                 label="Resolution Rate"
                 value={pct(data?.summary.resolutionRate ?? null)}
-                sub={data?.summary.resolutionRate !== null ? `${data?.summary.resolvedIncidents} resolved` : undefined}
+                sub={data?.summary.resolutionRate != null ? `${data?.summary.resolvedIncidents} resolved` : undefined}
                 trend={
                   (data?.summary.resolutionRate ?? 0) > 0.7
                     ? 'up'

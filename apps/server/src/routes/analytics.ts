@@ -22,10 +22,10 @@ analyticsRouter.get('/analytics', async (c) => {
   const toParam = c.req.query('to')
 
   const toDate = toParam ? new Date(toParam) : new Date()
-  const fromDate = fromParam ? new Date(fromParam) : new Date(toDate.getTime() - 30 * 24 * 60 * 60 * 1000) // 30d default
-
-  if (isNaN(fromDate.getTime())) return c.json({ error: 'Invalid from date' }, 400)
   if (isNaN(toDate.getTime())) return c.json({ error: 'Invalid to date' }, 400)
+
+  const fromDate = fromParam ? new Date(fromParam) : new Date(toDate.getTime() - 30 * 24 * 60 * 60 * 1000) // 30d default
+  if (isNaN(fromDate.getTime())) return c.json({ error: 'Invalid from date' }, 400)
   if (fromDate >= toDate) return c.json({ error: 'from must be before to' }, 400)
 
   const result = await getAnalytics(orgId, repoParam, fromDate, toDate)

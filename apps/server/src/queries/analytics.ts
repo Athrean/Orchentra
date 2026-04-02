@@ -96,7 +96,7 @@ export async function getAnalytics(
       LIMIT 10
     `),
 
-    // Top failing workflows
+    // Top failing workflows — only non-resolved statuses to match failure definition
     db
       .select({
         workflowName: incidents.workflowName,
@@ -104,7 +104,7 @@ export async function getAnalytics(
         failureCount: sql<number>`COUNT(*)`,
       })
       .from(incidents)
-      .where(whereClause)
+      .where(and(whereClause, sql`status IN ('investigating', 'brief_ready', 'fixing', 'escalated', 'error')`))
       .groupBy(incidents.workflowName, incidents.repo)
       .orderBy(desc(sql`COUNT(*)`))
       .limit(5),
