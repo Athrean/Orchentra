@@ -17,6 +17,7 @@ import { apiKeysRouter } from './routes/api-keys'
 import { reposRouter } from './routes/repos'
 import { actionsRouter } from './routes/actions'
 import { orgsRouter } from './routes/orgs'
+import { chatRouter } from './routes/chat'
 import {
   registerWsClient,
   unregisterWsClient,
@@ -104,6 +105,7 @@ app.route('/api/orgs/:orgId', incidentsRouter) // incidents CRUD
 app.route('/api/orgs/:orgId', actionsRouter) // incident actions
 app.route('/api/orgs/:orgId/repos', reposRouter) // repo management
 app.route('/api/orgs/:orgId', orgsRouter) // org + member management
+app.route('/api/orgs/:orgId', chatRouter) // natural language chat
 
 const port = parseInt(process.env.PORT ?? '3001')
 
