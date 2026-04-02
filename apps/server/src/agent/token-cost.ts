@@ -36,12 +36,15 @@ function getRates(modelId: string): TokenRates {
   // Prefix match (e.g. "anthropic/claude-3-5-sonnet:beta" → strip the variant)
   const prefix = modelId.split(':')[0]!
   if (prefix in MODEL_RATES) return MODEL_RATES[prefix]!
-  // Partial match — only when modelId starts with the key followed by ':' or '-' to avoid
-  // cross-family collisions (e.g. "gpt-4o-mini" must not match "gpt-4o" rates)
-  const entry = Object.entries(MODEL_RATES).find(
+  // Longest-prefix match — only when modelId starts with the key followed by ':' or '-' to avoid
+  // cross-family collisions (e.g. "gpt-4o-mini" must not match "gpt-4o" rates).
+  // Use longest key first so "anthropic/claude-3-5-sonnet" wins over "anthropic/claude-3-5".
+  const candidates = Object.entries(MODEL_RATES).filter(
     ([key]) => modelId.startsWith(key + ':') || modelId.startsWith(key + '-'),
   )
-  return entry ? entry[1] : FALLBACK_RATES
+  if (candidates.length === 0) return FALLBACK_RATES
+  candidates.sort((a, b) => b[0].length - a[0].length)
+  return candidates[0]![1]
 }
 
 /**
