@@ -3,7 +3,7 @@ import { streamText, type CoreMessage } from 'ai'
 import { createModel } from '../agent/llm'
 import { createChatTools } from '../agent/tools/chat-tools'
 import { db, chatMessages } from '../db/client'
-import { eq, and, asc } from 'drizzle-orm'
+import { eq, and, asc, desc } from 'drizzle-orm'
 import type { AppVariables } from '../types'
 
 export const chatRouter = new Hono<{ Variables: AppVariables }>()
@@ -53,13 +53,15 @@ chatRouter.post('/chat', async (c) => {
     return c.json({ error: 'message too long (max 4000 chars)' }, 400)
   }
 
-  // Load prior conversation turns (last 20 to bound context window usage)
+  // Load prior conversation turns — fetch newest 20 with DESC, then reverse to chronological order
   const priorRows = await db
     .select({ role: chatMessages.role, content: chatMessages.content })
     .from(chatMessages)
     .where(and(eq(chatMessages.orgId, orgId), eq(chatMessages.sessionId, sessionId)))
-    .orderBy(asc(chatMessages.createdAt))
+    .orderBy(desc(chatMessages.createdAt))
     .limit(20)
+
+  priorRows.reverse()
 
   const history: CoreMessage[] = priorRows.map((r) => ({
     role: r.role as 'user' | 'assistant',
@@ -85,13 +87,17 @@ chatRouter.post('/chat', async (c) => {
     maxSteps: 4,
     onFinish: async ({ text }) => {
       if (!text) return
-      await db.insert(chatMessages).values({
-        id: crypto.randomUUID(),
-        orgId,
-        sessionId,
-        role: 'assistant',
-        content: text,
-      })
+      try {
+        await db.insert(chatMessages).values({
+          id: crypto.randomUUID(),
+          orgId,
+          sessionId,
+          role: 'assistant',
+          content: text,
+        })
+      } catch (err) {
+        console.error('[chat] failed to persist assistant message:', err)
+      }
       void userId // acknowledged — no user-side attribution needed for now
     },
   })

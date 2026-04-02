@@ -13,7 +13,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useMe, useAvailableRepos } from '../../lib/hooks'
 import { api } from '../../lib/api'
 import { ConnectionStatusBadge, type WsConnectionState } from './ConnectionStatusBadge'
@@ -30,11 +30,14 @@ export function DashboardLayout({
   wsState?: WsConnectionState
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { data: me } = useMe()
   const { data: repos, isLoading: reposLoading } = useAvailableRepos()
   const user = me?.user
   const [repoPickerOpen, setRepoPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
+
+  const activeNav = pathname.endsWith('/chat') ? 'chat' : pathname.endsWith('/monitoring') ? 'monitoring' : 'incidents'
 
   const monitoredRepos = repos?.filter((r) => r.monitored) ?? []
 
@@ -156,15 +159,21 @@ export function DashboardLayout({
           <NavItem
             icon={<AlertTriangle className="w-3.5 h-3.5" />}
             label="Incidents"
-            active
+            active={activeNav === 'incidents'}
             onClick={() => router.push(`/dashboard/${encodeURIComponent(repo)}`)}
           />
           <NavItem
             icon={<MessageSquare className="w-3.5 h-3.5" />}
             label="Chat"
+            active={activeNav === 'chat'}
             onClick={() => router.push(`/dashboard/${encodeURIComponent(repo)}/chat`)}
           />
-          <NavItem icon={<Radio className="w-3.5 h-3.5" />} label="Monitoring" />
+          <NavItem
+            icon={<Radio className="w-3.5 h-3.5" />}
+            label="Monitoring"
+            active={activeNav === 'monitoring'}
+            onClick={() => router.push(`/dashboard/${encodeURIComponent(repo)}/monitoring`)}
+          />
           <NavItem icon={<Settings className="w-3.5 h-3.5" />} label="Settings" />
         </nav>
 

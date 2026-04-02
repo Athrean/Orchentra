@@ -198,8 +198,5 @@ export const chatMessages = pgTable(
     content: text('content').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index('chat_messages_org_session_idx').on(table.orgId, table.sessionId),
-    index('chat_messages_created_at_idx').on(table.createdAt),
-  ],
+  (table) => [index('chat_messages_org_session_created_idx').on(table.orgId, table.sessionId, table.createdAt)],
 )

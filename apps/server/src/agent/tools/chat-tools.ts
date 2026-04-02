@@ -75,7 +75,8 @@ function buildChatTools(orgId: string) {
       limit: z.number().int().min(1).max(20).default(10),
     }),
     execute: async ({ query, limit }) => {
-      const term = `%${query}%`
+      const escaped = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+      const term = `%${escaped}%`
       const rows = await db
         .select({
           id: incidents.id,

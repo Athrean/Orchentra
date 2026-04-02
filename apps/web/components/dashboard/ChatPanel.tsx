@@ -140,8 +140,8 @@ export function ChatPanel({ repo }: ChatPanelProps): React.ReactElement {
           messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)
         )}
 
-        {/* Loading indicator */}
-        {isLoading && (
+        {/* Loading indicator — only show when streaming hasn't produced an assistant message yet */}
+        {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex gap-2.5 items-start">
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
