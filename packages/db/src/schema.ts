@@ -178,3 +178,25 @@ export const monitoredRepos = pgTable(
   },
   (table) => [uniqueIndex('monitored_repos_org_repo_unique').on(table.orgId, table.repo)],
 )
+
+/**
+ * Persistent chat message history per org+session.
+ * Each row is one turn (user or assistant). Tool call deltas are not stored
+ * individually — the final assistant text after tool execution is the only
+ * assistant row written per turn.
+ */
+export const chatMessages = pgTable(
+  'chat_messages',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    /** Opaque session ID supplied by the client — groups a conversation thread. */
+    sessionId: text('session_id').notNull(),
+    role: text('role').notNull(), // 'user' | 'assistant'
+    content: text('content').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('chat_messages_org_session_created_idx').on(table.orgId, table.sessionId, table.createdAt)],
+)
