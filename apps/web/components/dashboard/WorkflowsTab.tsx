@@ -98,15 +98,26 @@ function WorkflowRow({ wf, repo }: { wf: WorkflowSummary; repo: string }): React
   const [expanded, setExpanded] = useState(false)
   const [triggerRef, setTriggerRef] = useState('')
   const [showDispatch, setShowDispatch] = useState(false)
+  const [dispatchError, setDispatchError] = useState<string | null>(null)
 
   const { data: runs, isLoading: runsLoading } = useWorkflowRuns(repo, expanded ? wf.id : null)
   const trigger = useTriggerWorkflow(repo)
 
   function handleDispatch(): void {
     if (!triggerRef.trim()) return
-    trigger.mutate({ workflowId: wf.id, ref: triggerRef.trim() })
-    setShowDispatch(false)
-    setTriggerRef('')
+    setDispatchError(null)
+    trigger.mutate(
+      { workflowId: wf.id, ref: triggerRef.trim() },
+      {
+        onSuccess: () => {
+          setShowDispatch(false)
+          setTriggerRef('')
+        },
+        onError: (err: unknown) => {
+          setDispatchError(err instanceof Error ? err.message : 'Failed to trigger workflow')
+        },
+      },
+    )
   }
 
   return (
@@ -148,26 +159,33 @@ function WorkflowRow({ wf, repo }: { wf: WorkflowSummary; repo: string }): React
       {/* Dispatch input */}
       {showDispatch && (
         <div
-          className="px-3 pb-2 flex gap-2 items-center border-t"
+          className="px-3 pb-2 border-t flex flex-col gap-1"
           style={{ borderColor: 'var(--color-app-border)', background: 'var(--color-app-deep)' }}
         >
-          <input
-            value={triggerRef}
-            onChange={(e) => setTriggerRef(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleDispatch()}
-            placeholder="Branch or tag (e.g. main)"
-            className="flex-1 bg-transparent text-[11px] outline-none py-1.5"
-            style={{ color: 'var(--color-app-text)' }}
-            autoFocus
-          />
-          <button
-            onClick={handleDispatch}
-            disabled={!triggerRef.trim() || trigger.isPending}
-            className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40 transition-colors"
-            style={{ background: 'var(--color-brand-dim)', color: 'var(--color-brand)' }}
-          >
-            {trigger.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Run'}
-          </button>
+          <div className="flex gap-2 items-center">
+            <input
+              value={triggerRef}
+              onChange={(e) => setTriggerRef(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleDispatch()}
+              placeholder="Branch or tag (e.g. main)"
+              className="flex-1 bg-transparent text-[11px] outline-none py-1.5"
+              style={{ color: 'var(--color-app-text)' }}
+              autoFocus
+            />
+            <button
+              onClick={handleDispatch}
+              disabled={!triggerRef.trim() || trigger.isPending}
+              className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40 transition-colors"
+              style={{ background: 'var(--color-brand-dim)', color: 'var(--color-brand)' }}
+            >
+              {trigger.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Run'}
+            </button>
+          </div>
+          {dispatchError && (
+            <div className="text-[10px]" style={{ color: '#ef4444' }}>
+              {dispatchError}
+            </div>
+          )}
         </div>
       )}
 

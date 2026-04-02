@@ -420,6 +420,7 @@ export function useCancelRun(repo: string) {
     onSuccess: () => {
       if (!orgId) return
       qc.invalidateQueries({ queryKey: queryKeys.workflows(orgId, repo) })
+      qc.invalidateQueries({ queryKey: ['workflow-runs', orgId, repo] })
     },
   })
 }

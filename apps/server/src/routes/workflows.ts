@@ -1,19 +1,26 @@
 import { Hono } from 'hono'
-import { isRepoMonitored } from '../lib/repo-cache'
+import { eq, and } from 'drizzle-orm'
+import { db, monitoredRepos } from '../db/client'
 import { listWorkflows, listWorkflowRuns, dispatchWorkflow, cancelWorkflowRun } from '../lib/github-workflows'
 import type { AppVariables } from '../types'
 
 export const workflowsRouter = new Hono<{ Variables: AppVariables }>()
 
-/** Validate that a repo param exists, is in owner/repo format, and is monitored by the org. */
+/** Validate that a repo param exists, is in owner/repo format, and is monitored by the requesting org. */
 async function resolveMonitoredRepo(
   repoParam: string | undefined,
+  orgId: string,
 ): Promise<{ repo: string } | { error: string; status: 400 | 403 | 404 }> {
   if (!repoParam || !/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(repoParam)) {
     return { error: 'repo param must be in owner/name format', status: 400 }
   }
   const lower = repoParam.toLowerCase()
-  if (!(await isRepoMonitored(lower))) {
+  const row = await db
+    .select({ id: monitoredRepos.id })
+    .from(monitoredRepos)
+    .where(and(eq(monitoredRepos.orgId, orgId), eq(monitoredRepos.repo, lower)))
+    .limit(1)
+  if (row.length === 0) {
     return { error: 'Repository is not monitored by this org', status: 403 }
   }
   return { repo: lower }
@@ -24,7 +31,7 @@ async function resolveMonitoredRepo(
  * List all workflow definitions with latest run status.
  */
 workflowsRouter.get('/workflows', async (c) => {
-  const resolved = await resolveMonitoredRepo(c.req.query('repo'))
+  const resolved = await resolveMonitoredRepo(c.req.query('repo'), c.get('orgId')!)
   if ('error' in resolved) return c.json({ error: resolved.error }, resolved.status)
 
   const result = await listWorkflows(resolved.repo)
@@ -38,7 +45,7 @@ workflowsRouter.get('/workflows', async (c) => {
  * List recent runs for a specific workflow.
  */
 workflowsRouter.get('/workflows/:workflowId/runs', async (c) => {
-  const resolved = await resolveMonitoredRepo(c.req.query('repo'))
+  const resolved = await resolveMonitoredRepo(c.req.query('repo'), c.get('orgId')!)
   if ('error' in resolved) return c.json({ error: resolved.error }, resolved.status)
 
   const workflowId = parseInt(c.req.param('workflowId'), 10)
@@ -75,10 +82,20 @@ workflowsRouter.post('/workflows/:workflowId/dispatch', async (c) => {
     inputs?: Record<string, string>
   }
 
-  const resolved = await resolveMonitoredRepo(repoParam)
+  const resolved = await resolveMonitoredRepo(repoParam, c.get('orgId')!)
   if ('error' in resolved) return c.json({ error: resolved.error }, resolved.status)
 
   if (!ref || typeof ref !== 'string') return c.json({ error: 'ref is required' }, 400)
+
+  if (
+    inputs !== undefined &&
+    (typeof inputs !== 'object' ||
+      inputs === null ||
+      Array.isArray(inputs) ||
+      !Object.values(inputs).every((v) => typeof v === 'string'))
+  ) {
+    return c.json({ error: 'inputs must be an object with string values' }, 400)
+  }
 
   const workflowId = parseInt(c.req.param('workflowId'), 10)
   if (isNaN(workflowId)) return c.json({ error: 'Invalid workflowId' }, 400)
@@ -103,7 +120,7 @@ workflowsRouter.post('/workflows/runs/:runId/cancel', async (c) => {
   }
 
   const { repo: repoParam } = body as { repo?: string }
-  const resolved = await resolveMonitoredRepo(repoParam)
+  const resolved = await resolveMonitoredRepo(repoParam, c.get('orgId')!)
   if ('error' in resolved) return c.json({ error: resolved.error }, resolved.status)
 
   const runId = parseInt(c.req.param('runId'), 10)

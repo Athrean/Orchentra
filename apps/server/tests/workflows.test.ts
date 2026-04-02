@@ -4,13 +4,6 @@ import { describe, test, expect, mock } from 'bun:test'
 
 const MONITORED_REPO = 'owner/repo'
 
-// Mock repo-cache so we control which repos are "monitored"
-mock.module('../src/lib/repo-cache', () => ({
-  isRepoMonitored: (repo: string) => Promise.resolve(repo === MONITORED_REPO),
-  getAvailableRepos: () => Promise.resolve([]),
-  invalidateMonitoredReposCache: () => {},
-}))
-
 const mockWorkflows = [
   { id: 1, name: 'CI', path: '.github/workflows/ci.yml', state: 'active' },
   { id: 2, name: 'Deploy', path: '.github/workflows/deploy.yml', state: 'active' },
