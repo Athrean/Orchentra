@@ -9,6 +9,9 @@ export interface WsData {
   orgId: string
   userId: string
   repo?: string
+  /** Unix ms of the last pong received. Set to Date.now() on connect so the
+   *  first ping interval doesn't immediately evict a freshly-connected client. */
+  lastPongAt: number
 }
 
 /**
@@ -79,7 +82,7 @@ export async function authenticateWsUpgrade(req: Request, orgId: string): Promis
   const url = new URL(req.url)
   const repo = url.searchParams.get('repo')?.toLowerCase() ?? undefined
 
-  return { orgId, userId: result.user.id, repo }
+  return { orgId, userId: result.user.id, repo, lastPongAt: Date.now() }
 }
 
 /** Returns total number of connected WebSocket clients across all orgs. */
@@ -87,6 +90,65 @@ export function getWsClientCount(): number {
   let total = 0
   for (const set of clientsByOrg.values()) total += set.size
   return total
+}
+
+// ── Heartbeat ─────────────────────────────────────────────────────────────────
+
+const PING_INTERVAL_MS = 25_000
+const PING_TIMEOUT_MS = 55_000 // 2 missed pings (25 s each) + buffer
+
+const PING_MESSAGE = JSON.stringify({ type: 'ping' })
+
+/**
+ * Sends a ping to every connected client every 25 s.
+ * Any client that has not sent a pong within 55 s (2 missed pings + buffer)
+ * is considered stale and forcibly terminated.
+ *
+ * Called once at server startup — the trailing setTimeout pattern ensures
+ * the next ping only fires after the current sweep finishes.
+ */
+export function startHeartbeat(): void {
+  function sweep(): void {
+    const now = Date.now()
+    const stale: Array<ServerWebSocket<WsData>> = []
+
+    for (const clients of clientsByOrg.values()) {
+      for (const ws of clients) {
+        if (now - ws.data.lastPongAt > PING_TIMEOUT_MS) {
+          stale.push(ws)
+        } else {
+          try {
+            ws.send(PING_MESSAGE)
+          } catch {
+            stale.push(ws)
+          }
+        }
+      }
+    }
+
+    for (const ws of stale) {
+      console.warn(`[ws] evicting stale client — org=${ws.data.orgId} user=${ws.data.userId}`)
+      try {
+        ws.close(1001, 'Heartbeat timeout')
+      } catch (err) {
+        console.warn(`[ws] error evicting client — org=${ws.data.orgId}:`, err)
+      } finally {
+        unregisterWsClient(ws)
+      }
+    }
+
+    setTimeout(sweep, PING_INTERVAL_MS)
+  }
+
+  console.log(
+    `[ws] heartbeat started — ping every ${PING_INTERVAL_MS / 1_000}s, timeout after ${PING_TIMEOUT_MS / 1_000}s`,
+  )
+  setTimeout(sweep, PING_INTERVAL_MS)
+}
+
+/** Handle an incoming pong from a client — updates lastPongAt in-place. */
+export function handlePong(ws: ServerWebSocket<WsData>): void {
+  ws.data.lastPongAt = Date.now()
 }
 
 function parseCookie(header: string, name: string): string | undefined {
