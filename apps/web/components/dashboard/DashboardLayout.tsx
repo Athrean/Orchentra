@@ -23,11 +23,13 @@ export function DashboardLayout({
   repo,
   rightPanel,
   wsState,
+  activeNav = 'incidents',
 }: {
   children: React.ReactNode
   repo: string
   rightPanel?: React.ReactNode
   wsState?: WsConnectionState
+  activeNav?: 'incidents' | 'chat' | 'monitoring' | 'settings'
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -174,7 +176,7 @@ export function DashboardLayout({
             active={activeNav === 'monitoring'}
             onClick={() => router.push(`/dashboard/${encodeURIComponent(repo)}/monitoring`)}
           />
-          <NavItem icon={<Settings className="w-3.5 h-3.5" />} label="Settings" />
+          <NavItem icon={<Settings className="w-3.5 h-3.5" />} label="Settings" active={activeNav === 'settings'} />
         </nav>
 
         {/* Connection status */}
