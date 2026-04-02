@@ -615,6 +615,19 @@ function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: 
             <MetaCard label="Commit" value={inc.commit.slice(0, 12)} mono />
             {inc.confidence !== null && <MetaCard label="Confidence" value={`${Math.round(inc.confidence * 100)}%`} />}
             {inc.mttrSeconds != null && <MetaCard label="MTTR" value={fmtDuration(inc.mttrSeconds)} />}
+            {inc.tokenInputs != null && (
+              <MetaCard
+                label="Tokens"
+                value={`${((inc.tokenInputs + (inc.tokenOutputs ?? 0)) / 1000).toFixed(1)}k`}
+                mono
+              />
+            )}
+            {inc.estimatedCostUsd != null && (
+              <MetaCard
+                label="Est. Cost"
+                value={inc.estimatedCostUsd < 0.01 ? `<$0.01` : `$${inc.estimatedCostUsd.toFixed(3)}`}
+              />
+            )}
           </div>
         </Section>
 
