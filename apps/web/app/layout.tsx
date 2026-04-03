@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
-import { Sora, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { Instrument_Serif, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import { QueryProvider } from '../lib/query-provider'
 import './globals.css'
 
-const sora = Sora({
+const instrumentSerif = Instrument_Serif({
+  weight: '400',
   subsets: ['latin'],
-  variable: '--font-display',
+  variable: '--font-serif',
   display: 'swap',
 })
 
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
-    <html lang="en" className={`${sora.variable} ${jakarta.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${instrumentSerif.variable} ${jakarta.variable} ${jetbrains.variable}`}>
       <body>
         <QueryProvider>{children}</QueryProvider>
       </body>

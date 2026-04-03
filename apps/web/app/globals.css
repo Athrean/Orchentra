@@ -14,13 +14,13 @@
   --color-app-border-hover: rgba(255, 255, 255, 0.10);
   --color-app-border-subtle: rgba(255, 255, 255, 0.03);
 
-  /* ── Text ── */
+  /* ── Text (dark mode) ── */
   --color-app-text: #FAFAFA;
   --color-app-text-secondary: #A1A1AA;
   --color-app-text-muted: #71717A;
   --color-app-text-subtle: #52525B;
 
-  /* ── Brand (orange-red) ── */
+  /* ── Brand (orange-red for dashboard) ── */
   --color-brand: #FF4500;
   --color-brand-dim: rgba(255, 69, 0, 0.12);
   --color-brand-border: rgba(255, 69, 0, 0.20);
@@ -30,20 +30,26 @@
   --color-green-hover: #2C974B;
   --color-green-dim: rgba(46, 160, 67, 0.15);
 
-  /* ── Legacy surface tokens (used by landing page) ── */
-  --color-surface-0: #ffffff;
-  --color-surface-1: #f8f8f8;
-  --color-surface-2: #f0f0f0;
-  --color-surface-3: #e8e8e8;
-  --color-surface-4: #d4d4d4;
+  /* ── Landing page tokens (warm cream — Claude-inspired) ── */
+  --color-cream: #F5F0EA;
+  --color-cream-dark: #EDE7DF;
+  --color-surface-0: #F5F0EA;
+  --color-surface-1: #FFFFFF;
+  --color-surface-2: #F0EBE4;
+  --color-surface-3: #E5DFD7;
+  --color-surface-4: #D5CFC7;
+
   --color-border: rgba(0, 0, 0, 0.08);
   --color-border-hover: rgba(0, 0, 0, 0.15);
-  --color-text-primary: #09090b;
-  --color-text-secondary: #52525b;
-  --color-text-muted: #a1a1aa;
-  --color-accent: #10b981;
-  --color-accent-hover: #059669;
-  --color-accent-dim: rgba(16, 185, 129, 0.08);
+
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #6B6B6B;
+  --color-text-muted: #9B9B9B;
+
+  --color-accent: #5B7553;
+  --color-accent-hover: #4A6341;
+  --color-accent-dim: rgba(91, 117, 83, 0.08);
+  --color-accent-warm: #C4653A;
 
   /* ── Status ── */
   --color-status-investigating: #F59E0B;
@@ -54,7 +60,8 @@
   --color-status-muted: #6B7280;
 
   /* ── Fonts ── */
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
   --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
@@ -71,7 +78,7 @@
     scroll-behavior: smooth;
   }
   body {
-    background-color: var(--color-surface-0);
+    background-color: var(--color-cream);
     color: var(--color-text-primary);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
@@ -88,7 +95,6 @@
 }
 
 /* ── Scrollbar ── */
-/* Neutral gray works on both the light landing page and dark app panels */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.35); border-radius: 99px; }
