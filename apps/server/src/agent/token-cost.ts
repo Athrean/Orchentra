@@ -10,7 +10,7 @@ interface TokenRates {
 }
 
 const MODEL_RATES: Record<string, TokenRates> = {
-  // Claude 3.x / 4.x via OpenRouter
+  // OpenRouter IDs under anthropic/*
   'anthropic/claude-3-5-sonnet': { inputPerM: 3.0, outputPerM: 15.0 },
   'anthropic/claude-3-5-haiku': { inputPerM: 0.8, outputPerM: 4.0 },
   'anthropic/claude-3-opus': { inputPerM: 15.0, outputPerM: 75.0 },
@@ -18,11 +18,11 @@ const MODEL_RATES: Record<string, TokenRates> = {
   'anthropic/claude-sonnet-4': { inputPerM: 3.0, outputPerM: 15.0 },
   'anthropic/claude-opus-4': { inputPerM: 15.0, outputPerM: 75.0 },
   'anthropic/claude-haiku-4-5': { inputPerM: 0.8, outputPerM: 4.0 },
-  // OpenAI
+  // OpenRouter IDs under openai/*
   'openai/gpt-4o': { inputPerM: 2.5, outputPerM: 10.0 },
   'openai/gpt-4o-mini': { inputPerM: 0.15, outputPerM: 0.6 },
   'openai/gpt-4-turbo': { inputPerM: 10.0, outputPerM: 30.0 },
-  // Google
+  // OpenRouter IDs under google/*
   'google/gemini-flash-1.5': { inputPerM: 0.075, outputPerM: 0.3 },
   'google/gemini-pro-1.5': { inputPerM: 1.25, outputPerM: 5.0 },
 }
@@ -33,12 +33,12 @@ const FALLBACK_RATES: TokenRates = { inputPerM: 3.0, outputPerM: 15.0 }
 function getRates(modelId: string): TokenRates {
   // Exact match first
   if (modelId in MODEL_RATES) return MODEL_RATES[modelId]!
-  // Prefix match (e.g. "anthropic/claude-3-5-sonnet:beta" → strip the variant)
+  // Prefix match (strip :variant suffixes on model IDs)
   const prefix = modelId.split(':')[0]!
   if (prefix in MODEL_RATES) return MODEL_RATES[prefix]!
   // Longest-prefix match — only when modelId starts with the key followed by ':' or '-' to avoid
   // cross-family collisions (e.g. "gpt-4o-mini" must not match "gpt-4o" rates).
-  // Use longest key first so "anthropic/claude-3-5-sonnet" wins over "anthropic/claude-3-5".
+  // Use longest key first so specific IDs win over shorter prefixes.
   const candidates = Object.entries(MODEL_RATES).filter(
     ([key]) => modelId.startsWith(key + ':') || modelId.startsWith(key + '-'),
   )
@@ -49,7 +49,7 @@ function getRates(modelId: string): TokenRates {
 
 /**
  * Estimate USD cost for a single LLM call.
- * @param modelId - The model identifier string (e.g. "anthropic/claude-3-5-sonnet")
+ * @param modelId - OpenRouter-style model identifier (e.g. "provider/model-name")
  * @param inputTokens - Number of prompt/input tokens consumed
  * @param outputTokens - Number of completion/output tokens produced
  */
