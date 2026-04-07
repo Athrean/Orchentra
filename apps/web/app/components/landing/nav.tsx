@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { StarIcon } from '../icons'
 import { getLoginUrl } from '../../lib/get-login-url'
+import { GITHUB_REPO_URL } from '../../lib/constants'
 
 export function Nav(): React.ReactNode {
   return (
@@ -40,14 +41,14 @@ export function Nav(): React.ReactNode {
             Docs
           </Link>
           <Link
-            href="https://github.com/Athrean/Orchentra"
+            href={GITHUB_REPO_URL}
             target="_blank"
             className="nav-link hero-text-secondary text-[15px] font-medium transition-colors hover:text-(--color-hero-text)"
           >
             GitHub
           </Link>
           <Link
-            href="https://github.com/Athrean/Orchentra"
+            href={GITHUB_REPO_URL}
             target="_blank"
             className="nav-link hero-text-secondary flex items-center gap-1.5 text-[15px] font-medium transition-colors hover:text-(--color-hero-text)"
           >
