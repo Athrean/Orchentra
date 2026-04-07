@@ -56,6 +56,7 @@ export function ResourcesSection(): React.ReactNode {
                   key={r.title}
                   href={r.href}
                   target={r.href.startsWith('http') ? '_blank' : undefined}
+                  rel={r.href.startsWith('http') ? 'noopener noreferrer' : undefined}
                   className="group flex items-center justify-between rounded-[24px] px-5 py-4 transition-all hover:bg-surface-2"
                 >
                   <div>
@@ -119,6 +120,7 @@ export function Footer(): React.ReactNode {
                     <Link
                       href={lk.h}
                       target={lk.h.startsWith('http') ? '_blank' : undefined}
+                      rel={lk.h.startsWith('http') ? 'noopener noreferrer' : undefined}
                       className="hero-text-secondary text-[13px] transition-colors hover:text-(--color-hero-text)"
                     >
                       {lk.l}
@@ -138,6 +140,7 @@ export function Footer(): React.ReactNode {
             <Link
               href={GITHUB_REPO_URL}
               target="_blank"
+              rel="noopener noreferrer"
               className="hero-text-muted transition-colors hover:text-(--color-hero-text)"
             >
               <GithubIcon className="h-4.5 w-4.5" />

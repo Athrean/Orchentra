@@ -43,6 +43,7 @@ export function Nav(): React.ReactNode {
           <Link
             href={GITHUB_REPO_URL}
             target="_blank"
+            rel="noopener noreferrer"
             className="nav-link hero-text-secondary text-[15px] font-medium transition-colors hover:text-(--color-hero-text)"
           >
             GitHub
@@ -50,6 +51,7 @@ export function Nav(): React.ReactNode {
           <Link
             href={GITHUB_REPO_URL}
             target="_blank"
+            rel="noopener noreferrer"
             className="nav-link hero-text-secondary flex items-center gap-1.5 text-[15px] font-medium transition-colors hover:text-(--color-hero-text)"
           >
             <StarIcon className="h-4 w-4" />
