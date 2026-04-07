@@ -21,7 +21,3 @@ export function SectionHeading({
     </div>
   )
 }
-
-export function Divider(): null {
-  return null
-}
