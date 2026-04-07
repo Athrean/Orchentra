@@ -1,3 +1,5 @@
+import { GITHUB_REPO_URL, GITHUB_RELEASES_URL, GITHUB_LICENSE_URL } from '../lib/constants'
+
 export const capabilities = [
   {
     name: 'Autonomous Investigation',
@@ -98,20 +100,20 @@ export const resources = [
   {
     title: 'GitHub Repository',
     desc: 'Source code and contributing guide',
-    href: 'https://github.com/Athrean/Orchentra',
+    href: GITHUB_REPO_URL,
     tag: 'Open Source',
   },
   {
     title: 'Changelog',
     desc: 'Latest releases and updates',
-    href: 'https://github.com/Athrean/Orchentra/releases',
+    href: GITHUB_RELEASES_URL,
     tag: 'Updates',
   },
   { title: 'Self-Hosting Guide', desc: 'Deploy on your own infrastructure', href: '/docs', tag: 'Docs' },
   {
     title: 'Integration SDK',
     desc: 'Build custom integrations',
-    href: 'https://github.com/Athrean/Orchentra',
+    href: GITHUB_REPO_URL,
     tag: 'Developer',
   },
 ]
@@ -139,9 +141,9 @@ export const footerCols = [
     heading: 'Developers',
     links: [
       { l: 'Documentation', h: '/docs' },
-      { l: 'GitHub', h: 'https://github.com/Athrean/Orchentra' },
-      { l: 'Contributing', h: 'https://github.com/Athrean/Orchentra' },
-      { l: 'Changelog', h: 'https://github.com/Athrean/Orchentra/releases' },
+      { l: 'GitHub', h: GITHUB_REPO_URL },
+      { l: 'Contributing', h: GITHUB_REPO_URL },
+      { l: 'Changelog', h: GITHUB_RELEASES_URL },
     ],
   },
   {
@@ -149,7 +151,7 @@ export const footerCols = [
     links: [
       { l: 'About', h: '#' },
       { l: 'Blog', h: '#' },
-      { l: 'License', h: 'https://github.com/Athrean/Orchentra/blob/main/LICENSE' },
+      { l: 'License', h: GITHUB_LICENSE_URL },
     ],
   },
 ]
