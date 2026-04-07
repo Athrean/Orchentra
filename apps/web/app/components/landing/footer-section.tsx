@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { GithubIcon } from '../icons'
 import { LayersIcon, BookIcon } from '../animate-icons'
 import { integrations, resources, footerCols } from '../../data/landing'
+import { GITHUB_REPO_URL } from '../../lib/constants'
 
 export function ResourcesSection(): React.ReactNode {
   return (
@@ -135,7 +136,7 @@ export function Footer(): React.ReactNode {
           </span>
           <div className="flex items-center gap-4">
             <Link
-              href="https://github.com/Athrean/Orchentra"
+              href={GITHUB_REPO_URL}
               target="_blank"
               className="hero-text-muted transition-colors hover:text-(--color-hero-text)"
             >
