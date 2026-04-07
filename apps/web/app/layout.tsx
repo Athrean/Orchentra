@@ -1,16 +1,15 @@
 import type { Metadata } from 'next'
-import { Instrument_Serif, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { Source_Serif_4, Inter, JetBrains_Mono } from 'next/font/google'
 import { QueryProvider } from '../lib/query-provider'
 import './globals.css'
 
-const instrumentSerif = Instrument_Serif({
-  weight: '400',
+const sourceSerif = Source_Serif_4({
   subsets: ['latin'],
   variable: '--font-serif',
   display: 'swap',
 })
 
-const jakarta = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-body',
   display: 'swap',
@@ -36,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
-    <html lang="en" className={`${instrumentSerif.variable} ${jakarta.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${sourceSerif.variable} ${inter.variable} ${jetbrains.variable}`}>
       <body>
         <QueryProvider>{children}</QueryProvider>
       </body>
