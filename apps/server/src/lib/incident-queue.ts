@@ -123,10 +123,12 @@ async function processJob(job: typeof incidentJobs.$inferSelect): Promise<void> 
 
 /** Recover jobs stuck in 'processing' (e.g. after a crash) back to 'queued'. */
 async function recoverStaleJobs(): Promise<void> {
-  const result = await db.execute(sql`
+  const result = await db.execute<{ id: string }>(sql`
     UPDATE incident_jobs
-    SET status = 'queued', attempts = 0, started_at = null
+    SET status = 'queued', started_at = null
     WHERE status = 'processing'
+      AND started_at < now() - interval '5 minutes'
+    RETURNING id
   `)
   if (result.length > 0) {
     console.log(`Recovered ${result.length} stale processing job(s) back to queued`)
@@ -145,9 +147,11 @@ export function startQueueWorker(): void {
   // Recursive setTimeout guarantees only one poll runs at a time
   async function poll(): Promise<void> {
     if (stopped) return
+    let hadWork = false
     try {
       const job = await claimNextJob()
       if (job) {
+        hadWork = true
         try {
           await processJob(job)
         } catch (err) {
@@ -158,7 +162,7 @@ export function startQueueWorker(): void {
       console.error('Queue worker poll error:', err)
     }
     if (!stopped) {
-      setTimeout(poll, POLL_INTERVAL_MS).unref()
+      setTimeout(poll, hadWork ? 0 : POLL_INTERVAL_MS).unref()
     }
   }
 
