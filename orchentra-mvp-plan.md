@@ -24,8 +24,8 @@ Orchentra is an open source AI agent that investigates CI/CD failures and produc
 | Styling           | Tailwind CSS + shadcn/ui                       | Fast UI with consistent component primitives, no design decisions needed                |
 | Database          | SQLite (dev) → PostgreSQL via Supabase (cloud) | Zero-setup self-hosting, Drizzle handles migration between them seamlessly              |
 | ORM               | Drizzle ORM                                    | Type-safe, migration-first, works identically on SQLite and Postgres                    |
-| LLM orchestration | Vercel AI SDK                                  | Model-agnostic, built-in tool calling, streaming, works with Claude + OpenAI            |
-| LLM model         | `claude-sonnet-4-5`                            | Best tool use reliability, long context for log analysis, fast enough for real-time     |
+| LLM orchestration | AI SDK (`ai` package)                          | Model-agnostic tool calling and streaming; works with OpenRouter and compatible APIs    |
+| LLM access        | OpenRouter (default)                           | One key, many model IDs; strong tool use and long context options for log-heavy work    |
 | Auth (cloud)      | Supabase Auth                                  | Google OAuth for hosted version, not needed for self-hosted                             |
 | Queue             | BullMQ + Redis (optional) or in-memory queue   | Incident processing is async, queue prevents webhook timeouts                           |
 | Monorepo          | Bun workspaces                                 | No extra tooling, native to Bun                                                         |
@@ -117,9 +117,8 @@ github:
     - 'my-org/frontend'
 
 llm:
-  provider: 'anthropic' # or "openai"
-  api_key: 'sk-ant-xxx'
-  model: 'claude-sonnet-4-5' # optional override
+  api_key: 'sk-or-xxx' # OpenRouter or your compatible endpoint
+  model: 'provider/model-id' # OpenRouter-style model string
 
 integrations:
   sentry:
@@ -314,7 +313,7 @@ No ReAct loop yet. Just: give LLM the alert, get a basic classification back.
 ```typescript
 // apps/server/src/agent/runner.ts
 import { generateObject } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
+import { createModel } from './llm'
 import { z } from 'zod'
 
 const BriefSchema = z.object({
@@ -328,7 +327,7 @@ const BriefSchema = z.object({
 export async function runIncidentAgent(incident: Incident): Promise<void> {
   // Phase 1: just classification, no tool calls yet
   const { object: brief } = await generateObject({
-    model: anthropic('claude-sonnet-4-5'),
+    model: createModel(),
     schema: BriefSchema,
     system: CLASSIFY_PROMPT,
     prompt: `
@@ -414,7 +413,7 @@ The agent runs a loop: think → call tool → observe result → think again �
 ```typescript
 // apps/server/src/agent/runner.ts (Phase 2 — full ReAct)
 import { generateText } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
+import { createModel } from './llm'
 
 export async function runIncidentAgent(incident: Incident): Promise<void> {
   const messages: CoreMessage[] = [
@@ -427,7 +426,7 @@ export async function runIncidentAgent(incident: Incident): Promise<void> {
 
   while (round < 6) {
     const { text, toolCalls, toolResults, finishReason } = await generateText({
-      model: anthropic('claude-sonnet-4-5'),
+      model: createModel(),
       messages,
       tools: buildToolSet(incident), // registered integrations as AI SDK tools
       maxSteps: 1, // one tool call per round for clean logging
@@ -866,7 +865,7 @@ export default function LandingPage() {
         <code>
           {`git clone https://github.com/your-org/Orchentra
 cp Orchentra.yml.example Orchentra.yml
-# fill in your GitHub token, Slack bot token, Anthropic key
+# fill in your GitHub token, Slack bot token, and LLM API key
 docker compose up`}
         </code>
       </pre>
@@ -1196,6 +1195,7 @@ After every resolved incident, generate a draft postmortem from the agent's tool
 
 ```typescript
 // apps/server/src/agent/postmortem.ts
+import { createModel } from './llm'
 
 export async function generatePostmortem(incidentId: string): Promise<string> {
   const incident = await db.query.incidents.findFirst({
@@ -1207,7 +1207,7 @@ export async function generatePostmortem(incidentId: string): Promise<string> {
   })
 
   const { text } = await generateText({
-    model: anthropic('claude-sonnet-4-5'),
+    model: createModel(),
     system: `You generate blameless incident postmortems.
       Be specific. Use the evidence from the tool calls.
       Follow this exact format:
@@ -1340,7 +1340,7 @@ settings:
 
 These are explicitly out of scope until you have real users asking for them:
 
-- Multi-LLM model switching (ship Anthropic, add others on request)
+- Multi-LLM model switching UI (one default provider is enough until users ask)
 - Auto-remediation without human approval (too risky, not needed for trust-building)
 - RBAC / team permissions (single workspace is fine for MVP)
 - Alertmanager / PagerDuty inbound (GitHub Actions first, always)
