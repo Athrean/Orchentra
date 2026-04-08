@@ -22,6 +22,7 @@ import { workflowsRouter } from './routes/workflows'
 import { analyticsRouter } from './routes/analytics'
 import { usageRouter } from './routes/usage'
 import { webhookEventsRouter } from './routes/webhook-events'
+import { startQueueWorker } from './lib/incident-queue'
 import {
   registerWsClient,
   unregisterWsClient,
@@ -58,6 +59,9 @@ syncAllRepos().catch(console.error)
 
 // Start WebSocket heartbeat — pings every 25 s, evicts unresponsive clients after 55 s
 startHeartbeat()
+
+// Start incident queue worker — processes enqueued investigate jobs with retry + dead-letter
+startQueueWorker()
 
 // Periodic sync: trailing setTimeout ensures the next run only starts after the previous finishes
 function scheduleSyncAllRepos(): void {
