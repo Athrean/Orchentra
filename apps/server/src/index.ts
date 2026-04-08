@@ -21,6 +21,7 @@ import { chatRouter } from './routes/chat'
 import { workflowsRouter } from './routes/workflows'
 import { analyticsRouter } from './routes/analytics'
 import { usageRouter } from './routes/usage'
+import { webhookEventsRouter } from './routes/webhook-events'
 import {
   registerWsClient,
   unregisterWsClient,
@@ -112,6 +113,7 @@ app.route('/api/orgs/:orgId', chatRouter) // natural language chat
 app.route('/api/orgs/:orgId', workflowsRouter) // CI/CD workflow management
 app.route('/api/orgs/:orgId', analyticsRouter) // CI/CD health analytics
 app.route('/api/orgs/:orgId', usageRouter) // token usage aggregates
+app.route('/api/orgs/:orgId', webhookEventsRouter) // webhook event replay
 
 const port = parseInt(process.env.PORT ?? '3001')
 
