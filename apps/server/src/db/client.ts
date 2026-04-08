@@ -11,4 +11,5 @@ export {
   organizations,
   orgMembers,
   chatMessages,
+  webhookEvents,
 } from '@orchentra/db'
