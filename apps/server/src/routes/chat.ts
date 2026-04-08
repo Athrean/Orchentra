@@ -28,7 +28,7 @@ Guidelines:
  *
  * Body: { sessionId: string, message: string }
  *
- * Streams an SSE response using Vercel AI SDK text-stream format.
+ * Streams an SSE response using the AI SDK text-stream format.
  * Persists both the user message and final assistant response to chat_messages.
  */
 chatRouter.post('/chat', async (c) => {
