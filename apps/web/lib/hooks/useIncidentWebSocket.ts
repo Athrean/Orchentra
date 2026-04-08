@@ -88,7 +88,7 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): W
         const currentRepo = repoRef.current
         if (!currentOrgId) return
         try {
-          const data: WsIncidentEvent & { type: string } = JSON.parse(e.data as string)
+          const data: (WsIncidentEvent | { type: 'ping' }) & { type: string } = JSON.parse(e.data as string)
 
           // Respond to server ping immediately to keep the connection alive
           if (data.type === 'ping') {

@@ -75,7 +75,7 @@ export function AnalyticsDashboard({ repo }: { repo: string }): React.ReactEleme
   const bestMttr = data?.mttrByWorkflow.length ? Math.min(...data.mttrByWorkflow.map((m) => m.avgMttrSeconds)) : null
 
   return (
-    <DashboardLayout repo={repo} activeNav="monitoring">
+    <DashboardLayout repo={repo}>
       {/* Header */}
       <div
         className="px-4 py-3 flex items-center justify-between shrink-0 border-b"

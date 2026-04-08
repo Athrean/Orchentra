@@ -6,7 +6,7 @@ import { config } from '../config'
 /**
  * Creates a model from orchentra.yml config.
  *
- * - No base_url → OpenRouter (all frontier models: Claude, GPT, Gemini, etc.)
+ * - No base_url → OpenRouter (frontier models from many providers)
  * - With base_url → OpenAI-compatible endpoint (zai, LiteLLM, Ollama, etc.)
  */
 export function createModel(modelOverride?: string): LanguageModelV1 {

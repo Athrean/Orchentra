@@ -23,6 +23,6 @@ docs/superpowers/
 # Vision & internal strategy (local only)
 VISION.md
 
-# Claude Code plugins/skills (local only)
+# Local agent/IDE plugin folders (not part of the product repo)
 .claude-plugins/
 .claude/plugins/
