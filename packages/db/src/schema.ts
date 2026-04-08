@@ -184,6 +184,30 @@ export const monitoredRepos = pgTable(
   (table) => [uniqueIndex('monitored_repos_org_repo_unique').on(table.orgId, table.repo)],
 )
 
+// --- Incident job queue ---
+
+export const incidentJobs = pgTable(
+  'incident_jobs',
+  {
+    id: text('id').primaryKey(),
+    incidentId: text('incident_id')
+      .notNull()
+      .references(() => incidents.id, { onDelete: 'cascade' }),
+    status: text('status').notNull().default('queued'), // queued | processing | completed | failed | dead_letter
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(3),
+    nextRunAt: timestamp('next_run_at', { withTimezone: true }).notNull().defaultNow(),
+    error: text('error'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('incident_jobs_incident_id_idx').on(table.incidentId),
+    index('incident_jobs_claimable_idx').on(table.status, table.nextRunAt),
+  ],
+)
+
 // --- Webhook ingestion ---
 
 export const webhookEvents = pgTable(
