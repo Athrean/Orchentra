@@ -184,6 +184,28 @@ export const monitoredRepos = pgTable(
   (table) => [uniqueIndex('monitored_repos_org_repo_unique').on(table.orgId, table.repo)],
 )
 
+// --- Webhook ingestion ---
+
+export const webhookEvents = pgTable(
+  'webhook_events',
+  {
+    id: text('id').primaryKey(),
+    provider: text('provider').notNull().default('github'),
+    eventId: text('event_id').notNull(),
+    eventType: text('event_type'),
+    payload: jsonb('payload').notNull(),
+    status: text('status').notNull().default('pending'), // pending | processed | failed | skipped
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    error: text('error'),
+    retryCount: integer('retry_count').notNull().default(0),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('webhook_events_provider_event_id_idx').on(table.provider, table.eventId),
+    index('webhook_events_status_idx').on(table.status),
+  ],
+)
+
 /**
  * Persistent chat message history per org+session.
  * Each row is one turn (user or assistant). Tool call deltas are not stored
