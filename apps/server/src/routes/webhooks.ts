@@ -2,14 +2,13 @@ import { Hono } from 'hono'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { config } from '../config'
-import { runIncidentAgent } from '../agent/runner'
-import { postInitialSlackMessage } from '../slack/message'
 import { isRepoMonitored } from '../lib/repo-cache'
 import { findMonitoredReposByRepo } from '../queries/repos'
 import { createIncident } from '../queries/incidents'
 import { handleFixPRMerged, autoResolveAfterCIPass } from '../actions/handlers'
 import { incidentEvents } from '../events'
 import { isDuplicateInFlight, registerInFlight } from '../lib/webhook-dedup'
+import { enqueueInvestigateJob } from '../lib/incident-queue'
 import {
   insertWebhookEvent,
   markWebhookProcessed,
@@ -167,7 +166,7 @@ async function processWorkflowFailure(
 
         if (!incident) return // duplicate workflow run for this org — already processing
 
-        console.log(`Incident ${incident.id} — ${repo} / ${run.name} (org: ${monitoredRepo.orgId})`)
+        console.log(`Incident ${incident.id} queued — ${repo} / ${run.name} (org: ${monitoredRepo.orgId})`)
 
         incidentEvents.emitIncidentEvent({
           type: 'incident:created',
@@ -176,8 +175,7 @@ async function processWorkflowFailure(
           repo,
         })
 
-        await postInitialSlackMessage(incident)
-        await runIncidentAgent(incident)
+        await enqueueInvestigateJob(incident)
       }),
     )
 
