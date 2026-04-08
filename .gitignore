@@ -26,3 +26,9 @@ VISION.md
 # Local agent/IDE plugin folders (not part of the product repo)
 .claude-plugins/
 .claude/plugins/
+
+CLAUDE.md
+STREAMLINE_EXECUTION.md
+
+# Claude Code local settings (may contain secrets)
+.claude/settings.json
