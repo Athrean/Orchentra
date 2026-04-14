@@ -416,7 +416,15 @@ function EmptyState({ repo }: { repo: string }) {
 /* ── Summarize hook ── */
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-function useSummarize(orgId: string | undefined, incidentId: string) {
+function useSummarize(
+  orgId: string | undefined,
+  incidentId: string,
+): {
+  summary: string
+  isSummarizing: boolean
+  summaryError: boolean
+  summarize: () => Promise<void>
+} {
   const [summary, setSummary] = useState('')
   const [isSummarizing, setIsSummarizing] = useState(false)
   const [summaryError, setSummaryError] = useState(false)
