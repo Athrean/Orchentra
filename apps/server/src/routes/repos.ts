@@ -64,7 +64,7 @@ reposRouter.post('/monitor', async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
   const normalizedRepo = parsed.data.repo.toLowerCase()
-  const available = await getAvailableRepos(user.githubAccessToken)
+  const available = await getAvailableRepos(user.githubAccessToken).catch(() => getAvailableRepos())
   const inAccount = available.some((r) => r.fullName.toLowerCase() === normalizedRepo)
 
   if (!inAccount) {
