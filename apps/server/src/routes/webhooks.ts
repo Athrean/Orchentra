@@ -9,6 +9,7 @@ import { handleFixPRMerged, autoResolveAfterCIPass } from '../actions/handlers'
 import { incidentEvents } from '../events'
 import { isDuplicateInFlight, registerInFlight } from '../lib/webhook-dedup'
 import { enqueueInvestigateJob } from '../lib/incident-queue'
+import { publishInitialGithubTriage } from '../github/triage-writeback'
 import {
   insertWebhookEvent,
   markWebhookProcessed,
@@ -175,6 +176,7 @@ async function processWorkflowFailure(
           repo,
         })
 
+        await publishInitialGithubTriage(incident)
         await enqueueInvestigateJob(incident)
       }),
     )

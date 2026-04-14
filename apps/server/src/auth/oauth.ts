@@ -19,7 +19,7 @@ interface GitHubUserProfile {
 export function createAuthorizationUrl(): { url: string; state: string } {
   const github = getGitHubClient()
   const state = arctic.generateState()
-  const url = github.createAuthorizationURL(state, ['read:user', 'user:email'])
+  const url = github.createAuthorizationURL(state, ['read:user', 'user:email', 'repo'])
   return { url: url.toString(), state }
 }
 
@@ -44,6 +44,7 @@ export async function handleCallback(code: string): Promise<string> {
       displayName: profile.name,
       avatarUrl: profile.avatar_url,
       email: profile.email,
+      githubAccessToken: accessToken,
     })
     .onConflictDoUpdate({
       target: users.githubId,
@@ -52,6 +53,7 @@ export async function handleCallback(code: string): Promise<string> {
         displayName: profile.name,
         avatarUrl: profile.avatar_url,
         email: profile.email,
+        githubAccessToken: accessToken,
         updatedAt: new Date(),
       },
     })

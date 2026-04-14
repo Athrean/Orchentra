@@ -7,6 +7,7 @@ let dbUpdates: Record<string, unknown>[] = []
 let slackBriefUpdates: { incidentId: string; brief: unknown }[] = []
 let slackThreadReplies: { incidentId: string; text: string }[] = []
 let toolCallInserts: Record<string, unknown>[] = []
+let githubFinalWrites: { incidentId: string; status: 'brief_ready' | 'error' }[] = []
 let shouldThrowOnGenerate = false
 
 mock.module('../src/config', () => ({
@@ -18,6 +19,19 @@ mock.module('../src/config', () => ({
 
 mock.module('drizzle-orm', () => ({
   eq: (_col: unknown, _val: unknown) => ({}),
+  and: (...clauses: unknown[]) => clauses,
+  or: (...clauses: unknown[]) => clauses,
+  gt: (_col: unknown, _val: unknown) => ({}),
+  gte: (_col: unknown, _val: unknown) => ({}),
+  lt: (_col: unknown, _val: unknown) => ({}),
+  lte: (_col: unknown, _val: unknown) => ({}),
+  asc: (col: unknown) => col,
+  desc: (col: unknown) => col,
+  isNull: (_col: unknown) => ({}),
+  isNotNull: (_col: unknown) => ({}),
+  inArray: (_col: unknown, _vals: unknown[]) => ({}),
+  notInArray: (_col: unknown, _vals: unknown[]) => ({}),
+  count: () => 0,
 }))
 
 mock.module('../src/db/client', () => ({
@@ -38,18 +52,31 @@ mock.module('../src/db/client', () => ({
   incidents: { id: 'id' },
   toolCalls: {},
   resolvedPatterns: { id: 'id', incidentId: 'incident_id' },
+  incidentActions: {},
+  users: {},
+  sessions: {},
+  apiKeys: {},
+  monitoredRepos: {},
+  organizations: {},
+  orgMembers: {},
+  chatMessages: {},
+  webhookEvents: {},
+  incidentJobs: {},
 }))
 
 mock.module('../src/slack/message', () => ({
   updateSlackWithBrief: async (incidentId: string, brief: unknown) => {
     slackBriefUpdates.push({ incidentId, brief })
   },
+  updateSlackToFixing: async (_id: string, _brief: unknown, _statusText: string, _performedBy: string | null) => {},
+  updateSlackToResolved: async (_id: string, _reason: string, _mttrSeconds: number | null) => {},
   postThreadReply: async (incidentId: string, text: string) => {
     slackThreadReplies.push({ incidentId, text })
   },
 }))
 
 mock.module('ai', () => ({
+  tool: (definition: unknown) => definition,
   generateText: async (opts: {
     onStepFinish?: (step: typeof mockStepData) => Promise<void>
     [key: string]: unknown
@@ -75,6 +102,7 @@ mock.module('../src/agent/llm', () => ({
 mock.module('../src/agent/patterns', () => ({
   findSimilarPatterns: async () => [],
   formatPatternContext: () => '',
+  saveResolvedPattern: async (_incidentId: string) => {},
 }))
 
 mock.module('../src/agent/tools/github-actions', () => ({
@@ -82,6 +110,12 @@ mock.module('../src/agent/tools/github-actions', () => ({
     description: 'mock tool',
     parameters: {},
     execute: async () => ({ jobName: 'Build', logs: 'error', failedStep: 'test' }),
+  },
+}))
+
+mock.module('../src/github/triage-writeback', () => ({
+  publishFinalGithubTriage: async (incident: { id: string }, status: 'brief_ready' | 'error'): Promise<void> => {
+    githubFinalWrites.push({ incidentId: incident.id, status })
   },
 }))
 
@@ -94,6 +128,7 @@ beforeEach(() => {
   slackBriefUpdates = []
   slackThreadReplies = []
   toolCallInserts = []
+  githubFinalWrites = []
   shouldThrowOnGenerate = false
 })
 
@@ -143,11 +178,17 @@ describe('Agent Runner — ReAct Loop', () => {
     expect(slackThreadReplies.length).toBeGreaterThan(0)
   })
 
+  test('publishes final GitHub triage on success', async () => {
+    await runIncidentAgent(mockIncident)
+    expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'brief_ready' })
+  })
+
   test('sets error status on agent failure', async () => {
     shouldThrowOnGenerate = true
     await runIncidentAgent(mockIncident)
 
     const update = dbUpdates.find((u) => u.status === 'error')
     expect(update).toBeDefined()
+    expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'error' })
   })
 })

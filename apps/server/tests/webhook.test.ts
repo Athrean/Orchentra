@@ -5,8 +5,8 @@ const TEST_SECRET = 'test-webhook-secret-123'
 
 // Tracking arrays
 let insertedIncidents: Record<string, unknown>[] = []
-let slackCalls: string[] = []
-let agentCalls: string[] = []
+let queueCalls: string[] = []
+let githubInitialWrites: string[] = []
 let simulateDuplicate = false
 
 // Must mock ALL dependencies BEFORE importing the router
@@ -29,6 +29,20 @@ mock.module('../src/config', () => ({
 
 mock.module('drizzle-orm', () => ({
   eq: (_col: unknown, _val: unknown) => ({}),
+  and: (...clauses: unknown[]) => clauses,
+  or: (...clauses: unknown[]) => clauses,
+  gt: (_col: unknown, _val: unknown) => ({}),
+  gte: (_col: unknown, _val: unknown) => ({}),
+  lt: (_col: unknown, _val: unknown) => ({}),
+  lte: (_col: unknown, _val: unknown) => ({}),
+  asc: (col: unknown) => col,
+  desc: (col: unknown) => col,
+  isNull: (_col: unknown) => ({}),
+  isNotNull: (_col: unknown) => ({}),
+  inArray: (_col: unknown, _vals: unknown[]) => ({}),
+  notInArray: (_col: unknown, _vals: unknown[]) => ({}),
+  count: () => 0,
+  sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
 }))
 
 mock.module('../src/db/client', () => ({
@@ -51,15 +65,24 @@ mock.module('../src/db/client', () => ({
       incidents: {
         findFirst: async () => null,
       },
+      monitoredRepos: {
+        findMany: async () => [{ orgId: 'org-1', repo: 'my-org/api' }],
+      },
     },
   },
   incidents: { workflowRunId: 'workflow_run_id', id: 'id' },
   toolCalls: {},
   resolvedPatterns: {},
+  incidentActions: {},
   users: {},
   sessions: {},
   apiKeys: {},
   monitoredRepos: {},
+  organizations: {},
+  orgMembers: {},
+  chatMessages: {},
+  webhookEvents: {},
+  incidentJobs: {},
 }))
 
 mock.module('../src/lib/repo-cache', () => ({
@@ -91,16 +114,28 @@ mock.module('../src/slack/client', () => ({
 
 mock.module('../src/slack/message', () => ({
   postInitialSlackMessage: async (incident: { id: string }) => {
-    slackCalls.push(incident.id)
+    queueCalls.push(incident.id)
   },
   updateSlackWithBrief: async (_id: string, _brief: unknown) => {},
+  updateSlackToFixing: async (_id: string, _brief: unknown, _statusText: string, _performedBy: string | null) => {},
+  updateSlackToResolved: async (_id: string, _reason: string, _mttrSeconds: number | null) => {},
   postThreadReply: async (_id: string, _text: string) => {},
 }))
 
-mock.module('../src/agent/runner', () => ({
-  runIncidentAgent: async (incident: { id: string }) => {
-    agentCalls.push(incident.id)
+mock.module('../src/lib/incident-queue', () => ({
+  enqueueInvestigateJob: async (incident: { id: string }) => {
+    queueCalls.push(incident.id)
   },
+}))
+
+mock.module('../src/github/triage-writeback', () => ({
+  publishInitialGithubTriage: async (incident: { id: string }) => {
+    githubInitialWrites.push(incident.id)
+  },
+}))
+
+mock.module('../src/agent/patterns', () => ({
+  saveResolvedPattern: async (_incidentId: string) => {},
 }))
 
 // Import AFTER all mocks are set up
@@ -161,8 +196,8 @@ async function sendWebhook(
 
 beforeEach(() => {
   insertedIncidents = []
-  slackCalls = []
-  agentCalls = []
+  queueCalls = []
+  githubInitialWrites = []
   slackPostedMessages.length = 0
   slackUpdatedMessages.length = 0
   simulateDuplicate = false
@@ -269,22 +304,22 @@ describe('GitHub Webhook — Deduplication', () => {
     await sendWebhook(app, body)
     await Bun.sleep(100)
 
-    // Insert was attempted but onConflictDoNothing returned empty — no Slack/agent calls
-    expect(slackCalls.length).toBe(0)
-    expect(agentCalls.length).toBe(0)
+    // Insert was attempted but onConflictDoNothing returned empty — no queue/writeback calls
+    expect(queueCalls.length).toBe(0)
+    expect(githubInitialWrites.length).toBe(0)
   })
 })
 
 describe('GitHub Webhook — Pipeline', () => {
-  test('posts to Slack and runs agent after creating incident', async () => {
+  test('publishes initial GitHub triage and enqueues investigation', async () => {
     const app = makeApp()
     const body = JSON.stringify(makePayload())
 
     await sendWebhook(app, body)
     await Bun.sleep(100)
 
-    expect(slackCalls.length).toBe(1)
-    expect(agentCalls.length).toBe(1)
+    expect(githubInitialWrites.length).toBe(1)
+    expect(queueCalls.length).toBe(1)
   })
 
   test('extracts correct fields from payload', async () => {
