@@ -553,7 +553,7 @@ function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: 
 
         {/* AI Summary */}
         <div>
-          {!summary && !isSummarizing ? (
+          {!summary && !isSummarizing && !summaryError ? (
             <Button variant="primary" size="sm" icon={<Sparkles className="w-3 h-3" />} onClick={summarize}>
               Summarize
             </Button>
