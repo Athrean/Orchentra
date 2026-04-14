@@ -12,17 +12,17 @@ function toSlug(username: string): string {
     .replace(/^-|-$/g, '')
 }
 
-export async function ensureUserOrg(userId: string): Promise<void> {
+export async function ensureUserOrg(userId: string): Promise<string | null> {
   const existing = await db
     .select({ orgId: orgMembers.orgId })
     .from(orgMembers)
     .where(eq(orgMembers.userId, userId))
     .limit(1)
 
-  if (existing.length > 0) return
+  if (existing.length > 0) return existing[0].orgId
 
   const [user] = await db.select({ username: users.username }).from(users).where(eq(users.id, userId)).limit(1)
-  if (!user) return
+  if (!user) return null
 
   const baseSlug = toSlug(user.username)
   const orgId = crypto.randomUUID()
@@ -41,4 +41,6 @@ export async function ensureUserOrg(userId: string): Promise<void> {
       await tx.insert(orgMembers).values({ orgId, userId, role: 'owner' })
     })
   }
+
+  return orgId
 }
