@@ -8,6 +8,10 @@ let slackPostedMessages: { channel: string; text: string; thread_ts?: string }[]
 let slackUpdatedMessages: { channel: string; ts: string; text: string }[] = []
 let githubApiCalls: { method: string; args: Record<string, unknown> }[] = []
 let emittedEvents: { type: string; incidentId: string }[] = []
+let savedPatternIncidentIds: string[] = []
+
+let findIncidentByPrUrlResult: Record<string, unknown> | null = null
+let findFixingIncidentResult: Record<string, unknown> | null = null
 
 const TEST_INCIDENT = {
   id: 'inc-001',
@@ -182,6 +186,17 @@ mock.module('../src/events', () => ({
   },
 }))
 
+mock.module('../src/agent/patterns', () => ({
+  saveResolvedPattern: async (incidentId: string) => {
+    savedPatternIncidentIds.push(incidentId)
+  },
+}))
+
+mock.module('../src/queries/incidents', () => ({
+  findIncidentByPrUrl: async (_prUrl: string) => findIncidentByPrUrlResult,
+  findFixingIncidentForRepoBranch: async (_repo: string, _branch: string) => findFixingIncidentResult,
+}))
+
 mock.module('../src/lib/repo-cache', () => ({
   isRepoMonitored: async () => true,
   getMonitoredRepos: async () => new Set(['my-org/api']),
@@ -189,8 +204,15 @@ mock.module('../src/lib/repo-cache', () => ({
 }))
 
 // Import handlers AFTER mocks
-const { rerunWorkflow, createGithubIssue, createFixPR, updateIncidentStatus, escalateIncident } =
-  await import('../src/actions/handlers')
+const {
+  rerunWorkflow,
+  createGithubIssue,
+  createFixPR,
+  updateIncidentStatus,
+  escalateIncident,
+  handleFixPRMerged,
+  autoResolveAfterCIPass,
+} = await import('../src/actions/handlers')
 
 beforeEach(() => {
   storedIncidents = { 'inc-001': { ...TEST_INCIDENT } }
@@ -200,6 +222,9 @@ beforeEach(() => {
   slackUpdatedMessages = []
   githubApiCalls = []
   emittedEvents = []
+  savedPatternIncidentIds = []
+  findIncidentByPrUrlResult = null
+  findFixingIncidentResult = null
 })
 
 // ─── Re-run Workflow ───────────────────────
@@ -507,5 +532,55 @@ describe('escalateIncident', () => {
     const result = await escalateIncident('nope', null)
     expect(result.success).toBe(false)
     expect(result.error).toBe('Incident not found')
+  })
+})
+
+describe('handleFixPRMerged', () => {
+  test('records action and posts thread update when incident exists', async () => {
+    findIncidentByPrUrlResult = { ...TEST_INCIDENT }
+
+    await handleFixPRMerged('https://github.com/my-org/api/pull/7', 7)
+
+    const prMergedAction = insertedActions.find((action) => action.actionType === 'pr_merged')
+    expect(prMergedAction).toBeTruthy()
+
+    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
+    expect(threadReplies.some((reply) => reply.text.includes('merged'))).toBe(true)
+  })
+
+  test('no-ops when PR URL does not map to an incident', async () => {
+    findIncidentByPrUrlResult = null
+
+    await handleFixPRMerged('https://github.com/my-org/api/pull/999', 999)
+
+    expect(insertedActions).toHaveLength(0)
+  })
+})
+
+describe('autoResolveAfterCIPass', () => {
+  test('auto-resolves matching fixing incident and saves pattern', async () => {
+    findFixingIncidentResult = {
+      ...TEST_INCIDENT,
+      status: 'fixing',
+      briefJson: TEST_INCIDENT.briefJson,
+    }
+
+    await autoResolveAfterCIPass('my-org/api', 'main', 12345)
+
+    expect(updatedFields[0]?.status).toBe('resolved')
+
+    const autoResolvedAction = insertedActions.find((action) => action.actionType === 'auto_resolved')
+    expect(autoResolvedAction).toBeTruthy()
+
+    const event = emittedEvents.find((item) => item.type === 'incident:status_changed')
+    expect(event).toBeTruthy()
+    expect(savedPatternIncidentIds).toContain('inc-001')
+  })
+
+  test('no-ops when no fixing incident matches repo/branch', async () => {
+    findFixingIncidentResult = null
+    await autoResolveAfterCIPass('my-org/api', 'main', 12345)
+    expect(updatedFields).toHaveLength(0)
+    expect(insertedActions).toHaveLength(0)
   })
 })

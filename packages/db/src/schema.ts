@@ -40,6 +40,8 @@ export const incidents = pgTable(
     // Actions
     githubIssueUrl: text('github_issue_url'),
     githubPrUrl: text('github_pr_url'),
+    githubCheckRunId: bigint('github_check_run_id', { mode: 'number' }),
+    githubTriageCommentIds: jsonb('github_triage_comment_ids'),
     snoozedUntil: timestamp('snoozed_until', { withTimezone: true }),
     escalatedAt: timestamp('escalated_at', { withTimezone: true }),
 
@@ -134,6 +136,7 @@ export const users = pgTable('users', {
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
   email: text('email'),
+  githubAccessToken: text('github_access_token'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

@@ -11,6 +11,7 @@ import { updateSlackWithBrief, postThreadReply } from '../slack/message'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
 import { incidentEvents } from '../events'
 import { config } from '../config'
+import { publishFinalGithubTriage } from '../github/triage-writeback'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -154,6 +155,16 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       })
       .where(eq(incidents.id, incident.id))
 
+    await publishFinalGithubTriage(
+      {
+        ...incident,
+        rootCause: brief.rootCause,
+        suggestedFix: brief.suggestedFix,
+        confidence: brief.confidence,
+      },
+      'brief_ready',
+    )
+
     incidentEvents.emitIncidentEvent({
       type: 'incident:updated',
       incidentId: incident.id,
@@ -193,6 +204,14 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         }),
       })
       .where(eq(incidents.id, incident.id))
+
+    await publishFinalGithubTriage(
+      {
+        ...incident,
+        rootCause: 'Agent investigation failed — check server logs',
+      },
+      'error',
+    )
 
     incidentEvents.emitIncidentEvent({
       type: 'incident:updated',

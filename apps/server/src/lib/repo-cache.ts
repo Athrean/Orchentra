@@ -36,12 +36,13 @@ export function invalidateMonitoredReposCache(): void {
   monitoredCache = null
 }
 
-export async function getAvailableRepos(): Promise<AvailableRepo[]> {
-  if (availableCache && Date.now() < availableCache.expiresAt) {
+export async function getAvailableRepos(userToken?: string | null): Promise<AvailableRepo[]> {
+  // Only use cache when using the default app token (user tokens vary per user)
+  if (!userToken && availableCache && Date.now() < availableCache.expiresAt) {
     return availableCache.data
   }
 
-  const octokit = new Octokit({ auth: config.github.token })
+  const octokit = new Octokit({ auth: userToken ?? config.github.token })
   const repos: AvailableRepo[] = []
 
   for await (const response of octokit.paginate.iterator(octokit.repos.listForAuthenticatedUser, {
@@ -59,7 +60,10 @@ export async function getAvailableRepos(): Promise<AvailableRepo[]> {
     }
   }
 
-  availableCache = { data: repos, expiresAt: Date.now() + DEFAULT_TTL_MS }
+  // Only cache for app-token requests
+  if (!userToken) {
+    availableCache = { data: repos, expiresAt: Date.now() + DEFAULT_TTL_MS }
+  }
   return repos
 }
 

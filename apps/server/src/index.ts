@@ -2,10 +2,10 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
-import { runMigrations, db, monitoredRepos, incidents } from './db/client'
-import { max } from 'drizzle-orm'
+import { runMigrations, db, monitoredRepos, incidents, orgMembers, users } from './db/client'
+import { max, eq } from 'drizzle-orm'
 import { seedMonitoredRepos } from './lib/seed'
-import { backfillRepoIncidents } from './lib/backfill'
+import { backfillRepoIncidents, withConcurrency } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
 import { authRouter } from './routes/auth'
 import { webhooksRouter } from './routes/webhooks'
@@ -48,10 +48,27 @@ async function syncAllRepos(): Promise<void> {
       .groupBy(incidents.repo),
   ])
   const latestMap = new Map(latestPerRepo.map((r) => [r.repo, r.latest]))
-  // Sequential to avoid spiking GitHub rate limits and DB connections
-  for (const { repo, orgId } of allRepos) {
-    await backfillRepoIncidents(repo, orgId, latestMap.get(repo)).catch(console.error)
+
+  // Look up user tokens per org so backfill can access user-scoped repos
+  const orgTokens = new Map<string, string>()
+  const orgIds = [...new Set(allRepos.map((r) => r.orgId))]
+  for (const oid of orgIds) {
+    const [member] = await db
+      .select({ token: users.githubAccessToken })
+      .from(orgMembers)
+      .innerJoin(users, eq(orgMembers.userId, users.id))
+      .where(eq(orgMembers.orgId, oid))
+      .limit(1)
+    if (member?.token) orgTokens.set(oid, member.token)
   }
+
+  // Concurrency-limited parallel backfill (3 concurrent repos)
+  const backfillTasks = allRepos.map(
+    ({ repo, orgId }) =>
+      () =>
+        backfillRepoIncidents(repo, orgId, latestMap.get(repo), orgTokens.get(orgId)).catch(console.error),
+  )
+  await withConcurrency(backfillTasks, 3)
 }
 
 // Incremental sync on startup — fetches only runs newer than the latest we already have

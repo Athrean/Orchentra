@@ -167,9 +167,16 @@ export function useMe() {
   })
 }
 
+function getOrgIdFromCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const match = document.cookie.match(/(?:^|;\s*)orchentra_org_id=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : undefined
+}
+
 function useOrgId(): string | undefined {
+  const cookieOrgId = getOrgIdFromCookie()
   const { data } = useMe()
-  return data?.org?.id ?? undefined
+  return cookieOrgId ?? data?.org?.id ?? undefined
 }
 
 export function useMonitorRepo() {

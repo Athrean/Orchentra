@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { queryKeys } from '../hooks'
+import { queryKeys, type Incident, type IncidentFull } from '../hooks'
 
 export type WsIncidentEventType =
   | 'incident:created'
@@ -96,9 +96,48 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): W
             return
           }
 
-          qc.invalidateQueries({ queryKey: queryKeys.incidents(currentOrgId, currentRepo) })
-          if (data.incidentId) {
-            qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(currentOrgId, data.incidentId) })
+          const event = data as WsIncidentEvent
+          const hasStatus = event.data && typeof event.data.status === 'string'
+
+          if (hasStatus && (event.type === 'incident:updated' || event.type === 'incident:status_changed')) {
+            const newStatus = event.data!.status as string
+
+            // Patch the incidents list cache — instant UI update
+            qc.setQueryData(
+              queryKeys.incidents(currentOrgId, currentRepo),
+              (old: { incidents: Incident[]; total: number } | undefined) => {
+                if (!old) return old
+                return {
+                  ...old,
+                  incidents: old.incidents.map((inc) =>
+                    inc.id === event.incidentId ? { ...inc, status: newStatus } : inc,
+                  ),
+                }
+              },
+            )
+
+            // Patch the incident detail cache if loaded
+            if (event.incidentId) {
+              qc.setQueryData(
+                queryKeys.incidentDetail(currentOrgId, event.incidentId),
+                (old: { incident: IncidentFull; toolCalls: unknown[]; actions: unknown[] } | undefined) => {
+                  if (!old) return old
+                  return { ...old, incident: { ...old.incident, status: newStatus } }
+                },
+              )
+            }
+
+            // Background refetch for full consistency — no loading spinner
+            qc.refetchQueries({ queryKey: queryKeys.incidents(currentOrgId, currentRepo) })
+            if (event.incidentId) {
+              qc.refetchQueries({ queryKey: queryKeys.incidentDetail(currentOrgId, event.incidentId) })
+            }
+          } else {
+            // incident:created, incident:action, and other events — full invalidate
+            qc.invalidateQueries({ queryKey: queryKeys.incidents(currentOrgId, currentRepo) })
+            if (event.incidentId) {
+              qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(currentOrgId, event.incidentId) })
+            }
           }
         } catch {
           /* parse errors are best-effort */

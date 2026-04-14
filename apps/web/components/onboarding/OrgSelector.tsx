@@ -1,14 +1,18 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { AlertTriangle, Check, GitBranch, Loader2, Search, Globe, X } from 'lucide-react'
+import { AlertTriangle, Check, Globe, Loader2, Lock, LogOut, Search, X } from 'lucide-react'
+import Image from 'next/image'
+import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '../../lib/utils'
 import { useRouter } from 'next/navigation'
 import { useMe, useAvailableRepos, useMonitorRepo, useValidateRepo, type ValidatedRepo } from '../../lib/hooks'
+import { api } from '../../lib/api'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
+import { GithubIcon } from '../../app/components/icons'
 
-export function OrgSelector() {
+export function OrgSelector(): React.ReactElement {
   const router = useRouter()
   const { data: me, isLoading: userLoading, isError: userError } = useMe()
   const user = me?.user
@@ -24,6 +28,7 @@ export function OrgSelector() {
   const [search, setSearch] = useState('')
   const [publicInput, setPublicInput] = useState('')
   const [validatedPublic, setValidatedPublic] = useState<ValidatedRepo | null>(null)
+  const [activeTab, setActiveTab] = useState<'repos' | 'public'>('repos')
   const monitorRepo = useMonitorRepo()
   const validateRepo = useValidateRepo()
   const [monitorError, setMonitorError] = useState<string | null>(null)
@@ -47,6 +52,7 @@ export function OrgSelector() {
       if (result.valid && result.repo) {
         setValidatedPublic(result.repo)
         setSelectedRepo(result.repo.fullName.toLowerCase())
+        setActiveTab('public')
       }
     } catch {
       // validateRepo.isError shows the message
@@ -67,6 +73,11 @@ export function OrgSelector() {
       }
     }
     router.push(`/dashboard/${encodeURIComponent(normalizedRepo)}`)
+  }
+
+  async function handleLogout(): Promise<void> {
+    await api('/auth/logout', { method: 'POST' }).catch(() => {})
+    window.location.href = '/'
   }
 
   if (loading) {
@@ -95,244 +106,290 @@ export function OrgSelector() {
   }
 
   return (
-    <Shell user={user}>
-      <main className="flex-1 flex flex-col items-center pt-14 pb-12 px-4">
-        {/* Hero */}
-        <div className="text-center mb-10">
+    <Shell user={user} onLogout={handleLogout}>
+      <main className="flex-1 min-h-0 flex flex-col items-center px-4 pt-6 pb-4">
+        <div className="w-full max-w-[560px] flex flex-col mt-5">
           <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center mx-auto mb-5 border"
+            className="rounded-[22px] p-2 h-[470px]"
             style={{
-              background: 'var(--color-app-raised)',
-              borderColor: 'var(--color-app-border)',
+              background: 'var(--color-onboard-panel)',
+              border: '1px solid var(--color-onboard-border)',
+              boxShadow: 'var(--shadow-onboard-panel)',
             }}
           >
-            <GitBranch className="w-5 h-5" style={{ color: 'var(--color-brand)' }} />
-          </div>
-          <h1
-            className="text-3xl font-semibold mb-2 tracking-tight"
-            style={{ color: 'var(--color-app-text)', fontFamily: 'var(--font-display)' }}
-          >
-            Select a repository
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--color-app-text-muted)' }}>
-            Orchentra will monitor CI failures and investigate them automatically.
-          </p>
-        </div>
-
-        <div className="w-full max-w-xl flex flex-col gap-3">
-          {/* Your repos */}
-          <div
-            className="rounded-2xl border overflow-hidden"
-            style={{
-              background: 'var(--color-app-card)',
-              borderColor: 'var(--color-app-border)',
-            }}
-          >
-            <div className="p-3 pb-2">
-              <Input
-                icon={<Search className="w-3.5 h-3.5" />}
-                trailing={
-                  search ? (
-                    <button onClick={() => setSearch('')} className="hover:text-white transition-colors">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  ) : undefined
-                }
-                type="text"
-                placeholder="Search repositories…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+            <div
+              className="grid grid-cols-2 gap-1 p-1 rounded-xl relative transition-all duration-300"
+              style={{
+                background: 'var(--color-onboard-rail)',
+                border: '1px solid var(--color-onboard-border)',
+                boxShadow: 'var(--shadow-onboard-rail)',
+              }}
+            >
+              <motion.div
+                layoutId="onboarding-tab-highlight"
+                transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                className={cn(
+                  'absolute top-1 bottom-1 rounded-lg',
+                  activeTab === 'repos' ? 'left-1 right-[50%]' : 'right-1 left-[50%]',
+                )}
+                style={{ background: 'var(--color-onboard-selected)' }}
               />
+              <button
+                type="button"
+                onClick={() => setActiveTab('repos')}
+                className={cn(
+                  'relative z-10 h-8 rounded-lg text-[12px] font-medium transition-colors',
+                  activeTab === 'repos'
+                    ? 'text-(--color-onboard-text)'
+                    : 'text-(--color-onboard-text-secondary) hover:text-(--color-onboard-text)',
+                )}
+              >
+                Your Repositories
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('public')}
+                className={cn(
+                  'relative z-10 h-8 rounded-lg text-[12px] font-medium transition-colors',
+                  activeTab === 'public'
+                    ? 'text-(--color-onboard-text)'
+                    : 'text-(--color-onboard-text-secondary) hover:text-(--color-onboard-text)',
+                )}
+              >
+                Track Public Repo
+              </button>
             </div>
 
-            <div className="px-3 pb-3">
-              <div
-                className="text-[10px] font-semibold tracking-widest uppercase mb-2 px-1"
-                style={{ color: 'var(--color-app-text-subtle)' }}
-              >
-                Your Repositories ({filteredRepos.length})
-              </div>
+            <div className="mt-1.5 h-[calc(100%-2.6rem)] min-h-0">
+              <AnimatePresence mode="wait">
+                {activeTab === 'repos' ? (
+                  <motion.div
+                    key="repos"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="h-full min-h-0 flex flex-col"
+                  >
+                    <Input
+                      icon={<Search className="w-3.5 h-3.5" />}
+                      trailing={
+                        search ? (
+                          <button onClick={() => setSearch('')} className="hover:text-white transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        ) : undefined
+                      }
+                      type="text"
+                      placeholder="Search repositories..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="border-0 focus:border-0 rounded-lg h-9 text-sm bg-(--color-onboard-input) text-(--color-onboard-text) placeholder:text-(--color-onboard-text-subtle)"
+                    />
 
-              <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto">
-                {filteredRepos.length === 0 && (
-                  <p className="text-xs text-center py-4" style={{ color: 'var(--color-app-text-subtle)' }}>
-                    No repositories found
-                  </p>
-                )}
-                {filteredRepos.map((repo) => {
-                  const selected = selectedRepo === repo.fullName.toLowerCase()
-                  return (
-                    <button
-                      key={repo.fullName}
-                      onClick={() => {
-                        setSelectedRepo(repo.fullName.toLowerCase())
-                        setValidatedPublic(null)
-                      }}
-                      className={cn(
-                        'flex items-center justify-between p-2.5 rounded-xl text-left transition-colors border',
-                        selected ? 'border-white/10 bg-white/5' : 'border-transparent hover:bg-white/3',
-                      )}
+                    <div
+                      className="text-[9px] font-semibold tracking-widest uppercase mt-2 mb-1.5 px-1"
+                      style={{ color: 'var(--color-onboard-text-subtle)' }}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border"
-                          style={{
-                            background: 'var(--color-app-raised)',
-                            borderColor: 'var(--color-app-border)',
-                          }}
-                        >
-                          <GitBranch className="w-3 h-3" style={{ color: 'var(--color-app-text-muted)' }} />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate" style={{ color: 'var(--color-app-text)' }}>
-                            {repo.fullName}
-                          </div>
-                          {repo.description && (
-                            <div
-                              className="text-[11px] mt-0.5 truncate"
-                              style={{ color: 'var(--color-app-text-subtle)' }}
-                            >
-                              {repo.description}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      Your Repositories ({filteredRepos.length})
+                    </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        {repo.monitored && (
-                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
-                            monitored
-                          </span>
-                        )}
-                        {repo.private && (
-                          <span
-                            className="text-[10px] font-medium px-2 py-0.5 rounded-full border"
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-1">
+                      {filteredRepos.length === 0 && (
+                        <p className="text-xs text-center py-4" style={{ color: 'var(--color-onboard-text-subtle)' }}>
+                          No repositories found
+                        </p>
+                      )}
+                      {filteredRepos.map((repo) => {
+                        const selected = selectedRepo === repo.fullName.toLowerCase()
+                        return (
+                          <button
+                            key={repo.fullName}
+                            onClick={() => {
+                              setSelectedRepo(repo.fullName.toLowerCase())
+                              setValidatedPublic(null)
+                            }}
+                            className={cn(
+                              'w-full flex items-center justify-between p-2 rounded-lg text-left border transition-all duration-300',
+                              selected ? 'border-white/8' : 'border-transparent hover:border-white/8',
+                            )}
                             style={{
-                              color: 'var(--color-app-text-subtle)',
-                              background: 'var(--color-app-raised)',
-                              borderColor: 'var(--color-app-border)',
+                              background: selected ? 'var(--color-onboard-selected)' : 'transparent',
+                              boxShadow: selected ? 'var(--shadow-onboard-row)' : 'none',
                             }}
                           >
-                            private
-                          </span>
-                        )}
-                        {selected && (
-                          <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Track any public repo */}
-          <div
-            className="rounded-2xl border overflow-hidden"
-            style={{
-              background: 'var(--color-app-card)',
-              borderColor: 'var(--color-app-border)',
-            }}
-          >
-            <div className="p-3">
-              <div
-                className="text-[10px] font-semibold tracking-widest uppercase mb-2.5 px-1"
-                style={{ color: 'var(--color-app-text-subtle)' }}
-              >
-                Track any public repo
-              </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    icon={<Globe className="w-3.5 h-3.5" />}
-                    type="text"
-                    placeholder="owner/repo or github.com/owner/repo"
-                    value={publicInput}
-                    onChange={(e) => {
-                      setPublicInput(e.target.value)
-                      setValidatedPublic(null)
-                      validateRepo.reset()
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleValidatePublic()}
-                  />
-                </div>
-                <Button
-                  variant="primary"
-                  size="md"
-                  loading={validateRepo.isPending}
-                  disabled={!publicInput.trim()}
-                  onClick={handleValidatePublic}
-                >
-                  Validate
-                </Button>
-              </div>
-
-              {validateRepo.isSuccess && !validatedPublic && (
-                <p className="text-xs text-red-400 mt-2 px-1">Repository not found or not accessible.</p>
-              )}
-              {validateRepo.isError && <p className="text-xs text-red-400 mt-2 px-1">Validation failed. Try again.</p>}
-
-              {validatedPublic && (
-                <button
-                  onClick={() => setSelectedRepo(validatedPublic.fullName.toLowerCase())}
-                  className={cn(
-                    'mt-2.5 flex items-center justify-between w-full p-2.5 rounded-xl text-left border transition-colors',
-                    selectedRepo === validatedPublic.fullName.toLowerCase()
-                      ? 'border-white/10 bg-white/5'
-                      : 'border-transparent hover:bg-white/3',
-                  )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border"
-                      style={{
-                        background: 'var(--color-app-raised)',
-                        borderColor: 'var(--color-app-border)',
-                      }}
-                    >
-                      <Globe className="w-3 h-3 text-emerald-400" />
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                                style={{ background: 'var(--color-onboard-raised)' }}
+                              >
+                                <GithubIcon className="w-3 h-3 text-(--color-onboard-text-secondary)" />
+                              </div>
+                              <div className="min-w-0">
+                                <div
+                                  className="text-[13px] font-medium truncate"
+                                  style={{ color: 'var(--color-onboard-text)' }}
+                                >
+                                  {repo.fullName}
+                                </div>
+                                {repo.description && (
+                                  <div
+                                    className="text-[10px] mt-0.5 truncate"
+                                    style={{ color: 'var(--color-onboard-text-subtle)' }}
+                                  >
+                                    {repo.description}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                              {repo.monitored && (
+                                <span
+                                  className="text-[9px] font-medium px-1.5 py-0.5 rounded-full"
+                                  style={{
+                                    color: 'var(--color-accent)',
+                                    background: 'var(--color-accent-dim)',
+                                  }}
+                                >
+                                  monitored
+                                </span>
+                              )}
+                              {repo.private && (
+                                <span
+                                  className="text-[9px] font-medium px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                                  style={{
+                                    color: 'var(--color-onboard-text-subtle)',
+                                    background: 'var(--color-onboard-raised)',
+                                  }}
+                                >
+                                  <Lock className="w-2.5 h-2.5" />
+                                  private
+                                </span>
+                              )}
+                              {selected && (
+                                <div className="w-3.5 h-3.5 rounded-full bg-accent flex items-center justify-center">
+                                  <Check className="w-2 h-2 text-white" strokeWidth={3} />
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
                     </div>
-                    <div>
-                      <div className="text-sm font-medium" style={{ color: 'var(--color-app-text)' }}>
-                        {validatedPublic.fullName}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="public"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="h-full flex flex-col"
+                  >
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Input
+                          icon={<Globe className="w-3.5 h-3.5" />}
+                          type="text"
+                          placeholder="owner/repo or github.com/owner/repo"
+                          value={publicInput}
+                          onChange={(e) => {
+                            setPublicInput(e.target.value)
+                            setValidatedPublic(null)
+                            validateRepo.reset()
+                          }}
+                          onKeyDown={(e) => e.key === 'Enter' && handleValidatePublic()}
+                          className="border-0 focus:border-0 rounded-lg h-9 text-sm bg-(--color-onboard-input) text-(--color-onboard-text) placeholder:text-(--color-onboard-text-subtle)"
+                        />
                       </div>
-                      {validatedPublic.description && (
-                        <div className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--color-app-text-subtle)' }}>
-                          {validatedPublic.description}
-                        </div>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        loading={validateRepo.isPending}
+                        disabled={!publicInput.trim()}
+                        onClick={handleValidatePublic}
+                        className="border-0 bg-accent hover:bg-accent-hover text-white h-9 px-3 text-[11px]"
+                      >
+                        Validate
+                      </Button>
+                    </div>
+
+                    {validateRepo.isSuccess && !validatedPublic && (
+                      <p className="text-xs text-red-400 mt-2 px-1">Repository not found or not accessible.</p>
+                    )}
+                    {validateRepo.isError && (
+                      <p className="text-xs text-red-400 mt-2 px-1">Validation failed. Try again.</p>
+                    )}
+
+                    <div className="mt-3 flex-1 min-h-0">
+                      {validatedPublic && (
+                        <button
+                          onClick={() => setSelectedRepo(validatedPublic.fullName.toLowerCase())}
+                          className={cn(
+                            'w-full flex items-center justify-between p-2 rounded-lg text-left border transition-all duration-300',
+                            selectedRepo === validatedPublic.fullName.toLowerCase()
+                              ? 'border-white/8'
+                              : 'border-transparent hover:border-white/8',
+                          )}
+                          style={{
+                            background:
+                              selectedRepo === validatedPublic.fullName.toLowerCase()
+                                ? 'var(--color-onboard-selected)'
+                                : 'transparent',
+                            boxShadow:
+                              selectedRepo === validatedPublic.fullName.toLowerCase()
+                                ? 'var(--shadow-onboard-row)'
+                                : 'none',
+                          }}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-emerald-500/20">
+                              <Globe className="w-3 h-3 text-emerald-300" />
+                            </div>
+                            <div>
+                              <div className="text-[13px] font-medium" style={{ color: 'var(--color-onboard-text)' }}>
+                                {validatedPublic.fullName}
+                              </div>
+                              {validatedPublic.description && (
+                                <div
+                                  className="text-[10px] mt-0.5 truncate"
+                                  style={{ color: 'var(--color-onboard-text-subtle)' }}
+                                >
+                                  {validatedPublic.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full text-emerald-300 bg-emerald-500/20">
+                              valid
+                            </span>
+                            {selectedRepo === validatedPublic.fullName.toLowerCase() && (
+                              <div className="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center">
+                                <Check className="w-2 h-2 text-black" strokeWidth={3} />
+                              </div>
+                            )}
+                          </div>
+                        </button>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
-                      valid
-                    </span>
-                    {selectedRepo === validatedPublic.fullName.toLowerCase() && (
-                      <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
-                        <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />
-                      </div>
-                    )}
-                  </div>
-                </button>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="mt-8 flex flex-col items-center gap-2">
+        <div className="mt-4 flex flex-col items-center gap-1.5">
           <Button
             variant="green"
-            size="lg"
+            size="md"
             disabled={!selectedRepo}
             loading={monitorRepo.isPending}
             onClick={handleContinue}
-            className="rounded-full px-6"
+            className="rounded-full px-6 border-0 bg-accent hover:bg-accent-hover text-white"
           >
-            {monitorRepo.isPending ? 'Setting up…' : 'Continue →'}
+            {monitorRepo.isPending ? 'Setting up...' : 'Continue ->'}
           </Button>
           {monitorError && <p className="text-xs text-red-400">{monitorError}</p>}
         </div>
@@ -344,52 +401,64 @@ export function OrgSelector() {
 function Shell({
   children,
   user,
+  onLogout,
 }: {
   children: React.ReactNode
   user?: { avatarUrl?: string | null; displayName?: string | null; username: string } | null
-}) {
+  onLogout?: () => Promise<void> | void
+}): React.ReactElement {
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="h-screen overflow-hidden flex flex-col"
       style={{
-        background: 'var(--color-app-bg)',
-        color: 'var(--color-app-text)',
+        background:
+          'radial-gradient(80% 120% at 50% -10%, rgba(255,255,255,0.03), transparent 52%), var(--color-onboard-bg)',
+        color: 'var(--color-onboard-text)',
         fontFamily: 'var(--font-body)',
       }}
     >
-      {/* Minimal header */}
-      <header
-        className="flex items-center justify-between px-5 py-3 border-b"
-        style={{ borderColor: 'var(--color-app-border)' }}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-end gap-[3px]" style={{ color: 'var(--color-brand)' }}>
-            <div className="w-[4px] h-2.5 rounded-full bg-current" />
-            <div className="w-[4px] h-3.5 rounded-full bg-current" style={{ marginBottom: 1 }} />
-            <div className="w-[4px] h-2.5 rounded-full bg-current" style={{ marginTop: 1 }} />
-            <div className="w-[4px] h-2 rounded-full bg-current" style={{ marginTop: 2 }} />
+      <header className="flex items-center justify-between px-6 py-5 md:py-6">
+        <div className="flex items-center">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+            <Image
+              src="/green-logo.png"
+              alt="Orchentra"
+              width={76}
+              height={76}
+              className="absolute h-[76px] w-auto max-w-none object-contain"
+            />
           </div>
-          <span
-            className="text-[11px] font-semibold tracking-wide"
-            style={{ color: 'var(--color-app-text-secondary)', fontFamily: 'var(--font-display)' }}
-          >
-            ORCHENTRA
-          </span>
+          <span className="hero-text -ml-1 font-serif text-[34px] tracking-tight md:text-[38px]">Orchentra</span>
         </div>
 
-        {/* User pill */}
         {user && (
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-full transition-all duration-300"
+            style={{
+              background: 'var(--color-onboard-panel)',
+              border: '1px solid var(--color-onboard-border)',
+              boxShadow: 'var(--shadow-onboard-pill)',
+            }}
+          >
             {user.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
+              <img src={user.avatarUrl} alt="" className="w-7 h-7 rounded-full" />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-orange-500 to-red-500" />
+              <div className="w-7 h-7 rounded-full bg-linear-to-tr from-orange-500 to-red-500" />
             )}
-            <span className="text-xs font-medium" style={{ color: 'var(--color-app-text-secondary)' }}>
+            <span className="text-[13px] font-medium" style={{ color: 'var(--color-onboard-text)' }}>
               {user.displayName || user.username}
             </span>
+            <button
+              type="button"
+              onClick={() => onLogout?.()}
+              className="ml-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full transition-colors"
+              style={{ color: 'var(--color-onboard-text-secondary)', background: 'var(--color-onboard-raised)' }}
+              title="Log out"
+              aria-label="Log out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
       </header>

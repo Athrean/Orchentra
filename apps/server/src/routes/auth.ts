@@ -2,7 +2,14 @@ import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { createAuthorizationUrl, handleCallback } from '../auth/oauth'
 import { ensureUserOrg } from '../auth/org'
-import { createSession, deleteSession, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '../auth/session'
+import {
+  createSession,
+  deleteSession,
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+  ORG_ID_COOKIE_NAME,
+} from '../auth/session'
+import { backfillUserOrgRepos } from '../lib/backfill'
 
 export const authRouter = new Hono()
 
@@ -36,7 +43,7 @@ authRouter.get('/github/callback', async (c) => {
 
   try {
     const userId = await handleCallback(code)
-    await ensureUserOrg(userId)
+    const orgId = await ensureUserOrg(userId)
     const ipAddress = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-real-ip')
     const userAgent = c.req.header('user-agent')
     const sessionId = await createSession(userId, { ipAddress, userAgent })
@@ -48,6 +55,20 @@ authRouter.get('/github/callback', async (c) => {
       path: '/',
       maxAge: SESSION_MAX_AGE_SECONDS,
     })
+
+    // Non-httpOnly cookie so the frontend can read orgId without waiting for /api/me
+    if (orgId) {
+      setCookie(c, ORG_ID_COOKIE_NAME, orgId, {
+        httpOnly: false,
+        secure: IS_PRODUCTION,
+        sameSite: 'Lax',
+        path: '/',
+        maxAge: SESSION_MAX_AGE_SECONDS,
+      })
+    }
+
+    // Backfill all org repos with the user's fresh OAuth token — fire-and-forget
+    backfillUserOrgRepos(userId).catch(console.error)
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
     return c.redirect(`${frontendUrl}/onboarding`)
@@ -62,6 +83,7 @@ authRouter.post('/logout', async (c) => {
   if (sessionId) {
     await deleteSession(sessionId)
     deleteCookie(c, SESSION_COOKIE_NAME, { path: '/' })
+    deleteCookie(c, ORG_ID_COOKIE_NAME, { path: '/' })
   }
   return c.json({ success: true })
 })

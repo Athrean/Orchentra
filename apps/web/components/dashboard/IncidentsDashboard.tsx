@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import {
   Loader2,
   AlertTriangle,
@@ -19,6 +19,7 @@ import {
   GitPullRequest,
   Bell,
   BellOff,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { DashboardLayout } from './DashboardLayout'
@@ -118,8 +119,9 @@ function fmtDuration(sec: number): string {
 export function IncidentsDashboard({ repo }: { repo: string }) {
   const { selectedIncidentId, period, setSelectedIncidentId, setPeriod } = useDashboardStore()
   const { from, to } = useMemo(() => getPeriodRange(period), [period])
-  const { data, isLoading, error } = useIncidents(repo, from, to)
-  const { data: me } = useMe()
+  const { data, isPending, error } = useIncidents(repo, from, to)
+  const { data: me, isPending: meLoading } = useMe()
+  const loading = isPending || meLoading
 
   const wsHandle = useIncidentWebSocket(me?.org?.id, repo)
   const wsState = useWsConnectionState(wsHandle)
@@ -166,10 +168,8 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
       </div>
 
       {/* ── Content ── */}
-      {isLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--color-app-text-subtle)' }} />
-        </div>
+      {loading ? (
+        <IncidentsSkeleton />
       ) : error ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -278,6 +278,46 @@ export function IncidentsDashboard({ repo }: { repo: string }) {
   )
 }
 
+/* ── Skeleton loading state ── */
+function SkeletonPulse({ className }: { className?: string }) {
+  return <div className={cn('rounded bg-white/6 animate-pulse', className)} />
+}
+
+function IncidentsSkeleton() {
+  return (
+    <>
+      <div className="px-4 py-2.5 border-b shrink-0" style={{ borderColor: 'var(--color-app-border)' }}>
+        <SkeletonPulse className="h-3 w-32" />
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="w-full px-4 py-3.5 border-b" style={{ borderBottomColor: 'var(--color-app-border)' }}>
+            <div className="flex items-start gap-3">
+              <SkeletonPulse className="w-3.5 h-3.5 rounded-full mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0 space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <SkeletonPulse className="h-4 w-48" />
+                  <SkeletonPulse className="h-5 w-20 rounded-full shrink-0" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <SkeletonPulse className="h-3 w-24" />
+                  <SkeletonPulse className="h-3 w-32" />
+                </div>
+                <SkeletonPulse className="h-3 w-64" />
+                <div className="flex items-center gap-3">
+                  <SkeletonPulse className="h-2.5 w-16" />
+                  <SkeletonPulse className="h-2.5 w-14" />
+                  <SkeletonPulse className="h-2.5 w-12 ml-auto" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 function getStatusColor(status: StatusKey): string {
   const map: Record<StatusKey, string> = {
     investigating: '#F59E0B',
@@ -373,9 +413,74 @@ function EmptyState({ repo }: { repo: string }) {
   )
 }
 
+/* ── Summarize hook ── */
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+function useSummarize(orgId: string | undefined, incidentId: string) {
+  const [summary, setSummary] = useState('')
+  const [isSummarizing, setIsSummarizing] = useState(false)
+  const [summaryError, setSummaryError] = useState(false)
+
+  const summarize = useCallback(async () => {
+    if (!orgId || isSummarizing) return
+    setSummary('')
+    setSummaryError(false)
+    setIsSummarizing(true)
+
+    try {
+      const res = await fetch(`${API_BASE}/api/orgs/${orgId}/incidents/${incidentId}/summarize`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      if (!res.ok || !res.body) {
+        setSummaryError(true)
+        setIsSummarizing(false)
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      let done = false
+      while (!done) {
+        const chunk = await reader.read()
+        done = chunk.done
+        const value = chunk.value
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          // AI SDK data stream format: lines starting with 0: contain text chunks as JSON strings
+          if (line.startsWith('0:')) {
+            try {
+              const text = JSON.parse(line.slice(2)) as string
+              setSummary((prev) => prev + text)
+            } catch {
+              // skip non-JSON lines
+            }
+          }
+        }
+      }
+    } catch {
+      setSummaryError(true)
+    } finally {
+      setIsSummarizing(false)
+    }
+  }, [orgId, incidentId, isSummarizing])
+
+  return { summary, isSummarizing, summaryError, summarize }
+}
+
 /* ── Detail Panel ── */
 function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: string; onClose: () => void }) {
   const { data: detail, isLoading, error } = useIncidentDetail(incidentId)
+  const { data: me } = useMe()
+  const { summary, isSummarizing, summaryError, summarize } = useSummarize(me?.org?.id, incidentId)
 
   const rerun = useRerunWorkflow(repo)
   const createIssue = useCreateIssue(repo)
@@ -445,6 +550,43 @@ function DetailPanel({ incidentId, repo, onClose }: { incidentId: string; repo: 
         <Badge variant={cfg.badgeVariant} icon={<cfg.Icon className="w-2.5 h-2.5" />}>
           {cfg.label}
         </Badge>
+
+        {/* AI Summary */}
+        <div>
+          {!summary && !isSummarizing ? (
+            <Button variant="primary" size="sm" icon={<Sparkles className="w-3 h-3" />} onClick={summarize}>
+              Summarize
+            </Button>
+          ) : (
+            <div
+              className="rounded-xl p-3 border"
+              style={{
+                background: 'var(--color-app-deep)',
+                borderColor: 'var(--color-app-border)',
+              }}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                <Sparkles className="w-3 h-3" style={{ color: 'var(--color-brand)' }} />
+                <span
+                  className="text-[10px] font-semibold tracking-widest uppercase"
+                  style={{ color: 'var(--color-brand)' }}
+                >
+                  AI Summary
+                </span>
+                {isSummarizing && (
+                  <Loader2 className="w-3 h-3 animate-spin ml-auto" style={{ color: 'var(--color-app-text-subtle)' }} />
+                )}
+              </div>
+              {summaryError ? (
+                <p className="text-xs text-red-400">Failed to generate summary.</p>
+              ) : (
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--color-app-text-secondary)' }}>
+                  {summary || 'Generating...'}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Actions */}
         {canAct && (
