@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
-import { runMigrations, db, monitoredRepos, incidents, orgMembers, users } from './db/client'
-import { max, eq } from 'drizzle-orm'
+import { runMigrations, db, monitoredRepos, incidents, users } from './db/client'
+import { max, eq, inArray } from 'drizzle-orm'
 import { seedMonitoredRepos } from './lib/seed'
 import { backfillRepoIncidents, withConcurrency } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
@@ -40,33 +40,46 @@ await runMigrations()
 await seedMonitoredRepos()
 
 async function syncAllRepos(): Promise<void> {
-  const [allRepos, latestPerRepo] = await Promise.all([
-    db.select({ repo: monitoredRepos.repo, orgId: monitoredRepos.orgId }).from(monitoredRepos),
-    db
-      .select({ repo: incidents.repo, latest: max(incidents.triggeredAt) })
-      .from(incidents)
-      .groupBy(incidents.repo),
-  ])
-  const latestMap = new Map(latestPerRepo.map((r) => [r.repo, r.latest]))
+  const allRepos = await db
+    .select({
+      repo: monitoredRepos.repo,
+      orgId: monitoredRepos.orgId,
+      addedBy: monitoredRepos.addedBy,
+    })
+    .from(monitoredRepos)
 
-  // Look up user tokens per org so backfill can access user-scoped repos
-  const orgTokens = new Map<string, string>()
+  // Scope latestPerRepo by orgId to avoid cross-org timestamp collisions
+  // when multiple orgs monitor the same repo.
   const orgIds = [...new Set(allRepos.map((r) => r.orgId))]
-  for (const oid of orgIds) {
-    const [member] = await db
-      .select({ token: users.githubAccessToken })
-      .from(orgMembers)
-      .innerJoin(users, eq(orgMembers.userId, users.id))
-      .where(eq(orgMembers.orgId, oid))
-      .limit(1)
-    if (member?.token) orgTokens.set(oid, member.token)
+  const latestPerRepo =
+    orgIds.length > 0
+      ? await db
+          .select({ orgId: incidents.orgId, repo: incidents.repo, latest: max(incidents.triggeredAt) })
+          .from(incidents)
+          .where(inArray(incidents.orgId, orgIds))
+          .groupBy(incidents.orgId, incidents.repo)
+      : []
+  const latestMap = new Map(latestPerRepo.map((r) => [`${r.orgId}:${r.repo}`, r.latest]))
+
+  // Look up user tokens by repo owner when a repo was explicitly added by a user.
+  // Seeded/configured repos have addedBy = null and should use the app token directly.
+  const userTokens = new Map<string, string>()
+  const userIds = [...new Set(allRepos.map((r) => r.addedBy).filter((userId): userId is string => Boolean(userId)))]
+  for (const userId of userIds) {
+    const [user] = await db.select({ token: users.githubAccessToken }).from(users).where(eq(users.id, userId)).limit(1)
+    if (user?.token) userTokens.set(userId, user.token)
   }
 
   // Concurrency-limited parallel backfill (3 concurrent repos)
   const backfillTasks = allRepos.map(
-    ({ repo, orgId }) =>
+    ({ repo, orgId, addedBy }) =>
       () =>
-        backfillRepoIncidents(repo, orgId, latestMap.get(repo), orgTokens.get(orgId)).catch(console.error),
+        backfillRepoIncidents(
+          repo,
+          orgId,
+          latestMap.get(`${orgId}:${repo}`),
+          addedBy ? userTokens.get(addedBy) : null,
+        ).catch(console.error),
   )
   await withConcurrency(backfillTasks, 3)
 }

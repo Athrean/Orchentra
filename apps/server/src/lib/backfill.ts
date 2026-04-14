@@ -1,8 +1,21 @@
 import { Octokit } from '@octokit/rest'
-import { eq, max } from 'drizzle-orm'
+import { eq, max, inArray } from 'drizzle-orm'
 import { config } from '../config'
 import { db, incidents, monitoredRepos, orgMembers, users } from '../db/client'
 import { incidentEvents } from '../events'
+
+type BackfillTokenSource = 'user' | 'app'
+type WorkflowRuns = Awaited<
+  ReturnType<InstanceType<typeof Octokit>['actions']['listWorkflowRunsForRepo']>
+>['data']['workflow_runs']
+type OctokitLogger = NonNullable<ConstructorParameters<typeof Octokit>[0]>['log']
+
+const silentOctokitLogger: OctokitLogger = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+}
 
 /**
  * Run async tasks with a concurrency cap using a worker-pool pattern.
@@ -43,6 +56,61 @@ function conclusionToStatus(conclusion: string | null): string {
   }
 }
 
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'string') return err
+  return String(err)
+}
+
+function getErrorStatus(err: unknown): number | null {
+  if (!err || typeof err !== 'object' || !('status' in err)) return null
+  return typeof err.status === 'number' ? err.status : null
+}
+
+function shouldRetryWithAppToken(err: unknown): boolean {
+  const msg = getErrorMessage(err)
+  return (
+    msg.includes('OAuth App access restrictions') ||
+    msg.includes('Resource not accessible by integration') ||
+    getErrorStatus(err) === 404
+  )
+}
+
+function getBackfillAuthCandidates(userToken?: string | null): Array<{ source: BackfillTokenSource; token: string }> {
+  const candidates: Array<{ source: BackfillTokenSource; token: string }> = []
+  if (userToken) candidates.push({ source: 'user', token: userToken })
+  if (!userToken || userToken !== config.github.token) {
+    candidates.push({ source: 'app', token: config.github.token })
+  }
+  return candidates
+}
+
+async function listCompletedWorkflowRuns(
+  owner: string,
+  repoName: string,
+  since: string,
+  authToken: string,
+): Promise<WorkflowRuns> {
+  const octokit = new Octokit({ auth: authToken, log: silentOctokitLogger })
+  let runs: WorkflowRuns = []
+
+  // Paginate up to 5 pages (500 runs) to get meaningful history
+  for (let page = 1; page <= 5; page++) {
+    const response = await octokit.actions.listWorkflowRunsForRepo({
+      owner,
+      repo: repoName,
+      status: 'completed',
+      per_page: 100,
+      page,
+      created: `>=${since}`,
+    })
+    runs = runs.concat(response.data.workflow_runs)
+    if (response.data.workflow_runs.length < 100) break
+  }
+
+  return runs
+}
+
 export async function backfillRepoIncidents(
   repo: string,
   orgId: string,
@@ -52,37 +120,40 @@ export async function backfillRepoIncidents(
   const [owner, repoName] = repo.split('/')
   if (!owner || !repoName) return
 
-  const tokenSource = userToken ? 'user' : 'app'
-  const octokit = new Octokit({ auth: userToken ?? config.github.token })
-
   // If we have existing data, only fetch runs from 1 day before our latest run (handles same-day gaps).
   // Otherwise fetch the last 365 days for a complete initial import.
   const since = latestKnown
     ? new Date(latestKnown.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  let runs: Awaited<ReturnType<typeof octokit.actions.listWorkflowRunsForRepo>>['data']['workflow_runs'] = []
-  try {
-    // Paginate up to 5 pages (500 runs) to get meaningful history
-    for (let page = 1; page <= 5; page++) {
-      const response = await octokit.actions.listWorkflowRunsForRepo({
-        owner,
-        repo: repoName,
-        status: 'completed',
-        per_page: 100,
-        page,
-        created: `>=${since}`,
-      })
-      runs = runs.concat(response.data.workflow_runs)
-      if (response.data.workflow_runs.length < 100) break
+  let runs: WorkflowRuns = []
+  let tokenSource: BackfillTokenSource = userToken ? 'user' : 'app'
+  let lastError: unknown = null
+  const authCandidates = getBackfillAuthCandidates(userToken)
+
+  for (const [index, candidate] of authCandidates.entries()) {
+    tokenSource = candidate.source
+    try {
+      runs = await listCompletedWorkflowRuns(owner, repoName, since, candidate.token)
+      lastError = null
+      break
+    } catch (err: unknown) {
+      lastError = err
+      const hasFallbackCandidate = index < authCandidates.length - 1
+      if (candidate.source === 'user' && hasFallbackCandidate && shouldRetryWithAppToken(err)) {
+        continue
+      }
+      break
     }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
+  }
+
+  if (lastError) {
+    const msg = getErrorMessage(lastError)
     const isOrgRestriction = msg.includes('OAuth App access restrictions')
     if (isOrgRestriction) {
       console.warn(`Backfill: skipping ${repo} — org has OAuth App access restrictions`)
     } else {
-      console.error(`Backfill: failed to fetch runs for ${repo}:`, err)
+      console.error(`Backfill: failed to fetch runs for ${repo}:`, lastError)
     }
     return
   }
@@ -145,12 +216,15 @@ export async function backfillUserOrgRepos(userId: string): Promise<void> {
 
   if (memberRows.length === 0) return
 
-  // Get latest incident per repo so we only fetch new runs
+  // Get latest incident per (org, repo) so we only fetch new runs — scoped by org
+  // to avoid cross-org timestamp collisions when multiple orgs monitor the same repo.
+  const orgIds = memberRows.map((m) => m.orgId)
   const latestPerRepo = await db
-    .select({ repo: incidents.repo, latest: max(incidents.triggeredAt) })
+    .select({ orgId: incidents.orgId, repo: incidents.repo, latest: max(incidents.triggeredAt) })
     .from(incidents)
-    .groupBy(incidents.repo)
-  const latestMap = new Map(latestPerRepo.map((r) => [r.repo, r.latest]))
+    .where(inArray(incidents.orgId, orgIds))
+    .groupBy(incidents.orgId, incidents.repo)
+  const latestMap = new Map(latestPerRepo.map((r) => [`${r.orgId}:${r.repo}`, r.latest]))
 
   for (const { orgId } of memberRows) {
     const repos = await db
@@ -163,7 +237,7 @@ export async function backfillUserOrgRepos(userId: string): Promise<void> {
     const tasks = repos.map(
       ({ repo }) =>
         () =>
-          backfillRepoIncidents(repo, orgId, latestMap.get(repo), user.token).catch(console.error),
+          backfillRepoIncidents(repo, orgId, latestMap.get(`${orgId}:${repo}`), user.token).catch(console.error),
     )
     await withConcurrency(tasks, 3)
   }
