@@ -91,8 +91,8 @@ async function markJobFailed(jobId: string, error: unknown, attempts: number, ma
   }
 }
 
-/** Process a single claimed job. */
-async function processJob(job: typeof incidentJobs.$inferSelect): Promise<void> {
+/** Process a single claimed job. Exported for focused queue tests. */
+export async function processIncidentJob(job: typeof incidentJobs.$inferSelect): Promise<void> {
   const [incident] = await db.select().from(incidents).where(eq(incidents.id, job.incidentId)).limit(1)
 
   if (!incident) {
@@ -153,7 +153,7 @@ export function startQueueWorker(): void {
       if (job) {
         hadWork = true
         try {
-          await processJob(job)
+          await processIncidentJob(job)
         } catch (err) {
           await markJobFailed(job.id, err, job.attempts, job.maxAttempts)
         }

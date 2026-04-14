@@ -62,4 +62,5 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 export const SESSION_COOKIE_NAME = 'orchentra_session'
+export const ORG_ID_COOKIE_NAME = 'orchentra_org_id'
 export const SESSION_MAX_AGE_SECONDS = SESSION_MAX_AGE_DAYS * 24 * 60 * 60

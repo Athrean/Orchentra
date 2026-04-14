@@ -33,8 +33,12 @@ reposRouter.get('/validate', async (c) => {
 
 reposRouter.get('/available', async (c) => {
   const orgId = c.get('orgId')!
+  const user = c.get('user')
 
-  const [available, orgMonitoredRows] = await Promise.all([getAvailableRepos(), getOrgMonitoredRepos(orgId)])
+  const [available, orgMonitoredRows] = await Promise.all([
+    getAvailableRepos(user.githubAccessToken),
+    getOrgMonitoredRepos(orgId),
+  ])
 
   const monitored = new Set(orgMonitoredRows.map((r) => r.repo.toLowerCase()))
 
@@ -60,7 +64,7 @@ reposRouter.post('/monitor', async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
 
   const normalizedRepo = parsed.data.repo.toLowerCase()
-  const available = await getAvailableRepos()
+  const available = await getAvailableRepos(user.githubAccessToken).catch(() => getAvailableRepos())
   const inAccount = available.some((r) => r.fullName.toLowerCase() === normalizedRepo)
 
   if (!inAccount) {
@@ -68,7 +72,7 @@ reposRouter.post('/monitor', async (c) => {
     const [owner, repoName] = normalizedRepo.split('/')
     if (!owner || !repoName) return c.json({ error: 'Invalid repo format' }, 400)
     try {
-      const octokit = new Octokit({ auth: config.github.token })
+      const octokit = new Octokit({ auth: user.githubAccessToken ?? config.github.token })
       const { data } = await octokit.repos.get({ owner, repo: repoName })
       if (data.private) return c.json({ error: 'Cannot monitor private repos outside your account' }, 403)
     } catch {
@@ -81,7 +85,8 @@ reposRouter.post('/monitor', async (c) => {
   invalidateMonitoredReposCache()
 
   // Backfill historical runs in the background — don't block the response
-  backfillRepoIncidents(normalizedRepo, orgId).catch(console.error)
+  // Use the user's GitHub token so we can access their repos (the app token may not have access)
+  backfillRepoIncidents(normalizedRepo, orgId, null, user.githubAccessToken).catch(console.error)
 
   return c.json({ repo: normalizedRepo }, 201)
 })

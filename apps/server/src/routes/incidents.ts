@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
+import { streamText } from 'ai'
 import { UpdateIncidentStatusSchema } from '@orchentra/core'
 import { updateIncidentStatus } from '../actions/handlers'
 import { listIncidents, findIncident, findIncidentForOrg, getIncidentRelations } from '../queries/incidents'
+import { createModel } from '../agent/llm'
 import type { AppVariables } from '../types'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
@@ -62,4 +64,45 @@ incidentsRouter.patch('/incidents/:id/status', async (c) => {
     return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json({ id, ...result.data })
+})
+
+/**
+ * POST /api/orgs/:orgId/incidents/:id/summarize
+ *
+ * Streams an LLM-generated plain-English summary of the incident.
+ */
+incidentsRouter.post('/incidents/:id/summarize', async (c) => {
+  const id = c.req.param('id')
+  const orgId = c.get('orgId')!
+
+  const incident = await findIncident(id, orgId)
+  if (!incident) return c.json({ error: 'Incident not found' }, 404)
+
+  const [calls] = await getIncidentRelations(id)
+
+  const incidentContext = [
+    `Workflow: ${incident.workflowName}`,
+    `Repo: ${incident.repo}`,
+    `Branch: ${incident.branch}`,
+    `Commit: ${incident.commit.slice(0, 12)}`,
+    incident.commitMessage ? `Commit message: ${incident.commitMessage}` : null,
+    `Status: ${incident.status}`,
+    incident.failedStep ? `Failed step: ${incident.failedStep}` : null,
+    incident.rootCause ? `Root cause: ${incident.rootCause}` : null,
+    incident.suggestedFix ? `Suggested fix: ${incident.suggestedFix}` : null,
+    incident.confidence != null ? `Confidence: ${Math.round(incident.confidence * 100)}%` : null,
+    calls.length > 0
+      ? `Agent activity: ${calls.length} tool calls (${calls.map((tc) => tc.integration).join(', ')})`
+      : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const result = streamText({
+    model: createModel(),
+    system: `You are a concise CI/CD incident analyst. Summarize incidents in 2-4 sentences, focusing on: what failed, why it likely failed, and what the developer should do next. Be direct and actionable. Do not use markdown headers or bullet points — write plain prose.`,
+    messages: [{ role: 'user', content: `Summarize this CI incident:\n\n${incidentContext}` }],
+  })
+
+  return result.toDataStreamResponse()
 })

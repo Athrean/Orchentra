@@ -53,6 +53,9 @@ export async function getAnalytics(
   fromDate: Date,
   toDate: Date,
 ): Promise<AnalyticsResult> {
+  const fromIso = fromDate.toISOString()
+  const toIso = toDate.toISOString()
+
   const baseConditions = [
     eq(incidents.orgId, orgId),
     gte(incidents.triggeredAt, fromDate),
@@ -72,8 +75,8 @@ export async function getAnalytics(
       FROM incidents
       WHERE org_id = ${orgId}
         ${repo ? sql`AND repo = ${repo}` : sql``}
-        AND triggered_at >= ${fromDate}
-        AND triggered_at <= ${toDate}
+        AND triggered_at >= ${fromIso}
+        AND triggered_at <= ${toIso}
       GROUP BY DATE(triggered_at AT TIME ZONE 'UTC')
       ORDER BY date ASC
     `),
@@ -87,8 +90,8 @@ export async function getAnalytics(
       FROM incidents
       WHERE org_id = ${orgId}
         ${repo ? sql`AND repo = ${repo}` : sql``}
-        AND triggered_at >= ${fromDate}
-        AND triggered_at <= ${toDate}
+        AND triggered_at >= ${fromIso}
+        AND triggered_at <= ${toIso}
         AND status = 'resolved'
         AND mttr_seconds IS NOT NULL
       GROUP BY workflow_name
@@ -130,8 +133,8 @@ export async function getAnalytics(
       FROM incidents
       WHERE org_id = ${orgId}
         ${repo ? sql`AND repo = ${repo}` : sql``}
-        AND triggered_at >= ${fromDate}
-        AND triggered_at <= ${toDate}
+        AND triggered_at >= ${fromIso}
+        AND triggered_at <= ${toIso}
     `),
   ])
 
