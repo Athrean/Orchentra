@@ -89,6 +89,13 @@ mock.module('@octokit/rest', () => ({
         return { data: { id: args.comment_id } }
       },
     }
+    paginate = {
+      iterator: (_fn: unknown, _opts: Record<string, unknown>) => {
+        return (async function* () {
+          yield { data: [] }
+        })()
+      },
+    }
   },
 }))
 
