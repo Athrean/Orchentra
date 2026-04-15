@@ -1,0 +1,37 @@
+apps/web/lib/types.ts
+  a2d76ef7221de50e 1-134
+apps/web/lib/hooks/useIncidents.ts
+  a2d76ef7221de50e 1-164
+apps/web/lib/queryKeys.ts
+  a2d76ef7221de50e 1-10
+apps/web/lib/hooks/useAuth.ts
+  a2d76ef7221de50e 1-25
+apps/web/lib/hooks/useAnalytics.ts
+  a2d76ef7221de50e 1-27
+apps/web/lib/hooks.ts
+  a2d76ef7221de50e 1-43
+apps/web/lib/hooks/useRepos.ts
+  a2d76ef7221de50e 1-50
+apps/web/lib/hooks/useWorkflows.ts
+  a2d76ef7221de50e 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "4e1c1fe13225f061c69b7f2061f785f8ad9ea241",
+  "prompts": {
+    "a2d76ef7221de50e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "851c2aa9-b5d0-460c-a4fd-ba564a749157",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1804,
+      "total_deletions": 484,
+      "accepted_lines": 1962,
+      "overriden_lines": 0
+    }
+  }
+}
