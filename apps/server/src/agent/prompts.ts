@@ -1,4 +1,4 @@
-// Static portion — cached across incidents when using Anthropic prompt caching
+// Static portion — suitable for prompt caching across incidents when supported by the provider
 export const AGENT_SYSTEM_PROMPT = `You are an incident triage agent for engineering teams.
 
 When a CI/CD failure is reported, your job is to:
