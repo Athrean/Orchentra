@@ -73,6 +73,28 @@ describe('generatePatches', () => {
     expect(result.patchJson).toBeNull()
   })
 
+  test('skips for low-confidence brief', async () => {
+    generateObjectResult = {
+      object: { patches: [{ path: 'src/auth.ts', action: 'modify', content: 'fixed' }] },
+      usage: { promptTokens: 50, completionTokens: 25 },
+    }
+
+    const result = await generatePatches(
+      {
+        failureType: 'code_bug',
+        summary: 'test',
+        rootCause: 'bug',
+        suggestedFix: 'fix',
+        confidence: 0.5,
+        similarIncidentId: null,
+      },
+      [],
+    )
+
+    expect(result.generated).toBe(false)
+    expect(result.patchJson).toBeNull()
+  })
+
   test('returns no patches when LLM returns empty array', async () => {
     generateObjectResult = { object: { patches: [] }, usage: null }
 
