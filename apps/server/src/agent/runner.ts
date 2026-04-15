@@ -139,7 +139,6 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
             })
           }
         } catch (err) {
-          if (err instanceof TokenBudgetExceeded) throw err
           console.error(`Failed to log tool call for ${incident.id}:`, err)
         }
       },
@@ -224,6 +223,11 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       totalOutputTokens += synthesisUsage.completionTokens ?? 0
     }
 
+    // Budget check after Phase B — skip patch generation if over budget
+    if (totalInputTokens + totalOutputTokens > tokenBudget) {
+      throw new TokenBudgetExceeded(totalInputTokens + totalOutputTokens, tokenBudget)
+    }
+
     // Phase C: Patch generation (only for actionable, high-confidence failures)
     const { generated: hasPatches, patchJson, usage: patchUsage } = await generatePatches(brief, investigationMessages)
 
@@ -285,6 +289,10 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     )
   } catch (error) {
     const isBudgetExceeded = error instanceof TokenBudgetExceeded
+    const errorRootCause = isBudgetExceeded
+      ? `Token budget exceeded (${error.tokensUsed}/${error.budget}) — investigation incomplete`
+      : 'Agent investigation failed — check server logs'
+
     console.error(`Agent ${isBudgetExceeded ? 'hit token budget' : 'failed'} for ${incident.id}:`, error)
 
     const errorCost = totalInputTokens > 0 ? estimateCostUsd(modelId, totalInputTokens, totalOutputTokens) : null
@@ -293,9 +301,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       .update(incidents)
       .set({
         status: 'error',
-        rootCause: isBudgetExceeded
-          ? `Token budget exceeded (${error.tokensUsed}/${error.budget}) — investigation incomplete`
-          : 'Agent investigation failed — check server logs',
+        rootCause: errorRootCause,
         ...(totalInputTokens > 0 && {
           tokenInputs: totalInputTokens,
           tokenOutputs: totalOutputTokens,
@@ -307,7 +313,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     await publishFinalGithubTriage(
       {
         ...incident,
-        rootCause: 'Agent investigation failed — check server logs',
+        rootCause: errorRootCause,
       },
       'error',
     )
