@@ -163,6 +163,14 @@ mock.module('@octokit/rest', () => ({
         githubApiCalls.push({ method: 'git.updateRef', args })
         return { data: {} }
       },
+      createBlob: async (args: Record<string, unknown>) => {
+        githubApiCalls.push({ method: 'git.createBlob', args })
+        return { data: { sha: `blob-sha-${args.content?.toString().slice(0, 8)}` } }
+      },
+      createTree: async (args: Record<string, unknown>) => {
+        githubApiCalls.push({ method: 'git.createTree', args })
+        return { data: { sha: 'new-tree-sha-999' } }
+      },
     }
     pulls = {
       create: async (args: Record<string, unknown>) => {
@@ -425,6 +433,51 @@ describe('createFixPR', () => {
     expect(result.success).toBe(false)
     expect(result.error).toBe('Incident not found')
     expect(result.httpStatus).toBe(404)
+  })
+
+  test('applies file patches via blob/tree API when patchJson is present', async () => {
+    storedIncidents['inc-001'] = {
+      ...TEST_INCIDENT,
+      patchJson: JSON.stringify({
+        patches: [
+          { path: 'src/auth.ts', action: 'modify', content: 'export function login() {}' },
+          { path: 'src/deprecated.ts', action: 'delete' },
+        ],
+      }),
+    }
+
+    const result = await createFixPR('inc-001', null)
+    expect(result.success).toBe(true)
+
+    const methods = githubApiCalls.map((c) => c.method)
+    expect(methods).toContain('git.createBlob')
+    expect(methods).toContain('git.createTree')
+
+    // createBlob should be called for the modify patch (not for delete)
+    const blobCalls = githubApiCalls.filter((c) => c.method === 'git.createBlob')
+    expect(blobCalls.length).toBe(1)
+    expect(blobCalls[0].args.content).toBe('export function login() {}')
+
+    // PR body should list changed files
+    const prCreate = githubApiCalls.find((c) => c.method === 'pulls.create')
+    expect(prCreate!.args.body).toContain('src/auth.ts')
+    expect(prCreate!.args.body).toContain('src/deprecated.ts')
+  })
+
+  test('falls back to metadata-only PR when no patchJson', async () => {
+    storedIncidents['inc-001'] = { ...TEST_INCIDENT, patchJson: null }
+
+    const result = await createFixPR('inc-001', null)
+    expect(result.success).toBe(true)
+
+    const methods = githubApiCalls.map((c) => c.method)
+    // No blob/tree calls for metadata-only PR
+    expect(methods).not.toContain('git.createBlob')
+    expect(methods).not.toContain('git.createTree')
+
+    // PR body should note manual fix needed
+    const prCreate = githubApiCalls.find((c) => c.method === 'pulls.create')
+    expect(prCreate!.args.body).toContain('manual fix needed')
   })
 })
 

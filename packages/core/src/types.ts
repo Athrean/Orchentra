@@ -38,3 +38,25 @@ export const BriefSchema = z.object({
 })
 
 export type IncidentBrief = z.infer<typeof BriefSchema>
+
+const RepoRelativePath = z
+  .string()
+  .min(1)
+  .refine((p) => !p.startsWith('/') && !p.startsWith('\\'), { message: 'Path must be repo-relative' })
+  .refine((p) => !/^[A-Za-z]:[\\/]/.test(p), { message: 'Path must not be absolute' })
+  .refine((p) => p.split(/[\\/]+/).every((seg) => seg !== '' && seg !== '.' && seg !== '..'), {
+    message: 'Path must not contain traversal segments',
+  })
+
+export const FilePatchSchema = z.discriminatedUnion('action', [
+  z.object({ path: RepoRelativePath, action: z.literal('modify'), content: z.string().min(1) }),
+  z.object({ path: RepoRelativePath, action: z.literal('create'), content: z.string().min(1) }),
+  z.object({ path: RepoRelativePath, action: z.literal('delete') }),
+])
+
+export const PatchSetSchema = z.object({
+  patches: z.array(FilePatchSchema).max(10),
+})
+
+export type FilePatch = z.infer<typeof FilePatchSchema>
+export type PatchSet = z.infer<typeof PatchSetSchema>
