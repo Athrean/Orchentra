@@ -189,12 +189,17 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       totalOutputTokens += synthesisUsage.completionTokens ?? 0
     }
 
+    // Phase C: Patch generation (only for actionable, high-confidence failures)
+    const { generated: hasPatches, patchJson, usage: patchUsage } = await generatePatches(brief, investigationMessages)
+
+    if (patchUsage) {
+      totalInputTokens += patchUsage.promptTokens ?? 0
+      totalOutputTokens += patchUsage.completionTokens ?? 0
+    }
+
     const estimatedCost = estimateCostUsd(modelId, totalInputTokens, totalOutputTokens)
 
-    // Phase C: Patch generation (only for actionable, high-confidence failures)
-    const { generated: hasPatches, patchJson } = await generatePatches(brief, investigationMessages)
-
-    // Persist results + token usage + optional patches
+    // Persist results + token usage + patches (clear stale patchJson when none generated)
     await db
       .update(incidents)
       .set({
@@ -206,7 +211,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         tokenInputs: totalInputTokens,
         tokenOutputs: totalOutputTokens,
         estimatedCostUsd: estimatedCost,
-        ...(hasPatches && { patchJson }),
+        patchJson: hasPatches ? patchJson : null,
       })
       .where(eq(incidents.id, incident.id))
 

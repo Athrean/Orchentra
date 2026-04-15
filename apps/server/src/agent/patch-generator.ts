@@ -14,22 +14,29 @@ Rules:
 - Do not change files unrelated to the failure`
 
 const ACTIONABLE_FAILURE_TYPES = new Set(['code_bug', 'env_missing', 'dependency_conflict'])
+const MIN_CONFIDENCE = 0.7
+
+interface PatchUsage {
+  promptTokens?: number
+  completionTokens?: number
+}
 
 interface PatchGenerationResult {
   generated: boolean
   patchJson: string | null
+  usage: PatchUsage | null
 }
 
 export async function generatePatches(
   brief: IncidentBrief,
   investigationMessages: CoreMessage[],
 ): Promise<PatchGenerationResult> {
-  if (!ACTIONABLE_FAILURE_TYPES.has(brief.failureType)) {
-    return { generated: false, patchJson: null }
+  if (!ACTIONABLE_FAILURE_TYPES.has(brief.failureType) || brief.confidence < MIN_CONFIDENCE) {
+    return { generated: false, patchJson: null, usage: null }
   }
 
   try {
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: createModel(),
       schema: PatchSetSchema,
       system: PATCH_SYSTEM_PROMPT,
@@ -37,12 +44,12 @@ export async function generatePatches(
     })
 
     if (object.patches.length === 0) {
-      return { generated: false, patchJson: null }
+      return { generated: false, patchJson: null, usage: null }
     }
 
-    return { generated: true, patchJson: JSON.stringify(object) }
+    return { generated: true, patchJson: JSON.stringify(object), usage: usage ?? null }
   } catch (err) {
     console.error('Patch generation failed:', err)
-    return { generated: false, patchJson: null }
+    return { generated: false, patchJson: null, usage: null }
   }
 }
