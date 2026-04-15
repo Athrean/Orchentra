@@ -6,7 +6,7 @@ import { incidentEvents } from '../events'
 import { postThreadReply, updateSlackToFixing, updateSlackToResolved } from '../slack/message'
 import { saveResolvedPattern } from '../agent/patterns'
 import { findIncidentByPrUrl, findFixingIncidentForRepoBranch } from '../queries/incidents'
-import type { IncidentBrief, FilePatch } from '@orchentra/core'
+import { PatchSetSchema, type IncidentBrief, type FilePatch } from '@orchentra/core'
 
 const octokit = new Octokit({ auth: config.github.token })
 
@@ -204,13 +204,14 @@ export async function createFixPR(incidentId: string, performedBy: string | null
     return { success: false, error: 'Failed to parse incident brief' }
   }
 
-  // Parse patches if available
+  // Validate patches via PatchSetSchema if available
   let patches: FilePatch[] = []
   if (incident.patchJson) {
     try {
       const parsed = JSON.parse(incident.patchJson)
-      if (parsed.patches && Array.isArray(parsed.patches)) {
-        patches = parsed.patches
+      const validated = PatchSetSchema.safeParse(parsed)
+      if (validated.success) {
+        patches = validated.data.patches
       }
     } catch {
       // Invalid patchJson — fall back to metadata-only PR
@@ -260,10 +261,17 @@ export async function createFixPR(incidentId: string, performedBy: string | null
         if (patch.action === 'delete') {
           treeEntries.push({ path: patch.path, mode: '100644' as const, type: 'blob' as const, sha: null })
         } else {
+          if (patch.content == null) {
+            return {
+              success: false,
+              error: `Patch for "${patch.path}" is missing content for action "${patch.action}"`,
+              httpStatus: 400,
+            }
+          }
           const { data: blob } = await octokit.git.createBlob({
             owner,
             repo: name,
-            content: patch.content ?? '',
+            content: patch.content,
             encoding: 'utf-8',
           })
           treeEntries.push({ path: patch.path, mode: '100644' as const, type: 'blob' as const, sha: blob.sha })
