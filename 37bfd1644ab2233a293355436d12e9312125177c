@@ -1,0 +1,29 @@
+apps/web/lib/hooks/useAuth.ts
+  a2d76ef7221de50e 18-23
+apps/web/components/dashboard/IncidentDetailPanel.tsx
+  a2d76ef7221de50e 129,174-179
+apps/web/components/dashboard/IncidentActions.tsx
+  a2d76ef7221de50e 128,137-146
+apps/web/components/dashboard/IncidentDetailBody.tsx
+  a2d76ef7221de50e 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "37bfd1644ab2233a293355436d12e9312125177c",
+  "prompts": {
+    "a2d76ef7221de50e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "851c2aa9-b5d0-460c-a4fd-ba564a749157",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 213,
+      "total_deletions": 32,
+      "accepted_lines": 1634,
+      "overriden_lines": 0
+    }
+  }
+}
