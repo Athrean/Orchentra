@@ -31,7 +31,6 @@ export function useSummarize(
 
       if (!res.ok || !res.body) {
         setSummaryError(true)
-        setIsSummarizing(false)
         return
       }
 

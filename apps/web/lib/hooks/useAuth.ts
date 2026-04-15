@@ -15,7 +15,12 @@ export function useMe() {
 export function getOrgIdFromCookie(): string | undefined {
   if (typeof document === 'undefined') return undefined
   const match = document.cookie.match(/(?:^|;\s*)orchentra_org_id=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : undefined
+  if (!match) return undefined
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return undefined
+  }
 }
 
 export function useOrgId(): string | undefined {

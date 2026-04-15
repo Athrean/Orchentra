@@ -102,7 +102,6 @@ export function DetailPanel({ incidentId, repo, onClose }: { incidentId: string;
 
         <IncidentActions
           incidentId={inc.id}
-          repo={repo}
           workflowRunId={inc.workflowRunId}
           hasSuggestedFix={!!inc.suggestedFix}
           canAct={canAct}
@@ -127,7 +126,7 @@ export function DetailPanel({ incidentId, repo, onClose }: { incidentId: string;
           resolve={resolve}
         />
 
-        <IncidentDetailBody inc={inc} cfg={cfg} toolCalls={detail.toolCalls} />
+        <IncidentDetailBody inc={inc} toolCalls={detail.toolCalls} />
       </div>
     </div>
   )
@@ -172,7 +171,12 @@ function SummarySection({
         )}
       </div>
       {summaryError ? (
-        <p className="text-xs text-red-400">Failed to generate summary.</p>
+        <p className="text-xs text-red-400">
+          Failed to generate summary.{' '}
+          <button onClick={summarize} className="underline hover:text-red-300">
+            Retry
+          </button>
+        </p>
       ) : (
         <p className="text-xs leading-relaxed" style={{ color: 'var(--color-app-text-secondary)' }}>
           {summary || 'Generating...'}

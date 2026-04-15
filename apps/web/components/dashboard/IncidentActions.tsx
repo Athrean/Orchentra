@@ -5,7 +5,6 @@ import { Button } from '../ui/Button'
 
 interface IncidentActionsProps {
   incidentId: string
-  repo: string
   workflowRunId: number | null
   hasSuggestedFix: boolean
   canAct: boolean
@@ -126,7 +125,7 @@ export function IncidentActions({
         </div>
       )}
 
-      {isNonTerminal && !canAct && (
+      {isNonTerminal && (
         <div className="flex gap-3">
           <button
             onClick={() => resolve.mutate(incidentId)}
@@ -135,14 +134,16 @@ export function IncidentActions({
           >
             {resolve.isPending ? 'Resolving…' : 'Resolve'}
           </button>
-          <button
-            onClick={() => dismiss.mutate(incidentId)}
-            disabled={dismiss.isPending}
-            className="text-xs font-medium transition-colors hover:text-white"
-            style={{ color: 'var(--color-app-text-muted)' }}
-          >
-            {dismiss.isPending ? 'Dismissing…' : 'Dismiss'}
-          </button>
+          {!canAct && (
+            <button
+              onClick={() => dismiss.mutate(incidentId)}
+              disabled={dismiss.isPending}
+              className="text-xs font-medium transition-colors hover:text-white"
+              style={{ color: 'var(--color-app-text-muted)' }}
+            >
+              {dismiss.isPending ? 'Dismissing…' : 'Dismiss'}
+            </button>
+          )}
         </div>
       )}
     </>

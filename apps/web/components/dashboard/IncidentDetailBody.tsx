@@ -1,12 +1,11 @@
 'use client'
 
 import type { IncidentFull, ToolCall } from '../../lib/hooks'
-import { type StatusKey, STATUS_CONFIG, fmtDuration } from './incidents.utils'
+import { fmtDuration } from './incidents.utils'
 import { Section, MetaCard } from './IncidentDetailPrimitives'
 
 interface IncidentDetailBodyProps {
   inc: IncidentFull
-  cfg: (typeof STATUS_CONFIG)[StatusKey]
   toolCalls: ToolCall[]
 }
 
