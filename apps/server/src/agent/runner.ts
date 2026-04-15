@@ -7,6 +7,7 @@ import { estimateCostUsd } from './token-cost'
 import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
 import { githubActionsTool } from './tools/github-actions'
 import { getCommitChangesTool, getFileContentTool } from './tools/github-repo'
+import { getPullRequestTool, getIssueTool, searchCodeTool } from './tools/github-issues'
 import { updateSlackWithBrief, postThreadReply } from '../slack/message'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
 import { incidentEvents } from '../events'
@@ -95,6 +96,9 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         get_workflow_logs: githubActionsTool,
         get_commit_changes: getCommitChangesTool,
         get_file_content: getFileContentTool,
+        get_pull_request: getPullRequestTool,
+        get_issue: getIssueTool,
+        search_code: searchCodeTool,
       },
       maxSteps: 6,
       onStepFinish: async ({ toolCalls: calls, toolResults: results }) => {
