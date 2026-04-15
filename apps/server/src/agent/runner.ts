@@ -1,6 +1,6 @@
 import { generateText, generateObject, type CoreMessage } from 'ai'
 import { eq } from 'drizzle-orm'
-import { BriefSchema } from '@orchentra/core'
+import { BriefSchema, type IncidentBrief } from '@orchentra/core'
 import { db, incidents, toolCalls } from '../db/client'
 import { createModel } from './llm'
 import { estimateCostUsd } from './token-cost'
@@ -14,6 +14,53 @@ import { config } from '../config'
 import { publishFinalGithubTriage } from '../github/triage-writeback'
 
 type IncidentRow = typeof incidents.$inferSelect
+
+interface SynthesisUsage {
+  promptTokens?: number
+  completionTokens?: number
+}
+
+interface SynthesisResult {
+  brief: IncidentBrief
+  usage: SynthesisUsage | null
+  usedFallback: boolean
+}
+
+/**
+ * Run the synthesis call with one retry on schema/parse failure.
+ * If both attempts fail, return a fallback brief built from the raw investigation text
+ * so the incident still reaches `brief_ready` instead of `error`.
+ */
+async function synthesizeBriefWithRetry(
+  investigationMessages: CoreMessage[],
+  fallbackText: string,
+): Promise<SynthesisResult> {
+  let lastError: unknown = null
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const { object: brief, usage } = await generateObject({
+        model: createModel(),
+        schema: BriefSchema,
+        system: SYNTHESIS_PROMPT,
+        messages: investigationMessages,
+      })
+      return { brief, usage: usage ?? null, usedFallback: false }
+    } catch (err) {
+      lastError = err
+      console.error(`Synthesis attempt ${attempt} failed:`, err)
+    }
+  }
+  console.error('Synthesis failed twice — using fallback brief. Last error:', lastError)
+  const fallback: IncidentBrief = {
+    failureType: 'unknown',
+    summary: 'Synthesis failed — raw investigation available',
+    rootCause: fallbackText.trim().slice(0, 500) || 'Agent produced no text output',
+    suggestedFix: 'Review investigation trace in tool calls',
+    confidence: 0.2,
+    similarIncidentId: null,
+  }
+  return { brief: fallback, usage: null, usedFallback: true }
+}
 
 function formatIncidentContext(incident: IncidentRow): string {
   const [owner, repo] = incident.repo.split('/')
@@ -124,15 +171,14 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       totalOutputTokens += result.usage.completionTokens ?? 0
     }
 
-    // Phase B: Synthesis — generateObject for structured brief
-    const { object: brief, usage: synthesisUsage } = await generateObject({
-      model: createModel(),
-      schema: BriefSchema,
-      system: SYNTHESIS_PROMPT,
-      messages: investigationMessages,
-    })
+    // Phase B: Synthesis — generateObject for structured brief, with retry + fallback
+    const {
+      brief,
+      usage: synthesisUsage,
+      usedFallback,
+    } = await synthesizeBriefWithRetry(investigationMessages, result.text ?? '')
 
-    // Accumulate Phase B token usage
+    // Accumulate Phase B token usage (fallback path has no usage)
     if (synthesisUsage) {
       totalInputTokens += synthesisUsage.promptTokens ?? 0
       totalOutputTokens += synthesisUsage.completionTokens ?? 0
@@ -184,7 +230,8 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     }
 
     console.log(
-      `Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%) — ` +
+      `Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%)` +
+        `${usedFallback ? ' [fallback brief]' : ''} — ` +
         `${totalInputTokens + totalOutputTokens} tokens, ~$${estimatedCost.toFixed(4)}`,
     )
   } catch (error) {
