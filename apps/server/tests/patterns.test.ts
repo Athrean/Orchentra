@@ -36,7 +36,12 @@ mock.module('../src/db/client', () => ({
         findFirst: async (opts: { where: { val: string } }) => {
           return storedPatterns.find((r) => r.incidentId === opts.where.val) ?? null
         },
-        findMany: async () => storedPatterns,
+        findMany: async (opts?: { where?: { col: unknown; val: unknown } }) => {
+          if (opts?.where?.val) {
+            return storedPatterns.filter((r) => r.orgId === opts.where!.val)
+          }
+          return storedPatterns
+        },
       },
     },
     insert: () => ({
@@ -55,7 +60,7 @@ mock.module('../src/db/client', () => ({
     }),
   },
   incidents: { id: 'id' },
-  resolvedPatterns: { id: 'id', incidentId: 'incident_id' },
+  resolvedPatterns: { id: 'id', incidentId: 'incident_id', orgId: 'org_id' },
 }))
 
 mock.module('../src/agent/llm', () => ({
@@ -197,7 +202,7 @@ describe('saveResolvedPattern', () => {
 
 describe('findSimilarPatterns', () => {
   test('returns empty array when no patterns exist', async () => {
-    const matches = await findSimilarPatterns('some incident text')
+    const matches = await findSimilarPatterns('some incident text', 'org-1')
     expect(matches).toEqual([])
     expect(embedCalls.length).toBe(0)
   })
@@ -206,6 +211,7 @@ describe('findSimilarPatterns', () => {
     storedPatterns.push({
       id: 'pat-1',
       incidentId: 'inc-old-1',
+      orgId: 'org-1',
       embedding: JSON.stringify(fakeEmbedding2),
       pattern: 'workflow: CI\nroot_cause: TypeError',
       resolution: 'Fix the type error',
@@ -213,7 +219,7 @@ describe('findSimilarPatterns', () => {
       usageCount: 0,
     })
 
-    const matches = await findSimilarPatterns('workflow: CI, TypeError in build')
+    const matches = await findSimilarPatterns('workflow: CI, TypeError in build', 'org-1')
 
     expect(embedCalls.length).toBe(1)
     expect(matches.length).toBe(1)
@@ -226,6 +232,7 @@ describe('findSimilarPatterns', () => {
     storedPatterns.push({
       id: 'pat-diff',
       incidentId: 'inc-old-2',
+      orgId: 'org-1',
       embedding: JSON.stringify(fakeEmbeddingDifferent),
       pattern: 'workflow: Deploy\nroot_cause: Network timeout',
       resolution: 'Check DNS',
@@ -235,7 +242,7 @@ describe('findSimilarPatterns', () => {
 
     // Query text WITHOUT "different-workflow" so embed mock returns fakeEmbedding1,
     // which has low cosine similarity against fakeEmbeddingDifferent
-    const matches = await findSimilarPatterns('completely unrelated workflow with no match')
+    const matches = await findSimilarPatterns('completely unrelated workflow with no match', 'org-1')
 
     expect(matches.length).toBe(0)
   })
@@ -246,6 +253,7 @@ describe('findSimilarPatterns', () => {
       storedPatterns.push({
         id: `pat-${i}`,
         incidentId: `inc-old-${i}`,
+        orgId: 'org-1',
         embedding: JSON.stringify(fakeEmbedding2),
         pattern: `workflow: CI\nroot_cause: Error ${i}`,
         resolution: `Fix ${i}`,
@@ -254,7 +262,7 @@ describe('findSimilarPatterns', () => {
       })
     }
 
-    const matches = await findSimilarPatterns('some CI failure', 2)
+    const matches = await findSimilarPatterns('some CI failure', 'org-1', 2)
     expect(matches.length).toBe(2)
   })
 
@@ -265,6 +273,7 @@ describe('findSimilarPatterns', () => {
       {
         id: 'pat-high',
         incidentId: 'inc-h',
+        orgId: 'org-1',
         embedding: JSON.stringify(fakeEmbedding2), // very similar to fakeEmbedding1
         pattern: 'exact match pattern',
         resolution: 'exact fix',
@@ -274,6 +283,7 @@ describe('findSimilarPatterns', () => {
       {
         id: 'pat-medium',
         incidentId: 'inc-m',
+        orgId: 'org-1',
         embedding: JSON.stringify(slightlyDifferent),
         pattern: 'partial match pattern',
         resolution: 'partial fix',
@@ -282,7 +292,7 @@ describe('findSimilarPatterns', () => {
       },
     )
 
-    const matches = await findSimilarPatterns('some failure text')
+    const matches = await findSimilarPatterns('some failure text', 'org-1')
     expect(matches.length).toBe(2)
     expect(matches[0].similarity).toBeGreaterThanOrEqual(matches[1].similarity)
   })
@@ -291,6 +301,7 @@ describe('findSimilarPatterns', () => {
     storedPatterns.push({
       id: 'pat-usage',
       incidentId: 'inc-u',
+      orgId: 'org-1',
       embedding: JSON.stringify(fakeEmbedding2),
       pattern: 'workflow: CI\nroot_cause: crash',
       resolution: 'restart',
@@ -298,7 +309,7 @@ describe('findSimilarPatterns', () => {
       usageCount: 3,
     })
 
-    await findSimilarPatterns('CI failure crash')
+    await findSimilarPatterns('CI failure crash', 'org-1')
 
     expect(dbUpdates.length).toBe(1)
     expect((dbUpdates[0].values.usageCount as { __sql: boolean }).__sql).toBe(true)
@@ -310,6 +321,7 @@ describe('findSimilarPatterns', () => {
       {
         id: 'pat-null',
         incidentId: 'inc-null',
+        orgId: 'org-1',
         embedding: null,
         pattern: 'no embedding',
         resolution: 'n/a',
@@ -319,6 +331,7 @@ describe('findSimilarPatterns', () => {
       {
         id: 'pat-bad',
         incidentId: 'inc-bad',
+        orgId: 'org-1',
         embedding: 'not valid json',
         pattern: 'bad embedding',
         resolution: 'n/a',
@@ -328,6 +341,7 @@ describe('findSimilarPatterns', () => {
       {
         id: 'pat-good',
         incidentId: 'inc-good',
+        orgId: 'org-1',
         embedding: JSON.stringify(fakeEmbedding2),
         pattern: 'valid pattern',
         resolution: 'valid fix',
@@ -336,7 +350,7 @@ describe('findSimilarPatterns', () => {
       },
     )
 
-    const matches = await findSimilarPatterns('some text')
+    const matches = await findSimilarPatterns('some text', 'org-1')
     // Only the valid pattern should be returned
     expect(matches.every((m) => m.id !== 'pat-null')).toBe(true)
     expect(matches.every((m) => m.id !== 'pat-bad')).toBe(true)
@@ -346,6 +360,7 @@ describe('findSimilarPatterns', () => {
     storedPatterns.push({
       id: 'pat-wrong-dim',
       incidentId: 'inc-wd',
+      orgId: 'org-1',
       embedding: JSON.stringify([0.1, 0.2, 0.3]), // only 3 dims vs 1536
       pattern: 'wrong dimensions',
       resolution: 'n/a',
@@ -353,8 +368,37 @@ describe('findSimilarPatterns', () => {
       usageCount: 0,
     })
 
-    const matches = await findSimilarPatterns('some text')
+    const matches = await findSimilarPatterns('some text', 'org-1')
     expect(matches.length).toBe(0)
+  })
+
+  test('scopes results by orgId', async () => {
+    storedPatterns.push(
+      {
+        id: 'pat-org1',
+        incidentId: 'inc-o1',
+        orgId: 'org-1',
+        embedding: JSON.stringify(fakeEmbedding2),
+        pattern: 'workflow: CI\nroot_cause: TypeError',
+        resolution: 'Fix type error',
+        failureType: 'code_bug',
+        usageCount: 0,
+      },
+      {
+        id: 'pat-org2',
+        incidentId: 'inc-o2',
+        orgId: 'org-2',
+        embedding: JSON.stringify(fakeEmbedding2),
+        pattern: 'workflow: CI\nroot_cause: TypeError',
+        resolution: 'Fix type error (other org)',
+        failureType: 'code_bug',
+        usageCount: 0,
+      },
+    )
+
+    const matches = await findSimilarPatterns('workflow: CI, TypeError in build', 'org-1')
+    expect(matches.length).toBe(1)
+    expect(matches[0].id).toBe('pat-org1')
   })
 })
 

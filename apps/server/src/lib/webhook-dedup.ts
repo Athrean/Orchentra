@@ -14,6 +14,15 @@ const settled = new Map<string, number>()
 
 const SETTLED_TTL_MS = 60_000
 
+/**
+ * Debounce map keyed by `repo:branch:commit`.
+ * Prevents rapid duplicate workflow_run failure events for the same commit
+ * from creating duplicate incidents within the debounce window.
+ */
+const debounced = new Map<string, number>()
+
+const DEBOUNCE_TTL_MS = 30_000
+
 function buildKey(provider: string, eventId: string): string {
   return `${provider}:${eventId}`
 }
@@ -55,4 +64,41 @@ function pruneSettled(): void {
   }
 }
 
-setInterval(pruneSettled, SETTLED_TTL_MS)
+setInterval(pruneSettled, SETTLED_TTL_MS).unref()
+
+/**
+ * Check if a (repo, branch, commit) combination was recently seen.
+ * Returns `true` if the same combo was registered within the debounce window.
+ */
+export function isDebounced(repo: string, branch: string, commit: string): boolean {
+  const key = `${repo}:${branch}:${commit}`
+  const seenAt = debounced.get(key)
+  if (seenAt && Date.now() - seenAt < DEBOUNCE_TTL_MS) return true
+  return false
+}
+
+/**
+ * Register a (repo, branch, commit) combination as recently seen.
+ */
+export function registerDebounce(repo: string, branch: string, commit: string): void {
+  const key = `${repo}:${branch}:${commit}`
+  debounced.set(key, Date.now())
+}
+
+/** Periodic cleanup of expired debounce entries. */
+function pruneDebounced(): void {
+  const now = Date.now()
+  for (const [key, ts] of debounced) {
+    if (now - ts >= DEBOUNCE_TTL_MS) debounced.delete(key)
+  }
+}
+
+setInterval(pruneDebounced, DEBOUNCE_TTL_MS).unref()
+
+/** Reset all in-memory state. Exported for test teardown only. */
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export function _resetState(): void {
+  inFlight.clear()
+  settled.clear()
+  debounced.clear()
+}

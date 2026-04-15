@@ -147,8 +147,30 @@ mock.module('../src/agent/patterns', () => ({
   saveResolvedPattern: async (_incidentId: string) => {},
 }))
 
+mock.module('../src/lib/webhook-dedup', () => {
+  const debouncedEntries: Map<string, number> = new Map()
+  const DEBOUNCE_TTL_MS = 30_000
+  return {
+    isDuplicateInFlight: () => false,
+    registerInFlight: () => {},
+    isDebounced: (repo: string, branch: string, commit: string) => {
+      const key = `${repo}:${branch}:${commit}`
+      const seenAt = debouncedEntries.get(key)
+      if (seenAt && Date.now() - seenAt < DEBOUNCE_TTL_MS) return true
+      return false
+    },
+    registerDebounce: (repo: string, branch: string, commit: string) => {
+      debouncedEntries.set(`${repo}:${branch}:${commit}`, Date.now())
+    },
+    _resetState: () => {
+      debouncedEntries.clear()
+    },
+  }
+})
+
 // Import AFTER all mocks are set up
 const { webhooksRouter } = await import('../src/routes/webhooks')
+const { _resetState: resetDedupState } = await import('../src/lib/webhook-dedup')
 import { Hono } from 'hono'
 
 function makeApp(): Hono {
@@ -212,6 +234,7 @@ beforeEach(() => {
   slackUpdatedMessages.length = 0
   simulateDuplicate = false
   simulateWebhookEventDuplicate = false
+  resetDedupState()
 })
 
 describe('GitHub Webhook — Signature Verification', () => {
