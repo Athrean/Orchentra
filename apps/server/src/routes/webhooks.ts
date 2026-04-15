@@ -64,7 +64,13 @@ webhooksRouter.post('/github', async (c) => {
     return c.json({ error: 'Invalid signature' }, 401)
   }
 
-  const deliveryId = c.req.header('x-github-delivery') ?? ''
+  const rawDeliveryId = c.req.header('x-github-delivery')
+  // GitHub normally supplies a UUID delivery ID. If it's missing or empty, fall back to a
+  // deterministic hash of the body so both dedup layers still engage on duplicate payloads.
+  const deliveryId =
+    rawDeliveryId && rawDeliveryId.length > 0
+      ? rawDeliveryId
+      : 'synthetic-' + createHmac('sha256', 'orchentra-dedup').update(body).digest('hex').slice(0, 32)
   const event = c.req.header('x-github-event')
 
   let payload: unknown
@@ -75,25 +81,22 @@ webhooksRouter.post('/github', async (c) => {
   }
 
   // --- Hot-path dedup: reject if this delivery is already in-flight or recently settled ---
-  if (deliveryId && isDuplicateInFlight('github', deliveryId)) {
+  if (isDuplicateInFlight('github', deliveryId)) {
     return c.json({ ok: true, deduplicated: true })
   }
 
   // --- Cold-path dedup: persist the event, skip if (provider, event_id) already exists ---
-  let webhookEventId: string | null = null
-  if (deliveryId) {
-    const webhookEvent = await insertWebhookEvent({
-      id: crypto.randomUUID(),
-      provider: 'github',
-      eventId: deliveryId,
-      eventType: event ?? null,
-      payload,
-    })
-    if (!webhookEvent) {
-      return c.json({ ok: true, deduplicated: true })
-    }
-    webhookEventId = webhookEvent.id
+  const webhookEvent = await insertWebhookEvent({
+    id: crypto.randomUUID(),
+    provider: 'github',
+    eventId: deliveryId,
+    eventType: event ?? null,
+    payload,
+  })
+  if (!webhookEvent) {
+    return c.json({ ok: true, deduplicated: true })
   }
+  const webhookEventId: string = webhookEvent.id
 
   // --- Process the event ---
   if (event === 'pull_request') {
@@ -102,14 +105,14 @@ webhooksRouter.post('/github', async (c) => {
       const { pull_request: pr, number } = parsed.data
       handleFixPRMerged(pr.html_url, number).catch(console.error)
     }
-    if (webhookEventId) markWebhookProcessed(webhookEventId).catch(console.error)
+    markWebhookProcessed(webhookEventId).catch(console.error)
     return c.json({ ok: true })
   }
 
   if (event === 'workflow_run') {
     const parsed = WorkflowRunPayload.safeParse(payload)
     if (!parsed.success || parsed.data.action !== 'completed') {
-      if (webhookEventId) markWebhookSkipped(webhookEventId).catch(console.error)
+      markWebhookSkipped(webhookEventId).catch(console.error)
       return c.json({ ok: true })
     }
 
@@ -117,17 +120,17 @@ webhooksRouter.post('/github', async (c) => {
 
     if (run.conclusion === 'failure') {
       const processingPromise = processWorkflowFailure(run, repository.full_name, webhookEventId)
-      if (deliveryId) registerInFlight('github', deliveryId, processingPromise)
+      registerInFlight('github', deliveryId, processingPromise)
       processingPromise.catch(console.error)
     } else if (run.conclusion === 'success' && (await isRepoMonitored(repository.full_name))) {
       autoResolveAfterCIPass(repository.full_name.toLowerCase(), run.head_branch, run.id).catch(console.error)
-      if (webhookEventId) markWebhookProcessed(webhookEventId).catch(console.error)
+      markWebhookProcessed(webhookEventId).catch(console.error)
     } else {
-      if (webhookEventId) markWebhookSkipped(webhookEventId).catch(console.error)
+      markWebhookSkipped(webhookEventId).catch(console.error)
     }
   } else {
     // Unhandled event type
-    if (webhookEventId) markWebhookSkipped(webhookEventId).catch(console.error)
+    markWebhookSkipped(webhookEventId).catch(console.error)
   }
 
   return c.json({ ok: true })
@@ -136,17 +139,17 @@ webhooksRouter.post('/github', async (c) => {
 async function processWorkflowFailure(
   run: z.infer<typeof WorkflowRunPayload>['workflow_run'],
   repo: string,
-  webhookEventId: string | null,
+  webhookEventId: string,
 ): Promise<void> {
   try {
     if (!(await isRepoMonitored(repo))) {
-      if (webhookEventId) await markWebhookSkipped(webhookEventId)
+      await markWebhookSkipped(webhookEventId)
       return
     }
 
     const monitoredRepoRows = await findMonitoredReposByRepo(repo)
     if (monitoredRepoRows.length === 0) {
-      if (webhookEventId) await markWebhookSkipped(webhookEventId)
+      await markWebhookSkipped(webhookEventId)
       return
     }
 
@@ -181,10 +184,10 @@ async function processWorkflowFailure(
       }),
     )
 
-    if (webhookEventId) await markWebhookProcessed(webhookEventId)
+    await markWebhookProcessed(webhookEventId)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    if (webhookEventId) await markWebhookFailed(webhookEventId, message).catch(console.error)
+    await markWebhookFailed(webhookEventId, message).catch(console.error)
     throw err
   }
 }
