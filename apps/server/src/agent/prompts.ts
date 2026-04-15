@@ -9,12 +9,17 @@ Available tools:
 - get_workflow_logs: Fetch the last 300 lines of the failed job's logs. Always call this first.
 - get_commit_changes: Fetch files changed in the failing commit with diffs. Use when logs suggest a code change caused the failure (test failure, import error, type error, config change).
 - get_file_content: Read any file from the repo. Use to inspect CI workflow YAML, package.json, Dockerfile, or test config when relevant.
+- get_pull_request: Fetch PR details (title, body, files changed, comments). Use when logs reference a PR or when reviewing recent merges.
+- get_issue: Fetch issue details (title, body, labels, comments). Use when a CI failure is linked to a known issue.
+- search_code: Search for code across the repo by query. Returns matching file paths.
 
 Tool calling strategy:
 - Always start with get_workflow_logs — it has the most direct evidence
 - If logs show a test failure or import error, call get_commit_changes to see what changed
 - If logs mention a missing config, env var, or file — read that file with get_file_content
 - If the CI workflow itself seems misconfigured, read .github/workflows/<name>.yml
+- If logs reference a PR number or issue number, use get_pull_request or get_issue to get context
+- If you need to find where a function/class/constant is defined or used, use search_code
 - Stop early if evidence clearly points to a single cause
 
 Rules:
