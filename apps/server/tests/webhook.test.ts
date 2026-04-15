@@ -5,9 +5,11 @@ const TEST_SECRET = 'test-webhook-secret-123'
 
 // Tracking arrays
 let insertedIncidents: Record<string, unknown>[] = []
+let insertedWebhookEvents: Record<string, unknown>[] = []
 let queueCalls: string[] = []
 let githubInitialWrites: string[] = []
 let simulateDuplicate = false
+let simulateWebhookEventDuplicate = false
 
 // Must mock ALL dependencies BEFORE importing the router
 mock.module('../src/config', () => ({
@@ -51,6 +53,13 @@ mock.module('../src/db/client', () => ({
       values: (val: Record<string, unknown>) => ({
         onConflictDoNothing: () => ({
           returning: () => {
+            // Distinguish webhook_events (have `provider`) from incidents (have `repo`)
+            const isWebhookEvent = 'provider' in val
+            if (isWebhookEvent) {
+              if (simulateWebhookEventDuplicate) return []
+              insertedWebhookEvents.push(val)
+              return [{ ...val }]
+            }
             if (simulateDuplicate) return []
             insertedIncidents.push(val)
             return [{ ...val }]
@@ -196,11 +205,13 @@ async function sendWebhook(
 
 beforeEach(() => {
   insertedIncidents = []
+  insertedWebhookEvents = []
   queueCalls = []
   githubInitialWrites = []
   slackPostedMessages.length = 0
   slackUpdatedMessages.length = 0
   simulateDuplicate = false
+  simulateWebhookEventDuplicate = false
 })
 
 describe('GitHub Webhook — Signature Verification', () => {
@@ -305,6 +316,58 @@ describe('GitHub Webhook — Deduplication', () => {
     await Bun.sleep(100)
 
     // Insert was attempted but onConflictDoNothing returned empty — no queue/writeback calls
+    expect(queueCalls.length).toBe(0)
+    expect(githubInitialWrites.length).toBe(0)
+  })
+
+  test('synthesizes a delivery ID when x-github-delivery header is missing', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makePayload({ workflow_run: { id: 7777, head_sha: 'empty-delivery-test' } }))
+
+    // Send without an x-github-delivery header
+    const res = await app.request('/webhooks/github', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-github-event': 'workflow_run',
+        'x-hub-signature-256': sign(body),
+      },
+      body,
+    })
+    await Bun.sleep(100)
+
+    expect(res.status).toBe(200)
+    // Webhook event was persisted with a non-empty synthetic event id
+    expect(insertedWebhookEvents.length).toBe(1)
+    const eventId = insertedWebhookEvents[0].eventId as string
+    expect(eventId.length).toBeGreaterThan(0)
+    expect(eventId.startsWith('synthetic-')).toBe(true)
+    // Incident was still created
+    expect(insertedIncidents.length).toBe(1)
+  })
+
+  test('cold-path dedup fires when synthetic delivery ID already exists', async () => {
+    simulateWebhookEventDuplicate = true
+    const app = makeApp()
+    const body = JSON.stringify(makePayload({ workflow_run: { id: 8888, head_sha: 'dup-test' } }))
+
+    // Send without an x-github-delivery header — webhook-event insert should dedupe
+    const res = await app.request('/webhooks/github', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-github-event': 'workflow_run',
+        'x-hub-signature-256': sign(body),
+      },
+      body,
+    })
+    await Bun.sleep(100)
+
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as { ok: boolean; deduplicated?: boolean }
+    expect(json.deduplicated).toBe(true)
+    // Dedup short-circuits before incident insert + queue
+    expect(insertedIncidents.length).toBe(0)
     expect(queueCalls.length).toBe(0)
     expect(githubInitialWrites.length).toBe(0)
   })
