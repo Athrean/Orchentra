@@ -38,3 +38,16 @@ export const BriefSchema = z.object({
 })
 
 export type IncidentBrief = z.infer<typeof BriefSchema>
+
+export const FilePatchSchema = z.object({
+  path: z.string(),
+  action: z.enum(['modify', 'create', 'delete']),
+  content: z.string().optional(),
+})
+
+export const PatchSetSchema = z.object({
+  patches: z.array(FilePatchSchema).max(10),
+})
+
+export type FilePatch = z.infer<typeof FilePatchSchema>
+export type PatchSet = z.infer<typeof PatchSetSchema>
