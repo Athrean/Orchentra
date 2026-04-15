@@ -27,7 +27,7 @@ export const getPullRequestTool = tool({
       const [prResult, filesResult, commentsResult] = await Promise.all([
         octokit.pulls.get({ owner, repo, pull_number: prNumber }),
         octokit.pulls.listFiles({ owner, repo, pull_number: prNumber, per_page: 20 }),
-        octokit.issues.listComments({ owner, repo, issue_number: prNumber, per_page: MAX_COMMENTS }),
+        octokit.pulls.listReviewComments({ owner, repo, pull_number: prNumber, per_page: MAX_COMMENTS }),
       ])
 
       const pr = prResult.data
@@ -108,7 +108,7 @@ export const getIssueTool = tool({
 
 export const searchCodeTool = tool({
   description:
-    'Search for code in the repository. Returns matching file paths and text snippets. ' +
+    'Search for code in the repository. Returns matching file paths. ' +
     'Useful for finding related test files, imports, or configuration references.',
   parameters: z.object({
     owner: z.string().describe('Repository owner'),
@@ -121,8 +121,10 @@ export const searchCodeTool = tool({
       return { error: `Repository ${fullName} is not monitored` }
     }
     try {
+      // Strip scope qualifiers to prevent cross-repo query injection
+      const sanitized = query.replace(/\b(repo|org|user):[^\s]+/g, '').trim()
       const { data } = await octokit.search.code({
-        q: `${query} repo:${owner}/${repo}`,
+        q: `${sanitized} repo:${owner}/${repo}`,
         per_page: 10,
       })
 

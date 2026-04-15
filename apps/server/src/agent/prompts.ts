@@ -11,7 +11,7 @@ Available tools:
 - get_file_content: Read any file from the repo. Use to inspect CI workflow YAML, package.json, Dockerfile, or test config when relevant.
 - get_pull_request: Fetch PR details (title, body, files changed, comments). Use when logs reference a PR or when reviewing recent merges.
 - get_issue: Fetch issue details (title, body, labels, comments). Use when a CI failure is linked to a known issue.
-- search_code: Search for code across the repo. Use to find related test files, imports, or config references.
+- search_code: Search for code across the repo by query. Returns matching file paths.
 
 Tool calling strategy:
 - Always start with get_workflow_logs — it has the most direct evidence
