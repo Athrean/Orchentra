@@ -429,8 +429,8 @@ export async function escalateIncident(incidentId: string, performedBy: string |
 // 6. Handle fix PR merged (notify + prepare for auto-resolve)
 // ──────────────────────────────────────────────
 
-export async function handleFixPRMerged(prUrl: string, prNumber: number): Promise<void> {
-  const incident = await findIncidentByPrUrl(prUrl)
+export async function handleFixPRMerged(prUrl: string, prNumber: number, orgId: string): Promise<void> {
+  const incident = await findIncidentByPrUrl(prUrl, orgId)
   if (!incident) return
 
   await recordAction(incident.id, 'pr_merged', null, { prUrl, prNumber })
@@ -443,8 +443,13 @@ export async function handleFixPRMerged(prUrl: string, prNumber: number): Promis
 // 7. Auto-resolve incident when CI passes after a fix PR
 // ──────────────────────────────────────────────
 
-export async function autoResolveAfterCIPass(repo: string, branch: string, runId: number): Promise<void> {
-  const incident = await findFixingIncidentForRepoBranch(repo, branch)
+export async function autoResolveAfterCIPass(
+  repo: string,
+  branch: string,
+  runId: number,
+  orgId: string,
+): Promise<void> {
+  const incident = await findFixingIncidentForRepoBranch(repo, branch, orgId)
   if (!incident) return
 
   const mttrSeconds = incident.triggeredAt

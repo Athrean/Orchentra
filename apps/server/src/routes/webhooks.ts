@@ -103,7 +103,11 @@ webhooksRouter.post('/github', async (c) => {
     const parsed = PullRequestPayload.safeParse(payload)
     if (parsed.success && parsed.data.action === 'closed' && parsed.data.pull_request.merged) {
       const { pull_request: pr, number } = parsed.data
-      handleFixPRMerged(pr.html_url, number).catch(console.error)
+      const repo = parsed.data.repository.full_name
+      const monitoredRepoRows = await findMonitoredReposByRepo(repo)
+      for (const { orgId } of monitoredRepoRows) {
+        handleFixPRMerged(pr.html_url, number, orgId).catch(console.error)
+      }
     }
     markWebhookProcessed(webhookEventId).catch(console.error)
     return c.json({ ok: true })
@@ -123,7 +127,11 @@ webhooksRouter.post('/github', async (c) => {
       registerInFlight('github', deliveryId, processingPromise)
       processingPromise.catch(console.error)
     } else if (run.conclusion === 'success' && (await isRepoMonitored(repository.full_name))) {
-      autoResolveAfterCIPass(repository.full_name.toLowerCase(), run.head_branch, run.id).catch(console.error)
+      const repo = repository.full_name.toLowerCase()
+      const monitoredRepoRows = await findMonitoredReposByRepo(repo)
+      for (const { orgId } of monitoredRepoRows) {
+        autoResolveAfterCIPass(repo, run.head_branch, run.id, orgId).catch(console.error)
+      }
       markWebhookProcessed(webhookEventId).catch(console.error)
     } else {
       markWebhookSkipped(webhookEventId).catch(console.error)
