@@ -85,9 +85,12 @@ export async function saveResolvedPattern(incidentId: string): Promise<void> {
 
 export async function findSimilarPatterns(
   incidentText: string,
+  orgId: string,
   limit: number = DEFAULT_LIMIT,
 ): Promise<PatternMatch[]> {
-  const allPatterns = await db.query.resolvedPatterns.findMany()
+  const allPatterns = await db.query.resolvedPatterns.findMany({
+    where: eq(resolvedPatterns.orgId, orgId),
+  })
   if (allPatterns.length === 0) return []
 
   const { embedding: queryEmbedding } = await embed({

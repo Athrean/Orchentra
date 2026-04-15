@@ -7,7 +7,7 @@ import { findMonitoredReposByRepo } from '../queries/repos'
 import { createIncident } from '../queries/incidents'
 import { handleFixPRMerged, autoResolveAfterCIPass } from '../actions/handlers'
 import { incidentEvents } from '../events'
-import { isDuplicateInFlight, registerInFlight } from '../lib/webhook-dedup'
+import { isDuplicateInFlight, registerInFlight, isDebounced, registerDebounce } from '../lib/webhook-dedup'
 import { enqueueInvestigateJob } from '../lib/incident-queue'
 import { publishInitialGithubTriage } from '../github/triage-writeback'
 import {
@@ -123,6 +123,13 @@ webhooksRouter.post('/github', async (c) => {
     const { workflow_run: run, repository } = parsed.data
 
     if (run.conclusion === 'failure') {
+      // Debounce: skip if the same (repo, branch, commit) failure was recently processed
+      if (isDebounced(repository.full_name, run.head_branch, run.head_sha)) {
+        markWebhookSkipped(webhookEventId).catch(console.error)
+        return c.json({ ok: true, debounced: true })
+      }
+      registerDebounce(repository.full_name, run.head_branch, run.head_sha)
+
       const processingPromise = processWorkflowFailure(run, repository.full_name, webhookEventId)
       registerInFlight('github', deliveryId, processingPromise)
       processingPromise.catch(console.error)

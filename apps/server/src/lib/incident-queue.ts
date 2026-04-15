@@ -144,6 +144,10 @@ export function startQueueWorker(): void {
   // Recover any jobs left in 'processing' from a previous crash
   void recoverStaleJobs()
 
+  // Periodically recover stale jobs every 60 seconds
+  const recoveryInterval = setInterval(() => void recoverStaleJobs(), 60_000)
+  recoveryInterval.unref()
+
   // Recursive setTimeout guarantees only one poll runs at a time
   async function poll(): Promise<void> {
     if (stopped) return
