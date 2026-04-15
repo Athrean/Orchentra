@@ -2,9 +2,11 @@ import { describe, test, expect, mock, beforeEach } from 'bun:test'
 
 let pullsGetResult: Record<string, unknown> = {}
 let pullsListFilesResult: Record<string, unknown>[] = []
+let prReviewCommentsResult: Record<string, unknown>[] = []
 let issuesGetResult: Record<string, unknown> = {}
 let issueCommentsResult: Record<string, unknown>[] = []
 let searchCodeResult: { total_count: number; items: Record<string, unknown>[] } = { total_count: 0, items: [] }
+let searchCodeQuery: string | null = null
 let apiError: Error | null = null
 
 mock.module('../src/config', () => ({
@@ -35,6 +37,9 @@ mock.module('@octokit/rest', () => ({
       listFiles: async () => {
         return { data: pullsListFilesResult }
       },
+      listReviewComments: async () => {
+        return { data: prReviewCommentsResult }
+      },
     }
     issues = {
       get: async () => {
@@ -46,7 +51,8 @@ mock.module('@octokit/rest', () => ({
       },
     }
     search = {
-      code: async () => {
+      code: async (opts: { q: string }) => {
+        searchCodeQuery = opts.q
         if (apiError) throw apiError
         return { data: searchCodeResult }
       },
@@ -61,9 +67,11 @@ const ctx = { toolCallId: 'test', messages: [], abortSignal: undefined as unknow
 beforeEach(() => {
   pullsGetResult = {}
   pullsListFilesResult = []
+  prReviewCommentsResult = []
   issuesGetResult = {}
   issueCommentsResult = []
   searchCodeResult = { total_count: 0, items: [] }
+  searchCodeQuery = null
   apiError = null
 })
 
@@ -80,7 +88,7 @@ describe('getPullRequestTool', () => {
       created_at: '2026-04-01T10:00:00Z',
     }
     pullsListFilesResult = [{ filename: 'src/auth.ts', status: 'modified', additions: 5, deletions: 2 }]
-    issueCommentsResult = [{ user: { login: 'reviewer1' }, body: 'LGTM' }]
+    prReviewCommentsResult = [{ user: { login: 'reviewer1' }, body: 'LGTM' }]
 
     const result = await getPullRequestTool.execute({ owner: 'my-org', repo: 'api', number: 42 }, ctx)
 
@@ -103,7 +111,7 @@ describe('getPullRequestTool', () => {
       created_at: '2026-04-01T10:00:00Z',
     }
     pullsListFilesResult = []
-    issueCommentsResult = []
+    prReviewCommentsResult = []
 
     const result = await getPullRequestTool.execute({ owner: 'my-org', repo: 'api', number: 1 }, ctx)
 
@@ -201,5 +209,13 @@ describe('searchCodeTool', () => {
     const result = await searchCodeTool.execute({ owner: 'my-org', repo: 'api', query: 'test' }, ctx)
     expect(result).toHaveProperty('error')
     expect(result.error).toContain('Failed to search code')
+  })
+
+  test('strips scope qualifiers from query to prevent cross-repo leakage', async () => {
+    searchCodeResult = { total_count: 0, items: [] }
+
+    await searchCodeTool.execute({ owner: 'my-org', repo: 'api', query: 'password repo:other-org/secret-repo' }, ctx)
+
+    expect(searchCodeQuery).toBe('password repo:my-org/api')
   })
 })
