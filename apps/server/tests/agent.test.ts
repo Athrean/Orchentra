@@ -9,6 +9,7 @@ let slackThreadReplies: { incidentId: string; text: string }[] = []
 let toolCallInserts: Record<string, unknown>[] = []
 let githubFinalWrites: { incidentId: string; status: 'brief_ready' | 'error' }[] = []
 let shouldThrowOnGenerate = false
+let generateObjectFailuresRemaining = 0
 
 mock.module('../src/config', () => ({
   config: {
@@ -90,7 +91,11 @@ mock.module('ai', () => ({
   },
   generateObject: async (opts: unknown) => {
     generateObjectCalls.push(opts)
-    return { object: mockBrief }
+    if (generateObjectFailuresRemaining > 0) {
+      generateObjectFailuresRemaining--
+      throw new Error('schema validation failed')
+    }
+    return { object: mockBrief, usage: { promptTokens: 100, completionTokens: 50 } }
   },
 }))
 
@@ -130,6 +135,7 @@ beforeEach(() => {
   toolCallInserts = []
   githubFinalWrites = []
   shouldThrowOnGenerate = false
+  generateObjectFailuresRemaining = 0
 })
 
 describe('Agent Runner — ReAct Loop', () => {
@@ -190,5 +196,33 @@ describe('Agent Runner — ReAct Loop', () => {
     const update = dbUpdates.find((u) => u.status === 'error')
     expect(update).toBeDefined()
     expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'error' })
+  })
+
+  test('retries generateObject once on failure and recovers', async () => {
+    generateObjectFailuresRemaining = 1
+    await runIncidentAgent(mockIncident)
+
+    expect(generateObjectCalls.length).toBe(2)
+    const update = dbUpdates.find((u) => u.status === 'brief_ready')
+    expect(update).toBeDefined()
+    expect(update!.rootCause).toBe(mockBrief.rootCause)
+    expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'brief_ready' })
+  })
+
+  test('falls back to default brief when generateObject fails twice', async () => {
+    generateObjectFailuresRemaining = 2
+    await runIncidentAgent(mockIncident)
+
+    expect(generateObjectCalls.length).toBe(2)
+    const update = dbUpdates.find((u) => u.status === 'brief_ready')
+    expect(update).toBeDefined()
+    // Fallback brief is identifiable by failureType 'unknown' and confidence 0.2
+    const briefJson = JSON.parse(update!.briefJson as string)
+    expect(briefJson.failureType).toBe('unknown')
+    expect(briefJson.confidence).toBe(0.2)
+    // Incident should still publish a successful triage, not error
+    expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'brief_ready' })
+    // No error update should be issued
+    expect(dbUpdates.find((u) => u.status === 'error')).toBeUndefined()
   })
 })
