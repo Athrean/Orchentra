@@ -17,6 +17,17 @@ import { generatePatches } from './patch-generator'
 
 type IncidentRow = typeof incidents.$inferSelect
 
+const MAX_INVESTIGATION_MESSAGES = 30
+
+class TokenBudgetExceeded extends Error {
+  constructor(
+    public tokensUsed: number,
+    public budget: number,
+  ) {
+    super(`Token budget exceeded: ${tokensUsed} > ${budget}`)
+  }
+}
+
 interface SynthesisUsage {
   promptTokens?: number
   completionTokens?: number
@@ -86,13 +97,15 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
   const modelId = config.llm.model
   let totalInputTokens = 0
   let totalOutputTokens = 0
+  const tokenBudget = config.llm.max_tokens_per_incident
+  const incidentContext = formatIncidentContext(incident)
 
   try {
     // Phase A: Investigation — generateText with tools
     const result = await generateText({
       model: createModel(),
       system: AGENT_SYSTEM_PROMPT,
-      prompt: formatIncidentContext(incident),
+      prompt: incidentContext,
       tools: {
         get_workflow_logs: githubActionsTool,
         get_commit_changes: getCommitChangesTool,
@@ -102,7 +115,15 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         search_code: searchCodeTool,
       },
       maxSteps: 6,
-      onStepFinish: async ({ toolCalls: calls, toolResults: results }) => {
+      onStepFinish: async ({ toolCalls: calls, toolResults: results, usage }) => {
+        // Accumulate per-step token usage and check budget
+        if (usage) {
+          totalInputTokens += usage.promptTokens ?? 0
+          totalOutputTokens += usage.completionTokens ?? 0
+          if (totalInputTokens + totalOutputTokens > tokenBudget) {
+            throw new TokenBudgetExceeded(totalInputTokens + totalOutputTokens, tokenBudget)
+          }
+        }
         if (!calls || calls.length === 0) return
         stepNumber++
         try {
@@ -124,7 +145,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     })
 
     // Build conversation history for synthesis — include both tool calls and results
-    const investigationMessages: CoreMessage[] = [{ role: 'user', content: formatIncidentContext(incident) }]
+    const investigationMessages: CoreMessage[] = [{ role: 'user', content: incidentContext }]
 
     for (const step of result.steps) {
       for (const call of step.toolCalls ?? []) {
@@ -170,10 +191,23 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       console.error(`Pattern lookup failed for ${incident.id}:`, err)
     }
 
-    // Accumulate Phase A token usage
-    if (result.usage) {
-      totalInputTokens += result.usage.promptTokens ?? 0
-      totalOutputTokens += result.usage.completionTokens ?? 0
+    // Context compaction: if investigation history is too long, keep first message,
+    // last 5 messages, and a summary of the rest
+    if (investigationMessages.length > MAX_INVESTIGATION_MESSAGES) {
+      const first = investigationMessages[0]
+      const last5 = investigationMessages.slice(-5)
+      const middle = investigationMessages.slice(1, -5)
+      const middleSummary = middle.map((m) => (typeof m.content === 'string' ? m.content.slice(0, 200) : '')).join('\n')
+      investigationMessages.length = 0
+      investigationMessages.push(first)
+      investigationMessages.push({
+        role: 'user',
+        content: `[Investigation summary — ${middle.length} earlier steps compacted]\n${middleSummary}`,
+      })
+      investigationMessages.push(...last5)
+      console.log(
+        `Incident ${incident.id}: compacted investigation from ${middle.length + 6} to ${investigationMessages.length} messages`,
+      )
     }
 
     // Phase B: Synthesis — generateObject for structured brief, with retry + fallback
@@ -187,6 +221,11 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     if (synthesisUsage) {
       totalInputTokens += synthesisUsage.promptTokens ?? 0
       totalOutputTokens += synthesisUsage.completionTokens ?? 0
+    }
+
+    // Budget check after Phase B — skip patch generation if over budget
+    if (totalInputTokens + totalOutputTokens > tokenBudget) {
+      throw new TokenBudgetExceeded(totalInputTokens + totalOutputTokens, tokenBudget)
     }
 
     // Phase C: Patch generation (only for actionable, high-confidence failures)
@@ -249,7 +288,12 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         `${totalInputTokens + totalOutputTokens} tokens, ~$${estimatedCost.toFixed(4)}`,
     )
   } catch (error) {
-    console.error(`Agent failed for ${incident.id}:`, error)
+    const isBudgetExceeded = error instanceof TokenBudgetExceeded
+    const errorRootCause = isBudgetExceeded
+      ? `Token budget exceeded (${error.tokensUsed}/${error.budget}) — investigation incomplete`
+      : 'Agent investigation failed — check server logs'
+
+    console.error(`Agent ${isBudgetExceeded ? 'hit token budget' : 'failed'} for ${incident.id}:`, error)
 
     const errorCost = totalInputTokens > 0 ? estimateCostUsd(modelId, totalInputTokens, totalOutputTokens) : null
 
@@ -257,7 +301,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       .update(incidents)
       .set({
         status: 'error',
-        rootCause: 'Agent investigation failed — check server logs',
+        rootCause: errorRootCause,
         ...(totalInputTokens > 0 && {
           tokenInputs: totalInputTokens,
           tokenOutputs: totalOutputTokens,
@@ -269,7 +313,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     await publishFinalGithubTriage(
       {
         ...incident,
-        rootCause: 'Agent investigation failed — check server logs',
+        rootCause: errorRootCause,
       },
       'error',
     )

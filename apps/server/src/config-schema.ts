@@ -21,6 +21,7 @@ export const ConfigSchema = z.object({
     model: z.string().default('anthropic/claude-sonnet-4-5'),
     embedding_model: z.string().default('text-embedding-3-small'),
     base_url: z.string().optional(),
+    max_tokens_per_incident: z.number().int().min(1000).default(100_000),
   }),
   integrations: z
     .object({
