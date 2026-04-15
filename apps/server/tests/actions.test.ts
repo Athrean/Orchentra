@@ -193,8 +193,8 @@ mock.module('../src/agent/patterns', () => ({
 }))
 
 mock.module('../src/queries/incidents', () => ({
-  findIncidentByPrUrl: async (_prUrl: string) => findIncidentByPrUrlResult,
-  findFixingIncidentForRepoBranch: async (_repo: string, _branch: string) => findFixingIncidentResult,
+  findIncidentByPrUrl: async (_prUrl: string, _orgId: string) => findIncidentByPrUrlResult,
+  findFixingIncidentForRepoBranch: async (_repo: string, _branch: string, _orgId: string) => findFixingIncidentResult,
 }))
 
 mock.module('../src/lib/repo-cache', () => ({
@@ -539,7 +539,7 @@ describe('handleFixPRMerged', () => {
   test('records action and posts thread update when incident exists', async () => {
     findIncidentByPrUrlResult = { ...TEST_INCIDENT }
 
-    await handleFixPRMerged('https://github.com/my-org/api/pull/7', 7)
+    await handleFixPRMerged('https://github.com/my-org/api/pull/7', 7, 'org-1')
 
     const prMergedAction = insertedActions.find((action) => action.actionType === 'pr_merged')
     expect(prMergedAction).toBeTruthy()
@@ -551,7 +551,7 @@ describe('handleFixPRMerged', () => {
   test('no-ops when PR URL does not map to an incident', async () => {
     findIncidentByPrUrlResult = null
 
-    await handleFixPRMerged('https://github.com/my-org/api/pull/999', 999)
+    await handleFixPRMerged('https://github.com/my-org/api/pull/999', 999, 'org-1')
 
     expect(insertedActions).toHaveLength(0)
   })
@@ -565,7 +565,7 @@ describe('autoResolveAfterCIPass', () => {
       briefJson: TEST_INCIDENT.briefJson,
     }
 
-    await autoResolveAfterCIPass('my-org/api', 'main', 12345)
+    await autoResolveAfterCIPass('my-org/api', 'main', 12345, 'org-1')
 
     expect(updatedFields[0]?.status).toBe('resolved')
 
@@ -579,7 +579,7 @@ describe('autoResolveAfterCIPass', () => {
 
   test('no-ops when no fixing incident matches repo/branch', async () => {
     findFixingIncidentResult = null
-    await autoResolveAfterCIPass('my-org/api', 'main', 12345)
+    await autoResolveAfterCIPass('my-org/api', 'main', 12345, 'org-1')
     expect(updatedFields).toHaveLength(0)
     expect(insertedActions).toHaveLength(0)
   })
