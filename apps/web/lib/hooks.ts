@@ -149,7 +149,6 @@ export const queryKeys = {
   repos: (orgId: string) => ['repos', orgId] as const,
   incidents: (orgId: string, repo: string, from?: string, to?: string) => ['incidents', orgId, repo, from, to] as const,
   incidentDetail: (orgId: string, id: string) => ['incident', orgId, id] as const,
-  chatHistory: (orgId: string, sessionId: string) => ['chat', orgId, sessionId] as const,
   workflows: (orgId: string, repo: string) => ['workflows', orgId, repo] as const,
   workflowRuns: (orgId: string, repo: string, workflowId: number) =>
     ['workflow-runs', orgId, repo, workflowId] as const,
@@ -386,27 +385,6 @@ export function useResolveIncident(repo: string) {
       qc.invalidateQueries({ queryKey: ['incidents', orgId, repo] })
       qc.invalidateQueries({ queryKey: queryKeys.incidentDetail(orgId, incidentId) })
     },
-  })
-}
-
-export interface ChatHistoryMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  createdAt: string
-}
-
-/** Load persisted chat history for a session from the server. */
-export function useChatHistory(sessionId: string | null) {
-  const orgId = useOrgId()
-  return useQuery({
-    queryKey: orgId && sessionId ? queryKeys.chatHistory(orgId, sessionId) : ['chat', sessionId],
-    queryFn: () =>
-      api<{ messages: ChatHistoryMessage[] }>(
-        `/api/orgs/${orgId}/chat/history?sessionId=${encodeURIComponent(sessionId!)}`,
-      ),
-    enabled: !!orgId && !!sessionId,
-    staleTime: Infinity, // history doesn't change after a session ends
   })
 }
 
