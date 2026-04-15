@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "15ef9cb6048fca3293e5fb1ed629e63d2f09a040",
+  "prompts": {
+    "a2d76ef7221de50e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "851c2aa9-b5d0-460c-a4fd-ba564a749157",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 22,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
