@@ -123,14 +123,15 @@ webhooksRouter.post('/github', async (c) => {
     const { workflow_run: run, repository } = parsed.data
 
     if (run.conclusion === 'failure') {
+      const repo = repository.full_name.toLowerCase()
       // Debounce: skip if the same (repo, branch, commit) failure was recently processed
-      if (isDebounced(repository.full_name, run.head_branch, run.head_sha)) {
+      if (isDebounced(repo, run.head_branch, run.head_sha)) {
         markWebhookSkipped(webhookEventId).catch(console.error)
         return c.json({ ok: true, debounced: true })
       }
-      registerDebounce(repository.full_name, run.head_branch, run.head_sha)
+      registerDebounce(repo, run.head_branch, run.head_sha)
 
-      const processingPromise = processWorkflowFailure(run, repository.full_name, webhookEventId)
+      const processingPromise = processWorkflowFailure(run, repo, webhookEventId)
       registerInFlight('github', deliveryId, processingPromise)
       processingPromise.catch(console.error)
     } else if (run.conclusion === 'success' && (await isRepoMonitored(repository.full_name))) {

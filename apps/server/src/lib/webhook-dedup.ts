@@ -64,7 +64,7 @@ function pruneSettled(): void {
   }
 }
 
-setInterval(pruneSettled, SETTLED_TTL_MS)
+setInterval(pruneSettled, SETTLED_TTL_MS).unref()
 
 /**
  * Check if a (repo, branch, commit) combination was recently seen.
@@ -93,7 +93,7 @@ function pruneDebounced(): void {
   }
 }
 
-setInterval(pruneDebounced, DEBOUNCE_TTL_MS)
+setInterval(pruneDebounced, DEBOUNCE_TTL_MS).unref()
 
 /** Reset all in-memory state. Exported for test teardown only. */
 // eslint-disable-next-line @typescript-eslint/naming-convention
