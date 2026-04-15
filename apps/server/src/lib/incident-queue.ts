@@ -136,6 +136,7 @@ async function recoverStaleJobs(): Promise<void> {
 }
 
 let stopped = false
+let recoveryTimer: ReturnType<typeof setInterval> | null = null
 
 /** Start the queue worker. Call once at server startup. */
 export function startQueueWorker(): void {
@@ -143,6 +144,10 @@ export function startQueueWorker(): void {
 
   // Recover any jobs left in 'processing' from a previous crash
   void recoverStaleJobs()
+
+  // Periodically recover stale jobs every 60 seconds
+  recoveryTimer = setInterval(() => void recoverStaleJobs(), 60_000)
+  recoveryTimer.unref()
 
   // Recursive setTimeout guarantees only one poll runs at a time
   async function poll(): Promise<void> {
@@ -173,4 +178,8 @@ export function startQueueWorker(): void {
 /** Stop the queue worker. Useful for tests. */
 export function stopQueueWorker(): void {
   stopped = true
+  if (recoveryTimer) {
+    clearInterval(recoveryTimer)
+    recoveryTimer = null
+  }
 }
