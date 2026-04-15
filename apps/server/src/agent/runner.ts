@@ -13,6 +13,7 @@ import { findSimilarPatterns, formatPatternContext } from './patterns'
 import { incidentEvents } from '../events'
 import { config } from '../config'
 import { publishFinalGithubTriage } from '../github/triage-writeback'
+import { generatePatches } from './patch-generator'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -190,7 +191,10 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
     const estimatedCost = estimateCostUsd(modelId, totalInputTokens, totalOutputTokens)
 
-    // Step 3: Persist results + token usage
+    // Phase C: Patch generation (only for actionable, high-confidence failures)
+    const { generated: hasPatches, patchJson } = await generatePatches(brief, investigationMessages)
+
+    // Persist results + token usage + optional patches
     await db
       .update(incidents)
       .set({
@@ -202,6 +206,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         tokenInputs: totalInputTokens,
         tokenOutputs: totalOutputTokens,
         estimatedCostUsd: estimatedCost,
+        ...(hasPatches && { patchJson }),
       })
       .where(eq(incidents.id, incident.id))
 

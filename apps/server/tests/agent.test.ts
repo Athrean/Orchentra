@@ -89,11 +89,18 @@ mock.module('ai', () => ({
     }
     return mockGenerateTextResponse
   },
-  generateObject: async (opts: unknown) => {
+  generateObject: async (opts: { system?: string }) => {
     generateObjectCalls.push(opts)
     if (generateObjectFailuresRemaining > 0) {
       generateObjectFailuresRemaining--
       throw new Error('schema validation failed')
+    }
+    // Patch generation uses a system prompt containing "code repair agent"
+    if (opts.system?.includes('code repair agent')) {
+      return {
+        object: { patches: [{ path: 'src/fix.ts', action: 'modify' as const, content: 'fixed' }] },
+        usage: { promptTokens: 50, completionTokens: 25 },
+      }
     }
     return { object: mockBrief, usage: { promptTokens: 100, completionTokens: 50 } }
   },
@@ -144,9 +151,10 @@ describe('Agent Runner — ReAct Loop', () => {
     expect(generateTextCalls.length).toBe(1)
   })
 
-  test('calls generateObject for synthesis phase', async () => {
+  test('calls generateObject for synthesis and patch generation', async () => {
     await runIncidentAgent(mockIncident)
-    expect(generateObjectCalls.length).toBe(1)
+    // First call: synthesis (brief), second call: patch generation (code_bug is actionable)
+    expect(generateObjectCalls.length).toBe(2)
   })
 
   test('passes tool results to synthesis phase', async () => {
@@ -202,7 +210,8 @@ describe('Agent Runner — ReAct Loop', () => {
     generateObjectFailuresRemaining = 1
     await runIncidentAgent(mockIncident)
 
-    expect(generateObjectCalls.length).toBe(2)
+    // 2 synthesis calls (1 fail + 1 retry) + 1 patch generation = 3
+    expect(generateObjectCalls.length).toBe(3)
     const update = dbUpdates.find((u) => u.status === 'brief_ready')
     expect(update).toBeDefined()
     expect(update!.rootCause).toBe(mockBrief.rootCause)

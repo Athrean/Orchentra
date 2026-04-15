@@ -32,6 +32,7 @@ export const incidents = pgTable(
     confidence: doublePrecision('confidence'),
     rootCause: text('root_cause'),
     suggestedFix: text('suggested_fix'),
+    patchJson: text('patch_json'),
 
     // Slack
     slackChannel: text('slack_channel'),
