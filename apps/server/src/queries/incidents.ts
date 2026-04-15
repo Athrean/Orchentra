@@ -119,9 +119,12 @@ export async function getIncidentRelations(id: string): Promise<[ToolCallRow[], 
   return [calls, actions]
 }
 
-export async function findIncidentByPrUrl(prUrl: string): Promise<typeof incidents.$inferSelect | undefined> {
+export async function findIncidentByPrUrl(
+  prUrl: string,
+  orgId: string,
+): Promise<typeof incidents.$inferSelect | undefined> {
   return db.query.incidents.findFirst({
-    where: (t, { eq: e }) => e(t.githubPrUrl, prUrl),
+    where: (t, { and: a, eq: e }) => a(e(t.githubPrUrl, prUrl), e(t.orgId, orgId)),
   })
 }
 
@@ -129,10 +132,11 @@ export async function findIncidentByPrUrl(prUrl: string): Promise<typeof inciden
 export async function findFixingIncidentForRepoBranch(
   repo: string,
   branch: string,
+  orgId: string,
 ): Promise<typeof incidents.$inferSelect | undefined> {
   return db.query.incidents.findFirst({
     where: (t, { and: a, eq: e, isNotNull: n }) =>
-      a(e(t.repo, repo), e(t.branch, branch), e(t.status, 'fixing'), n(t.githubPrUrl)),
+      a(e(t.repo, repo), e(t.branch, branch), e(t.status, 'fixing'), n(t.githubPrUrl), e(t.orgId, orgId)),
     orderBy: (t, { desc: d }) => d(t.createdAt),
   })
 }
