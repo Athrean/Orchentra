@@ -17,7 +17,46 @@ import { generatePatches } from './patch-generator'
 
 type IncidentRow = typeof incidents.$inferSelect
 
-const MAX_INVESTIGATION_MESSAGES = 30
+// ── Error classification ──────────────────────────────────────────────────
+
+type ErrorClass = 'retryable' | 'permanent'
+
+function classifyError(error: unknown): ErrorClass {
+  if (error instanceof Response) {
+    const s = error.status
+    if (s === 429 || (s >= 500 && s < 600)) return 'retryable'
+  }
+  if (error && typeof error === 'object' && 'status' in error) {
+    const s = (error as { status: number }).status
+    if (s === 429 || (s >= 500 && s < 600)) return 'retryable'
+  }
+  if (error instanceof TypeError && error.message.includes('fetch')) return 'retryable'
+  if (error instanceof Error && error.message.includes('ECONNRESET')) return 'retryable'
+  if (error instanceof Error && error.message.includes('ETIMEDOUT')) return 'retryable'
+  return 'permanent'
+}
+
+function backoffMs(attempt: number): number {
+  return Math.min(10_000 * Math.pow(2, attempt - 1), 60_000)
+}
+
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts: number = 3): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastError = err
+      if (attempt >= maxAttempts || classifyError(err) === 'permanent') throw err
+      const delay = backoffMs(attempt)
+      console.warn(`Retryable error (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms:`, err)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+  throw lastError
+}
+
+// ── Budget tracking ──────────────────────────────────────────────────────
 
 class TokenBudgetExceeded extends Error {
   constructor(
@@ -28,52 +67,147 @@ class TokenBudgetExceeded extends Error {
   }
 }
 
-interface SynthesisUsage {
-  promptTokens?: number
-  completionTokens?: number
+interface BudgetTracker {
+  inputTokens: number
+  outputTokens: number
+  stepCount: number
+  readonly tokenBudget: number
+  readonly stepBudget: number
 }
 
-interface SynthesisResult {
-  brief: IncidentBrief
-  usage: SynthesisUsage | null
-  usedFallback: boolean
+function createBudgetTracker(): BudgetTracker {
+  return {
+    inputTokens: 0,
+    outputTokens: 0,
+    stepCount: 0,
+    tokenBudget: config.llm.max_tokens_per_incident,
+    stepBudget: config.llm.max_steps,
+  }
+}
+
+function recordUsage(tracker: BudgetTracker, promptTokens: number, completionTokens: number): void {
+  tracker.inputTokens += promptTokens
+  tracker.outputTokens += completionTokens
+}
+
+function totalTokens(tracker: BudgetTracker): number {
+  return tracker.inputTokens + tracker.outputTokens
+}
+
+function checkBudget(tracker: BudgetTracker): void {
+  if (totalTokens(tracker) > tracker.tokenBudget) {
+    throw new TokenBudgetExceeded(totalTokens(tracker), tracker.tokenBudget)
+  }
+}
+
+// ── Context compaction ───────────────────────────────────────────────────
+
+/** Rough token estimate: ~4 chars per token for English text. */
+function estimateTokens(messages: CoreMessage[]): number {
+  return messages.reduce((sum, m) => {
+    const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+    return sum + Math.ceil(content.length / 4)
+  }, 0)
 }
 
 /**
- * Run the synthesis call with one retry on schema/parse failure.
- * If both attempts fail, return a fallback brief built from the raw investigation text
- * so the incident still reaches `brief_ready` instead of `error`.
+ * Compact investigation messages into a structured summary + recent messages.
+ * Preserves the initial context and the last N messages verbatim;
+ * replaces everything in between with a structured digest.
  */
-async function synthesizeBriefWithRetry(
-  investigationMessages: CoreMessage[],
-  fallbackText: string,
-): Promise<SynthesisResult> {
+function compactMessages(messages: CoreMessage[], preserveRecent: number = 4): CoreMessage[] {
+  if (messages.length <= preserveRecent + 2) return messages
+
+  const first = messages[0]
+  const recent = messages.slice(-preserveRecent)
+  const middle = messages.slice(1, -preserveRecent)
+
+  // Extract structured information from compacted messages
+  const toolsCalled: string[] = []
+  const keyFindings: string[] = []
+  const filesReferenced = new Set<string>()
+
+  for (const msg of middle) {
+    const text = typeof msg.content === 'string' ? msg.content : ''
+
+    // Track tool calls
+    const toolMatch = text.match(/^Called (\w+)\(/)
+    if (toolMatch) toolsCalled.push(toolMatch[1])
+
+    // Track file references
+    const fileMatches = text.match(/[\w/.-]+\.(ts|tsx|js|jsx|yml|yaml|json|md|toml|Dockerfile)/g)
+    if (fileMatches) fileMatches.forEach((f) => filesReferenced.add(f))
+
+    // Extract key findings from tool results (first 150 chars of each)
+    if (text.startsWith('Tool result')) {
+      const finding = text.slice(0, 150).replace(/\n/g, ' ')
+      keyFindings.push(finding)
+    }
+  }
+
+  const summary = [
+    `[Context compacted — ${middle.length} messages summarized]`,
+    '',
+    `Tools called: ${toolsCalled.length > 0 ? toolsCalled.join(', ') : 'none'}`,
+    `Files referenced: ${filesReferenced.size > 0 ? [...filesReferenced].join(', ') : 'none'}`,
+    '',
+    'Key findings:',
+    ...keyFindings.map((f) => `- ${f}`),
+  ].join('\n')
+
+  return [first, { role: 'user', content: summary }, ...recent]
+}
+
+// ── Synthesis ────────────────────────────────────────────────────────────
+
+interface SynthesisResult {
+  brief: IncidentBrief
+  promptTokens: number
+  completionTokens: number
+  usedFallback: boolean
+}
+
+async function synthesizeBrief(investigationMessages: CoreMessage[], fallbackText: string): Promise<SynthesisResult> {
   let lastError: unknown = null
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const { object: brief, usage } = await generateObject({
-        model: createModel(),
-        schema: BriefSchema,
-        system: SYNTHESIS_PROMPT,
-        messages: investigationMessages,
-      })
-      return { brief, usage: usage ?? null, usedFallback: false }
+      const { object: brief, usage } = await withRetry(() =>
+        generateObject({
+          model: createModel(),
+          schema: BriefSchema,
+          system: SYNTHESIS_PROMPT,
+          messages: investigationMessages,
+        }),
+      )
+      return {
+        brief,
+        promptTokens: usage?.promptTokens ?? 0,
+        completionTokens: usage?.completionTokens ?? 0,
+        usedFallback: false,
+      }
     } catch (err) {
       lastError = err
       console.error(`Synthesis attempt ${attempt} failed:`, err)
     }
   }
+
   console.error('Synthesis failed twice — using fallback brief. Last error:', lastError)
-  const fallback: IncidentBrief = {
-    failureType: 'unknown',
-    summary: 'Synthesis failed — raw investigation available',
-    rootCause: fallbackText.trim().slice(0, 500) || 'Agent produced no text output',
-    suggestedFix: 'Review investigation trace in tool calls',
-    confidence: 0.2,
-    similarIncidentId: null,
+  return {
+    brief: {
+      failureType: 'unknown',
+      summary: 'Synthesis failed — raw investigation available',
+      rootCause: fallbackText.trim().slice(0, 500) || 'Agent produced no text output',
+      suggestedFix: 'Review investigation trace in tool calls',
+      confidence: 0.2,
+      similarIncidentId: null,
+    },
+    promptTokens: 0,
+    completionTokens: 0,
+    usedFallback: true,
   }
-  return { brief: fallback, usage: null, usedFallback: true }
 }
+
+// ── Main agent runner ────────────────────────────────────────────────────
 
 function formatIncidentContext(incident: IncidentRow): string {
   const [owner, repo] = incident.repo.split('/')
@@ -93,58 +227,59 @@ function formatIncidentContext(incident: IncidentRow): string {
 }
 
 export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
-  let stepNumber = 0
+  const budget = createBudgetTracker()
   const modelId = config.llm.model
-  let totalInputTokens = 0
-  let totalOutputTokens = 0
-  const tokenBudget = config.llm.max_tokens_per_incident
+  const compactThreshold = config.llm.compact_threshold
+  let stepNumber = 0
   const incidentContext = formatIncidentContext(incident)
 
   try {
-    // Phase A: Investigation — generateText with tools
-    const result = await generateText({
-      model: createModel(),
-      system: AGENT_SYSTEM_PROMPT,
-      prompt: incidentContext,
-      tools: {
-        get_workflow_logs: githubActionsTool,
-        get_commit_changes: getCommitChangesTool,
-        get_file_content: getFileContentTool,
-        get_pull_request: getPullRequestTool,
-        get_issue: getIssueTool,
-        search_code: searchCodeTool,
-      },
-      maxSteps: 6,
-      onStepFinish: async ({ toolCalls: calls, toolResults: results, usage }) => {
-        // Accumulate per-step token usage and check budget
-        if (usage) {
-          totalInputTokens += usage.promptTokens ?? 0
-          totalOutputTokens += usage.completionTokens ?? 0
-          if (totalInputTokens + totalOutputTokens > tokenBudget) {
-            throw new TokenBudgetExceeded(totalInputTokens + totalOutputTokens, tokenBudget)
+    // Phase A: Investigation — tool-use loop with dual budget enforcement
+    const result = await withRetry(() =>
+      generateText({
+        model: createModel(),
+        system: AGENT_SYSTEM_PROMPT,
+        prompt: incidentContext,
+        tools: {
+          get_workflow_logs: githubActionsTool,
+          get_commit_changes: getCommitChangesTool,
+          get_file_content: getFileContentTool,
+          get_pull_request: getPullRequestTool,
+          get_issue: getIssueTool,
+          search_code: searchCodeTool,
+        },
+        maxSteps: budget.stepBudget,
+        onStepFinish: async ({ toolCalls: calls, toolResults: results, usage }) => {
+          // Track token budget
+          if (usage) {
+            recordUsage(budget, usage.promptTokens ?? 0, usage.completionTokens ?? 0)
+            checkBudget(budget)
           }
-        }
-        if (!calls || calls.length === 0) return
-        stepNumber++
-        try {
-          for (let i = 0; i < calls.length; i++) {
-            const call = calls[i]
-            await db.insert(toolCalls).values({
-              id: crypto.randomUUID(),
-              incidentId: incident.id,
-              integration: call.toolName,
-              round: stepNumber,
-              durationMs: null,
-              resultJson: results?.[i] ? JSON.stringify(results[i].result) : null,
-            })
-          }
-        } catch (err) {
-          console.error(`Failed to log tool call for ${incident.id}:`, err)
-        }
-      },
-    })
 
-    // Build conversation history for synthesis — include both tool calls and results
+          budget.stepCount++
+          if (!calls || calls.length === 0) return
+
+          stepNumber++
+          try {
+            for (let i = 0; i < calls.length; i++) {
+              const call = calls[i]
+              await db.insert(toolCalls).values({
+                id: crypto.randomUUID(),
+                incidentId: incident.id,
+                integration: call.toolName,
+                round: stepNumber,
+                durationMs: null,
+                resultJson: results?.[i] ? JSON.stringify(results[i].result) : null,
+              })
+            }
+          } catch (err) {
+            console.error(`Failed to log tool call for ${incident.id}:`, err)
+          }
+        },
+      }),
+    )
+
+    // Build investigation messages for synthesis
     const investigationMessages: CoreMessage[] = [{ role: 'user', content: incidentContext }]
 
     for (const step of result.steps) {
@@ -166,7 +301,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       investigationMessages.push({ role: 'assistant', content: result.text })
     }
 
-    // Pattern memory: find similar past incidents to inform synthesis
+    // Pattern memory: find similar past incidents
     try {
       const incidentText = formatIncidentContext(incident) + '\n' + (result.text ?? '')
       const matches = await findSimilarPatterns(incidentText, incident.orgId)
@@ -191,64 +326,51 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       console.error(`Pattern lookup failed for ${incident.id}:`, err)
     }
 
-    // Context compaction: if investigation history is too long, keep first message,
-    // last 5 messages, and a summary of the rest
-    if (investigationMessages.length > MAX_INVESTIGATION_MESSAGES) {
-      const first = investigationMessages[0]
-      const last5 = investigationMessages.slice(-5)
-      const middle = investigationMessages.slice(1, -5)
-      const middleSummary = middle.map((m) => (typeof m.content === 'string' ? m.content.slice(0, 200) : '')).join('\n')
+    // Context compaction: compact if estimated tokens exceed threshold
+    const estimatedTokenCount = estimateTokens(investigationMessages)
+    if (estimatedTokenCount > compactThreshold) {
+      const before = investigationMessages.length
+      const compacted = compactMessages(investigationMessages)
       investigationMessages.length = 0
-      investigationMessages.push(first)
-      investigationMessages.push({
-        role: 'user',
-        content: `[Investigation summary — ${middle.length} earlier steps compacted]\n${middleSummary}`,
-      })
-      investigationMessages.push(...last5)
+      investigationMessages.push(...compacted)
       console.log(
-        `Incident ${incident.id}: compacted investigation from ${middle.length + 6} to ${investigationMessages.length} messages`,
+        `Incident ${incident.id}: compacted ${before} → ${investigationMessages.length} messages (~${estimatedTokenCount} tokens)`,
       )
     }
 
-    // Phase B: Synthesis — generateObject for structured brief, with retry + fallback
-    const {
-      brief,
-      usage: synthesisUsage,
-      usedFallback,
-    } = await synthesizeBriefWithRetry(investigationMessages, result.text ?? '')
+    // Phase B: Synthesis — structured brief with retry + fallback
+    const synthesis = await synthesizeBrief(investigationMessages, result.text ?? '')
+    recordUsage(budget, synthesis.promptTokens, synthesis.completionTokens)
 
-    // Accumulate Phase B token usage (fallback path has no usage)
-    if (synthesisUsage) {
-      totalInputTokens += synthesisUsage.promptTokens ?? 0
-      totalOutputTokens += synthesisUsage.completionTokens ?? 0
-    }
-
-    // Budget check after Phase B — skip patch generation if over budget
-    if (totalInputTokens + totalOutputTokens > tokenBudget) {
-      throw new TokenBudgetExceeded(totalInputTokens + totalOutputTokens, tokenBudget)
+    // Budget check after synthesis — skip patch generation if over budget
+    if (totalTokens(budget) > budget.tokenBudget) {
+      throw new TokenBudgetExceeded(totalTokens(budget), budget.tokenBudget)
     }
 
     // Phase C: Patch generation (only for actionable, high-confidence failures)
-    const { generated: hasPatches, patchJson, usage: patchUsage } = await generatePatches(brief, investigationMessages)
+    const {
+      generated: hasPatches,
+      patchJson,
+      usage: patchUsage,
+    } = await generatePatches(synthesis.brief, investigationMessages)
 
     if (patchUsage) {
-      totalInputTokens += patchUsage.promptTokens ?? 0
-      totalOutputTokens += patchUsage.completionTokens ?? 0
+      recordUsage(budget, patchUsage.promptTokens ?? 0, patchUsage.completionTokens ?? 0)
     }
 
-    const estimatedCost = estimateCostUsd(modelId, totalInputTokens, totalOutputTokens)
+    const estimatedCost = estimateCostUsd(modelId, budget.inputTokens, budget.outputTokens)
 
-    // Persist results + token usage + patches (clear stale patchJson when none generated)
+    // Persist results
     await db
       .update(incidents)
       .set({
-        briefJson: JSON.stringify(brief),
-        rootCause: brief.rootCause,
-        suggestedFix: brief.suggestedFix,
-        confidence: brief.confidence,
+        briefJson: JSON.stringify(synthesis.brief),
+        rootCause: synthesis.brief.rootCause,
+        suggestedFix: synthesis.brief.suggestedFix,
+        confidence: synthesis.brief.confidence,
         status: 'brief_ready',
-        tokenInputs: totalInputTokens,
-        tokenOutputs: totalOutputTokens,
+        tokenInputs: budget.inputTokens,
+        tokenOutputs: budget.outputTokens,
         estimatedCostUsd: estimatedCost,
         patchJson: hasPatches ? patchJson : null,
       })
@@ -257,9 +379,9 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     await publishFinalGithubTriage(
       {
         ...incident,
-        rootCause: brief.rootCause,
-        suggestedFix: brief.suggestedFix,
-        confidence: brief.confidence,
+        rootCause: synthesis.brief.rootCause,
+        suggestedFix: synthesis.brief.suggestedFix,
+        confidence: synthesis.brief.confidence,
       },
       'brief_ready',
     )
@@ -272,7 +394,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       data: { status: 'brief_ready' },
     })
 
-    await updateSlackWithBrief(incident.id, brief)
+    await updateSlackWithBrief(incident.id, synthesis.brief)
 
     // Post tool trace as thread reply
     const traceLines = result.steps.flatMap((step) =>
@@ -283,9 +405,9 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     }
 
     console.log(
-      `Incident ${incident.id}: ${brief.failureType} (${Math.round(brief.confidence * 100)}%)` +
-        `${usedFallback ? ' [fallback brief]' : ''} — ` +
-        `${totalInputTokens + totalOutputTokens} tokens, ~$${estimatedCost.toFixed(4)}`,
+      `Incident ${incident.id}: ${synthesis.brief.failureType} (${Math.round(synthesis.brief.confidence * 100)}%)` +
+        `${synthesis.usedFallback ? ' [fallback brief]' : ''} — ` +
+        `${budget.stepCount} steps, ${totalTokens(budget)} tokens, ~$${estimatedCost.toFixed(4)}`,
     )
   } catch (error) {
     const isBudgetExceeded = error instanceof TokenBudgetExceeded
@@ -295,16 +417,16 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
     console.error(`Agent ${isBudgetExceeded ? 'hit token budget' : 'failed'} for ${incident.id}:`, error)
 
-    const errorCost = totalInputTokens > 0 ? estimateCostUsd(modelId, totalInputTokens, totalOutputTokens) : null
+    const errorCost = budget.inputTokens > 0 ? estimateCostUsd(modelId, budget.inputTokens, budget.outputTokens) : null
 
     await db
       .update(incidents)
       .set({
         status: 'error',
         rootCause: errorRootCause,
-        ...(totalInputTokens > 0 && {
-          tokenInputs: totalInputTokens,
-          tokenOutputs: totalOutputTokens,
+        ...(budget.inputTokens > 0 && {
+          tokenInputs: budget.inputTokens,
+          tokenOutputs: budget.outputTokens,
           estimatedCostUsd: errorCost,
         }),
       })
