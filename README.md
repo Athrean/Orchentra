@@ -2,11 +2,13 @@
 
 <img src="apps/web/public/green-logo.png" alt="Orchentra" width="480">
 
-### Your CI/CD pipeline, operated by AI.
+### Stop configuring dashboards. Start shipping.
 
-When a GitHub Actions workflow fails, Orchentra investigates the failure, writes a root-cause brief, posts it to GitHub & Slack, and opens a fix PR — all before you finish reading the alert.
+You're a startup. You don't have an SRE team. You sure as hell don't have time to configure Prometheus alerts, build Grafana dashboards, and wire up PagerDuty — just to find out your CI broke because someone forgot a semicolon.
 
-[**Getting Started**](#-getting-started) · [**How It Works**](#-how-it-works) · [**Features**](#-features) · [**Self-Hosting**](#-self-hosting) · [**Tech Stack**](#-tech-stack)
+**Orchentra is AI-native observability.** No dashboards. No alert rules. When something breaks, an AI agent investigates, explains what happened, and opens a fix PR. You review and approve. That's it.
+
+[**Getting Started**](#getting-started) · [**How It Works**](#how-it-works) · [**What It Replaces**](#what-it-replaces) · [**Features**](#features) · [**Self-Hosting**](#self-hosting)
 
 </div>
 
@@ -14,60 +16,82 @@ When a GitHub Actions workflow fails, Orchentra investigates the failure, writes
 
 ## The Problem
 
-CI failures waste hours of engineering time on triage: reading logs, checking diffs, correlating commits, guessing root causes. Most failures are repetitive — the same patterns, the same fixes.
+Your CI breaks at 2 AM. Here's what "industry standard" observability looks like:
 
-**Orchentra automates the entire triage loop.** An AI agent investigates every failure with the same tools a human would use, learns from past resolutions, and can propose real code fixes.
+```
+Prometheus  →  "CPU above 80%"       (cool, which service? why?)
+Grafana     →  stare at graphs       (is that spike normal?)
+PagerDuty   →  WAKE UP               (you're already awake now)
+You         →  ssh in, read logs     (for 45 minutes)
+```
+
+Three tools, zero answers, one tired engineer. Startups don't have time for this.
+
+**Orchentra does what a senior on-call engineer would do** — read the logs, check the diff, find the root cause, write the fix — except it takes 60 seconds instead of 45 minutes.
 
 ## How It Works
 
 ```
-GitHub Actions fails
-        │
-        ▼
-  Webhook received  ──►  Signature verified  ──►  Incident created
-        │
-        ▼
-  AI Agent investigates
-   ├── Fetch failed job logs
-   ├── Inspect commit changes
-   ├── Read relevant file contents
-   ├── Check related PRs & issues
-   ├── Search code for patterns
+Something breaks
+       │
+       ▼
+  Orchentra catches it          (webhook, alert, whatever you plug in)
+       │
+       ▼
+  AI agent investigates
+   ├── Pulls the failed job logs
+   ├── Checks what changed (commits, configs, deps)
+   ├── Reads the relevant source files
+   ├── Correlates with past incidents & known patterns
+   ├── Searches the codebase for related issues
    │
    ▼
-  Structured brief synthesized
-   ├── Failure type & confidence score
-   ├── Root cause summary
-   ├── Suggested fix
+  You get a brief — not an alert
+   ├── What broke (with evidence)
+   ├── Why it broke (root cause, confidence score)
+   ├── How to fix it (suggested patch)
    │
    ▼
-  Triage written back
-   ├── GitHub check run / status
-   ├── PR comment with full brief
-   ├── Slack notification
-   │
-   ▼
-  Fix PR created (high-confidence)
-        │
-        ▼
-  Auto-resolve loop watches CI pass
+  One-click fix PR              (for high-confidence failures)
+       │
+       ▼
+  Auto-resolves when CI passes  (you didn't even have to think)
 ```
+
+## What It Replaces
+
+| Instead of this                         | Orchentra does this                                  |
+| --------------------------------------- | ---------------------------------------------------- |
+| Prometheus alert rules you never get to | AI detects failures from webhooks automatically      |
+| Grafana dashboards nobody reads         | Root-cause briefs that tell you _what broke and why_ |
+| PagerDuty pages at 3 AM                 | Slack messages with the answer already written       |
+| Manual log diving for 45 minutes        | Agent investigates in 60 seconds                     |
+| Copy-pasting stack traces into Google   | Pattern memory from past incidents across your org   |
+| Writing a fix PR yourself               | Auto-generated patch PRs you just review and approve |
 
 ## Features
 
-- **End-to-end incident triage** — from webhook to root-cause brief in under 60 seconds
-- **6 investigation tools** — workflow logs, commit diffs, file contents, PR/issues, code search, pattern memory
-- **Pattern learning** — remembers resolved incidents and applies past solutions to similar failures
-- **Code patch generation** — creates real fix PRs with file diffs (not metadata-only commits)
-- **Auto-resolve loop** — watches CI after a fix PR and closes the incident when tests pass
-- **GitHub-native output** — check runs, commit statuses, and PR comments
-- **Slack integration** — briefs, thread replies, and state updates via Block Kit
-- **Real-time dashboard** — WebSocket-powered incident view with live agent steps
-- **Multi-tenant** — org-scoped access, role-based permissions, per-org configuration
-- **MTTR tracking** — measures mean time to resolution per org
-- **Token cost estimation** — per-incident LLM spend tracking
-- **Idempotent webhooks** — two-tier dedup (in-memory + DB unique index) with replay support
-- **Async job queue** — Postgres-backed with retry, exponential backoff, and dead-letter handling
+**Investigation**
+
+- 6 AI investigation tools — workflow logs, commit diffs, file contents, PR/issues, code search, pattern memory
+- Pattern learning — remembers resolved incidents and applies past solutions to similar failures
+- Structured briefs — failure type, root cause, confidence score, suggested fix
+
+**Remediation**
+
+- Code patch generation — creates real fix PRs with file diffs, not metadata-only commits
+- Auto-resolve loop — watches CI after a fix PR and closes the incident when tests pass
+- GitHub-native output — check runs, commit statuses, and PR comments
+- Slack integration — briefs, thread replies, and state updates via Block Kit
+
+**Platform**
+
+- Real-time dashboard — WebSocket-powered incident view with live agent steps
+- Multi-tenant — org-scoped access, role-based permissions, per-org configuration
+- MTTR tracking — measures mean time to resolution per org
+- Token cost estimation — per-incident LLM spend tracking
+- Idempotent webhooks — two-tier dedup (in-memory + DB unique index) with replay support
+- Async job queue — Postgres-backed with retry, exponential backoff, and dead-letter handling
 
 ## Tech Stack
 
@@ -77,7 +101,7 @@ GitHub Actions fails
 | Backend  | [Hono](https://hono.dev)                                                     |
 | Frontend | [Next.js](https://nextjs.org) 15 (App Router)                                |
 | Database | PostgreSQL 17 + [Drizzle ORM](https://orm.drizzle.team)                      |
-| LLM      | [Vercel AI SDK](https://sdk.vercel.ai) + [OpenRouter](https://openrouter.ai) |
+| AI       | [Vercel AI SDK](https://sdk.vercel.ai) + [OpenRouter](https://openrouter.ai) |
 | GitHub   | [Octokit](https://octokit.github.io/rest.js)                                 |
 | Styling  | [Tailwind CSS](https://tailwindcss.com) 4 + Framer Motion                    |
 | Monorepo | Bun workspaces + [Turborepo](https://turbo.build)                            |
@@ -191,10 +215,6 @@ bun run lint         # Lint all packages
 bun run test         # Run server tests
 bun run format       # Format with Prettier
 ```
-
-## License
-
-This project is private and proprietary. See the repository for license details.
 
 ---
 
