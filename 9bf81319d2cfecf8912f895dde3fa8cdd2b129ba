@@ -1,0 +1,36 @@
+README.md
+  dc195e270beb9829 1-74,76-111,114,118,121-122,125-127,131-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "9bf81319d2cfecf8912f895dde3fa8cdd2b129ba",
+  "prompts": {
+    "a2d76ef7221de50e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "851c2aa9-b5d0-460c-a4fd-ba564a749157",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1252,
+      "total_deletions": 0,
+      "accepted_lines": 1252,
+      "overriden_lines": 0
+    },
+    "dc195e270beb9829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66153d16-0999-4d94-8263-cd3de560b101",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 209,
+      "total_deletions": 4,
+      "accepted_lines": 192,
+      "overriden_lines": 13
+    }
+  }
+}
