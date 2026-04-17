@@ -297,8 +297,6 @@ export async function publishFinalGithubTriage(
     console.error(`Failed to publish final commit status for incident ${incident.id}:`, error)
   }
 
-  if (!config.delivery.github_comments) return
-
   try {
     await upsertPullRequestComments(incident, status)
   } catch (error) {

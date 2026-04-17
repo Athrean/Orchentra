@@ -17,13 +17,8 @@ orchentra.yml
 .vscode/
 .idea/
 
-# Internal docs (vision, execution, findings — all in one file)
-docs/INTERNAL.md
-docs/superpowers/
-docs/testing/
-VISION.md
-orchentra-mvp-plan.md
-STREAMLINE_EXECUTION.md
+# Internal docs (git-ignored, local only)
+docs/engineering/
 
 # Local agent/IDE plugin folders (not part of the product repo)
 .claude-plugins/
@@ -33,4 +28,5 @@ CLAUDE.md
 
 # Claude Code local settings (may contain secrets)
 .claude/settings.json
-.claude
+.claude.env
+.mcp.json

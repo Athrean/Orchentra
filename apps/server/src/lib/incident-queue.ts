@@ -1,7 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 import { db, incidentJobs, incidents } from '../db/client'
 import { runIncidentAgent } from '../agent/runner'
-import { postInitialSlackMessage } from '../slack/message'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -98,11 +97,6 @@ export async function processIncidentJob(job: typeof incidentJobs.$inferSelect):
   if (!incident) {
     await markJobFailed(job.id, new Error('Incident not found'), job.attempts, job.maxAttempts)
     return
-  }
-
-  // Only post Slack message if not already sent (idempotent on retry)
-  if (!incident.slackMessageTs) {
-    await postInitialSlackMessage(incident)
   }
 
   await runIncidentAgent(incident)

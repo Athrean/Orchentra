@@ -8,7 +8,6 @@ import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
 import { githubActionsTool } from './tools/github-actions'
 import { getCommitChangesTool, getFileContentTool } from './tools/github-repo'
 import { getPullRequestTool, getIssueTool, searchCodeTool } from './tools/github-issues'
-import { updateSlackWithBrief, postThreadReply } from '../slack/message'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
 import { incidentEvents } from '../events'
 import { config } from '../config'
@@ -424,16 +423,6 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       repo: incident.repo,
       data: { status: 'brief_ready' },
     })
-
-    await updateSlackWithBrief(incident.id, synthesis.brief)
-
-    // Post tool trace as thread reply
-    const traceLines = result.steps.flatMap((step) =>
-      (step.toolCalls ?? []).map((call) => `\`${call.toolName}\`(${JSON.stringify(call.args)})`),
-    )
-    if (traceLines.length > 0) {
-      await postThreadReply(incident.id, `*Investigation trace:*\n${traceLines.join('\n')}`)
-    }
 
     console.log(
       `Incident ${incident.id}: ${synthesis.brief.failureType} (${Math.round(synthesis.brief.confidence * 100)}%)` +
