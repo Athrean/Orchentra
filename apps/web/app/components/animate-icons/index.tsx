@@ -1,6 +1,0 @@
-export { LayersIcon } from './layers'
-export { ShieldIcon } from './shield'
-export { SparklesIcon } from './sparkles'
-export { PlayIcon } from './play'
-export { TerminalIcon } from './terminal'
-export { BookIcon } from './book'
