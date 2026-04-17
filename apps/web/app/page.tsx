@@ -6,6 +6,7 @@ export default async function Page(): Promise<React.ReactNode> {
   const cookieStore = await cookies()
   const session = cookieStore.get('orchentra_session')
 
+  let authed = false
   if (session?.value) {
     const apiBase = getApiBase()
     try {
@@ -15,12 +16,13 @@ export default async function Page(): Promise<React.ReactNode> {
       })
       if (res.ok) {
         const data = (await res.json()) as { org?: { id?: string } }
-        if (data.org?.id) redirect('/onboarding')
+        authed = Boolean(data.org?.id)
       }
     } catch {
       // Network error — fall through to login
     }
   }
+  if (authed) redirect('/onboarding')
 
   const loginUrl = getLoginUrl()
 
