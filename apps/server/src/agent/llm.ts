@@ -26,6 +26,18 @@ export function createModel(modelOverride?: string): LanguageModelV1 {
   return provider(modelId)
 }
 
+/** Check if the configured model routes to Anthropic (for prompt caching support). */
+export function isAnthropicModel(): boolean {
+  const modelId = config.llm.model
+  return modelId.startsWith('anthropic/') || modelId.startsWith('claude-')
+}
+
+/** Provider options for Anthropic prompt caching (5-min ephemeral TTL).
+ *  Attach to a system message via `providerOptions: ANTHROPIC_CACHE_OPTIONS`. */
+export const ANTHROPIC_CACHE_OPTIONS = {
+  anthropic: { cacheControl: { type: 'ephemeral' as const } },
+}
+
 /**
  * Creates an embedding model via OpenAI-compatible endpoint.
  *

@@ -2,7 +2,7 @@ import { generateText, generateObject, type CoreMessage } from 'ai'
 import { eq } from 'drizzle-orm'
 import { BriefSchema, type IncidentBrief } from '@orchentra/core'
 import { db, incidents, toolCalls } from '../db/client'
-import { createModel } from './llm'
+import { createModel, isAnthropicModel, ANTHROPIC_CACHE_OPTIONS } from './llm'
 import { estimateCostUsd } from './token-cost'
 import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
 import { githubActionsTool } from './tools/github-actions'
@@ -168,6 +168,7 @@ interface SynthesisResult {
 }
 
 async function synthesizeBrief(investigationMessages: CoreMessage[], fallbackText: string): Promise<SynthesisResult> {
+  const useCache = isAnthropicModel()
   let lastError: unknown = null
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -175,8 +176,21 @@ async function synthesizeBrief(investigationMessages: CoreMessage[], fallbackTex
         generateObject({
           model: createModel(),
           schema: BriefSchema,
-          system: SYNTHESIS_PROMPT,
-          messages: investigationMessages,
+          ...(useCache
+            ? {
+                messages: [
+                  {
+                    role: 'system' as const,
+                    content: SYNTHESIS_PROMPT,
+                    providerOptions: ANTHROPIC_CACHE_OPTIONS,
+                  },
+                  ...investigationMessages,
+                ],
+              }
+            : {
+                system: SYNTHESIS_PROMPT,
+                messages: investigationMessages,
+              }),
         }),
       )
       return {
@@ -233,13 +247,30 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
   let stepNumber = 0
   const incidentContext = formatIncidentContext(incident)
 
+  const useCache = isAnthropicModel()
+
   try {
-    // Phase A: Investigation — tool-use loop with dual budget enforcement
+    // Phase A: Investigation — tool-use loop with dual budget enforcement.
+    // When using Anthropic, mark the system prompt for caching (5-min ephemeral TTL)
+    // via providerOptions on the system message — cache control must be per-message.
     const result = await withRetry(() =>
       generateText({
         model: createModel(),
-        system: AGENT_SYSTEM_PROMPT,
-        prompt: incidentContext,
+        ...(useCache
+          ? {
+              messages: [
+                {
+                  role: 'system' as const,
+                  content: AGENT_SYSTEM_PROMPT,
+                  providerOptions: ANTHROPIC_CACHE_OPTIONS,
+                },
+                { role: 'user' as const, content: incidentContext },
+              ],
+            }
+          : {
+              system: AGENT_SYSTEM_PROMPT,
+              prompt: incidentContext,
+            }),
         tools: {
           get_workflow_logs: githubActionsTool,
           get_commit_changes: getCommitChangesTool,
