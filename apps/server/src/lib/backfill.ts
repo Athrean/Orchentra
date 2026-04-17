@@ -38,22 +38,9 @@ export async function withConcurrency<T>(tasks: Array<() => Promise<T>>, limit: 
   return results
 }
 
-function conclusionToStatus(conclusion: string | null): string {
-  switch (conclusion) {
-    case 'success':
-      return 'resolved'
-    case 'failure':
-    case 'timed_out':
-      return 'error'
-    case 'cancelled':
-    case 'skipped':
-    case 'stale':
-      return 'dismissed'
-    case 'neutral':
-      return 'resolved'
-    default:
-      return 'error'
-  }
+/** Only failure-class conclusions produce incidents. */
+function isFailureConclusion(conclusion: string | null): boolean {
+  return conclusion === 'failure' || conclusion === 'timed_out'
 }
 
 function getErrorMessage(err: unknown): string {
@@ -158,10 +145,13 @@ export async function backfillRepoIncidents(
     return
   }
 
+  // Only ingest failure-class runs — success/cancelled/skipped are not incidents
+  const failureRuns = runs.filter((run) => isFailureConclusion(run.conclusion))
+
   let inserted = 0
-  if (runs.length > 0) {
+  if (failureRuns.length > 0) {
     try {
-      const values = runs.map((run) => ({
+      const values = failureRuns.map((run) => ({
         id: crypto.randomUUID(),
         orgId,
         repo,
@@ -170,7 +160,7 @@ export async function backfillRepoIncidents(
         workflowName: run.name ?? 'Unknown Workflow',
         commitMessage: run.head_commit?.message?.split('\n')[0] ?? null,
         workflowRunId: run.id,
-        status: conclusionToStatus(run.conclusion),
+        status: 'error' as const,
         triggeredAt: new Date(run.created_at),
       }))
 
@@ -185,7 +175,9 @@ export async function backfillRepoIncidents(
     }
   }
 
-  console.log(`Backfill [${tokenSource}]: ${repo} — ${runs.length} runs fetched, ${inserted} new (since ${since})`)
+  console.log(
+    `Backfill [${tokenSource}]: ${repo} — ${runs.length} runs fetched, ${failureRuns.length} failures, ${inserted} new (since ${since})`,
+  )
 
   // Notify connected clients so they refetch the incidents list
   if (inserted > 0) {
