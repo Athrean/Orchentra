@@ -9,8 +9,6 @@ import { backfillRepoIncidents, withConcurrency } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
 import { authRouter } from './routes/auth'
 import { webhooksRouter } from './routes/webhooks'
-import { interactionsRouter } from './routes/interactions'
-import { commandsRouter } from './routes/commands'
 import { apiRouter } from './routes/api'
 import { incidentsRouter } from './routes/incidents'
 import { apiKeysRouter } from './routes/api-keys'
@@ -122,8 +120,6 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 // Public routes
 app.route('/auth', authRouter)
 app.route('/webhooks', webhooksRouter)
-app.route('/slack/interactions', interactionsRouter)
-app.route('/slack/commands', commandsRouter)
 
 // All /api/* routes require authentication
 app.use('/api/*', requireAuth)

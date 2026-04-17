@@ -41,15 +41,6 @@ export const ConfigSchema = z.object({
         .optional(),
     })
     .optional(),
-  delivery: z.object({
-    slack: z.object({
-      bot_token: z.string().min(1, 'delivery.slack.bot_token cannot be empty'),
-      signing_secret: z.string().min(1, 'delivery.slack.signing_secret cannot be empty'),
-      channel: z.string().min(1, 'delivery.slack.channel cannot be empty'),
-      app_token: z.string().min(1).optional(),
-    }),
-    github_comments: z.boolean().default(false),
-  }),
 })
 
 export type Config = z.infer<typeof ConfigSchema>

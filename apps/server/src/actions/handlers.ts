@@ -1,12 +1,11 @@
 import { eq } from 'drizzle-orm'
 import { Octokit } from '@octokit/rest'
-import { config } from '../config'
 import { db, incidents, incidentActions } from '../db/client'
+import { config } from '../config'
 import { incidentEvents } from '../events'
-import { postThreadReply, updateSlackToFixing, updateSlackToResolved } from '../slack/message'
 import { saveResolvedPattern } from '../agent/patterns'
 import { findIncidentByPrUrl, findFixingIncidentForRepoBranch } from '../queries/incidents'
-import { PatchSetSchema, type IncidentBrief, type FilePatch } from '@orchentra/core'
+import { PatchSetSchema, type FilePatch } from '@orchentra/core'
 
 const octokit = new Octokit({ auth: config.github.token })
 
@@ -20,15 +19,6 @@ export interface ActionResult {
 function parseRepo(repo: string): { owner: string; name: string } {
   const [owner, name] = repo.split('/')
   return { owner, name }
-}
-
-function parseBrief(briefJson: string | null): IncidentBrief | null {
-  if (!briefJson) return null
-  try {
-    return JSON.parse(briefJson) as IncidentBrief
-  } catch {
-    return null
-  }
 }
 
 async function recordAction(
@@ -79,12 +69,6 @@ export async function rerunWorkflow(incidentId: string, performedBy: string | nu
 
   await db.update(incidents).set({ status: 'fixing' }).where(eq(incidents.id, incidentId))
   await recordAction(incidentId, 'rerun', performedBy, { runUrl })
-  await postThreadReply(incidentId, `Workflow re-run triggered${performedBy ? ` by user` : ''}`)
-
-  const brief = parseBrief(incident.briefJson)
-  if (brief) {
-    await updateSlackToFixing(incidentId, brief, 'Workflow re-run started', performedBy)
-  }
 
   incidentEvents.emitIncidentEvent({
     type: 'incident:status_changed',
@@ -160,7 +144,6 @@ export async function createGithubIssue(incidentId: string, performedBy: string 
 
     await db.update(incidents).set({ githubIssueUrl: issueUrl }).where(eq(incidents.id, incidentId))
     await recordAction(incidentId, 'create_issue', performedBy, { issueUrl, issueNumber: issue.number })
-    await postThreadReply(incidentId, `GitHub issue created: #${issue.number}`)
 
     incidentEvents.emitIncidentEvent({
       type: 'incident:updated',
@@ -345,12 +328,6 @@ export async function createFixPR(incidentId: string, performedBy: string | null
 
     await db.update(incidents).set({ githubPrUrl: prUrl, status: 'fixing' }).where(eq(incidents.id, incidentId))
     await recordAction(incidentId, 'create_pr', performedBy, { prUrl, prNumber: pr.number })
-    await postThreadReply(incidentId, `Fix PR created: #${pr.number}`)
-
-    const parsedBrief = parseBrief(incident.briefJson)
-    if (parsedBrief) {
-      await updateSlackToFixing(incidentId, parsedBrief, `PR #${pr.number} created`, performedBy)
-    }
 
     incidentEvents.emitIncidentEvent({
       type: 'incident:status_changed',
@@ -404,20 +381,7 @@ export async function updateIncidentStatus(
     snoozedUntil: snoozedUntil?.toISOString(),
   })
 
-  const actionLabel =
-    status === 'dismissed'
-      ? 'Incident dismissed'
-      : status === 'snoozed'
-        ? `Incident snoozed until ${snoozedUntil?.toISOString()}`
-        : status === 'resolved'
-          ? 'Incident resolved'
-          : `Status changed to ${status}`
-
-  await postThreadReply(incidentId, actionLabel)
-
   if (status === 'resolved') {
-    const mttr = typeof updates.mttrSeconds === 'number' ? updates.mttrSeconds : null
-    await updateSlackToResolved(incidentId, 'Manually resolved', mttr)
     saveResolvedPattern(incidentId).catch((err) =>
       console.error(`Failed to save resolved pattern for ${incidentId}:`, err),
     )
@@ -446,31 +410,8 @@ export async function escalateIncident(incidentId: string, performedBy: string |
     return { success: false, error: 'Incident is already escalated' }
   }
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
-  const dashboardLink = `${frontendUrl}/dashboard/${encodeURIComponent(incident.repo)}?incident=${incidentId}`
-
-  // Post escalation message to Slack
-  const { slack } = await import('../slack/client')
-  try {
-    await slack.chat.postMessage({
-      channel: config.delivery.slack.channel,
-      text: [
-        `:rotating_light: *ESCALATED* — ${incident.repo}`,
-        `*Workflow:* ${incident.workflowName} on \`${incident.branch}\``,
-        incident.rootCause ? `*Root cause:* ${incident.rootCause}` : '',
-        '',
-        `<${dashboardLink}|View in Dashboard>`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    })
-  } catch (err) {
-    console.error(`Failed to post escalation message for ${incidentId}:`, err)
-  }
-
   await db.update(incidents).set({ status: 'escalated', escalatedAt: new Date() }).where(eq(incidents.id, incidentId))
   await recordAction(incidentId, 'escalate', performedBy)
-  await postThreadReply(incidentId, ':rotating_light: Incident escalated — team notified')
 
   incidentEvents.emitIncidentEvent({
     type: 'incident:status_changed',
@@ -492,7 +433,6 @@ export async function handleFixPRMerged(prUrl: string, prNumber: number, orgId: 
   if (!incident) return
 
   await recordAction(incident.id, 'pr_merged', null, { prUrl, prNumber })
-  await postThreadReply(incident.id, `Fix PR #${prNumber} merged — waiting for CI to confirm the fix`)
 
   console.log(`Incident ${incident.id}: fix PR #${prNumber} merged, awaiting CI confirmation`)
 }
@@ -522,12 +462,6 @@ export async function autoResolveAfterCIPass(
 
   await db.update(incidents).set(updates).where(eq(incidents.id, incident.id))
   await recordAction(incident.id, 'auto_resolved', null, { triggeredByRunId: runId })
-  await postThreadReply(incident.id, `CI passed after fix — incident auto-resolved`)
-
-  const brief = parseBrief(incident.briefJson)
-  if (brief) {
-    await updateSlackToResolved(incident.id, 'CI passed after fix PR merge', mttrSeconds)
-  }
 
   saveResolvedPattern(incident.id).catch((err) =>
     console.error(`Failed to save pattern for auto-resolved incident ${incident.id}:`, err),

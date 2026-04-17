@@ -24,10 +24,3 @@ integrations:
   # datadog:
   #   api_key: "xxx"
   #   app_key: "xxx"
-
-delivery:
-  slack:
-    bot_token: "xoxb-xxx"
-    signing_secret: "xxx"
-    channel: "#incidents"
-  github_comments: false
