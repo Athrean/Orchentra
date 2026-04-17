@@ -1,0 +1,26 @@
+{
+  "name": "@orchentra/cli",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "orchentra": "./src/main.ts"
+  },
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "build": "bun build src/main.ts --outdir dist --target bun",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@orchentra/cli-api": "workspace:*",
+    "@orchentra/cli-core": "workspace:*",
+    "@orchentra/cli-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@orchentra/eslint-config": "workspace:*",
+    "@orchentra/typescript-config": "workspace:*",
+    "@types/bun": "latest",
+    "eslint": "^8.57.0",
+    "typescript": "^5.9.3"
+  }
+}
