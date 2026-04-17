@@ -22,6 +22,8 @@ export const ConfigSchema = z.object({
     embedding_model: z.string().default('text-embedding-3-small'),
     base_url: z.string().optional(),
     max_tokens_per_incident: z.number().int().min(1000).default(100_000),
+    max_steps: z.number().int().min(1).max(20).default(10),
+    compact_threshold: z.number().int().min(5000).default(80_000),
   }),
   integrations: z
     .object({
