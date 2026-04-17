@@ -1,0 +1,30 @@
+apps/server/src/agent/llm.ts
+  457eca9997c47c46 29-40
+apps/server/src/agent/runner.ts
+  457eca9997c47c46 5,171,179-193,250-251,253-255,259-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "c021e5287067b7a24ce8546d05b3d42303fd8799",
+  "prompts": {
+    "457eca9997c47c46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c11221eb-bc48-49af-87a1-d7c9068dde5e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 70,
+      "total_deletions": 59,
+      "accepted_lines": 61,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}
