@@ -17,8 +17,31 @@ export type {
 
 export { emptyUsage, addUsage, totalTokens } from './events'
 
-export type { PermissionMode, ToolLevel, PermissionDecision } from './permissions'
-export { decide, isPermissionMode } from './permissions'
+export type {
+  PermissionMode,
+  ToolLevel,
+  PermissionDecision,
+  PermissionOverride,
+  PermissionContext,
+  PermissionRequest,
+  PermissionPromptDecision,
+  PermissionPrompter,
+  PermissionOutcome,
+  PermissionRuleMatcher,
+  PermissionRuleConfig,
+  PermissionRule,
+} from './permissions'
+export {
+  decide,
+  isPermissionMode,
+  permissionModeRank,
+  parseRule,
+  extractPermissionSubject,
+  PermissionPolicy,
+} from './permissions'
+
+export type { EnforcementResult } from './permission-enforcer'
+export { PermissionEnforcer, isWithinWorkspace, isReadOnlyCommand } from './permission-enforcer'
 
 export type { BudgetConfig, BudgetState } from './budget'
 export { RuntimeBudget } from './budget'
