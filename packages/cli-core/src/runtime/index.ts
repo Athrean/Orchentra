@@ -43,6 +43,23 @@ export {
 export type { EnforcementResult } from './permission-enforcer'
 export { PermissionEnforcer, isWithinWorkspace, isReadOnlyCommand } from './permission-enforcer'
 
+export type {
+  WorkerStatus,
+  WorkerFailureKind,
+  WorkerFailure,
+  WorkerEventKind,
+  WorkerTrustResolution,
+  WorkerPromptTarget,
+  StartupFailureClassification,
+  StartupEvidenceBundle,
+  WorkerEventPayload,
+  WorkerTaskReceipt,
+  WorkerEvent,
+  Worker,
+  WorkerReadySnapshot,
+} from './worker-boot'
+export { WorkerRegistry, classifyStartupFailure } from './worker-boot'
+
 export type { BudgetConfig, BudgetState } from './budget'
 export { RuntimeBudget } from './budget'
 
