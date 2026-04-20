@@ -126,3 +126,6 @@ export {
 
 export type { GitCommitEntry, GitContext } from './git-context'
 export { detectGitContext, renderGitContext } from './git-context'
+
+export type { HookEvent, HookConfig, HookRunResult } from './hooks'
+export { HookRunner } from './hooks'
