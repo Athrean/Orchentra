@@ -11,6 +11,8 @@ import { compact, shouldCompact, type TokenEstimator } from './compaction'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
 import type { SystemPrompt } from './system-prompt'
 import type { ToolContext, ToolRegistry } from './tools'
+import type { HookRunner } from './hooks'
+import type { PermissionEnforcer } from './permission-enforcer'
 
 export interface ConversationConfig {
   model: string
@@ -28,6 +30,8 @@ export interface ConversationDeps {
   provider: Provider
   tools: ToolRegistry
   systemPrompt: SystemPrompt
+  hookRunner?: HookRunner
+  permissionEnforcer?: PermissionEnforcer
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
 }
@@ -197,15 +201,39 @@ export class ConversationRuntime {
       sessionId: this.config.sessionId,
       cwd: this.config.cwd,
     }
+
+    const inputJson = JSON.stringify(call.input)
+
+    if (this.deps.permissionEnforcer) {
+      const enforcement = this.deps.permissionEnforcer.check(call.name, inputJson)
+      if (enforcement.kind === 'denied') {
+        return { id: call.id, content: `permission denied: ${enforcement.reason}`, isError: true }
+      }
+    }
+
+    if (this.deps.hookRunner) {
+      const preHook = await this.deps.hookRunner.runPreToolUse(call.name, inputJson)
+      if (preHook.denied) {
+        return { id: call.id, content: `hook denied: ${preHook.messages.join('; ')}`, isError: true }
+      }
+    }
+
     try {
       const r = await this.deps.tools.execute(call.name, call.input, ctx)
+
+      if (this.deps.hookRunner) {
+        await this.deps.hookRunner.runPostToolUse(call.name, inputJson, r.content, r.isError)
+      }
+
       return { id: call.id, content: r.content, isError: r.isError }
     } catch (err) {
-      return {
-        id: call.id,
-        content: err instanceof Error ? err.message : String(err),
-        isError: true,
+      const message = err instanceof Error ? err.message : String(err)
+
+      if (this.deps.hookRunner) {
+        await this.deps.hookRunner.runPostToolUseFailure(call.name, inputJson, message)
       }
+
+      return { id: call.id, content: message, isError: true }
     }
   }
 
