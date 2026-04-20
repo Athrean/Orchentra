@@ -1,6 +1,15 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": ["DATABASE_URL", "FRONTEND_URL", "NEXT_PUBLIC_API_URL", "NEXT_PUBLIC_APP_URL", "NODE_ENV", "PORT"],
+  "globalEnv": [
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "DATABASE_URL",
+    "FRONTEND_URL",
+    "NEXT_PUBLIC_API_URL",
+    "NEXT_PUBLIC_APP_URL",
+    "NODE_ENV",
+    "PORT"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

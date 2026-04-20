@@ -17,8 +17,48 @@ export type {
 
 export { emptyUsage, addUsage, totalTokens } from './events'
 
-export type { PermissionMode, ToolLevel, PermissionDecision } from './permissions'
-export { decide, isPermissionMode } from './permissions'
+export type {
+  PermissionMode,
+  ToolLevel,
+  PermissionDecision,
+  PermissionOverride,
+  PermissionContext,
+  PermissionRequest,
+  PermissionPromptDecision,
+  PermissionPrompter,
+  PermissionOutcome,
+  PermissionRuleMatcher,
+  PermissionRuleConfig,
+  PermissionRule,
+} from './permissions'
+export {
+  decide,
+  isPermissionMode,
+  permissionModeRank,
+  parseRule,
+  extractPermissionSubject,
+  PermissionPolicy,
+} from './permissions'
+
+export type { EnforcementResult } from './permission-enforcer'
+export { PermissionEnforcer, isWithinWorkspace, isReadOnlyCommand } from './permission-enforcer'
+
+export type {
+  WorkerStatus,
+  WorkerFailureKind,
+  WorkerFailure,
+  WorkerEventKind,
+  WorkerTrustResolution,
+  WorkerPromptTarget,
+  StartupFailureClassification,
+  StartupEvidenceBundle,
+  WorkerEventPayload,
+  WorkerTaskReceipt,
+  WorkerEvent,
+  Worker,
+  WorkerReadySnapshot,
+} from './worker-boot'
+export { WorkerRegistry, classifyStartupFailure } from './worker-boot'
 
 export type { BudgetConfig, BudgetState } from './budget'
 export { RuntimeBudget } from './budget'
@@ -28,6 +68,8 @@ export type {
   ProviderToolSchema,
   ProviderRequest,
   TextDelta,
+  ThinkingDelta,
+  ThinkingSignature,
   ToolUseDelta,
   UsageDelta,
   StopReason,
@@ -49,3 +91,41 @@ export { shouldCompact, compact, estimateMessagesTokens, defaultEstimator } from
 
 export type { ConversationConfig, ConversationDeps, RunInput } from './conversation'
 export { ConversationRuntime } from './conversation'
+
+export type {
+  LaneEventName,
+  LaneEventStatus,
+  LaneFailureClass,
+  EventProvenance,
+  WatcherAction,
+  SessionIdentity,
+  LaneOwnership,
+  LaneEventBlocker,
+  LaneCommitProvenance,
+  LaneEventMetadata,
+  LaneEvent,
+} from './lane-events'
+export {
+  makeLaneEvent,
+  laneStarted,
+  laneFinished,
+  laneBlocked,
+  laneFailed,
+  laneCommitCreated,
+  laneSuperseded,
+  isTerminalEvent,
+  computeEventFingerprint,
+  dedupeTerminalEvents,
+  dedupeSupersededCommitEvents,
+  LaneEventBuilder,
+  withSessionIdentity,
+  withOwnership,
+  withNudgeId,
+  withFingerprint,
+} from './lane-events'
+
+export type { GitCommitEntry, GitContext } from './git-context'
+export { detectGitContext, renderGitContext } from './git-context'
+
+export type { HookEvent, HookConfig, HookRunResult } from './hooks'
+export { HookRunner } from './hooks'
