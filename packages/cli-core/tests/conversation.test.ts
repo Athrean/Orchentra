@@ -96,7 +96,7 @@ describe('ConversationRuntime', () => {
 
     const done = events.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
     expect(done).toBeDefined()
-    expect(done.reason).toBe('stop')
+    expect(done.reason).toBe('budget_exhausted')
   })
 
   test('max steps exhaustion', async () => {

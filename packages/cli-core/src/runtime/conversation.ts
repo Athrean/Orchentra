@@ -117,6 +117,16 @@ export class ConversationRuntime {
       }
 
       if (turn.toolCalls.length === 0 || turn.stopReason === 'end_turn') {
+        const post = budget.snapshot()
+        if (post.exhausted) {
+          yield* this.emit({
+            kind: 'done',
+            reason: post.exhaustedBy === 'steps' ? 'max_steps' : 'budget_exhausted',
+            steps: budget.currentSteps,
+            usage: budget.currentUsage,
+          })
+          return
+        }
         yield* this.emit({
           kind: 'done',
           reason: 'stop',
