@@ -28,6 +28,8 @@ export type {
   ProviderToolSchema,
   ProviderRequest,
   TextDelta,
+  ThinkingDelta,
+  ThinkingSignature,
   ToolUseDelta,
   UsageDelta,
   StopReason,
