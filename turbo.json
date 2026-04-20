@@ -10,6 +10,7 @@
     "NEXT_PUBLIC_APP_URL",
     "NODE_ENV",
     "ORCHESTRA_CONFIG_HOME",
+    "ORCHESTRA_MODEL",
     "PORT"
   ],
   "tasks": {
