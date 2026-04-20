@@ -1,4 +1,4 @@
-import type { ToolRegistry, ToolDefinition, ToolContext, ProviderToolSchema } from '@orchentra/cli-core'
+import type { ToolRegistry, ToolDefinition, ToolContext, ToolResult, ProviderToolSchema } from '@orchentra/cli-core'
 import { bashTool } from './tools/bash-tool'
 import { fileReadTool } from './tools/file-read-tool'
 import { fileWriteTool } from './tools/file-write-tool'
@@ -20,7 +20,7 @@ export class DefaultToolRegistry implements ToolRegistry {
 
   list(): ProviderToolSchema[] {
     const schemas: ProviderToolSchema[] = []
-    for (const tool of this.tools.values()) {
+    for (const tool of Array.from(this.tools.values())) {
       schemas.push({
         name: tool.name,
         description: tool.description,

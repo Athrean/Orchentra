@@ -5,9 +5,11 @@
     "ANTHROPIC_AUTH_TOKEN",
     "DATABASE_URL",
     "FRONTEND_URL",
+    "HOME",
     "NEXT_PUBLIC_API_URL",
     "NEXT_PUBLIC_APP_URL",
     "NODE_ENV",
+    "ORCHESTRA_CONFIG_HOME",
     "PORT"
   ],
   "tasks": {
