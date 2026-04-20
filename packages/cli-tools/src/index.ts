@@ -47,3 +47,11 @@ export {
   isSymlinkEscape,
   expandBraces,
 } from './file-ops'
+
+export { DefaultToolRegistry, BUILTIN_TOOLS } from './tool-registry'
+export { bashTool } from './tools/bash-tool'
+export { fileReadTool } from './tools/file-read-tool'
+export { fileWriteTool } from './tools/file-write-tool'
+export { fileEditTool } from './tools/file-edit-tool'
+export { globTool } from './tools/glob-tool'
+export { grepTool } from './tools/grep-tool'
