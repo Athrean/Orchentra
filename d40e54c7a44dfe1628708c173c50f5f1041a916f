@@ -1,0 +1,47 @@
+packages/cli-api/src/anthropic/cache.ts
+  19428b7ea8302fb7 1-19
+packages/cli-api/src/preflight.ts
+  19428b7ea8302fb7 1-14
+packages/cli-api/tests/sse.test.ts
+  19428b7ea8302fb7 1-79
+turbo.json
+  19428b7ea8302fb7 3-12
+packages/cli-api/src/anthropic/client.ts
+  19428b7ea8302fb7 1-300
+packages/cli-api/src/anthropic/types.ts
+  19428b7ea8302fb7 1-66
+packages/cli-api/src/retry.ts
+  19428b7ea8302fb7 1-17
+packages/cli-api/tests/errors.test.ts
+  19428b7ea8302fb7 1-54
+packages/cli-api/tests/retry.test.ts
+  19428b7ea8302fb7 1-25
+packages/cli-api/tests/client.test.ts
+  19428b7ea8302fb7 1-265
+packages/cli-api/src/sse.ts
+  19428b7ea8302fb7 1-72
+packages/cli-api/src/index.ts
+  19428b7ea8302fb7 2-25
+packages/cli-api/src/errors.ts
+  19428b7ea8302fb7 1-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "d40e54c7a44dfe1628708c173c50f5f1041a916f",
+  "prompts": {
+    "19428b7ea8302fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42797ce2-6363-4a62-ae9e-3d559247a1f1",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1109,
+      "total_deletions": 66,
+      "accepted_lines": 1044,
+      "overriden_lines": 0
+    }
+  }
+}
