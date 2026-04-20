@@ -62,8 +62,8 @@ export class AnthropicProvider implements Provider {
 
     const system = injectCacheBoundary(request.systemStatic, request.systemDynamic)
     const body: MessageRequest = {
-      model: this.model,
-      max_tokens: this.maxTokens,
+      model: request.model || this.model,
+      max_tokens: request.maxOutputTokens || this.maxTokens,
       messages: request.messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
@@ -96,11 +96,23 @@ export class AnthropicProvider implements Provider {
         await sleep(delay)
       }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      })
+      let response: Response
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        })
+      } catch (err) {
+        const networkError: AnthropicApiError = {
+          status: 0,
+          message: err instanceof Error ? err.message : String(err),
+          retryable: true,
+          failureClass: 'provider_transport',
+        }
+        lastError = networkError
+        continue
+      }
 
       if (!response.ok) {
         const responseBody = await response.text()

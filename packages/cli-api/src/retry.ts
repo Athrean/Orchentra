@@ -12,6 +12,6 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
 
 export function computeBackoff(attempt: number, config: RetryConfig): number {
   const base = Math.min(config.initialMs * Math.pow(2, attempt - 1), config.maxMs)
-  const jitter = Math.floor(Math.random() * base)
-  return base + jitter
+  const jitter = Math.floor(Math.random() * base * 0.25)
+  return Math.min(base + jitter, config.maxMs)
 }
