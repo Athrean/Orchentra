@@ -91,3 +91,38 @@ export { shouldCompact, compact, estimateMessagesTokens, defaultEstimator } from
 
 export type { ConversationConfig, ConversationDeps, RunInput } from './conversation'
 export { ConversationRuntime } from './conversation'
+
+export type {
+  LaneEventName,
+  LaneEventStatus,
+  LaneFailureClass,
+  EventProvenance,
+  WatcherAction,
+  SessionIdentity,
+  LaneOwnership,
+  LaneEventBlocker,
+  LaneCommitProvenance,
+  LaneEventMetadata,
+  LaneEvent,
+} from './lane-events'
+export {
+  makeLaneEvent,
+  laneStarted,
+  laneFinished,
+  laneBlocked,
+  laneFailed,
+  laneCommitCreated,
+  laneSuperseded,
+  isTerminalEvent,
+  computeEventFingerprint,
+  dedupeTerminalEvents,
+  dedupeSupersededCommitEvents,
+  LaneEventBuilder,
+  withSessionIdentity,
+  withOwnership,
+  withNudgeId,
+  withFingerprint,
+} from './lane-events'
+
+export type { GitCommitEntry, GitContext } from './git-context'
+export { detectGitContext, renderGitContext } from './git-context'
