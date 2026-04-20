@@ -1,0 +1,22 @@
+{
+  "name": "@orchentra/cli-core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./runtime": "./src/runtime/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@orchentra/eslint-config": "workspace:*",
+    "@orchentra/typescript-config": "workspace:*",
+    "@types/bun": "latest",
+    "eslint": "^8.57.0",
+    "typescript": "^5.9.3"
+  }
+}
