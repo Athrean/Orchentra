@@ -74,22 +74,22 @@ describe('compressSummary', () => {
   })
 
   test('omission notice added when lines are dropped', () => {
-    // Use only priority-0 and priority-3 lines to avoid short section
-    // headers sneaking in under the char budget.
+    // All priority-3 lines are 50+ chars so the char budget blocks them
+    // while still fitting the omission notice (~40 chars).
     const summary = [
       'Conversation summary:',
       '- Scope: 18 earlier messages compacted.',
       '- Current work: finish summary compression.',
-      'Some background context about the project.',
-      'More context about the testing approach.',
-      'Additional notes about the implementation.',
+      'Some background context about the overall project architecture.',
+      'More context about the testing approach and coverage goals.',
+      'Additional notes about the implementation details to cover.',
     ].join('\n')
 
-    // 2 priority-0 lines = 61 chars. 3rd priority-0 = 105 chars total (won't fit).
-    // Priority-3 lines are all ~45 chars, also won't fit after 2 lines (61+1+45=107).
-    // Omission notice (40 chars): 61 + 1 + 40 = 102 <= 104.
+    // 2 priority-0 lines = 61 chars. Each priority-3 line >= 60 chars.
+    // Adding any priority-3 line: 61 + 1 + 60 = 122. maxChars blocks at 103.
+    // Omission notice (40 chars): 61 + 1 + 40 = 102 <= 103.
     const budget: SummaryCompressionBudget = {
-      maxChars: 104,
+      maxChars: 103,
       maxLines: 6,
       maxLineChars: 80,
     }
