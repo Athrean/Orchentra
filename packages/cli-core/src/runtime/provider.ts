@@ -27,6 +27,16 @@ export interface TextDelta {
   delta: string
 }
 
+export interface ThinkingDelta {
+  kind: 'thinking-delta'
+  delta: string
+}
+
+export interface ThinkingSignature {
+  kind: 'thinking-signature'
+  signature: string
+}
+
 export interface ToolUseDelta {
   kind: 'tool-use'
   call: ToolCall
@@ -44,7 +54,13 @@ export interface FinishDelta {
   stopReason: StopReason
 }
 
-export type ProviderStreamEvent = TextDelta | ToolUseDelta | UsageDelta | FinishDelta
+export type ProviderStreamEvent =
+  | TextDelta
+  | ThinkingDelta
+  | ThinkingSignature
+  | ToolUseDelta
+  | UsageDelta
+  | FinishDelta
 
 export interface Provider {
   stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent>
