@@ -1,0 +1,33 @@
+packages/cli-core/src/runtime/provider.ts
+  19428b7ea8302fb7 30-39,57-63
+packages/cli-api/tests/errors.test.ts
+  19428b7ea8302fb7 37-38,44
+packages/cli-api/tests/client.test.ts
+  19428b7ea8302fb7 33,37,41,266-345
+packages/cli-api/src/anthropic/client.ts
+  19428b7ea8302fb7 24-25,37,88-89,130-132,135,210-213,312-315
+packages/cli-api/src/errors.ts
+  19428b7ea8302fb7 80-81
+packages/cli-core/src/runtime/index.ts
+  19428b7ea8302fb7 31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "6af82c98552e744c0dc01c2c0a743051ec417b51",
+  "prompts": {
+    "19428b7ea8302fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42797ce2-6363-4a62-ae9e-3d559247a1f1",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 136,
+      "total_deletions": 28,
+      "accepted_lines": 124,
+      "overriden_lines": 0
+    }
+  }
+}
