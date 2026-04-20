@@ -34,14 +34,14 @@ describe('errors', () => {
   })
 
   test('enrichAuthError hints for sk-ant- in bearer mode', () => {
-    const original = classifyError(401, 'sk-ant-api03-test123')
-    const enriched = enrichAuthError(original, 'bearer')
+    const original = classifyError(401, 'bad token')
+    const enriched = enrichAuthError(original, 'bearer', 'sk-ant-api03-test123')
     expect(enriched.message).toContain('ANTHROPIC_API_KEY')
   })
 
   test('enrichAuthError does not modify non-bearer auth', () => {
     const original = classifyError(401, 'bad token')
-    const enriched = enrichAuthError(original, 'api_key')
+    const enriched = enrichAuthError(original, 'api_key', 'sk-ant-test')
     expect(enriched.message).toBe(original.message)
   })
 

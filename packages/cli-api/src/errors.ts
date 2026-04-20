@@ -77,8 +77,8 @@ export function classifyError(status: number, body: string, errorType?: string):
   }
 }
 
-export function enrichAuthError(error: AnthropicApiError, authSource: string): AnthropicApiError {
-  if (error.status === 401 && authSource === 'bearer' && error.message.startsWith('sk-ant-')) {
+export function enrichAuthError(error: AnthropicApiError, authSource: string, rawToken?: string): AnthropicApiError {
+  if (error.status === 401 && authSource === 'bearer' && rawToken && rawToken.startsWith('sk-ant-')) {
     return {
       ...error,
       message:

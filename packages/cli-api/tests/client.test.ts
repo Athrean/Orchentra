@@ -30,14 +30,15 @@ describe('AnthropicProvider', () => {
   const originalFetch = globalThis.fetch
   let mockFetch: typeof globalThis.fetch
 
-  function mockServer(responses: { status?: number; body: string }[]): void {
+  function mockServer(responses: { status?: number; body: string; headers?: Record<string, string> }[]): void {
     let callIndex = 0
     mockFetch = (async (_url: string | URL | Request, _init?: RequestInit) => {
       const response = responses[callIndex++] ?? responses[responses.length - 1]
+      const headers = new Headers(response.headers)
       return {
         ok: (response.status ?? 200) >= 200 && (response.status ?? 200) < 300,
         status: response.status ?? 200,
-        headers: new Headers(),
+        headers,
         text: async () => response.body,
         body: new ReadableStream({
           start(controller) {
@@ -261,5 +262,85 @@ describe('AnthropicProvider', () => {
         cacheReadTokens: 80,
       },
     })
+  })
+
+  test('streams thinking-delta and thinking-signature events', async () => {
+    const sseStream = [
+      sseFrame('message_start', { type: 'message_start', message: { usage: { input_tokens: 10, output_tokens: 0 } } }),
+      sseFrame('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'thinking' } }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'thinking_delta', thinking: 'Let me think...' },
+      }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'signature_delta', signature: 'sig_abc123' },
+      }),
+      sseFrame('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      sseFrame('content_block_start', { type: 'content_block_start', index: 1, content_block: { type: 'text' } }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 1,
+        delta: { type: 'text_delta', text: 'answer' },
+      }),
+      sseFrame('content_block_stop', { type: 'content_block_stop', index: 1 }),
+      sseFrame('message_delta', {
+        type: 'message_delta',
+        delta: { stop_reason: 'end_turn' },
+        usage: { output_tokens: 5 },
+      }),
+      sseFrame('message_stop', { type: 'message_stop' }),
+    ].join('')
+
+    mockServer([{ body: sseStream }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    const events = await collectEvents(provider, buildRequest())
+
+    const thinking = events.filter((e) => e.kind === 'thinking-delta')
+    expect(thinking).toEqual([{ kind: 'thinking-delta', delta: 'Let me think...' }])
+
+    const signature = events.filter((e) => e.kind === 'thinking-signature')
+    expect(signature).toEqual([{ kind: 'thinking-signature', signature: 'sig_abc123' }])
+
+    const texts = events.filter((e) => e.kind === 'text-delta')
+    expect(texts).toEqual([{ kind: 'text-delta', delta: 'answer' }])
+  })
+
+  test('includes request-id in error from response headers', async () => {
+    mockServer([
+      {
+        status: 500,
+        body: '{"error":{"message":"internal error"}}',
+        headers: { 'request-id': 'req-abc-123' },
+      },
+    ])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    try {
+      await collectEvents(provider, buildRequest())
+      expect.unreachable('Should have thrown')
+    } catch (err: unknown) {
+      expect((err as { requestId?: string }).requestId).toBe('req-abc-123')
+    }
+  })
+
+  test('enriches auth error when sk-ant- key used as bearer token', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-api03-wrong-placement'
+
+    mockServer([{ status: 401, body: '{"error":{"message":"invalid request","type":"authentication_error"}}' }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    try {
+      await collectEvents(provider, buildRequest())
+      expect.unreachable('Should have thrown')
+    } catch (err: unknown) {
+      expect((err as { message: string }).message).toContain('sk-ant-* keys go in ANTHROPIC_API_KEY')
+    } finally {
+      delete process.env['ANTHROPIC_AUTH_TOKEN']
+    }
   })
 })

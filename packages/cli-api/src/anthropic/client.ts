@@ -21,7 +21,8 @@ interface AuthHeaders {
 }
 
 const ANTHROPIC_VERSION = '2023-06-01'
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
+const ANTHROPIC_BETA = 'claude-code-20250219,prompt-caching-scope-2026-01-05'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 export class AnthropicProvider implements Provider {
   private readonly baseUrl: string
@@ -33,7 +34,7 @@ export class AnthropicProvider implements Provider {
   constructor(config: AnthropicConfig = {}) {
     this.baseUrl = (config.baseUrl ?? 'https://api.anthropic.com').replace(/\/$/, '')
     this.model = config.model ?? DEFAULT_MODEL
-    this.maxTokens = config.maxTokens ?? 16384
+    this.maxTokens = config.maxTokens ?? 64000
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config.retries }
 
     const apiKey = config.apiKey ?? process.env['ANTHROPIC_API_KEY']
@@ -84,6 +85,8 @@ export class AnthropicProvider implements Provider {
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'anthropic-version': ANTHROPIC_VERSION,
+      'anthropic-beta': ANTHROPIC_BETA,
+      'user-agent': 'OrchentraCLI/1.0',
       ...(this.authHeaders['x-api-key'] ? { 'x-api-key': this.authHeaders['x-api-key'] } : {}),
       ...(this.authHeaders.Authorization ? { Authorization: this.authHeaders.Authorization } : {}),
     }
@@ -124,10 +127,12 @@ export class AnthropicProvider implements Provider {
         }
 
         const apiError = classifyError(response.status, responseBody, errorType)
-        lastError = enrichAuthError(apiError, this.authHeaders.authSource)
+        const requestId = response.headers.get('request-id') ?? undefined
+        const rawToken = this.authHeaders['x-api-key'] ?? this.authHeaders.Authorization?.replace('Bearer ', '')
+        lastError = enrichAuthError({ ...apiError, requestId }, this.authHeaders.authSource, rawToken)
 
         if (!apiError.retryable) {
-          throw apiError
+          throw lastError
         }
         continue
       }
@@ -202,6 +207,10 @@ export class AnthropicProvider implements Provider {
               const delta = event.delta
               if (delta.type === 'text_delta' && delta.text) {
                 yield { kind: 'text-delta', delta: delta.text }
+              } else if (delta.type === 'thinking_delta' && delta.thinking) {
+                yield { kind: 'thinking-delta', delta: delta.thinking }
+              } else if (delta.type === 'signature_delta' && delta.signature) {
+                yield { kind: 'thinking-signature', signature: delta.signature }
               } else if (delta.type === 'input_json_delta' && delta.partial_json != null) {
                 const pending = pendingTools.get(event.index)
                 if (pending) {
@@ -300,10 +309,10 @@ function mapStopReason(reason: string): StopReason {
 
 function mergeUsage(existing: Usage, incoming: Usage): Usage {
   return {
-    input_tokens: incoming.input_tokens || existing.input_tokens,
-    output_tokens: (existing.output_tokens || 0) + (incoming.output_tokens || 0),
-    cache_creation_input_tokens: incoming.cache_creation_input_tokens || existing.cache_creation_input_tokens,
-    cache_read_input_tokens: incoming.cache_read_input_tokens || existing.cache_read_input_tokens,
+    input_tokens: incoming.input_tokens ?? existing.input_tokens,
+    output_tokens: (existing.output_tokens ?? 0) + (incoming.output_tokens ?? 0),
+    cache_creation_input_tokens: incoming.cache_creation_input_tokens ?? existing.cache_creation_input_tokens,
+    cache_read_input_tokens: incoming.cache_read_input_tokens ?? existing.cache_read_input_tokens,
   }
 }
 
