@@ -1,6 +1,0 @@
-export { Nav } from './nav'
-export { HeroSection } from './hero-section'
-export { ValuePropSection, CapabilitiesSection } from './features-section'
-export { ProductDemoSection } from './product-demo-section'
-export { UseCasesSection, CTABanner } from './use-cases-section'
-export { ResourcesSection, Footer } from './footer-section'
