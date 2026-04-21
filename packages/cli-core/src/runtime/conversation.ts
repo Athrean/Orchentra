@@ -1,8 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import { RuntimeBudget, type BudgetConfig } from './budget'
 import {
   addUsage,
   emptyUsage,
   type RuntimeEvent,
+  type SpanAttributeValue,
   type ToolCall,
   type ToolResultPayload,
   type UsageTotals,
@@ -34,6 +36,8 @@ export interface ConversationDeps {
   permissionEnforcer?: PermissionEnforcer
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
+  clock?: () => string
+  idGen?: () => string
 }
 
 export interface RunInput {
@@ -90,6 +94,15 @@ export class ConversationRuntime {
       }
 
       budget.tickStep()
+      const stepSpanId = this.newId()
+      yield* this.emit({
+        kind: 'span_start',
+        spanId: stepSpanId,
+        name: 'step',
+        startedAt: this.now(),
+        attributes: { step: budget.currentSteps },
+      })
+
       const request: ProviderRequest = {
         systemStatic: systemPrompt.static,
         systemDynamic: systemPrompt.dynamic,
@@ -103,6 +116,12 @@ export class ConversationRuntime {
       for (const ev of turn.events) yield* this.emit(ev)
 
       if (turn.error) {
+        yield* this.emit({
+          kind: 'span_end',
+          spanId: stepSpanId,
+          endedAt: this.now(),
+          status: 'error',
+        })
         yield* this.emit({
           kind: 'done',
           reason: 'error',
@@ -121,6 +140,12 @@ export class ConversationRuntime {
       }
 
       if (turn.toolCalls.length === 0 || turn.stopReason === 'end_turn') {
+        yield* this.emit({
+          kind: 'span_end',
+          spanId: stepSpanId,
+          endedAt: this.now(),
+          status: 'ok',
+        })
         const post = budget.snapshot()
         if (post.exhausted) {
           yield* this.emit({
@@ -141,6 +166,15 @@ export class ConversationRuntime {
       }
 
       for (const call of turn.toolCalls) {
+        const toolSpanId = this.newId()
+        yield* this.emit({
+          kind: 'span_start',
+          spanId: toolSpanId,
+          parentSpanId: stepSpanId,
+          name: 'tool_call',
+          startedAt: this.now(),
+          attributes: { tool: call.name, tool_call_id: call.id },
+        })
         const result = await this.runTool(call)
         messages.push({
           role: 'tool',
@@ -148,8 +182,35 @@ export class ConversationRuntime {
           toolCallId: call.id,
         })
         yield* this.emit({ kind: 'tool_result', result })
+        const endAttrs: Record<string, SpanAttributeValue> = { tool: call.name, tool_call_id: call.id }
+        const end: RuntimeEvent = {
+          kind: 'span_end',
+          spanId: toolSpanId,
+          endedAt: this.now(),
+          status: result.isError ? 'error' : 'ok',
+          attributes: endAttrs,
+        }
+        if (result.isError) {
+          end.error = result.content
+        }
+        yield* this.emit(end)
       }
+
+      yield* this.emit({
+        kind: 'span_end',
+        spanId: stepSpanId,
+        endedAt: this.now(),
+        status: 'ok',
+      })
     }
+  }
+
+  private now(): string {
+    return this.deps.clock ? this.deps.clock() : new Date().toISOString()
+  }
+
+  private newId(): string {
+    return this.deps.idGen ? this.deps.idGen() : randomUUID()
   }
 
   private async runTurn(stream: AsyncIterable<ProviderStreamEvent>, budget: RuntimeBudget): Promise<TurnResult> {

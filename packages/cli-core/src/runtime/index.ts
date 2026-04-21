@@ -12,6 +12,9 @@ export type {
   CompactedEvent,
   ErrorEvent,
   DoneEvent,
+  SpanAttributeValue,
+  SpanStartEvent,
+  SpanEndEvent,
   RuntimeEvent,
 } from './events'
 

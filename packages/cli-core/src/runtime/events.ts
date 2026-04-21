@@ -61,6 +61,26 @@ export interface DoneEvent {
   usage: UsageTotals
 }
 
+export type SpanAttributeValue = string | number | boolean
+
+export interface SpanStartEvent {
+  kind: 'span_start'
+  spanId: string
+  parentSpanId?: string
+  name: string
+  startedAt: string
+  attributes?: Record<string, SpanAttributeValue>
+}
+
+export interface SpanEndEvent {
+  kind: 'span_end'
+  spanId: string
+  endedAt: string
+  status: 'ok' | 'error'
+  error?: string
+  attributes?: Record<string, SpanAttributeValue>
+}
+
 export type RuntimeEvent =
   | TextEvent
   | ToolUseEvent
@@ -69,6 +89,8 @@ export type RuntimeEvent =
   | CompactedEvent
   | ErrorEvent
   | DoneEvent
+  | SpanStartEvent
+  | SpanEndEvent
 
 export function emptyUsage(): UsageTotals {
   return {
