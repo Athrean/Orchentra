@@ -17,12 +17,21 @@ export interface RuntimePermissionRuleConfig {
   ask: string[]
 }
 
+export interface MemoryFeatureConfig {
+  enabled: boolean
+  embeddingModel: string
+  embeddingBaseUrl: string | undefined
+  similarityThreshold: number
+  maxResults: number
+}
+
 export interface RuntimeFeatureConfig {
   hooks: RuntimeHookConfig
   model: string | undefined
   aliases: Record<string, string>
   permissionMode: ResolvedPermissionMode | undefined
   permissionRules: RuntimePermissionRuleConfig
+  memory: MemoryFeatureConfig
 }
 
 export type ResolvedPermissionMode = 'read-only' | 'workspace-write' | 'danger-full-access'

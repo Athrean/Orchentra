@@ -2,6 +2,7 @@ import { join, dirname } from 'node:path'
 import { readFileSync } from 'node:fs'
 import type {
   ConfigEntry,
+  MemoryFeatureConfig,
   RuntimeConfig,
   RuntimeFeatureConfig,
   RuntimeHookConfig,
@@ -92,6 +93,18 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
     aliases: extractAliases(merged),
     permissionMode: extractPermissionMode(merged),
     permissionRules: extractPermissionRules(merged),
+    memory: extractMemoryConfig(merged),
+  }
+}
+
+function extractMemoryConfig(merged: Record<string, unknown>): MemoryFeatureConfig {
+  const mem = isPlainObject(merged.memory) ? (merged.memory as Record<string, unknown>) : {}
+  return {
+    enabled: typeof mem.enabled === 'boolean' ? mem.enabled : true,
+    embeddingModel: typeof mem.embeddingModel === 'string' ? mem.embeddingModel : 'text-embedding-3-small',
+    embeddingBaseUrl: typeof mem.embeddingBaseUrl === 'string' ? mem.embeddingBaseUrl : undefined,
+    similarityThreshold: typeof mem.similarityThreshold === 'number' ? mem.similarityThreshold : 0.78,
+    maxResults: typeof mem.maxResults === 'number' ? mem.maxResults : 3,
   }
 }
 
