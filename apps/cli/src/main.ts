@@ -4,6 +4,7 @@ import { parseArgs, renderHelp } from './args'
 import { runRepl } from './repl'
 import { initializeRepo } from './init'
 import { runInvestigate } from './commands/run-investigate'
+import { runTriage } from './commands/run-triage'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -60,8 +61,12 @@ async function main(argv: string[]): Promise<number> {
       })
 
     case 'triage':
-      process.stderr.write('triage: not implemented yet\n')
-      return 1
+      return runTriage({
+        spec: action.spec,
+        model: action.model,
+        permissionMode: action.permissionMode,
+        cwd: process.cwd(),
+      })
 
     case 'fix':
       process.stderr.write('fix: not implemented yet\n')

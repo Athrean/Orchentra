@@ -33,6 +33,36 @@ export {
 } from './workflows'
 
 export {
+  createCheckRun,
+  updateCheckRun,
+  upsertCheckRun,
+  findCheckRunByExternalId,
+  type CheckRun,
+  type CheckConclusion,
+  type CreateCheckRunInput,
+} from './checks'
+
+export { createCommitStatus, type CommitStatus, type CommitStatusInput, type CommitStatusState } from './statuses'
+
+export {
+  listIssueComments,
+  createIssueComment,
+  updateIssueComment,
+  upsertMarkedComment,
+  triageMarker,
+  type IssueComment,
+} from './comments'
+
+export {
+  listPullsForCommit,
+  findOpenPullByHead,
+  createPullRequest,
+  updatePullRequest,
+  type PullRequestRef,
+  type CreatePullRequestInput,
+} from './prs'
+
+export {
   readRateLimit,
   retryAfterMs,
   isPrimaryRateLimit,
