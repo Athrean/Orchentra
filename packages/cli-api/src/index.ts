@@ -36,6 +36,7 @@ export { getGitHubToken, login as githubLogin, logout as githubLogout, deviceFlo
 export type { DeviceFlowResult } from './github/auth'
 export {
   GitHubClient,
+  GitHubApiError,
   type WorkflowRun,
   type WorkflowJob,
   type WorkflowStep,

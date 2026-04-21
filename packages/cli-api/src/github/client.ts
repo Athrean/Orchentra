@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 import { getGitHubToken } from './auth'
 
 const GITHUB_API = 'https://api.github.com'
+const HTTP_TIMEOUT_MS = 30_000
+const MAX_RATE_LIMIT_RETRIES = 3
 
 interface RequestOptions {
   method?: string
@@ -63,6 +65,23 @@ export interface CheckRun {
   output: { title: string; summary: string }
 }
 
+export class GitHubApiError extends Error {
+  constructor(
+    readonly status: number | null,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'GitHubApiError'
+  }
+}
+
+function validateApiResponse<T>(data: unknown, shape: string): T {
+  if (typeof data !== 'object' || data === null) {
+    throw new GitHubApiError(null, `Invalid ${shape} response: expected object, got ${typeof data}`)
+  }
+  return data as T
+}
+
 export class GitHubClient {
   private token: string | null = null
   private rateLimit: RateLimitState = { remaining: 5000, resetAt: 0 }
@@ -75,12 +94,13 @@ export class GitHubClient {
 
   async getWorkflowRun(owner: string, repo: string, runId: number): Promise<WorkflowRun> {
     const data = await this.request(`/repos/${owner}/${repo}/actions/runs/${runId}`)
-    return data as WorkflowRun
+    return validateApiResponse<WorkflowRun>(data, 'workflow run')
   }
 
   async getWorkflowJobs(owner: string, repo: string, runId: number): Promise<WorkflowJob[]> {
     const data = await this.request(`/repos/${owner}/${repo}/actions/runs/${runId}/jobs`)
-    return (data as { jobs: WorkflowJob[] }).jobs
+    const wrapper = validateApiResponse<{ jobs: WorkflowJob[] }>(data, 'workflow jobs')
+    return wrapper.jobs
   }
 
   async getJobLog(owner: string, repo: string, jobId: number): Promise<string> {
@@ -110,7 +130,7 @@ export class GitHubClient {
       method: 'POST',
       body: { ...params, head_sha: sha },
     })
-    return data as CheckRun
+    return validateApiResponse<CheckRun>(data, 'check run')
   }
 
   async listPullRequests(
@@ -124,6 +144,9 @@ export class GitHubClient {
     if (head) params.set('head', head)
     if (base) params.set('base', base)
     const data = await this.request(`/repos/${owner}/${repo}/pulls?${params}`)
+    if (!Array.isArray(data)) {
+      throw new GitHubApiError(null, `Invalid pull requests response: expected array, got ${typeof data}`)
+    }
     return data as PullRequest[]
   }
 
@@ -141,7 +164,7 @@ export class GitHubClient {
       method: 'POST',
       body: params,
     })
-    return data as PullRequest
+    return validateApiResponse<PullRequest>(data, 'pull request')
   }
 
   async createIssueComment(owner: string, repo: string, issueNumber: number, body: string): Promise<void> {
@@ -217,19 +240,22 @@ export class GitHubClient {
     if (reset) this.rateLimit.resetAt = parseInt(reset, 10) * 1000
   }
 
-  private async request(path: string, options?: RequestOptions): Promise<unknown> {
+  private async request(path: string, options?: RequestOptions, retryCount = 0): Promise<unknown> {
     await this.ensureToken()
     const res = await this.rawRequest(options?.method ?? 'GET', path, options)
     this.updateRateLimit(res.headers)
 
     if (res.status === 403 && this.rateLimit.remaining === 0) {
+      if (retryCount >= MAX_RATE_LIMIT_RETRIES) {
+        throw new GitHubApiError(403, `Rate limit retry exhausted after ${retryCount} attempts`)
+      }
       await this.waitForRateLimit()
-      return this.request(path, options)
+      return this.request(path, options, retryCount + 1)
     }
 
     if (!res.ok) {
       const text = await res.text()
-      throw new Error(`GitHub API ${res.status}: ${text.slice(0, 500)}`)
+      throw new GitHubApiError(res.status, `GitHub API ${res.status}: ${text.slice(0, 500)}`)
     }
 
     return res.json()
@@ -237,17 +263,27 @@ export class GitHubClient {
 
   private async rawRequest(method: string, path: string, options?: RequestOptions): Promise<Response> {
     await this.ensureToken()
+    if (!this.token) {
+      throw new GitHubApiError(null, 'No GitHub token available. Ensure authentication is configured.')
+    }
     const url = path.startsWith('http') ? path : `${GITHUB_API}${path}`
-    return fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.token!}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...options?.headers,
-      },
-      body: options?.body ? JSON.stringify(options.body) : undefined,
-    })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS)
+    try {
+      return await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          ...options?.headers,
+        },
+        body: options?.body ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
   }
 }
 

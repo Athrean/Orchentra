@@ -11,6 +11,7 @@ const ENV_CLIENT_ID = 'ORCHENTRA_GITHUB_CLIENT_ID'
 const ENV_GITHUB_TOKEN = 'GITHUB_TOKEN'
 const DEVICE_CODE_URL = 'https://github.com/login/device/code'
 const ACCESS_TOKEN_URL = 'https://github.com/login/oauth/access_token'
+const HTTP_TIMEOUT_MS = 30_000
 
 interface StoredToken {
   token: string
@@ -76,11 +77,19 @@ export async function logout(): Promise<void> {
 export async function deviceFlow(): Promise<DeviceFlowResult> {
   const id = clientId()
 
-  const codeResp = await fetch(DEVICE_CODE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ client_id: id, scope: SCOPES.join(' ') }),
-  })
+  const codeController = new AbortController()
+  const codeTimeout = setTimeout(() => codeController.abort(), HTTP_TIMEOUT_MS)
+  let codeResp: Response
+  try {
+    codeResp = await fetch(DEVICE_CODE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ client_id: id, scope: SCOPES.join(' ') }),
+      signal: codeController.signal,
+    })
+  } finally {
+    clearTimeout(codeTimeout)
+  }
 
   if (!codeResp.ok) {
     throw new Error(`Device code request failed: ${codeResp.status} ${await codeResp.text()}`)
@@ -103,15 +112,23 @@ export async function deviceFlow(): Promise<DeviceFlowResult> {
   while (Date.now() < deadline) {
     await sleep(intervalMs)
 
-    const tokenResp = await fetch(ACCESS_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        client_id: id,
-        device_code: codeData.device_code,
-        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-      }),
-    })
+    const tokenController = new AbortController()
+    const tokenTimeout = setTimeout(() => tokenController.abort(), HTTP_TIMEOUT_MS)
+    let tokenResp: Response
+    try {
+      tokenResp = await fetch(ACCESS_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          client_id: id,
+          device_code: codeData.device_code,
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+        }),
+        signal: tokenController.signal,
+      })
+    } finally {
+      clearTimeout(tokenTimeout)
+    }
 
     const tokenData = (await tokenResp.json()) as Record<string, string>
 
@@ -139,8 +156,11 @@ async function loadStoredToken(): Promise<string | null> {
     const raw = await readFile(TOKEN_FILE, 'utf-8')
     const data = JSON.parse(raw) as StoredToken
     return data.token || null
-  } catch {
-    return null
+  } catch (err: unknown) {
+    if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null
+    }
+    throw new Error(`Failed to read stored token: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 
