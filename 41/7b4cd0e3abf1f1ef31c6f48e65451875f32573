@@ -1,0 +1,35 @@
+packages/cli-api/src/index.ts
+  51aacccee335787a 34-50
+packages/cli-api/src/github/token.ts
+  51aacccee335787a 1-84
+packages/cli-api/src/github/auth.ts
+  51aacccee335787a 1-43
+packages/cli-api/src/github/index.ts
+  51aacccee335787a 1-20
+packages/cli-api/tests/github-token.test.ts
+  51aacccee335787a 1-67
+packages/cli-api/src/github/device-flow.ts
+  51aacccee335787a 1-119
+packages/cli-api/tests/github-device-flow.test.ts
+  51aacccee335787a 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "417b4cd0e3abf1f1ef31c6f48e65451875f32573",
+  "prompts": {
+    "51aacccee335787a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9089a25-04e7-4556-a828-98b76f6a7671",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 496,
+      "total_deletions": 538,
+      "accepted_lines": 471,
+      "overriden_lines": 0
+    }
+  }
+}
