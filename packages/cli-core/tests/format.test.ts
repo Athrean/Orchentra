@@ -4,10 +4,14 @@ import type { PatternMatch } from '../src/memory/types'
 
 describe('formatPatternContext', () => {
   test('returns empty string for empty matches', () => {
+    // given — no matches
+    // when — formatting pattern context
+    // then — returns empty string
     expect(formatPatternContext([])).toBe('')
   })
 
   test('formats single match', () => {
+    // given — a single match with known fields
     const matches: PatternMatch[] = [
       {
         entry: {
@@ -25,7 +29,11 @@ describe('formatPatternContext', () => {
         similarity: 0.871,
       },
     ]
+
+    // when — formatting pattern context
     const result = formatPatternContext(matches)
+
+    // then — output contains header, similarity percentage, and entry details
     expect(result).toContain('## Similar Past Incidents')
     expect(result).toContain('### Match (87% similar)')
     expect(result).toContain('**Failure pattern:** workflow: ci')
@@ -34,6 +42,7 @@ describe('formatPatternContext', () => {
   })
 
   test('formats multiple matches', () => {
+    // given — two matches with different similarity scores
     const matches: PatternMatch[] = [
       {
         entry: {
@@ -66,7 +75,11 @@ describe('formatPatternContext', () => {
         similarity: 0.82,
       },
     ]
+
+    // when — formatting pattern context
     const result = formatPatternContext(matches)
+
+    // then — output contains both matches with their percentages
     expect(result).toContain('### Match (95% similar)')
     expect(result).toContain('### Match (82% similar)')
     expect(result).toContain('first')
