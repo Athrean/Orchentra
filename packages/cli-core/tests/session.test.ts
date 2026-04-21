@@ -51,6 +51,48 @@ describe('SessionWriter', () => {
   })
 })
 
+describe('replaySession byte-identity', () => {
+  test('re-serializing replayed records reproduces input JSONL', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-test-'))
+    try {
+      const writer = await SessionWriter.open({
+        rootDir: dir,
+        meta: { cwd: '/tmp', model: 'test' },
+      })
+      await writer.append({ kind: 'text', delta: 'hello' })
+      await writer.append({
+        kind: 'span_start',
+        spanId: 's1',
+        name: 'step',
+        startedAt: '2026-04-21T00:00:00.000Z',
+        attributes: { step: 1 },
+      })
+      await writer.append({
+        kind: 'span_end',
+        spanId: 's1',
+        endedAt: '2026-04-21T00:00:00.100Z',
+        status: 'ok',
+      })
+      await writer.append({
+        kind: 'done',
+        reason: 'stop',
+        steps: 1,
+        usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      })
+      await writer.close()
+
+      const { readFileSync } = await import('node:fs')
+      const rawInput = readFileSync(writer.path, 'utf8')
+
+      const records = await replaySession(writer.path)
+      const roundtrip = records.map((r) => JSON.stringify(r)).join('\n') + '\n'
+      expect(roundtrip).toBe(rawInput)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('resolveSessionPath', () => {
   test('resolves explicit id', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orchentra-test-'))

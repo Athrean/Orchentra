@@ -6,6 +6,9 @@ import { initializeRepo } from './init'
 import { runInvestigate } from './commands/run-investigate'
 import { runTriage } from './commands/run-triage'
 import { runFix } from './commands/run-fix'
+import { runSessionReplay } from './commands/session-replay'
+import { runDoctor } from './commands/doctor'
+import { runWatch } from './commands/watch'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -78,6 +81,15 @@ async function main(argv: string[]): Promise<number> {
         title: action.title,
         base: action.base,
       })
+
+    case 'session-replay':
+      return runSessionReplay({ idOrLatest: action.idOrLatest })
+
+    case 'doctor':
+      return runDoctor()
+
+    case 'watch':
+      return runWatch({ repo: action.repo, intervalMs: action.intervalMs })
   }
 }
 
