@@ -21,6 +21,7 @@ export interface MemoryFeatureConfig {
   enabled: boolean
   embeddingModel: string
   embeddingBaseUrl: string | undefined
+  embeddingApiKey: string | undefined
   similarityThreshold: number
   maxResults: number
 }

@@ -5,10 +5,19 @@ interface EmbeddingResponse {
 }
 
 export async function embedText(text: string, config: MemoryConfig): Promise<EmbeddingVector> {
-  const url = `${config.embeddingBaseUrl}/embeddings`
+  if (!config.embeddingBaseUrl || config.embeddingBaseUrl.trim().length === 0) {
+    throw new Error('Memory embedding base URL is not configured')
+  }
+  const base = config.embeddingBaseUrl.replace(/\/+$/, '')
+  const url = `${base}/embeddings`
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (config.embeddingApiKey && config.embeddingApiKey.trim().length > 0) {
+    headers.Authorization = `Bearer ${config.embeddingApiKey.trim()}`
+  }
+
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ model: config.embeddingModel, input: text }),
   })
 

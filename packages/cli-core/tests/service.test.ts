@@ -22,6 +22,7 @@ function makeStore(initial: PatternEntry[] = []): MemoryStore & { saved: Pattern
       return entries
     },
     updateUsage() {},
+    updateUsageBatch() {},
     delete() {},
     has(orgId, incidentId) {
       return entries.some((e) => e.orgId === orgId && e.incidentId === incidentId)

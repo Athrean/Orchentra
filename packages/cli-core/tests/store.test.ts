@@ -1,7 +1,7 @@
 import { test, expect, describe, beforeEach, afterEach } from 'bun:test'
 import { join } from 'node:path'
-import { mkdirSync, rmSync } from 'node:fs'
-import { PatternStore } from '../src/memory/store'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { PatternStore, PatternStoreError } from '../src/memory/store'
 import type { PatternEntry } from '../src/memory/types'
 
 const TMP = join(import.meta.dir, '__memory_test_tmp__')
@@ -77,6 +77,19 @@ describe('PatternStore', () => {
     expect(loaded[0].lastMatchedAt).not.toBeNull()
   })
 
+  test('updateUsageBatch increments all matched entries in one pass', () => {
+    store.save('org-1', makeEntry({ id: 'e1' }))
+    store.save('org-1', makeEntry({ id: 'e2', incidentId: 'inc-2' }))
+    store.updateUsageBatch('org-1', ['e1', 'e2', 'e1'])
+    const loaded = store.load('org-1')
+    const e1 = loaded.find((entry) => entry.id === 'e1')
+    const e2 = loaded.find((entry) => entry.id === 'e2')
+    expect(e1?.usageCount).toBe(2)
+    expect(e2?.usageCount).toBe(1)
+    expect(e1?.lastMatchedAt).not.toBeNull()
+    expect(e2?.lastMatchedAt).not.toBeNull()
+  })
+
   test('updateUsage is no-op for missing entry', () => {
     store.save('org-1', makeEntry({ id: 'e1' }))
     store.updateUsage('org-1', 'nonexistent')
@@ -96,5 +109,12 @@ describe('PatternStore', () => {
     store.save('org-1', makeEntry({ id: 'a' }))
     store.delete('org-1', 'nonexistent')
     expect(store.load('org-1')).toHaveLength(1)
+  })
+
+  test('throws PatternStoreError when patterns file has invalid JSON', () => {
+    const orgDir = join(TMP, 'org-1')
+    mkdirSync(orgDir, { recursive: true })
+    writeFileSync(join(orgDir, 'patterns.json'), '{not-json}', 'utf-8')
+    expect(() => store.load('org-1')).toThrow(PatternStoreError)
   })
 })

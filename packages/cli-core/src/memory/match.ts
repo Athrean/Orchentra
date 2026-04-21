@@ -24,9 +24,10 @@ export async function findSimilarPatterns(
   matches.sort((a, b) => b.similarity - a.similarity)
   const results = matches.slice(0, limit)
 
-  for (const m of results) {
-    store.updateUsage(orgId, m.entry.id)
-  }
+  store.updateUsageBatch(
+    orgId,
+    results.map((m) => m.entry.id),
+  )
 
   return results
 }

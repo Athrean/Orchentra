@@ -99,10 +99,12 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
 
 function extractMemoryConfig(merged: Record<string, unknown>): MemoryFeatureConfig {
   const mem = isPlainObject(merged.memory) ? (merged.memory as Record<string, unknown>) : {}
+  const envApiKey = process.env.ORCHENTRA_MEMORY_API_KEY ?? process.env.OPENAI_API_KEY
   return {
     enabled: typeof mem.enabled === 'boolean' ? mem.enabled : true,
     embeddingModel: typeof mem.embeddingModel === 'string' ? mem.embeddingModel : 'text-embedding-3-small',
     embeddingBaseUrl: typeof mem.embeddingBaseUrl === 'string' ? mem.embeddingBaseUrl : undefined,
+    embeddingApiKey: typeof mem.embeddingApiKey === 'string' ? mem.embeddingApiKey : envApiKey,
     similarityThreshold: typeof mem.similarityThreshold === 'number' ? mem.similarityThreshold : 0.78,
     maxResults: typeof mem.maxResults === 'number' ? mem.maxResults : 3,
   }

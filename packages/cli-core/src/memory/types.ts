@@ -10,7 +10,8 @@ export type EmbeddingVector = number[]
 
 export interface MemoryConfig {
   embeddingModel: string
-  embeddingBaseUrl: string
+  embeddingBaseUrl: string | undefined
+  embeddingApiKey?: string
   similarityThreshold: number
   maxResults: number
 }
@@ -47,6 +48,7 @@ export interface MemoryStore {
   save(orgId: string, entry: PatternEntry): void
   load(orgId: string): PatternEntry[]
   updateUsage(orgId: string, entryId: string): void
+  updateUsageBatch(orgId: string, entryIds: string[]): void
   delete(orgId: string, entryId: string): void
   has(orgId: string, incidentId: string): boolean
 }

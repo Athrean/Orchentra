@@ -16,6 +16,7 @@ function makeStore(entries: PatternEntry[]): MemoryStore {
       return entries
     },
     updateUsage(): void {},
+    updateUsageBatch(): void {},
     delete(): void {},
     has(): boolean {
       return false
@@ -129,7 +130,7 @@ describe('findSimilarPatterns', () => {
     expect(results).toHaveLength(2)
   })
 
-  test('calls updateUsage on matched entries', async () => {
+  test('calls updateUsageBatch on matched entries', async () => {
     const updatedIds: string[] = []
     const entries: PatternEntry[] = [
       {
@@ -152,6 +153,9 @@ describe('findSimilarPatterns', () => {
       },
       updateUsage(_orgId: string, entryId: string): void {
         updatedIds.push(entryId)
+      },
+      updateUsageBatch(_orgId: string, entryIds: string[]): void {
+        updatedIds.push(...entryIds)
       },
       delete(): void {},
       has(): boolean {
