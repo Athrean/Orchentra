@@ -140,9 +140,9 @@ function parseSubcommandArgs(sub: 'investigate' | 'triage' | 'fix', rest: string
   while (i < rest.length) {
     const arg = rest[i]
     if (arg === '--model' || arg === '-m') {
-      model = rest[++i] ?? model
+      model = readSubcommandFlagValue(rest, ++i, arg, sub)
     } else if (arg === '--permission-mode') {
-      const val = rest[++i]
+      const val = readSubcommandFlagValue(rest, ++i, arg, sub)
       if (!val || !VALID_PERMISSION_MODES.includes(val as PermissionMode)) {
         throw new Error(`invalid permission mode: ${val}`)
       }
@@ -150,9 +150,9 @@ function parseSubcommandArgs(sub: 'investigate' | 'triage' | 'fix', rest: string
     } else if (arg === '--dangerously-skip-permissions') {
       permissionMode = 'allow'
     } else if (arg === '--title') {
-      title = rest[++i]
+      title = readSubcommandFlagValue(rest, ++i, arg, sub)
     } else if (arg === '--base') {
-      base = rest[++i]
+      base = readSubcommandFlagValue(rest, ++i, arg, sub)
     } else if (!arg.startsWith('-') && spec === undefined) {
       spec = arg
     } else if (arg.startsWith('-')) {
@@ -166,4 +166,17 @@ function parseSubcommandArgs(sub: 'investigate' | 'triage' | 'fix', rest: string
   if (sub === 'fix') return { kind: 'fix', spec, model, permissionMode, title, base }
   if (sub === 'triage') return { kind: 'triage', spec, model, permissionMode }
   return { kind: 'investigate', spec, model, permissionMode }
+}
+
+function readSubcommandFlagValue(
+  rest: string[],
+  index: number,
+  flag: string,
+  sub: 'investigate' | 'triage' | 'fix',
+): string {
+  const value = rest[index]
+  if (!value || value.startsWith('-')) {
+    throw new Error(`${sub}: ${flag} requires a value`)
+  }
+  return value
 }

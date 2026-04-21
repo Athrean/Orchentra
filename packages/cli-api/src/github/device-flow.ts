@@ -19,6 +19,7 @@ export interface DeviceFlowConfig {
   readonly fetchImpl?: typeof fetch
   readonly sleep?: (ms: number) => Promise<void>
   readonly now?: () => number
+  readonly requestTimeoutMs?: number
 }
 
 export class DeviceFlowError extends Error {
@@ -34,12 +35,18 @@ export class DeviceFlowError extends Error {
 export async function requestDeviceCode(config: DeviceFlowConfig): Promise<DeviceCodeResponse> {
   const fetchImpl = config.fetchImpl ?? fetch
   const scopes = (config.scopes ?? DEFAULT_SCOPES).join(' ')
+  const timeoutMs = config.requestTimeoutMs ?? 30_000
 
-  const response = await fetchImpl(config.deviceCodeUrl ?? GITHUB_DEVICE_CODE_URL, {
-    method: 'POST',
-    headers: { accept: 'application/json', 'content-type': 'application/json' },
-    body: JSON.stringify({ client_id: config.clientId, scope: scopes }),
-  })
+  const response = await fetchWithTimeout(
+    fetchImpl,
+    config.deviceCodeUrl ?? GITHUB_DEVICE_CODE_URL,
+    {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json' },
+      body: JSON.stringify({ client_id: config.clientId, scope: scopes }),
+    },
+    timeoutMs,
+  )
 
   if (!response.ok) {
     throw new DeviceFlowError(`device code request failed: ${response.status}`, 'device_code_request_failed')
@@ -67,6 +74,7 @@ export async function pollForAccessToken(deviceCode: DeviceCodeResponse, config:
   const sleep = config.sleep ?? defaultSleep
   const now = config.now ?? (() => Date.now())
   const url = config.tokenUrl ?? GITHUB_DEVICE_TOKEN_URL
+  const timeoutMs = config.requestTimeoutMs ?? 30_000
 
   const deadline = now() + deviceCode.expiresInSeconds * 1000
   let intervalMs = deviceCode.intervalSeconds * 1000
@@ -74,15 +82,20 @@ export async function pollForAccessToken(deviceCode: DeviceCodeResponse, config:
   while (now() < deadline) {
     await sleep(intervalMs)
 
-    const response = await fetchImpl(url, {
-      method: 'POST',
-      headers: { accept: 'application/json', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        client_id: config.clientId,
-        device_code: deviceCode.deviceCode,
-        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-      }),
-    })
+    const response = await fetchWithTimeout(
+      fetchImpl,
+      url,
+      {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          client_id: config.clientId,
+          device_code: deviceCode.deviceCode,
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+        }),
+      },
+      timeoutMs,
+    )
 
     const body = (await response.json()) as {
       access_token?: string
@@ -116,4 +129,28 @@ export async function pollForAccessToken(deviceCode: DeviceCodeResponse, config:
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
+async function fetchWithTimeout(
+  fetchImpl: typeof fetch,
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetchImpl(url, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new DeviceFlowError(`device flow request timed out after ${timeoutMs}ms`, 'request_timeout')
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
 }

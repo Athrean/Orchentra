@@ -69,16 +69,19 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
 
   write(`Preparing branch ${branch} from ${base}...\n`)
   deps.git.checkout(branch, base)
+  const filesBefore = new Set(deps.git.listUncommittedFiles())
 
   write('Running agent to produce a fix...\n')
   await deps.cli.runTurn(buildFixPrompt(run, brief))
 
-  if (!deps.git.hasUncommittedChanges()) {
+  const filesAfter = deps.git.listUncommittedFiles()
+  const agentChangedFiles = filesAfter.filter((path) => !filesBefore.has(path))
+  if (agentChangedFiles.length === 0) {
     write('Agent produced no file changes; not opening a PR.\n')
     return { ...emptyResult(run, failingJobs, base), brief, branch, changedFiles: false }
   }
 
-  deps.git.add(['.'])
+  deps.git.add(agentChangedFiles)
   deps.git.commit(`${title}\n\nOrchentra fix for ${spec.owner}/${spec.repo}#${spec.runId}`)
   write(`Pushing ${branch}...\n`)
   deps.git.push(branch)

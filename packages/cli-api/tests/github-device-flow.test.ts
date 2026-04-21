@@ -13,6 +13,25 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
+function hangingFetch(): typeof fetch {
+  return (async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    return new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal
+      const rejectAbort = (): void => {
+        const error = new Error('request aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }
+      if (!signal) return
+      if (signal.aborted) {
+        rejectAbort()
+        return
+      }
+      signal.addEventListener('abort', rejectAbort, { once: true })
+    })
+  }) as typeof fetch
+}
+
 describe('requestDeviceCode', () => {
   test('maps GitHub response to camelCase', async () => {
     const fetchImpl = async (): Promise<Response> =>
@@ -40,6 +59,16 @@ describe('requestDeviceCode', () => {
     await expect(requestDeviceCode({ clientId: 'client', fetchImpl: fetchImpl as typeof fetch })).rejects.toThrow(
       DeviceFlowError,
     )
+  })
+
+  test('times out hung requests', async () => {
+    await expect(
+      requestDeviceCode({
+        clientId: 'client',
+        fetchImpl: hangingFetch(),
+        requestTimeoutMs: 5,
+      }),
+    ).rejects.toMatchObject({ code: 'request_timeout' })
   })
 })
 
@@ -117,5 +146,16 @@ describe('pollForAccessToken', () => {
         },
       ),
     ).rejects.toMatchObject({ code: 'expired_token' })
+  })
+
+  test('times out hung token polling requests', async () => {
+    await expect(
+      pollForAccessToken(baseDeviceCode, {
+        clientId: 'client',
+        fetchImpl: hangingFetch(),
+        sleep: async (): Promise<void> => {},
+        requestTimeoutMs: 5,
+      }),
+    ).rejects.toMatchObject({ code: 'request_timeout' })
   })
 })

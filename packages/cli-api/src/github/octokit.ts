@@ -57,7 +57,9 @@ export class GitHubClient {
   async request<T>(path: string, options: GitHubRequestOptions = {}): Promise<T> {
     const response = await this.raw(path, options)
     const text = await response.text()
-    if (text.length === 0) return undefined as T
+    if (text.length === 0) {
+      throw new GitHubApiError(response.status, response.url || path, 'empty response body')
+    }
     return JSON.parse(text) as T
   }
 

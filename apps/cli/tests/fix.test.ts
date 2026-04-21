@@ -14,14 +14,23 @@ function mockCli(): LiveCli {
   return { runTurn: async (): Promise<void> => undefined } as unknown as LiveCli
 }
 
-function mockGit(opts: { hasChanges: boolean }): { git: GitOps; calls: string[] } {
+function mockGit(opts: { beforeFiles?: string[]; afterFiles?: string[] }): { git: GitOps; calls: string[] } {
   const calls: string[] = []
+  let statusCallCount = 0
   const git: GitOps = {
     currentBranch: (): string => 'main',
     checkout: (branch, base): void => {
       calls.push(`checkout:${branch}:${base ?? ''}`)
     },
-    hasUncommittedChanges: (): boolean => opts.hasChanges,
+    hasUncommittedChanges: (): boolean => {
+      const files = statusCallCount === 0 ? opts.beforeFiles ?? [] : opts.afterFiles ?? []
+      return files.length > 0
+    },
+    listUncommittedFiles: (): string[] => {
+      const files = statusCallCount === 0 ? opts.beforeFiles ?? [] : opts.afterFiles ?? []
+      statusCallCount++
+      return [...files]
+    },
     add: (paths): void => {
       calls.push(`add:${paths.join(',')}`)
     },
@@ -117,7 +126,7 @@ describe('fix', () => {
 
     const captured: MockCall[] = []
     const fetchImpl = routeFixFetch({ existingPulls: [], captured })
-    const { git, calls } = mockGit({ hasChanges: true })
+    const { git, calls } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 42 },
@@ -135,7 +144,7 @@ describe('fix', () => {
     expect(result.pullRequest?.number).toBe(77)
     expect(result.branch).toBe('orchentra/fix/run-42')
     expect(calls).toContain('checkout:orchentra/fix/run-42:main')
-    expect(calls).toContain('add:.')
+    expect(calls).toContain('add:src/fix.ts')
     expect(calls).toContain('push:orchentra/fix/run-42')
 
     const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
@@ -161,7 +170,7 @@ describe('fix', () => {
       ],
       captured,
     })
-    const { git } = mockGit({ hasChanges: true })
+    const { git } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 42 },
@@ -188,7 +197,7 @@ describe('fix', () => {
 
     const captured: MockCall[] = []
     const fetchImpl = routeFixFetch({ existingPulls: [], captured })
-    const { git, calls } = mockGit({ hasChanges: false })
+    const { git, calls } = mockGit({ beforeFiles: [], afterFiles: [] })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 42 },
@@ -204,7 +213,7 @@ describe('fix', () => {
     expect(result.changedFiles).toBe(false)
     expect(result.createdPullRequest).toBe(false)
     expect(result.pullRequest).toBeNull()
-    expect(calls).not.toContain('add:.')
+    expect(calls.find((c) => c.startsWith('add:'))).toBeUndefined()
     expect(calls.find((c) => c.startsWith('push:'))).toBeUndefined()
     const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
     expect(postPull).toBeUndefined()
@@ -231,7 +240,7 @@ describe('fix', () => {
       if (url.includes('/actions/runs/99/jobs')) return jsonResponse({ jobs: [] })
       return new Response('no route', { status: 404 })
     }) as unknown as typeof fetch
-    const { git, calls } = mockGit({ hasChanges: false })
+    const { git, calls } = mockGit({ beforeFiles: [], afterFiles: [] })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 99 },

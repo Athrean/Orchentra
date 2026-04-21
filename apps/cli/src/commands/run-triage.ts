@@ -11,6 +11,8 @@ export interface RunTriageOptions {
 }
 
 export async function runTriage(options: RunTriageOptions): Promise<number> {
+  // Triage is a GitHub-only operation and does not run the LLM runtime loop,
+  // so there is no CLI session context to initialize/persist here.
   let parsed
   try {
     parsed = parseRepoRunSpec(options.spec)

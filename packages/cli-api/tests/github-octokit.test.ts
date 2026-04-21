@@ -112,4 +112,11 @@ describe('GitHubClient.request', () => {
     const text = await client.requestText('/repos/o/r/actions/jobs/1/logs')
     expect(text).toBe('raw log text')
   })
+
+  test('throws on empty JSON body for request', async () => {
+    const { fetchImpl } = stubFetch([new Response('', { status: 204 })])
+    const client = new GitHubClient({ token: 't', fetchImpl })
+
+    await expect(client.request('/repos/o/r/empty')).rejects.toBeInstanceOf(GitHubApiError)
+  })
 })
