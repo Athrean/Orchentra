@@ -11,6 +11,8 @@
     "NODE_ENV",
     "ORCHESTRA_CONFIG_HOME",
     "ORCHESTRA_MODEL",
+    "ORCHESTRA_GITHUB_CLIENT_ID",
+    "GITHUB_TOKEN",
     "PORT"
   ],
   "tasks": {
