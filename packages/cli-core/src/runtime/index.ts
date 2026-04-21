@@ -129,3 +129,20 @@ export { detectGitContext, renderGitContext } from './git-context'
 
 export type { HookEvent, HookConfig, HookRunResult } from './hooks'
 export { HookRunner } from './hooks'
+
+export type {
+  ConfigSource,
+  ConfigEntry,
+  RuntimeHookConfig,
+  RuntimePermissionRuleConfig,
+  RuntimeFeatureConfig,
+  ResolvedPermissionMode,
+  RuntimeConfig,
+} from './config-types'
+export { ConfigLoader, defaultConfigHome } from './config'
+
+export type { ModelPricing, UsageCostEstimate } from './usage'
+export { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from './usage'
+
+export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
+export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'
