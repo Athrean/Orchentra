@@ -6,16 +6,22 @@ export type FailureType =
   | 'code_bug'
   | 'unknown'
 
-export interface EmbeddingVector {
-  readonly __brand: unique symbol
-  readonly data: readonly number[]
+export type EmbeddingVector = number[]
+
+export interface MemoryConfig {
+  embeddingModel: string
+  embeddingBaseUrl: string
+  similarityThreshold: number
+  maxResults: number
 }
+
+export type EmbedFn = (text: string, config: MemoryConfig) => Promise<EmbeddingVector>
 
 export interface PatternEntry {
   id: string
   orgId: string
   incidentId: string | null
-  embedding: number[]
+  embedding: EmbeddingVector
   pattern: string
   resolution: string
   failureType: FailureType
@@ -27,13 +33,6 @@ export interface PatternEntry {
 export interface PatternMatch {
   entry: PatternEntry
   similarity: number
-}
-
-export interface MemoryConfig {
-  embeddingModel: string
-  embeddingBaseUrl: string
-  similarityThreshold: number
-  maxResults: number
 }
 
 export interface PatternBuilderInput {

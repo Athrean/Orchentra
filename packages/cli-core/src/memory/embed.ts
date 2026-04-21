@@ -22,5 +22,5 @@ export async function embedText(text: string, config: MemoryConfig): Promise<Emb
     throw new Error('No embedding returned from API')
   }
 
-  return embedding as unknown as EmbeddingVector
+  return embedding
 }

@@ -1,7 +1,5 @@
-import type { EmbeddingVector, MemoryConfig, MemoryStore, PatternMatch } from './types'
+import type { EmbedFn, MemoryConfig, MemoryStore, PatternMatch } from './types'
 import { cosineSimilarity, SIMILARITY_THRESHOLD } from './similarity'
-
-export type EmbedFn = (text: string, config: MemoryConfig) => Promise<EmbeddingVector>
 
 export async function findSimilarPatterns(
   store: MemoryStore,
@@ -17,8 +15,7 @@ export async function findSimilarPatterns(
 
   const matches: PatternMatch[] = []
   for (const entry of allPatterns) {
-    const entryVec = entry.embedding as unknown as EmbeddingVector
-    const score = cosineSimilarity(queryVec, entryVec)
+    const score = cosineSimilarity(queryVec, entry.embedding)
     if (score >= (config.similarityThreshold ?? SIMILARITY_THRESHOLD)) {
       matches.push({ entry, similarity: score })
     }

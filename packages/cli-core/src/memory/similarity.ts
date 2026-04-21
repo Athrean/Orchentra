@@ -3,17 +3,15 @@ import type { EmbeddingVector } from './types'
 export const SIMILARITY_THRESHOLD = 0.78
 
 export function cosineSimilarity(a: EmbeddingVector, b: EmbeddingVector): number {
-  const av = a.data
-  const bv = b.data
-  if (av.length !== bv.length || av.length === 0) return 0
+  if (a.length !== b.length || a.length === 0) return 0
 
   let dot = 0
   let normA = 0
   let normB = 0
-  for (let i = 0; i < av.length; i++) {
-    dot += av[i] * bv[i]
-    normA += av[i] * av[i]
-    normB += bv[i] * bv[i]
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]
+    normA += a[i] * a[i]
+    normB += b[i] * b[i]
   }
 
   const denom = Math.sqrt(normA) * Math.sqrt(normB)
