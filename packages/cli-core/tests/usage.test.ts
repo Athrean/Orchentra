@@ -26,10 +26,10 @@ describe('pricingForModel', () => {
   test('returns sonnet pricing', () => {
     const p = pricingForModel('claude-sonnet-4-20250514')
     expect(p).toEqual({
-      inputCostPerMillion: 15,
-      outputCostPerMillion: 75,
-      cacheCreationCostPerMillion: 18.75,
-      cacheReadCostPerMillion: 1.5,
+      inputCostPerMillion: 3,
+      outputCostPerMillion: 15,
+      cacheCreationCostPerMillion: 3.75,
+      cacheReadCostPerMillion: 0.3,
     })
   })
 
@@ -49,10 +49,10 @@ describe('estimateCost', () => {
     const sonnet = pricingForModel('claude-sonnet-4-20250514')!
     const cost = estimateCost(usage, sonnet)
 
-    expect(formatUsd(cost.inputCostUsd)).toBe('$15.0000')
-    expect(formatUsd(cost.outputCostUsd)).toBe('$37.5000')
-    expect(formatUsd(cost.cacheCreationCostUsd)).toBe('$1.8750')
-    expect(formatUsd(cost.cacheReadCostUsd)).toBe('$0.3000')
+    expect(formatUsd(cost.inputCostUsd)).toBe('$3.0000')
+    expect(formatUsd(cost.outputCostUsd)).toBe('$7.5000')
+    expect(formatUsd(cost.cacheCreationCostUsd)).toBe('$0.3750')
+    expect(formatUsd(cost.cacheReadCostUsd)).toBe('$0.0600')
   })
 })
 
@@ -112,11 +112,11 @@ describe('summaryLines', () => {
     const lines = summaryLines(usage, 'usage', 'claude-sonnet-4-20250514')
 
     expect(lines[0]).toContain('model=claude-sonnet-4-20250514')
-    expect(lines[0]).toContain('estimated_cost=$54.6750')
+    expect(lines[0]).toContain('estimated_cost=$10.9350')
     expect(lines[0]).toContain('total_tokens=1800000')
-    expect(lines[1]).toContain('input=$15.0000')
-    expect(lines[1]).toContain('output=$37.5000')
-    expect(lines[1]).toContain('cache_read=$0.3000')
+    expect(lines[1]).toContain('input=$3.0000')
+    expect(lines[1]).toContain('output=$7.5000')
+    expect(lines[1]).toContain('cache_read=$0.0600')
   })
 
   test('with unknown model shows pricing=estimated-default', () => {

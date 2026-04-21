@@ -2,7 +2,6 @@ import type {
   ChatMessage,
   ConversationConfig,
   ConversationDeps,
-  ConversationRuntime,
   PermissionMode,
   Provider,
   RuntimeEvent,
@@ -11,7 +10,7 @@ import type {
   ToolRegistry,
   UsageTotals,
 } from '@orchentra/cli-core'
-import { UsageTracker, emptyUsage, buildSystemPrompt } from '@orchentra/cli-core'
+import { UsageTracker, emptyUsage, buildSystemPrompt, ConversationRuntime } from '@orchentra/cli-core'
 import {
   Spinner,
   renderToolCall,
@@ -82,7 +81,6 @@ export class LiveCli {
   }
 
   async runTurn(input: string): Promise<void> {
-    this.appendUserMessage(input)
     this.spinner.start('Thinking...')
 
     const config: ConversationConfig = {
@@ -107,7 +105,6 @@ export class LiveCli {
       systemPrompt,
     }
 
-    const { ConversationRuntime } = await import('@orchentra/cli-core')
     this.runtime = new ConversationRuntime(config, deps)
 
     let steps = 0
@@ -126,6 +123,7 @@ export class LiveCli {
         }
       }
 
+      this.appendUserMessage(input)
       this.spinner.stop()
       process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
     } catch (err) {

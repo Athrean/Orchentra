@@ -31,14 +31,13 @@ async function main(argv: string[]): Promise<number> {
       return 0
     }
 
-    case 'prompt': {
-      const { runRepl: runSingleTurn } = await import('./repl')
-      return runSingleTurn({
+    case 'prompt':
+      return runRepl({
         model: action.model,
         permissionMode: action.permissionMode,
         cwd: process.cwd(),
+        prompt: action.prompt,
       })
-    }
 
     case 'repl':
       return runRepl({

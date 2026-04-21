@@ -8,22 +8,22 @@ describe('parseArgs', () => {
   })
 
   test('--version returns version action', () => {
-    expect(parseArgs(['node', 'orchestra', '--version']).kind).toBe('version')
-    expect(parseArgs(['node', 'orchestra', '-V']).kind).toBe('version')
-    expect(parseArgs(['node', 'orchestra', 'version']).kind).toBe('version')
+    expect(parseArgs(['node', 'orchentra', '--version']).kind).toBe('version')
+    expect(parseArgs(['node', 'orchentra', '-V']).kind).toBe('version')
+    expect(parseArgs(['node', 'orchentra', 'version']).kind).toBe('version')
   })
 
   test('--help returns help action', () => {
-    expect(parseArgs(['node', 'orchestra', '--help']).kind).toBe('help')
-    expect(parseArgs(['node', 'orchestra', '-h']).kind).toBe('help')
+    expect(parseArgs(['node', 'orchentra', '--help']).kind).toBe('help')
+    expect(parseArgs(['node', 'orchentra', '-h']).kind).toBe('help')
   })
 
   test('init returns init action', () => {
-    expect(parseArgs(['node', 'orchestra', 'init']).kind).toBe('init')
+    expect(parseArgs(['node', 'orchentra', 'init']).kind).toBe('init')
   })
 
   test('-p with prompt returns prompt action', () => {
-    const action = parseArgs(['node', 'orchestra', '-p', 'hello world'])
+    const action = parseArgs(['node', 'orchentra', '-p', 'hello world'])
     expect(action.kind).toBe('prompt')
     if (action.kind === 'prompt') {
       expect(action.prompt).toBe('hello world')
@@ -31,7 +31,7 @@ describe('parseArgs', () => {
   })
 
   test('positional prompt returns prompt action', () => {
-    const action = parseArgs(['node', 'orchestra', 'explain this code'])
+    const action = parseArgs(['node', 'orchentra', 'explain this code'])
     expect(action.kind).toBe('prompt')
     if (action.kind === 'prompt') {
       expect(action.prompt).toBe('explain this code')
@@ -39,7 +39,7 @@ describe('parseArgs', () => {
   })
 
   test('--model sets model', () => {
-    const action = parseArgs(['node', 'orchestra', '--model', 'opus', '-p', 'hi'])
+    const action = parseArgs(['node', 'orchentra', '--model', 'opus', '-p', 'hi'])
     expect(action.kind).toBe('prompt')
     if (action.kind === 'prompt') {
       expect(action.model).toBe('opus')
@@ -47,7 +47,7 @@ describe('parseArgs', () => {
   })
 
   test('--permission-mode sets mode', () => {
-    const action = parseArgs(['node', 'orchestra', '--permission-mode', 'read-only', '-p', 'hi'])
+    const action = parseArgs(['node', 'orchentra', '--permission-mode', 'read-only', '-p', 'hi'])
     expect(action.kind).toBe('prompt')
     if (action.kind === 'prompt') {
       expect(action.permissionMode).toBe('read-only')
@@ -55,43 +55,27 @@ describe('parseArgs', () => {
   })
 
   test('--dangerously-skip-permissions sets allow mode', () => {
-    const action = parseArgs(['node', 'orchestra', '--dangerously-skip-permissions', '-p', 'hi'])
+    const action = parseArgs(['node', 'orchentra', '--dangerously-skip-permissions', '-p', 'hi'])
     expect(action.kind).toBe('prompt')
     if (action.kind === 'prompt') {
       expect(action.permissionMode).toBe('allow')
     }
   })
 
-  test('--output-format json sets format', () => {
-    const action = parseArgs(['node', 'orchestra', '--output-format', 'json', '-p', 'hi'])
-    expect(action.kind).toBe('prompt')
-    if (action.kind === 'prompt') {
-      expect(action.outputFormat).toBe('json')
-    }
-  })
-
   test('--resume returns resume action', () => {
-    const action = parseArgs(['node', 'orchestra', '--resume', '/path/to/session.jsonl'])
+    const action = parseArgs(['node', 'orchentra', '--resume', '/path/to/session.jsonl'])
     expect(action.kind).toBe('resume')
     if (action.kind === 'resume') {
       expect(action.sessionPath).toBe('/path/to/session.jsonl')
     }
   })
 
-  test('--compact flag is parsed', () => {
-    const action = parseArgs(['node', 'orchestra', '--compact', '-p', 'hi'])
-    expect(action.kind).toBe('prompt')
-    if (action.kind === 'prompt') {
-      expect(action.compact).toBe(true)
-    }
-  })
-
   test('unknown flag throws error', () => {
-    expect(() => parseArgs(['node', 'orchestra', '--unknown-flag'])).toThrow('unknown flag')
+    expect(() => parseArgs(['node', 'orchentra', '--unknown-flag'])).toThrow('unknown flag')
   })
 
   test('invalid permission mode throws error', () => {
-    expect(() => parseArgs(['node', 'orchestra', '--permission-mode', 'invalid', '-p', 'hi'])).toThrow(
+    expect(() => parseArgs(['node', 'orchentra', '--permission-mode', 'invalid', '-p', 'hi'])).toThrow(
       'invalid permission mode',
     )
   })

@@ -1,7 +1,5 @@
 import type { PermissionMode } from '@orchentra/cli-core'
 
-export type CliOutputFormat = 'text' | 'json'
-
 export type CliAction =
   | { kind: 'version' }
   | { kind: 'help' }
@@ -11,8 +9,6 @@ export type CliAction =
       prompt: string
       model: string
       permissionMode: PermissionMode
-      outputFormat: CliOutputFormat
-      compact: boolean
     }
   | { kind: 'repl'; model: string; permissionMode: PermissionMode }
   | { kind: 'resume'; sessionPath: string }
@@ -45,8 +41,6 @@ export function parseArgs(argv: string[]): CliAction {
 
   let model = defaultModel()
   let permissionMode: PermissionMode = 'workspace-write'
-  let outputFormat: CliOutputFormat = 'text'
-  let compact = false
   let prompt = ''
   let resumePath: string | undefined
 
@@ -66,20 +60,12 @@ export function parseArgs(argv: string[]): CliAction {
       permissionMode = val as PermissionMode
     } else if (arg === '--dangerously-skip-permissions') {
       permissionMode = 'allow'
-    } else if (arg === '--output-format') {
-      const val = args[++i]
-      if (val !== 'text' && val !== 'json') {
-        throw new Error(`invalid output format: ${val}. valid: text, json`)
-      }
-      outputFormat = val
     } else if (arg === '-p' || arg === '--prompt') {
       prompt = args[++i] ?? ''
     } else if (arg.startsWith('-p=')) {
       prompt = arg.slice('-p='.length)
     } else if (arg === '--resume') {
       resumePath = args[++i]
-    } else if (arg === '--compact') {
-      compact = true
     } else if (!arg.startsWith('-') && prompt.length === 0) {
       prompt = arg
     } else if (arg.startsWith('-')) {
@@ -94,7 +80,7 @@ export function parseArgs(argv: string[]): CliAction {
   }
 
   if (prompt.length > 0) {
-    return { kind: 'prompt', prompt, model, permissionMode, outputFormat, compact }
+    return { kind: 'prompt', prompt, model, permissionMode }
   }
 
   return { kind: 'repl', model, permissionMode }
@@ -104,19 +90,17 @@ export function renderHelp(): string {
   return `orchentra — AI-powered DevOps agent
 
 USAGE
-  orchestra [flags]               Start interactive REPL
-  orchestra -p <prompt> [flags]   One-shot prompt
-  orchestra init                  Scaffold project config
-  orchestra --version             Print version
+  orchentra [flags]               Start interactive REPL
+  orchentra -p <prompt> [flags]   One-shot prompt
+  orchentra init                  Scaffold project config
+  orchentra --version             Print version
 
 FLAGS
   -p, --prompt <text>                 One-shot prompt (non-interactive)
   -m, --model <model>                 Model to use (default: claude-sonnet-4-20250514)
       --permission-mode <mode>        Permission mode: read-only, workspace-write, danger-full-access
       --dangerously-skip-permissions  Shortcut for --permission-mode allow
-      --output-format <format>        Output format: text (default), json
       --resume <path>                 Resume a previous session
-      --compact                       Compact output (one-shot mode)
   -h, --help                          Show this help
   -V, --version                       Print version
 `

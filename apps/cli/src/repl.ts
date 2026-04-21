@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { ConfigLoader, type PermissionMode, type Provider, type ToolRegistry, SessionWriter } from '@orchentra/cli-core'
 import {
   AnthropicProvider,
@@ -18,6 +19,7 @@ export interface ReplOptions {
   model: string
   permissionMode: PermissionMode
   cwd: string
+  prompt?: string
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
@@ -39,13 +41,21 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     sessionId,
   })
 
+  const sessionRootDir = join(options.cwd, '.orchentra', 'sessions')
   const session = await SessionWriter.open({
+    rootDir: sessionRootDir,
     meta: {
       cwd: options.cwd,
       model: resolvedModel,
     },
   })
   cli.setSession(session)
+
+  if (options.prompt) {
+    await cli.runTurn(options.prompt)
+    await cli.persistSession()
+    return 0
+  }
 
   process.stdout.write(`${CLI_NAME} ${CLI_VERSION}\n`)
   process.stdout.write(`Model: ${resolvedModel} | Mode: ${resolvedMode}\n`)

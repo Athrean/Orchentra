@@ -15,7 +15,21 @@ export interface UsageCostEstimate {
   cacheReadCostUsd: number
 }
 
+const HAIKU_PRICING: ModelPricing = {
+  inputCostPerMillion: 1,
+  outputCostPerMillion: 5,
+  cacheCreationCostPerMillion: 1.25,
+  cacheReadCostPerMillion: 0.1,
+}
+
 const SONNET_PRICING: ModelPricing = {
+  inputCostPerMillion: 3,
+  outputCostPerMillion: 15,
+  cacheCreationCostPerMillion: 3.75,
+  cacheReadCostPerMillion: 0.3,
+}
+
+const OPUS_PRICING: ModelPricing = {
   inputCostPerMillion: 15,
   outputCostPerMillion: 75,
   cacheCreationCostPerMillion: 18.75,
@@ -25,15 +39,10 @@ const SONNET_PRICING: ModelPricing = {
 export function pricingForModel(model: string): ModelPricing | undefined {
   const normalized = model.toLowerCase()
   if (normalized.includes('haiku')) {
-    return {
-      inputCostPerMillion: 1,
-      outputCostPerMillion: 5,
-      cacheCreationCostPerMillion: 1.25,
-      cacheReadCostPerMillion: 0.1,
-    }
+    return HAIKU_PRICING
   }
   if (normalized.includes('opus')) {
-    return SONNET_PRICING
+    return OPUS_PRICING
   }
   if (normalized.includes('sonnet')) {
     return SONNET_PRICING
