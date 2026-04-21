@@ -5,6 +5,7 @@ import { runRepl } from './repl'
 import { initializeRepo } from './init'
 import { runInvestigate } from './commands/run-investigate'
 import { runTriage } from './commands/run-triage'
+import { runFix } from './commands/run-fix'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -69,8 +70,14 @@ async function main(argv: string[]): Promise<number> {
       })
 
     case 'fix':
-      process.stderr.write('fix: not implemented yet\n')
-      return 1
+      return runFix({
+        spec: action.spec,
+        model: action.model,
+        permissionMode: action.permissionMode,
+        cwd: process.cwd(),
+        title: action.title,
+        base: action.base,
+      })
   }
 }
 
