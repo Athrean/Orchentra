@@ -1,19 +1,9 @@
-import { join } from 'node:path'
-import { ConfigLoader, type PermissionMode, type Provider, type ToolRegistry, SessionWriter } from '@orchentra/cli-core'
-import {
-  AnthropicProvider,
-  OpenAiCompatProvider,
-  OPENAI_CONFIG,
-  XAI_CONFIG,
-  DASHSCOPE_CONFIG,
-} from '@orchentra/cli-api'
-import { DefaultToolRegistry, BUILTIN_TOOLS } from '@orchentra/cli-tools'
+import type { PermissionMode } from '@orchentra/cli-core'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { readLine } from './input'
-import { LiveCli } from './live-cli'
+import { createCliContext } from './live-cli-factory'
 import { parseSlashCommand, dispatchCommand, renderCommandHelp } from './commands'
 import type { CommandContext } from './commands'
-import { randomUUID } from 'node:crypto'
 
 export interface ReplOptions {
   model: string
@@ -23,37 +13,16 @@ export interface ReplOptions {
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
-  const config = ConfigLoader.defaultFor(options.cwd).load()
-
-  const resolvedModel = config.featureConfig.model ?? options.model
-  const resolvedMode = config.featureConfig.permissionMode ?? options.permissionMode
-
-  const provider = resolveProvider(resolvedModel)
-  const tools = buildToolRegistry()
-
-  const sessionId = randomUUID()
-  const cli = new LiveCli({
-    model: resolvedModel,
-    permissionMode: resolvedMode,
-    provider,
-    tools,
+  const ctx = await createCliContext({
+    model: options.model,
+    permissionMode: options.permissionMode,
     cwd: options.cwd,
-    sessionId,
   })
-
-  const sessionRootDir = join(options.cwd, '.orchentra', 'sessions')
-  const session = await SessionWriter.open({
-    rootDir: sessionRootDir,
-    meta: {
-      cwd: options.cwd,
-      model: resolvedModel,
-    },
-  })
-  cli.setSession(session)
+  const { cli, sessionId, resolvedModel, resolvedPermissionMode: resolvedMode } = ctx
 
   if (options.prompt) {
     await cli.runTurn(options.prompt)
-    await cli.persistSession()
+    await ctx.close()
     return 0
   }
 
@@ -111,30 +80,6 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     process.stdout.write('\n')
   }
 
-  await cli.persistSession()
+  await ctx.close()
   return 0
-}
-
-function resolveProvider(model: string): Provider {
-  const lower = model.toLowerCase()
-
-  if (lower.startsWith('gpt') || lower.includes('openai')) {
-    return new OpenAiCompatProvider(OPENAI_CONFIG)
-  }
-  if (lower.startsWith('grok') || lower.includes('xai')) {
-    return new OpenAiCompatProvider(XAI_CONFIG)
-  }
-  if (lower.includes('qwen') || lower.includes('dashscope')) {
-    return new OpenAiCompatProvider(DASHSCOPE_CONFIG)
-  }
-
-  return new AnthropicProvider()
-}
-
-function buildToolRegistry(): ToolRegistry {
-  const registry = new DefaultToolRegistry()
-  for (const tool of BUILTIN_TOOLS) {
-    registry.register(tool)
-  }
-  return registry
 }
