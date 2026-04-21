@@ -1,0 +1,23 @@
+apps/cli/src/commands/fix.ts
+  c9f414a07c567e1e 1-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "9cd2c1d70e4a83ef6514a3ad1d1ada03474d7b17",
+  "prompts": {
+    "c9f414a07c567e1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ed6b901-b10b-4dd9-b23a-c67508d4a8e9",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 217,
+      "total_deletions": 15,
+      "accepted_lines": 202,
+      "overriden_lines": 0
+    }
+  }
+}
