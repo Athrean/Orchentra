@@ -53,4 +53,12 @@ export {
   type GitHubClientOptions,
   type GitHubRequestOptions,
   type RateLimitState,
+  getWorkflowRun,
+  listWorkflowJobs,
+  getJobLogs,
+  isFailingJob,
+  type WorkflowRun,
+  type WorkflowJob,
+  type WorkflowJobStep,
+  type WorkflowConclusion,
 } from './github'

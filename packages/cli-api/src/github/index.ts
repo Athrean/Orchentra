@@ -22,6 +22,17 @@ export { loginWithDeviceFlow, requireToken, type LoginOptions, type LoginResult 
 export { GitHubClient, GitHubApiError, type GitHubClientOptions, type GitHubRequestOptions } from './octokit'
 
 export {
+  getWorkflowRun,
+  listWorkflowJobs,
+  getJobLogs,
+  isFailingJob,
+  type WorkflowRun,
+  type WorkflowJob,
+  type WorkflowJobStep,
+  type WorkflowConclusion,
+} from './workflows'
+
+export {
   readRateLimit,
   retryAfterMs,
   isPrimaryRateLimit,

@@ -12,6 +12,16 @@ export type CliAction =
     }
   | { kind: 'repl'; model: string; permissionMode: PermissionMode }
   | { kind: 'resume'; sessionPath: string }
+  | { kind: 'investigate'; spec: string; model: string; permissionMode: PermissionMode }
+  | { kind: 'triage'; spec: string; model: string; permissionMode: PermissionMode }
+  | {
+      kind: 'fix'
+      spec: string
+      model: string
+      permissionMode: PermissionMode
+      title?: string
+      base?: string
+    }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -37,6 +47,10 @@ export function parseArgs(argv: string[]): CliAction {
   }
   if (first === 'init') {
     return { kind: 'init' }
+  }
+
+  if (first === 'investigate' || first === 'triage' || first === 'fix') {
+    return parseSubcommandArgs(first, args.slice(1))
   }
 
   let model = defaultModel()
@@ -90,10 +104,13 @@ export function renderHelp(): string {
   return `orchentra — AI-powered DevOps agent
 
 USAGE
-  orchentra [flags]               Start interactive REPL
-  orchentra -p <prompt> [flags]   One-shot prompt
-  orchentra init                  Scaffold project config
-  orchentra --version             Print version
+  orchentra [flags]                       Start interactive REPL
+  orchentra -p <prompt> [flags]           One-shot prompt
+  orchentra init                          Scaffold project config
+  orchentra investigate <owner/repo#id>   Triage a failing workflow run
+  orchentra triage <owner/repo#id>        Post triage output as GitHub check/comment
+  orchentra fix <owner/repo#id> [flags]   Produce a code-fix PR for a failing run
+  orchentra --version                     Print version
 
 FLAGS
   -p, --prompt <text>                 One-shot prompt (non-interactive)
@@ -101,6 +118,8 @@ FLAGS
       --permission-mode <mode>        Permission mode: read-only, workspace-write, danger-full-access
       --dangerously-skip-permissions  Shortcut for --permission-mode allow
       --resume <path>                 Resume a previous session
+      --base <branch>                 Base branch for fix PRs (default: main)
+      --title <text>                  PR title override for fix
   -h, --help                          Show this help
   -V, --version                       Print version
 `
@@ -108,4 +127,43 @@ FLAGS
 
 function defaultModel(): string {
   return process.env.ORCHESTRA_MODEL ?? 'claude-sonnet-4-20250514'
+}
+
+function parseSubcommandArgs(sub: 'investigate' | 'triage' | 'fix', rest: string[]): CliAction {
+  let spec: string | undefined
+  let model = defaultModel()
+  let permissionMode: PermissionMode = 'workspace-write'
+  let title: string | undefined
+  let base: string | undefined
+
+  let i = 0
+  while (i < rest.length) {
+    const arg = rest[i]
+    if (arg === '--model' || arg === '-m') {
+      model = rest[++i] ?? model
+    } else if (arg === '--permission-mode') {
+      const val = rest[++i]
+      if (!val || !VALID_PERMISSION_MODES.includes(val as PermissionMode)) {
+        throw new Error(`invalid permission mode: ${val}`)
+      }
+      permissionMode = val as PermissionMode
+    } else if (arg === '--dangerously-skip-permissions') {
+      permissionMode = 'allow'
+    } else if (arg === '--title') {
+      title = rest[++i]
+    } else if (arg === '--base') {
+      base = rest[++i]
+    } else if (!arg.startsWith('-') && spec === undefined) {
+      spec = arg
+    } else if (arg.startsWith('-')) {
+      throw new Error(`unknown flag for ${sub}: ${arg}`)
+    }
+    i++
+  }
+
+  if (!spec) throw new Error(`${sub}: missing <owner/repo#run-id>`)
+
+  if (sub === 'fix') return { kind: 'fix', spec, model, permissionMode, title, base }
+  if (sub === 'triage') return { kind: 'triage', spec, model, permissionMode }
+  return { kind: 'investigate', spec, model, permissionMode }
 }
