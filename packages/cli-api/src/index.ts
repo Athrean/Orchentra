@@ -31,3 +31,14 @@ export {
   DASHSCOPE_CONFIG,
   type OpenAiCompatConfig,
 } from './openai-compat'
+
+export { getGitHubToken, login as githubLogin, logout as githubLogout, deviceFlow } from './github/auth'
+export type { DeviceFlowResult } from './github/auth'
+export {
+  GitHubClient,
+  type WorkflowRun,
+  type WorkflowJob,
+  type WorkflowStep,
+  type PullRequest,
+  type CheckRun,
+} from './github/client'
