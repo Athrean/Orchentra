@@ -3,6 +3,9 @@ import { CLI_NAME, CLI_VERSION } from './version'
 import { parseArgs, renderHelp } from './args'
 import { runRepl } from './repl'
 import { initializeRepo } from './init'
+import { runInvestigate } from './commands/investigate'
+import { runTriage } from './commands/triage'
+import { runFix } from './commands/fix'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -51,10 +54,34 @@ async function main(argv: string[]): Promise<number> {
       return 0
 
     case 'investigate':
+      return runInvestigate({
+        owner: action.owner,
+        repo: action.repo,
+        runId: action.runId,
+        model: action.model,
+        permissionMode: action.permissionMode,
+        cwd: process.cwd(),
+      })
+
     case 'triage':
+      return runTriage({
+        owner: action.owner,
+        repo: action.repo,
+        runId: action.runId,
+        model: action.model,
+        permissionMode: action.permissionMode,
+        cwd: process.cwd(),
+      })
+
     case 'fix':
-      process.stderr.write(`error: ${action.kind} command not yet wired — coming in next commit\n`)
-      return 1
+      return runFix({
+        owner: action.owner,
+        repo: action.repo,
+        runId: action.runId,
+        model: action.model,
+        permissionMode: action.permissionMode,
+        cwd: process.cwd(),
+      })
   }
 }
 
