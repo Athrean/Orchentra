@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { getGitHubToken } from './auth'
 
 const GITHUB_API = 'https://api.github.com'
@@ -150,6 +151,40 @@ export class GitHubClient {
     })
   }
 
+  async findExistingPr(
+    owner: string,
+    repo: string,
+    head: string,
+    base: string,
+    title: string,
+  ): Promise<PullRequest | null> {
+    const prs = await this.listPullRequests(owner, repo, head, base)
+    const titleHash = hashTitle(title)
+    for (const pr of prs) {
+      const prHash = pr.body?.match(/\[orchentra:id:([a-f0-9]+)\]/)?.[1]
+      if (prHash === titleHash) return pr
+    }
+    return null
+  }
+
+  async createIdempotentPr(
+    owner: string,
+    repo: string,
+    params: {
+      title: string
+      body: string
+      head: string
+      base: string
+    },
+  ): Promise<PullRequest> {
+    const existing = await this.findExistingPr(owner, repo, params.head, params.base, params.title)
+    if (existing) return existing
+
+    const titleHash = hashTitle(params.title)
+    const bodyWithMarker = `${params.body}\n\n---\n[orchentra:id:${titleHash}]`
+    return this.createPullRequest(owner, repo, { ...params, body: bodyWithMarker })
+  }
+
   async createCommitStatus(
     owner: string,
     repo: string,
@@ -214,4 +249,8 @@ export class GitHubClient {
       body: options?.body ? JSON.stringify(options.body) : undefined,
     })
   }
+}
+
+function hashTitle(title: string): string {
+  return createHash('sha256').update(title).digest('hex').slice(0, 12)
 }
