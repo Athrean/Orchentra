@@ -1,11 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { GitHubClient } from '../src/github/octokit'
-import {
-  createPullRequest,
-  findOpenPullByHead,
-  listPullsForCommit,
-  updatePullRequest,
-} from '../src/github/prs'
+import { createPullRequest, findOpenPullByHead, listPullsForCommit, updatePullRequest } from '../src/github/prs'
 
 interface FetchCall {
   readonly url: string
@@ -127,4 +122,3 @@ describe('github prs', () => {
     expect(calls[0].body).toBe(JSON.stringify({ title: 'new title', body: 'new body' }))
   })
 })
-
