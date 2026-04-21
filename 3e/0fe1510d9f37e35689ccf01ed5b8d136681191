@@ -1,0 +1,23 @@
+apps/cli/src/commands/triage.ts
+  c9f414a07c567e1e 1-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "3e0fe1510d9f37e35689ccf01ed5b8d136681191",
+  "prompts": {
+    "c9f414a07c567e1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ed6b901-b10b-4dd9-b23a-c67508d4a8e9",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 220,
+      "total_deletions": 6,
+      "accepted_lines": 214,
+      "overriden_lines": 0
+    }
+  }
+}
