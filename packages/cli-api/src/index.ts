@@ -31,3 +31,20 @@ export {
   DASHSCOPE_CONFIG,
   type OpenAiCompatConfig,
 } from './openai-compat'
+
+export {
+  resolveToken,
+  writeTokenFile,
+  tokenFilePath,
+  requireToken,
+  loginWithDeviceFlow,
+  MissingGitHubTokenError,
+  DeviceFlowError,
+  DEFAULT_SCOPES as GITHUB_DEFAULT_SCOPES,
+  type ResolvedToken,
+  type TokenSource,
+  type LoginOptions,
+  type LoginResult,
+  type DeviceCodeResponse,
+  type DeviceFlowConfig,
+} from './github'
