@@ -23,3 +23,11 @@ export {
 } from './errors'
 export { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from './retry'
 export { validateApiKey } from './preflight'
+
+export {
+  OpenAiCompatProvider,
+  XAI_CONFIG,
+  OPENAI_CONFIG,
+  DASHSCOPE_CONFIG,
+  type OpenAiCompatConfig,
+} from './openai-compat'
