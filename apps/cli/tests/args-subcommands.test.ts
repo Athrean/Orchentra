@@ -23,9 +23,9 @@ describe('parseArgs — subcommands', () => {
 
   test('subcommand flags require values', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'fix', 'acme/api#9', '--model'])).toThrow(/requires a value/)
-    expect(() =>
-      parseArgs(['bun', 'orchentra', 'investigate', 'acme/api#9', '--permission-mode']),
-    ).toThrow(/requires a value/)
+    expect(() => parseArgs(['bun', 'orchentra', 'investigate', 'acme/api#9', '--permission-mode'])).toThrow(
+      /requires a value/,
+    )
     expect(() => parseArgs(['bun', 'orchentra', 'fix', 'acme/api#9', '--title'])).toThrow(/requires a value/)
     expect(() => parseArgs(['bun', 'orchentra', 'fix', 'acme/api#9', '--base'])).toThrow(/requires a value/)
   })
