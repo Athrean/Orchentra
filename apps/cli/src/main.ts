@@ -49,6 +49,12 @@ async function main(argv: string[]): Promise<number> {
     case 'resume':
       process.stdout.write(`Resuming session: ${action.sessionPath}\n`)
       return 0
+
+    case 'investigate':
+    case 'triage':
+    case 'fix':
+      process.stderr.write(`error: ${action.kind} command not yet wired — coming in next commit\n`)
+      return 1
   }
 }
 

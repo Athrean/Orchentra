@@ -12,6 +12,30 @@ export type CliAction =
     }
   | { kind: 'repl'; model: string; permissionMode: PermissionMode }
   | { kind: 'resume'; sessionPath: string }
+  | {
+      kind: 'investigate'
+      owner: string
+      repo: string
+      runId: number
+      model: string
+      permissionMode: PermissionMode
+    }
+  | {
+      kind: 'triage'
+      owner: string
+      repo: string
+      runId: number
+      model: string
+      permissionMode: PermissionMode
+    }
+  | {
+      kind: 'fix'
+      owner: string
+      repo: string
+      runId: number
+      model: string
+      permissionMode: PermissionMode
+    }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -37,6 +61,17 @@ export function parseArgs(argv: string[]): CliAction {
   }
   if (first === 'init') {
     return { kind: 'init' }
+  }
+
+  if (first === 'investigate' || first === 'triage' || first === 'fix') {
+    const target = args[1]
+    if (!target) {
+      throw new Error(`usage: orchentra ${first} <owner>/<repo>#<run-id>`)
+    }
+    const parsed = parseRepoRun(target)
+    const model = parseModelFlag(args) ?? defaultModel()
+    const permissionMode = parsePermissionFlag(args) ?? 'workspace-write'
+    return { kind: first, ...parsed, model, permissionMode }
   }
 
   let model = defaultModel()
@@ -90,10 +125,13 @@ export function renderHelp(): string {
   return `orchentra — AI-powered DevOps agent
 
 USAGE
-  orchentra [flags]               Start interactive REPL
-  orchentra -p <prompt> [flags]   One-shot prompt
-  orchentra init                  Scaffold project config
-  orchentra --version             Print version
+  orchentra [flags]                             Start interactive REPL
+  orchentra -p <prompt> [flags]                 One-shot prompt
+  orchentra init                                Scaffold project config
+  orchentra investigate <owner>/<repo>#<run-id> Triage a failed workflow run
+  orchentra triage <owner>/<repo>#<run-id>      Post triage as GitHub-native output
+  orchentra fix <owner>/<repo>#<run-id>         Generate a fix and open a PR
+  orchentra --version                           Print version
 
 FLAGS
   -p, --prompt <text>                 One-shot prompt (non-interactive)
@@ -108,4 +146,45 @@ FLAGS
 
 function defaultModel(): string {
   return process.env.ORCHESTRA_MODEL ?? 'claude-sonnet-4-20250514'
+}
+
+function parseRepoRun(target: string): { owner: string; repo: string; runId: number } {
+  const hashIdx = target.indexOf('#')
+  if (hashIdx === -1) {
+    throw new Error(`expected <owner>/<repo>#<run-id>, got: ${target}`)
+  }
+  const repoPart = target.slice(0, hashIdx)
+  const runIdStr = target.slice(hashIdx + 1)
+  const slashIdx = repoPart.indexOf('/')
+  if (slashIdx === -1) {
+    throw new Error(`expected <owner>/<repo>#<run-id>, got: ${target}`)
+  }
+  const owner = repoPart.slice(0, slashIdx)
+  const repo = repoPart.slice(slashIdx + 1)
+  const runId = parseInt(runIdStr, 10)
+  if (!Number.isFinite(runId) || runId <= 0) {
+    throw new Error(`invalid run-id: ${runIdStr}`)
+  }
+  return { owner, repo, runId }
+}
+
+function parseModelFlag(args: string[]): string | undefined {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--model' || args[i] === '-m') return args[i + 1]
+    if (args[i]?.startsWith('--model=')) return args[i].slice('--model='.length)
+  }
+  return undefined
+}
+
+function parsePermissionFlag(args: string[]): PermissionMode | undefined {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--dangerously-skip-permissions') return 'allow'
+    if (args[i] === '--permission-mode') {
+      const val = args[i + 1]
+      if (val && VALID_PERMISSION_MODES.includes(val as PermissionMode)) {
+        return val as PermissionMode
+      }
+    }
+  }
+  return undefined
 }
