@@ -1,0 +1,39 @@
+packages/cli-core/tests/service.test.ts
+  eee32a63f381761b 37,40-41,43-44,50,66-67,69-70,77,97-98,100-101,108,111-112,126-127,138,154-155,163-164,171,174-175,183-184,191,212-213,221-222
+packages/cli-core/tests/embed.test.ts
+  eee32a63f381761b 12-32,35-37,47-48,53,56,61-62,67-121,125-193
+packages/cli-core/tests/builder.test.ts
+  eee32a63f381761b 6-7,13-14,21-22,28-29,35-36,44-45,53-55,60-62
+packages/cli-core/tests/format.test.ts
+  eee32a63f381761b 7-9,14,32-33,35-36,45,78-79,81-82
+packages/cli-core/tests/similarity.test.ts
+  eee32a63f381761b 6-8,13-15,20-22,27-29,34-36,41-43,48,54-56,63-65
+packages/cli-core/src/memory/embed.ts
+  eee32a63f381761b 18-26,28-30,32-36,38-41
+packages/cli-core/tests/match.test.ts
+  eee32a63f381761b 29,32-33,35-36,41,58-59,61-62,68,85-86,88-89,94,123-124,126-127,135,150-151,153-154,159,192-193,195-196
+packages/cli-core/tests/store.test.ts
+  eee32a63f381761b 36,38-39,42-43,49-51,56-57,60-61,66-67,70-71,79,81-83,88,90-92,97,99-100,102-103,110,113-114,116-117,128,130-131,133-134,139,142-143,145-146,153,155-156,158-159,164,168-170
+packages/cli-core/src/memory/index.ts
+  eee32a63f381761b 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "c01c9de91d6f7504a9b521ebbbd8554fdc79a7c2",
+  "prompts": {
+    "eee32a63f381761b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6281388-80a1-491a-a9bc-cad4ed5008fc",
+        "model": "<synthetic>"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 365,
+      "total_deletions": 40,
+      "accepted_lines": 350,
+      "overriden_lines": 0
+    }
+  }
+}
