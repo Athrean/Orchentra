@@ -1,0 +1,35 @@
+apps/cli/tests/fix-branch.test.ts
+  51aacccee335787a 1-55
+apps/cli/src/commands/fix-branch.ts
+  51aacccee335787a 1-37
+apps/cli/src/commands/run-fix.ts
+  51aacccee335787a 1-53
+apps/cli/src/commands/git-ops.ts
+  51aacccee335787a 1-84
+apps/cli/tests/fix.test.ts
+  51aacccee335787a 1-215,217-232,234-251
+apps/cli/src/commands/fix.ts
+  51aacccee335787a 1-17,19-130
+apps/cli/src/main.ts
+  51aacccee335787a 8,73-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "37c022e840d8225a211c47fcae8add776ef85072",
+  "prompts": {
+    "51aacccee335787a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9089a25-04e7-4556-a828-98b76f6a7671",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 624,
+      "total_deletions": 2,
+      "accepted_lines": 616,
+      "overriden_lines": 3
+    }
+  }
+}
