@@ -138,6 +138,7 @@ export type {
   RuntimeFeatureConfig,
   ResolvedPermissionMode,
   RuntimeConfig,
+  MemoryFeatureConfig,
 } from './config-types'
 export { ConfigLoader, defaultConfigHome } from './config'
 
@@ -146,3 +147,5 @@ export { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } 
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
 export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'
+
+export * from '../memory/index'

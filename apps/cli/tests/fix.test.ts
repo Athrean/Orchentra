@@ -23,11 +23,11 @@ function mockGit(opts: { beforeFiles?: string[]; afterFiles?: string[] }): { git
       calls.push(`checkout:${branch}:${base ?? ''}`)
     },
     hasUncommittedChanges: (): boolean => {
-      const files = statusCallCount === 0 ? opts.beforeFiles ?? [] : opts.afterFiles ?? []
+      const files = statusCallCount === 0 ? (opts.beforeFiles ?? []) : (opts.afterFiles ?? [])
       return files.length > 0
     },
     listUncommittedFiles: (): string[] => {
-      const files = statusCallCount === 0 ? opts.beforeFiles ?? [] : opts.afterFiles ?? []
+      const files = statusCallCount === 0 ? (opts.beforeFiles ?? []) : (opts.afterFiles ?? [])
       statusCallCount++
       return [...files]
     },
