@@ -200,4 +200,108 @@ describe('ConversationRuntime', () => {
     const done = events.find((e) => e.kind === 'done')
     expect(done).toMatchObject({ kind: 'done', reason: 'aborted' })
   })
+
+  test('emits span_start/span_end around each step', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'text-delta', delta: 'hi' },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider))
+    const events = await collect(rt, 'hi')
+
+    const spanStarts = events.filter((e) => e.kind === 'span_start')
+    const spanEnds = events.filter((e) => e.kind === 'span_end')
+
+    expect(spanStarts).toHaveLength(1)
+    expect(spanEnds).toHaveLength(1)
+
+    const start = spanStarts[0] as Extract<RuntimeEvent, { kind: 'span_start' }>
+    const end = spanEnds[0] as Extract<RuntimeEvent, { kind: 'span_end' }>
+
+    expect(start.name).toBe('step')
+    expect(start.attributes?.step).toBe(1)
+    expect(typeof start.spanId).toBe('string')
+    expect(start.spanId.length).toBeGreaterThan(0)
+    expect(typeof start.startedAt).toBe('string')
+    expect(start.parentSpanId).toBeUndefined()
+
+    expect(end.spanId).toBe(start.spanId)
+    expect(end.status).toBe('ok')
+    expect(typeof end.endedAt).toBe('string')
+  })
+
+  test('emits nested span around each tool call', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: { path: '/x' } } },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read', description: 'read', inputSchema: {} }],
+      has: (n) => n === 'read',
+      execute: async () => ({ content: 'ok', isError: false }),
+    }
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    const events = await collect(rt, 'hi')
+
+    const stepStarts = events.filter(
+      (e): e is Extract<RuntimeEvent, { kind: 'span_start' }> => e.kind === 'span_start' && e.name === 'step',
+    )
+    const toolStarts = events.filter(
+      (e): e is Extract<RuntimeEvent, { kind: 'span_start' }> => e.kind === 'span_start' && e.name === 'tool_call',
+    )
+    const toolEnds = events.filter((e): e is Extract<RuntimeEvent, { kind: 'span_end' }> => e.kind === 'span_end')
+
+    expect(stepStarts.length).toBeGreaterThanOrEqual(1)
+    expect(toolStarts).toHaveLength(1)
+
+    const toolStart = toolStarts[0]!
+    expect(toolStart.attributes?.tool).toBe('read')
+    expect(toolStart.attributes?.tool_call_id).toBe('tc1')
+    expect(toolStart.parentSpanId).toBe(stepStarts[0]!.spanId)
+
+    const toolEnd = toolEnds.find((e) => e.spanId === toolStart.spanId)
+    expect(toolEnd).toBeDefined()
+    expect(toolEnd!.status).toBe('ok')
+  })
+
+  test('tool failure marks span_end status=error', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'boom', input: {} } },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'boom', description: 'boom', inputSchema: {} }],
+      has: () => true,
+      execute: async () => ({ content: 'kaboom', isError: true }),
+    }
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    const events = await collect(rt, 'hi')
+
+    const toolStart = events.find(
+      (e): e is Extract<RuntimeEvent, { kind: 'span_start' }> => e.kind === 'span_start' && e.name === 'tool_call',
+    )!
+    const toolEnd = events.find(
+      (e): e is Extract<RuntimeEvent, { kind: 'span_end' }> => e.kind === 'span_end' && e.spanId === toolStart.spanId,
+    )!
+    expect(toolEnd.status).toBe('error')
+  })
 })
