@@ -1,0 +1,37 @@
+packages/cli-tools/tests/mcp-client.test.ts
+  5b8678942fe1ccbc 1-125
+packages/cli-tools/src/mcp/manager.ts
+  5b8678942fe1ccbc 1-79,81-223
+packages/cli-tools/src/mcp/client.ts
+  5b8678942fe1ccbc 1-57,59-107
+packages/cli-tools/src/index.ts
+  5b8678942fe1ccbc 58-82
+packages/cli-tools/tests/fixtures/fake-mcp-server.ts
+  5b8678942fe1ccbc 1-95
+packages/cli-tools/tests/mcp-stdio-e2e.test.ts
+  5b8678942fe1ccbc 1-89
+packages/cli-tools/src/mcp/index.ts
+  5b8678942fe1ccbc 1-3,5
+packages/cli-tools/src/mcp/bridge.ts
+  5b8678942fe1ccbc 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "7159dce969f02f752291e5813687bd9acf1d4fc9",
+  "prompts": {
+    "5b8678942fe1ccbc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d70f1a00-484f-41d2-838c-87a34b2b152a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 88372,
+      "overriden_lines": 5
+    }
+  }
+}
