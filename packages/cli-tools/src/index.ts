@@ -55,3 +55,28 @@ export { fileWriteTool } from './tools/file-write-tool'
 export { fileEditTool } from './tools/file-edit-tool'
 export { globTool } from './tools/glob-tool'
 export { grepTool } from './tools/grep-tool'
+
+export {
+  McpClient,
+  McpManager,
+  buildMcpToolDefinition,
+  mcpToolName,
+  mcpToolPrefix,
+  normalizeNameForMcp,
+  isMcpToolName,
+  parseMcpConfig,
+  substituteEnv,
+} from './mcp'
+export type {
+  McpConnectionState,
+  McpConnectionStatus,
+  McpServerConfig,
+  McpStdioConfig,
+  McpHttpConfig,
+  McpTransport,
+  McpConfigParseResult,
+  McpToolSpec,
+  McpToolsCallResult,
+  McpContentBlock,
+  McpInitializeResult,
+} from './mcp'
