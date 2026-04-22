@@ -126,7 +126,7 @@ USAGE
   orchentra triage <owner/repo#id>        Post triage output as GitHub check/comment
   orchentra fix <owner/repo#id> [flags]   Produce a code-fix PR for a failing run
   orchentra session replay <id|latest>    Replay a recorded session as JSONL events
-  orchentra doctor                        Check auth, provider, permissions, and workspace health
+  orchentra doctor                        Check auth, provider, and workspace health
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
   orchentra --version                     Print version
 

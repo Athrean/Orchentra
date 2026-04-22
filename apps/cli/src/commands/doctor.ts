@@ -14,7 +14,7 @@ export interface DoctorCheck {
 export interface DoctorOptions {
   resolveToken?: () => ResolvedToken | null
   validateApiKey?: () => { valid: boolean; error?: string }
-  diskAvailable?: () => number
+  diskAvailable?: () => number | Promise<number>
   fetchProvider?: (url: string, signal: AbortSignal) => Promise<Response>
   reporter?: (check: DoctorCheck) => void
 }
@@ -92,6 +92,9 @@ async function checkDisk(fn: () => number | Promise<number>): Promise<DoctorChec
   const start = performance.now()
   const available = await fn()
   const durationMs = Math.round(performance.now() - start)
+  if (available < 0) {
+    return { name: 'disk', status: 'warn', message: 'could not determine disk space', durationMs }
+  }
   if (available < DISK_WARN_BYTES) {
     return {
       name: 'disk',
@@ -108,7 +111,7 @@ async function defaultDiskAvailable(): Promise<number> {
     const info = await statfs(homedir())
     return (info as { bavail?: number; bsize?: number; blocks?: number }).bavail! * (info as { bsize?: number }).bsize!
   } catch {
-    return DISK_WARN_BYTES + 1
+    return -1
   }
 }
 

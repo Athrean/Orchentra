@@ -22,15 +22,27 @@ export interface WatchOptions {
 }
 
 const DEFAULT_INTERVAL_MS = 30_000
+const MAX_SEEN = 500
 
 export async function runWatch(options: WatchOptions): Promise<number> {
-  const [owner, repo] = parseRepo(options.repo)
+  const emit = options.onEvent ?? defaultEmitter()
+
+  let owner: string
+  let repo: string
+  try {
+    ;[owner, repo] = parseRepo(options.repo)
+  } catch (err) {
+    emit({ kind: 'error', status: 'failure', message: err instanceof Error ? err.message : String(err) })
+    return 1
+  }
+
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS
   const maxPolls = options.maxPolls ?? Infinity
 
   const tokenFn = options.resolveToken ?? (() => resolveToken())
   const resolved = tokenFn()
   if (!resolved) {
+    emit({ kind: 'error', status: 'failure', message: 'no GitHub token found' })
     return 1
   }
   const { token } = resolved
@@ -39,16 +51,14 @@ export async function runWatch(options: WatchOptions): Promise<number> {
   try {
     assertOrg(owner)
   } catch (err) {
-    if (err instanceof OrgNotAllowedError) {
-      return 2
-    }
-    return 1
+    const message = err instanceof Error ? err.message : String(err)
+    emit({ kind: 'error', status: 'failure', message })
+    return err instanceof OrgNotAllowedError ? 2 : 1
   }
 
   const client = new GitHubClient({ token })
   const fetchRuns = options.fetchRuns ?? defaultFetchRuns()
   const triage = options.runTriage ?? defaultTriage()
-  const emit = options.onEvent ?? (() => {})
 
   const seen = new Set<number>()
   let polls = 0
@@ -62,13 +72,13 @@ export async function runWatch(options: WatchOptions): Promise<number> {
         emit({ kind: 'skip', status: 'success', runId: run.id })
         continue
       }
-      seen.add(run.id)
 
       if (run.status === 'completed' && run.conclusion === 'failure') {
         const spec = `${owner}/${repo}#${run.id}`
         try {
           await triage(spec)
           emit({ kind: 'triage', status: 'success', runId: run.id })
+          addSeen(seen, run.id)
         } catch (err) {
           emit({
             kind: 'triage',
@@ -77,6 +87,8 @@ export async function runWatch(options: WatchOptions): Promise<number> {
             message: err instanceof Error ? err.message : String(err),
           })
         }
+      } else {
+        addSeen(seen, run.id)
       }
     }
 
@@ -87,6 +99,14 @@ export async function runWatch(options: WatchOptions): Promise<number> {
   }
 
   return 0
+}
+
+function addSeen(seen: Set<number>, id: number): void {
+  if (seen.size >= MAX_SEEN) {
+    const iter = seen.values()
+    seen.delete(iter.next().value!)
+  }
+  seen.add(id)
 }
 
 function parseRepo(repo: string): [string, string] {
@@ -139,6 +159,14 @@ function defaultTriage(): (spec: string) => Promise<{ posted: boolean; runId: nu
     const { triage } = await import('./triage')
     await triage(parsed)
     return { posted: true, runId: parsed.runId }
+  }
+}
+
+function defaultEmitter(): (event: WatchEvent) => void {
+  return (event) => {
+    if (event.kind === 'error' && event.status === 'failure') {
+      process.stderr.write(`error: ${event.message}\n`)
+    }
   }
 }
 

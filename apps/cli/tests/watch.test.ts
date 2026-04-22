@@ -100,7 +100,8 @@ describe('runWatch', () => {
     expect(errorEvent!.retryable).toBe(true)
   })
 
-  test('returns 1 when org not allowed', async () => {
+  test('returns 2 when org not allowed', async () => {
+    const log = makeEventLog()
     const code = await runWatch({
       repo: 'other/api',
       intervalMs: 10,
@@ -111,8 +112,84 @@ describe('runWatch', () => {
       },
       fetchRuns: async () => [],
       runTriage: async () => ({ posted: false, runId: 0 }),
+      onEvent: log.push,
     })
 
     expect(code).toBe(2)
+    const err = log.events.find((e) => e.kind === 'error')
+    expect(err).toBeDefined()
+  })
+
+  test('retries triage on transient failure', async () => {
+    const log = makeEventLog()
+    let triageAttempts = 0
+    const code = await runWatch({
+      repo: 'acme/api',
+      intervalMs: 10,
+      maxPolls: 3,
+      resolveToken: () => ({ token: 'ghp_test', source: 'env' as const }),
+      fetchRuns: async () => [
+        {
+          id: 300,
+          name: 'ci',
+          head_branch: 'main',
+          head_sha: 'abc',
+          event: 'push',
+          status: 'completed' as const,
+          conclusion: 'failure' as const,
+          html_url: 'https://github.com/acme/api/actions/runs/300',
+          workflow_id: 1,
+        },
+      ],
+      runTriage: async () => {
+        triageAttempts++
+        if (triageAttempts === 1) throw new Error('api timeout')
+        return { posted: true, runId: 300 }
+      },
+      onEvent: log.push,
+    })
+
+    expect(code).toBe(0)
+    expect(triageAttempts).toBe(2)
+    const triageEvents = log.events.filter((e) => e.kind === 'triage')
+    expect(triageEvents).toHaveLength(2)
+    expect(triageEvents[0]!.status).toBe('failure')
+    expect(triageEvents[1]!.status).toBe('success')
+  })
+
+  test('returns 1 for invalid repo format', async () => {
+    const log = makeEventLog()
+    const code = await runWatch({
+      repo: 'bad-format',
+      intervalMs: 10,
+      maxPolls: 1,
+      resolveToken: () => ({ token: 'ghp_test', source: 'env' as const }),
+      fetchRuns: async () => [],
+      runTriage: async () => ({ posted: false, runId: 0 }),
+      onEvent: log.push,
+    })
+
+    expect(code).toBe(1)
+    const err = log.events.find((e) => e.kind === 'error')
+    expect(err).toBeDefined()
+    expect(err!.message).toMatch(/invalid repo/)
+  })
+
+  test('returns 1 with error when token missing', async () => {
+    const log = makeEventLog()
+    const code = await runWatch({
+      repo: 'acme/api',
+      intervalMs: 10,
+      maxPolls: 1,
+      resolveToken: () => null,
+      fetchRuns: async () => [],
+      runTriage: async () => ({ posted: false, runId: 0 }),
+      onEvent: log.push,
+    })
+
+    expect(code).toBe(1)
+    const err = log.events.find((e) => e.kind === 'error')
+    expect(err).toBeDefined()
+    expect(err!.message).toMatch(/token/)
   })
 })
