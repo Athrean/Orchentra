@@ -9,6 +9,7 @@ import { runFix } from './commands/run-fix'
 import { runSessionReplay } from './commands/session-replay'
 import { runDoctor } from './commands/doctor'
 import { runWatch } from './commands/watch'
+import { runMcpList, runMcpTest } from './commands/mcp'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -90,6 +91,10 @@ async function main(argv: string[]): Promise<number> {
 
     case 'watch':
       return runWatch({ repo: action.repo, intervalMs: action.intervalMs })
+
+    case 'mcp':
+      if (action.sub === 'list') return runMcpList(process.cwd())
+      return runMcpTest(action.name, process.cwd())
   }
 }
 
