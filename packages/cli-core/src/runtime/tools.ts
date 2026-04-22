@@ -23,4 +23,5 @@ export interface ToolRegistry {
   list(): ProviderToolSchema[]
   has(name: string): boolean
   execute(name: string, args: unknown, ctx: ToolContext): Promise<ToolResult>
+  register(tool: ToolDefinition): void
 }

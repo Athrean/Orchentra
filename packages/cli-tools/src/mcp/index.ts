@@ -1,0 +1,7 @@
+export { McpClient } from './client'
+export { McpManager, type McpConnectionState, type McpConnectionStatus } from './manager'
+export { buildMcpToolDefinition } from './bridge'
+export { mcpToolName, mcpToolPrefix, normalizeNameForMcp, isMcpToolName } from './naming'
+export { parseMcpConfig, substituteEnv } from './config'
+export type { McpServerConfig, McpStdioConfig, McpHttpConfig, McpTransport, McpConfigParseResult } from './config'
+export type { McpToolSpec, McpToolsCallResult, McpContentBlock, McpInitializeResult } from './protocol'
