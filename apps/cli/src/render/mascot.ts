@@ -1,30 +1,40 @@
 import type { ColorMode, Rgb } from './ansi'
-import { ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, bg, fg } from './ansi'
+import { MASCOT_EYE, MASCOT_WHITE, ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, bg, fg } from './ansi'
 
-// Each character = one pixel.
-// '#' = primary (bright green), '+' = dim (shadow), ' ' = transparent.
+// Pixel encoding:
+//   '#' primary green body
+//   '+' shadow (darker green)
+//   'W' white bang / highlight
+//   'K' eye
+//   ' ' transparent
+// Design matches the "Letter A" mascot: pointed top, white bang upper-left,
+// two eyes, short arm tabs on each side, two feet separated at the base.
 const PIXEL_ROWS: readonly string[] = [
-  '  ######  ',
+  '    ##    ',
+  '   ####   ',
+  '  ##WW##  ',
+  ' ##WWW### ',
+  '####W#####',
+  '###K##K###',
   ' ######## ',
-  '##########',
-  '## #  # ##',
-  '##########',
-  '##+####+##',
   ' ######## ',
-  '##  ##  ##',
+  ' ##    ## ',
+  ' ##    ## ',
 ]
 
 interface Pixel {
   readonly filled: boolean
-  readonly dim: boolean
+  readonly color: Rgb | null
 }
 
 function decodeRow(row: string): Pixel[] {
   const cells: Pixel[] = []
   for (const ch of row) {
-    if (ch === '#') cells.push({ filled: true, dim: false })
-    else if (ch === '+') cells.push({ filled: true, dim: true })
-    else cells.push({ filled: false, dim: false })
+    if (ch === '#') cells.push({ filled: true, color: ORCHENTRA_GREEN })
+    else if (ch === '+') cells.push({ filled: true, color: ORCHENTRA_GREEN_DIM })
+    else if (ch === 'W') cells.push({ filled: true, color: MASCOT_WHITE })
+    else if (ch === 'K') cells.push({ filled: true, color: MASCOT_EYE })
+    else cells.push({ filled: false, color: null })
   }
   return cells
 }
@@ -37,7 +47,7 @@ export function renderMascot(mode: ColorMode): string[] {
     let line = ''
     for (let x = 0; x < cols; x++) {
       const top = grid[y][x]
-      const bot = y + 1 < grid.length ? grid[y + 1][x] : { filled: false, dim: false }
+      const bot = y + 1 < grid.length ? grid[y + 1][x] : { filled: false, color: null }
       line += renderCell(top, bot, mode)
     }
     lines.push(line)
@@ -52,21 +62,14 @@ function renderCell(top: Pixel, bot: Pixel, mode: ColorMode): string {
     if (bot.filled) return '▄'
     return ' '
   }
-  const topColor = pixelColor(top)
-  const botColor = pixelColor(bot)
-  if (topColor === null && botColor === null) return ' '
-  if (topColor !== null && botColor !== null) {
-    if (colorsEqual(topColor, botColor)) return `${fg(topColor, mode)}█${RESET}`
-    return `${bg(topColor, mode)}${fg(botColor, mode)}▄${RESET}`
+  if (!top.filled && !bot.filled) return ' '
+  if (top.filled && bot.filled && top.color && bot.color) {
+    if (colorsEqual(top.color, bot.color)) return `${fg(top.color, mode)}█${RESET}`
+    return `${bg(top.color, mode)}${fg(bot.color, mode)}▄${RESET}`
   }
-  if (topColor !== null) return `${fg(topColor, mode)}▀${RESET}`
-  if (botColor !== null) return `${fg(botColor, mode)}▄${RESET}`
+  if (top.filled && top.color) return `${fg(top.color, mode)}▀${RESET}`
+  if (bot.filled && bot.color) return `${fg(bot.color, mode)}▄${RESET}`
   return ' '
-}
-
-function pixelColor(p: Pixel): Rgb | null {
-  if (!p.filled) return null
-  return p.dim ? ORCHENTRA_GREEN_DIM : ORCHENTRA_GREEN
 }
 
 function colorsEqual(a: Rgb, b: Rgb): boolean {
