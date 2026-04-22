@@ -12,6 +12,7 @@ export type CliAction =
     }
   | { kind: 'repl'; model: string; permissionMode: PermissionMode }
   | { kind: 'resume'; sessionPath: string }
+  | { kind: 'session-replay'; idOrLatest: string }
   | { kind: 'investigate'; spec: string; model: string; permissionMode: PermissionMode }
   | { kind: 'triage'; spec: string; model: string; permissionMode: PermissionMode }
   | {
@@ -22,6 +23,8 @@ export type CliAction =
       title?: string
       base?: string
     }
+  | { kind: 'doctor' }
+  | { kind: 'watch'; repo: string; intervalMs?: number }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -51,6 +54,18 @@ export function parseArgs(argv: string[]): CliAction {
 
   if (first === 'investigate' || first === 'triage' || first === 'fix') {
     return parseSubcommandArgs(first, args.slice(1))
+  }
+
+  if (first === 'session') {
+    return parseSessionArgs(args.slice(1))
+  }
+
+  if (first === 'doctor') {
+    return { kind: 'doctor' }
+  }
+
+  if (first === 'watch') {
+    return parseWatchArgs(args.slice(1))
   }
 
   let model = defaultModel()
@@ -110,6 +125,9 @@ USAGE
   orchentra investigate <owner/repo#id>   Triage a failing workflow run
   orchentra triage <owner/repo#id>        Post triage output as GitHub check/comment
   orchentra fix <owner/repo#id> [flags]   Produce a code-fix PR for a failing run
+  orchentra session replay <id|latest>    Replay a recorded session as JSONL events
+  orchentra doctor                        Check auth, provider, and workspace health
+  orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
   orchentra --version                     Print version
 
 FLAGS
@@ -179,4 +197,39 @@ function readSubcommandFlagValue(
     throw new Error(`${sub}: ${flag} requires a value`)
   }
   return value
+}
+
+function parseSessionArgs(rest: string[]): CliAction {
+  const sub = rest[0]
+  if (sub !== 'replay') {
+    throw new Error(`session: unknown subcommand '${sub ?? ''}'. expected 'replay'`)
+  }
+  const idOrLatest = rest[1]
+  if (!idOrLatest) {
+    throw new Error('session replay: missing <id|latest>')
+  }
+  return { kind: 'session-replay', idOrLatest }
+}
+
+function parseWatchArgs(rest: string[]): CliAction {
+  let repo: string | undefined
+  let intervalMs: number | undefined
+  let i = 0
+  while (i < rest.length) {
+    const arg = rest[i]
+    if (arg === '--interval') {
+      const v = rest[++i]
+      if (!v) throw new Error('watch: --interval requires a value (seconds)')
+      const n = Number(v)
+      if (!Number.isFinite(n) || n <= 0) throw new Error(`watch: invalid --interval value: ${v}`)
+      intervalMs = Math.floor(n * 1000)
+    } else if (!arg.startsWith('-') && repo === undefined) {
+      repo = arg
+    } else if (arg.startsWith('-')) {
+      throw new Error(`watch: unknown flag: ${arg}`)
+    }
+    i++
+  }
+  if (!repo) throw new Error('watch: missing <owner/repo>')
+  return intervalMs === undefined ? { kind: 'watch', repo } : { kind: 'watch', repo, intervalMs }
 }

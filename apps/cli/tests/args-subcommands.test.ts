@@ -29,4 +29,42 @@ describe('parseArgs — subcommands', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'fix', 'acme/api#9', '--title'])).toThrow(/requires a value/)
     expect(() => parseArgs(['bun', 'orchentra', 'fix', 'acme/api#9', '--base'])).toThrow(/requires a value/)
   })
+
+  test('session replay with id', () => {
+    const result = parseArgs(['bun', 'orchentra', 'session', 'replay', 'abc123'])
+    expect(result).toMatchObject({ kind: 'session-replay', idOrLatest: 'abc123' })
+  })
+
+  test('session replay latest', () => {
+    const result = parseArgs(['bun', 'orchentra', 'session', 'replay', 'latest'])
+    expect(result).toMatchObject({ kind: 'session-replay', idOrLatest: 'latest' })
+  })
+
+  test('session replay missing id throws', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'session', 'replay'])).toThrow(/missing/)
+  })
+
+  test('session unknown subcommand throws', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'session', 'foo'])).toThrow(/unknown subcommand/)
+  })
+
+  test('doctor returns doctor action', () => {
+    expect(parseArgs(['bun', 'orchentra', 'doctor'])).toMatchObject({ kind: 'doctor' })
+  })
+
+  test('watch with repo', () => {
+    expect(parseArgs(['bun', 'orchentra', 'watch', 'acme/api'])).toMatchObject({ kind: 'watch', repo: 'acme/api' })
+  })
+
+  test('watch with interval', () => {
+    expect(parseArgs(['bun', 'orchentra', 'watch', 'acme/api', '--interval', '30'])).toMatchObject({
+      kind: 'watch',
+      repo: 'acme/api',
+      intervalMs: 30000,
+    })
+  })
+
+  test('watch missing repo throws', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'watch'])).toThrow(/missing/)
+  })
 })
