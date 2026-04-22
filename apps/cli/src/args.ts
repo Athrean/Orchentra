@@ -25,6 +25,8 @@ export type CliAction =
     }
   | { kind: 'doctor' }
   | { kind: 'watch'; repo: string; intervalMs?: number }
+  | { kind: 'mcp'; sub: 'list' }
+  | { kind: 'mcp'; sub: 'test'; name: string }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -66,6 +68,10 @@ export function parseArgs(argv: string[]): CliAction {
 
   if (first === 'watch') {
     return parseWatchArgs(args.slice(1))
+  }
+
+  if (first === 'mcp') {
+    return parseMcpArgs(args.slice(1))
   }
 
   let model = defaultModel()
@@ -128,6 +134,8 @@ USAGE
   orchentra session replay <id|latest>    Replay a recorded session as JSONL events
   orchentra doctor                        Check auth, provider, and workspace health
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
+  orchentra mcp list                      List configured MCP servers + connection status
+  orchentra mcp test <name>               Connect to one MCP server and print its tools
   orchentra --version                     Print version
 
 FLAGS
@@ -209,6 +217,19 @@ function parseSessionArgs(rest: string[]): CliAction {
     throw new Error('session replay: missing <id|latest>')
   }
   return { kind: 'session-replay', idOrLatest }
+}
+
+function parseMcpArgs(rest: string[]): CliAction {
+  const sub = rest[0]
+  if (sub === 'list' || sub === undefined) {
+    return { kind: 'mcp', sub: 'list' }
+  }
+  if (sub === 'test') {
+    const name = rest[1]
+    if (!name) throw new Error('mcp test: missing <server-name>')
+    return { kind: 'mcp', sub: 'test', name }
+  }
+  throw new Error(`mcp: unknown subcommand '${sub}'. expected 'list' or 'test <name>'`)
 }
 
 function parseWatchArgs(rest: string[]): CliAction {

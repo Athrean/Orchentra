@@ -8,7 +8,7 @@ import {
   XAI_CONFIG,
   DASHSCOPE_CONFIG,
 } from '@orchentra/cli-api'
-import { DefaultToolRegistry, BUILTIN_TOOLS } from '@orchentra/cli-tools'
+import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 
 export interface CliContextOptions {
@@ -32,6 +32,14 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
 
   const provider = resolveProvider(resolvedModel)
   const tools = buildToolRegistry()
+  const rawMcp = (config.merged as Record<string, unknown>).mcp
+  const mcpManager = McpManager.fromRaw(rawMcp, {
+    onLog: (level, message) => {
+      if (level !== 'info') process.stderr.write(`[mcp] ${level}: ${message}\n`)
+    },
+  })
+  await mcpManager.connectAll()
+  mcpManager.registerInto(tools)
   const sessionId = randomUUID()
 
   const cli = new LiveCli({
@@ -56,6 +64,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     resolvedPermissionMode,
     async close(): Promise<void> {
       await cli.persistSession()
+      await mcpManager.shutdown()
     },
   }
 }
