@@ -7,19 +7,21 @@ import { MASCOT_EYE, MASCOT_WHITE, ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, 
 //   'W' white bang / highlight
 //   'K' eye
 //   ' ' transparent
-// Design matches the "Letter A" mascot: pointed top, white bang upper-left,
-// two eyes, short arm tabs on each side, two feet separated at the base.
+// Design matches the "Wave" mascot: blocky body with left arm raised in a wave,
+// three motion ticks above the hand, two eyes, small right-arm tab, two feet.
 const PIXEL_ROWS: readonly string[] = [
-  '    ##    ',
-  '   ####   ',
-  '  ##WW##  ',
-  ' ##WWW### ',
-  '####W#####',
-  '###K##K###',
-  ' ######## ',
-  ' ######## ',
-  ' ##    ## ',
-  ' ##    ## ',
+  '#  #  #       ',
+  ' #  #  #      ',
+  '   ##         ',
+  '   ##         ',
+  '   ########   ',
+  '   ########## ',
+  '   ##K##K##   ',
+  '   ##K##K##   ',
+  '   ########   ',
+  '   ########   ',
+  '   ##    ##   ',
+  '   ##    ##   ',
 ]
 
 interface Pixel {
