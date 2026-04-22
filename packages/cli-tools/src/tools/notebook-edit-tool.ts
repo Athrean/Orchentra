@@ -42,25 +42,35 @@ export const notebookEditTool: ToolDefinition = {
       const nb = JSON.parse(raw) as { cells: Array<Record<string, unknown>> }
       const mode = input.edit_mode ?? 'replace'
 
+      if (mode !== 'delete' && (input.new_source === undefined || input.new_source === null)) {
+        return {
+          content: `error: new_source is required for edit_mode="${mode}"`,
+          isError: true,
+        }
+      }
+
       if (mode === 'delete') {
         if (input.cell_number < 0 || input.cell_number >= nb.cells.length) {
           return { content: `error: cell ${input.cell_number} out of range (0-${nb.cells.length - 1})`, isError: true }
         }
         nb.cells.splice(input.cell_number, 1)
       } else if (mode === 'insert') {
+        const cellType = input.cell_type ?? 'code'
         const cell: Record<string, unknown> = {
-          cell_type: input.cell_type ?? 'code',
-          source: input.new_source ?? '',
+          cell_type: cellType,
+          source: input.new_source,
           metadata: {},
-          outputs: [],
-          execution_count: null,
+        }
+        if (cellType === 'code') {
+          cell.outputs = []
+          cell.execution_count = null
         }
         nb.cells.splice(input.cell_number, 0, cell)
       } else {
         if (input.cell_number < 0 || input.cell_number >= nb.cells.length) {
           return { content: `error: cell ${input.cell_number} out of range (0-${nb.cells.length - 1})`, isError: true }
         }
-        nb.cells[input.cell_number].source = input.new_source ?? ''
+        nb.cells[input.cell_number].source = input.new_source
       }
 
       writeFileSync(filePath, JSON.stringify(nb, null, 1) + '\n')

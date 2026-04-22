@@ -27,6 +27,13 @@ const BUILTIN_MODEL_ALIASES: Record<string, string> = {
   'grok-mini': 'grok-3-mini',
 }
 
+export interface ResolvedModel {
+  readonly model: string
+  readonly provider: Provider
+}
+
+export type ModelResolver = (raw: string) => ResolvedModel
+
 export interface CliContextOptions {
   readonly model: string
   readonly permissionMode: PermissionMode
@@ -43,11 +50,16 @@ export interface CliContext {
 
 export async function createCliContext(options: CliContextOptions): Promise<CliContext> {
   const config = ConfigLoader.defaultFor(options.cwd).load()
+  const userAliases = config.featureConfig.aliases as Record<string, string> | undefined
+  const resolveModel: ModelResolver = (raw: string) => {
+    const model = resolveModelAlias(raw, userAliases)
+    return { model, provider: resolveProvider(model) }
+  }
+
   const rawModel = config.featureConfig.model ?? options.model
-  const resolvedModel = resolveModelAlias(rawModel, config.featureConfig.aliases as Record<string, string> | undefined)
+  const initial = resolveModel(rawModel)
   const resolvedPermissionMode = config.featureConfig.permissionMode ?? options.permissionMode
 
-  const provider = resolveProvider(resolvedModel)
   const tools = buildToolRegistry()
   const rawMcp = (config.merged as Record<string, unknown>).mcp
   const mcpManager = McpManager.fromRaw(rawMcp, {
@@ -67,9 +79,10 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   }
 
   const cli = new LiveCli({
-    model: resolvedModel,
+    model: initial.model,
     permissionMode: resolvedPermissionMode,
-    provider,
+    provider: initial.provider,
+    resolveModel,
     tools,
     cwd: options.cwd,
     sessionId,
@@ -79,14 +92,15 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
 
   const session = await SessionWriter.open({
     rootDir: join(options.cwd, '.orchentra', 'sessions'),
-    meta: { cwd: options.cwd, model: resolvedModel },
+    id: sessionId,
+    meta: { cwd: options.cwd, model: initial.model },
   })
   cli.setSession(session)
 
   return {
     cli,
     sessionId,
-    resolvedModel,
+    resolvedModel: initial.model,
     resolvedPermissionMode,
     async close(): Promise<void> {
       await cli.persistSession()

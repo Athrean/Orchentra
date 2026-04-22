@@ -35,10 +35,13 @@ import {
 } from './renderer'
 import { readLine } from './input'
 
+export type ModelResolver = (raw: string) => { model: string; provider: Provider }
+
 export class LiveCli implements SessionControl {
   private model: string
   private readonly permissionMode: PermissionMode
-  private readonly provider: Provider
+  private provider: Provider
+  private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
   private readonly cwd: string
   private readonly sessionId: string
@@ -56,6 +59,7 @@ export class LiveCli implements SessionControl {
     model: string
     permissionMode: PermissionMode
     provider: Provider
+    resolveModel: ModelResolver
     tools: ToolRegistry
     cwd: string
     sessionId: string
@@ -65,6 +69,7 @@ export class LiveCli implements SessionControl {
     this.model = deps.model
     this.permissionMode = deps.permissionMode
     this.provider = deps.provider
+    this.resolveModel = deps.resolveModel
     this.tools = deps.tools
     this.cwd = deps.cwd
     this.sessionId = deps.sessionId
@@ -79,8 +84,11 @@ export class LiveCli implements SessionControl {
     return this.model
   }
 
-  setModel(newModel: string): void {
-    this.model = newModel
+  setModel(newModel: string): string {
+    const resolved = this.resolveModel(newModel)
+    this.model = resolved.model
+    this.provider = resolved.provider
+    return resolved.model
   }
 
   getPermissionMode(): PermissionMode {
@@ -126,10 +134,6 @@ export class LiveCli implements SessionControl {
 
   setSession(writer: SessionWriter): void {
     this.session = writer
-  }
-
-  appendUserMessage(text: string): void {
-    this.messages.push({ role: 'user', content: text })
   }
 
   async runTurn(input: string): Promise<void> {
@@ -227,7 +231,9 @@ export class LiveCli implements SessionControl {
         }
       }
 
-      this.appendUserMessage(input)
+      // Capture the full conversation state (user + assistant + tool messages)
+      // so the next turn sees assistant/tool context, not just user prompts.
+      this.messages = this.runtime.getFinalMessages()
       this.spinner.stop()
       process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
     } catch (err) {

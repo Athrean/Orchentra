@@ -37,8 +37,15 @@ export const agentTool: ToolDefinition = {
       return { content: 'error: provider and tools not available for sub-agent', isError: true }
     }
 
+    const model = input.model ?? ctx.model
+    if (!model) {
+      return {
+        content: 'error: no model available for sub-agent (pass "model" or ensure ToolContext carries one)',
+        isError: true,
+      }
+    }
+
     try {
-      const model = input.model ?? 'default'
       const messages: ChatMessage[] = [{ role: 'user', content: input.prompt }]
       const toolSchemas = ctx.tools.list()
 

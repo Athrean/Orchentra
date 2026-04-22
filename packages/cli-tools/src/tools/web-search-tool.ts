@@ -30,7 +30,7 @@ export const webSearchTool: ToolDefinition = {
     if (!searchUrl) {
       return {
         content:
-          'error: web search not configured. Set ORCHENTRA_SEARCH_URL and ORCHENTRA_SEARCH_API_KEY environment variables.',
+          'error: web search not configured. Set ORCHENTRA_SEARCH_URL (and optionally ORCHENTRA_SEARCH_API_KEY) environment variables.',
         isError: true,
       }
     }

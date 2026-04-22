@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, stat, rename } from 'node:fs/promises'
+import { mkdir, readdir, readFile, stat, rename, unlink } from 'node:fs/promises'
 import { createWriteStream, existsSync, writeFileSync, type WriteStream } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -120,16 +120,39 @@ export class SessionWriter {
 
       await this.close()
 
+      // Drop the oldest rotated file so subsequent renames never target an
+      // existing path (on Windows this silently failed previously).
+      const oldestPath = `${this.path}.${MAX_ROTATED_FILES}`
+      if (existsSync(oldestPath)) {
+        await unlink(oldestPath).catch(() => undefined)
+      }
+
       for (let i = MAX_ROTATED_FILES - 1; i >= 1; i--) {
         const oldPath = `${this.path}.${i}`
         const newPath = `${this.path}.${i + 1}`
-        if (existsSync(oldPath)) await rename(oldPath, newPath)
+        if (existsSync(oldPath)) {
+          if (existsSync(newPath)) await unlink(newPath).catch(() => undefined)
+          await rename(oldPath, newPath)
+        }
       }
-      await rename(this.path, `${this.path}.1`)
+      const firstRotated = `${this.path}.1`
+      if (existsSync(firstRotated)) await unlink(firstRotated).catch(() => undefined)
+      await rename(this.path, firstRotated)
 
       this.stream = createWriteStream(this.path, { flags: 'a' })
-    } catch {
-      // Rotation failure is non-fatal
+    } catch (err) {
+      // Rotation failure is non-fatal but should not silently leave the writer
+      // in a broken state — re-open the stream if we closed it above.
+      if (!this.stream) {
+        try {
+          this.stream = createWriteStream(this.path, { flags: 'a' })
+        } catch {
+          // Ignore — next write will surface the underlying error.
+        }
+      }
+      if (process.env.ORCHENTRA_DEBUG) {
+        process.stderr.write(`[session] rotation failed: ${(err as Error).message}\n`)
+      }
     }
   }
 }

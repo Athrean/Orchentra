@@ -16,6 +16,14 @@ import type { SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
 import type { PermissionEnforcer } from './permission-enforcer'
 
+const PLAN_MODE_ALLOWED_TOOLS = new Set<string>([
+  'exit_plan_mode',
+  'enter_plan_mode',
+  'todo_write',
+  'task_list',
+  'task_get',
+])
+
 export interface ConversationConfig {
   model: string
   maxOutputTokens: number
@@ -48,6 +56,8 @@ export interface RunInput {
 }
 
 export class ConversationRuntime {
+  private finalMessages: ChatMessage[] = []
+
   constructor(
     private readonly config: ConversationConfig,
     private readonly deps: ConversationDeps,
@@ -57,9 +67,19 @@ export class ConversationRuntime {
     return this.loop(input)
   }
 
+  /**
+   * Returns the final message list after `run()` has completed iterating.
+   * Callers should treat this as read-only and use it to seed the next turn
+   * so assistant and tool messages persist across turns.
+   */
+  getFinalMessages(): ChatMessage[] {
+    return this.finalMessages
+  }
+
   private async *loop(input: RunInput): AsyncIterable<RuntimeEvent> {
     const budget = new RuntimeBudget(this.config.budget)
     const messages: ChatMessage[] = [...(input.priorMessages ?? []), { role: 'user', content: input.userMessage }]
+    this.finalMessages = messages
     const { provider, tools, systemPrompt } = this.deps
 
     while (true) {
@@ -263,10 +283,19 @@ export class ConversationRuntime {
     const ctx: ToolContext = {
       sessionId: this.config.sessionId,
       cwd: this.config.cwd,
+      model: this.config.model,
       sharedState: this.deps.sharedState,
       askUser: this.deps.askUser,
       provider: this.deps.provider,
       tools: this.deps.tools,
+    }
+
+    if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {
+      return {
+        id: call.id,
+        content: `plan mode active: tool "${call.name}" is blocked. Call exit_plan_mode to resume execution.`,
+        isError: true,
+      }
     }
 
     const inputJson = JSON.stringify(call.input)

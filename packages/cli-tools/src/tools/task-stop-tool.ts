@@ -24,13 +24,14 @@ export const taskStopTool: ToolDefinition = {
     if (!ctx.sharedState) {
       return { content: 'error: shared state not available', isError: true }
     }
-    ctx.sharedState.taskStore.cancel(input.taskId)
-    const updated = ctx.sharedState.taskStore.get(input.taskId)
-    if (!updated) {
+    const existing = ctx.sharedState.taskStore.get(input.taskId)
+    if (!existing) {
       return { content: `error: task not found: ${input.taskId}`, isError: true }
     }
+    const previousStatus = existing.status
+    ctx.sharedState.taskStore.cancel(input.taskId)
     return {
-      content: `Task ${input.taskId} cancelled (was ${updated.status})`,
+      content: `Task ${input.taskId} cancelled (was ${previousStatus})`,
       isError: false,
     }
   },

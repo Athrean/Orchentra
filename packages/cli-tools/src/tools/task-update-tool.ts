@@ -28,6 +28,10 @@ export const taskUpdateTool: ToolDefinition = {
     if (!ctx.sharedState) {
       return { content: 'error: shared state not available', isError: true }
     }
+    const existing = ctx.sharedState.taskStore.get(input.taskId)
+    if (!existing) {
+      return { content: `error: task not found: ${input.taskId}`, isError: true }
+    }
     const patch: Record<string, unknown> = {}
     if (input.status) patch.status = input.status
     if (input.output !== undefined) patch.output = input.output
@@ -36,6 +40,9 @@ export const taskUpdateTool: ToolDefinition = {
     }
     ctx.sharedState.taskStore.update(input.taskId, patch)
     const updated = ctx.sharedState.taskStore.get(input.taskId)
+    if (!updated) {
+      return { content: `error: task ${input.taskId} disappeared after update`, isError: true }
+    }
     return { content: JSON.stringify(updated, null, 2), isError: false }
   },
 }

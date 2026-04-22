@@ -35,6 +35,11 @@ export interface SharedToolState {
 export interface ToolContext {
   sessionId: string
   cwd: string
+  /**
+   * Current model identifier for the session. Tools that spawn nested provider
+   * calls (e.g. `agent`) should default to this when no override is supplied.
+   */
+  model?: string
   sharedState?: SharedToolState
   askUser?: (prompt: string) => Promise<string>
   provider?: Provider

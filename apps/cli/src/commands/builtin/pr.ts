@@ -40,7 +40,19 @@ export class PrCommand implements CommandHandler {
 
     // Push current branch
     process.stdout.write(`Pushing ${branch}...\n`)
-    Bun.spawnSync(['git', 'push', '-u', 'origin', branch], { cwd: ctx.cwd })
+    const pushResult = Bun.spawnSync(['git', 'push', '-u', 'origin', branch], {
+      cwd: ctx.cwd,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    if (pushResult.exitCode !== 0) {
+      const stdout = new TextDecoder().decode(pushResult.stdout).trim()
+      const stderr = new TextDecoder().decode(pushResult.stderr).trim()
+      process.stdout.write(`error: git push failed (exit ${pushResult.exitCode})\n`)
+      if (stderr) process.stdout.write(`${stderr}\n`)
+      else if (stdout) process.stdout.write(`${stdout}\n`)
+      return true
+    }
 
     // Create PR
     const token = resolveToken()

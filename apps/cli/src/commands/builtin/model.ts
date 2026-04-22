@@ -9,13 +9,17 @@ export class ModelCommand implements CommandHandler {
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    const newModel = args.join(' ').trim()
-    if (!newModel) {
+    const requested = args.join(' ').trim()
+    if (!requested) {
       process.stdout.write(`Current model: ${ctx.session.getModel()}\n`)
       return true
     }
-    ctx.session.setModel(newModel)
-    process.stdout.write(`Switched model to: ${newModel}\n`)
+    const resolved = ctx.session.setModel(requested)
+    if (resolved === requested) {
+      process.stdout.write(`Switched model to: ${resolved}\n`)
+    } else {
+      process.stdout.write(`Switched model to: ${resolved} (from alias "${requested}")\n`)
+    }
     return true
   }
 }
