@@ -2,8 +2,9 @@ import type { PermissionMode } from '@orchentra/cli-core'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { readLine } from './input'
 import { createCliContext } from './live-cli-factory'
-import { parseSlashCommand, dispatchCommand, renderCommandHelp } from './commands'
+import { parseSlashCommand, dispatchCommand } from './commands'
 import type { CommandContext } from './commands'
+import { renderWelcomeBanner } from './render/banner'
 
 export interface ReplOptions {
   model: string
@@ -26,10 +27,16 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     return 0
   }
 
-  process.stdout.write(`${CLI_NAME} ${CLI_VERSION}\n`)
-  process.stdout.write(`Model: ${resolvedModel} | Mode: ${resolvedMode}\n`)
-  process.stdout.write(`Session: ${sessionId}\n\n`)
-  process.stdout.write(renderCommandHelp() + '\n\n')
+  process.stdout.write(
+    renderWelcomeBanner({
+      cliName: CLI_NAME,
+      cliVersion: CLI_VERSION,
+      model: resolvedModel,
+      permissionMode: resolvedMode,
+      cwd: options.cwd,
+    }),
+  )
+  process.stdout.write('\n')
 
   let running = true
   while (running) {
