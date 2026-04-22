@@ -14,16 +14,16 @@ export interface ReplOptions {
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
-  const ctx = await createCliContext({
+  const cliCtx = await createCliContext({
     model: options.model,
     permissionMode: options.permissionMode,
     cwd: options.cwd,
   })
-  const { cli, sessionId, resolvedModel, resolvedPermissionMode: resolvedMode } = ctx
+  const { cli, resolvedModel, resolvedPermissionMode: resolvedMode } = cliCtx
 
   if (options.prompt) {
     await cli.runTurn(options.prompt)
-    await ctx.close()
+    await cliCtx.close()
     return 0
   }
 
@@ -51,32 +51,21 @@ export async function runRepl(options: ReplOptions): Promise<number> {
         const trimmed = outcome.text.trim()
         if (trimmed.length === 0) break
 
-        const slash = parseSlashCommand(trimmed)
-        if (slash === null) {
+        const resolved = parseSlashCommand(trimmed)
+        if (resolved === null) {
           await cli.runTurn(trimmed)
           break
         }
-        if (slash instanceof Error) {
-          process.stdout.write(`${slash.message}\n`)
+        if (resolved instanceof Error) {
+          process.stdout.write(`${resolved.message}\n`)
           break
         }
 
-        if (slash.kind === 'exit') {
-          running = false
-          break
-        }
-
-        const ctx: CommandContext = {
-          model: cli.currentModel,
-          permissionMode: cli.currentPermissionMode,
-          sessionId,
-          turns: cli.turns,
+        const cmdCtx: CommandContext = {
           cwd: options.cwd,
+          session: cli,
         }
-        const shouldContinue = await dispatchCommand(slash, ctx)
-        if (slash.kind === 'clear') {
-          cli.clearHistory()
-        }
+        const shouldContinue = await dispatchCommand(resolved, cmdCtx)
         if (!shouldContinue) {
           running = false
         }
@@ -87,6 +76,6 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     process.stdout.write('\n')
   }
 
-  await ctx.close()
+  await cliCtx.close()
   return 0
 }
