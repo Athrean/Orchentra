@@ -4,8 +4,10 @@ export interface Rgb {
   readonly b: number
 }
 
-export const ORCHENTRA_GREEN: Rgb = { r: 0x2e, g: 0xa0, b: 0x43 }
-export const ORCHENTRA_GREEN_DIM: Rgb = { r: 0x1a, g: 0x6a, b: 0x2c }
+export const ORCHENTRA_GREEN: Rgb = { r: 0x25, g: 0xaa, b: 0x48 }
+export const ORCHENTRA_GREEN_DIM: Rgb = { r: 0x17, g: 0x70, b: 0x2f }
+export const MASCOT_WHITE: Rgb = { r: 0xff, g: 0xff, b: 0xff }
+export const MASCOT_EYE: Rgb = { r: 0x11, g: 0x1a, b: 0x14 }
 
 export const RESET = '[0m'
 export const BOLD = '[1m'
