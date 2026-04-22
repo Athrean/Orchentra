@@ -1,6 +1,14 @@
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { ConfigLoader, SessionWriter, type PermissionMode, type Provider, type ToolRegistry } from '@orchentra/cli-core'
+import {
+  ConfigLoader,
+  InMemoryTaskStore,
+  SessionWriter,
+  type PermissionMode,
+  type Provider,
+  type SharedToolState,
+  type ToolRegistry,
+} from '@orchentra/cli-core'
 import {
   AnthropicProvider,
   OpenAiCompatProvider,
@@ -10,6 +18,14 @@ import {
 } from '@orchentra/cli-api'
 import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
+
+const BUILTIN_MODEL_ALIASES: Record<string, string> = {
+  opus: 'claude-opus-4-20250514',
+  sonnet: 'claude-sonnet-4-20250514',
+  haiku: 'claude-haiku-4-20250514',
+  grok: 'grok-3',
+  'grok-mini': 'grok-3-mini',
+}
 
 export interface CliContextOptions {
   readonly model: string
@@ -27,7 +43,8 @@ export interface CliContext {
 
 export async function createCliContext(options: CliContextOptions): Promise<CliContext> {
   const config = ConfigLoader.defaultFor(options.cwd).load()
-  const resolvedModel = config.featureConfig.model ?? options.model
+  const rawModel = config.featureConfig.model ?? options.model
+  const resolvedModel = resolveModelAlias(rawModel, config.featureConfig.aliases as Record<string, string> | undefined)
   const resolvedPermissionMode = config.featureConfig.permissionMode ?? options.permissionMode
 
   const provider = resolveProvider(resolvedModel)
@@ -42,6 +59,13 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   mcpManager.registerInto(tools)
   const sessionId = randomUUID()
 
+  const sharedState: SharedToolState = {
+    taskStore: new InMemoryTaskStore(),
+    todos: [],
+    agentCounter: 0,
+    planMode: false,
+  }
+
   const cli = new LiveCli({
     model: resolvedModel,
     permissionMode: resolvedPermissionMode,
@@ -49,6 +73,8 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     tools,
     cwd: options.cwd,
     sessionId,
+    sharedState,
+    memoryConfig: config.featureConfig.memory,
   })
 
   const session = await SessionWriter.open({
@@ -67,6 +93,13 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
       await mcpManager.shutdown()
     },
   }
+}
+
+function resolveModelAlias(input: string, userAliases?: Record<string, string>): string {
+  const lower = input.toLowerCase()
+  if (userAliases && userAliases[lower]) return userAliases[lower]
+  if (BUILTIN_MODEL_ALIASES[lower]) return BUILTIN_MODEL_ALIASES[lower]
+  return input
 }
 
 function resolveProvider(model: string): Provider {

@@ -12,7 +12,7 @@ import {
 import { compact, shouldCompact, type TokenEstimator } from './compaction'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
 import type { SystemPrompt } from './system-prompt'
-import type { ToolContext, ToolRegistry } from './tools'
+import type { SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
 import type { PermissionEnforcer } from './permission-enforcer'
 
@@ -38,6 +38,8 @@ export interface ConversationDeps {
   signal?: AbortSignal
   clock?: () => string
   idGen?: () => string
+  sharedState?: SharedToolState
+  askUser?: (prompt: string) => Promise<string>
 }
 
 export interface RunInput {
@@ -261,6 +263,10 @@ export class ConversationRuntime {
     const ctx: ToolContext = {
       sessionId: this.config.sessionId,
       cwd: this.config.cwd,
+      sharedState: this.deps.sharedState,
+      askUser: this.deps.askUser,
+      provider: this.deps.provider,
+      tools: this.deps.tools,
     }
 
     const inputJson = JSON.stringify(call.input)

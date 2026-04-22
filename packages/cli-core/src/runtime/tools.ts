@@ -1,9 +1,44 @@
-import type { ProviderToolSchema } from './provider'
+import type { Provider, ProviderToolSchema } from './provider'
 import type { ToolLevel } from './permissions'
+
+export interface TaskHandle {
+  taskId: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  prompt?: string
+  output?: string
+  createdAt: string
+  completedAt?: string
+}
+
+export interface TaskStore {
+  create(prompt: string): TaskHandle
+  get(taskId: string): TaskHandle | undefined
+  list(): TaskHandle[]
+  update(taskId: string, patch: Partial<TaskHandle>): void
+  cancel(taskId: string): void
+}
+
+export interface TodoItem {
+  id: string
+  content: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm?: string
+}
+
+export interface SharedToolState {
+  taskStore: TaskStore
+  todos: TodoItem[]
+  agentCounter: number
+  planMode: boolean
+}
 
 export interface ToolContext {
   sessionId: string
   cwd: string
+  sharedState?: SharedToolState
+  askUser?: (prompt: string) => Promise<string>
+  provider?: Provider
+  tools?: ToolRegistry
 }
 
 export interface ToolResult {
