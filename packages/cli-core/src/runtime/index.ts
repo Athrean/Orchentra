@@ -81,7 +81,20 @@ export type {
   Provider,
 } from './provider'
 
-export type { ToolContext, ToolResult, ToolDefinition, ToolRegistry } from './tools'
+export type {
+  TaskHandle,
+  TaskStore,
+  TodoItem,
+  SharedToolState,
+  ToolContext,
+  ToolResult,
+  ToolDefinition,
+  ToolRegistry,
+} from './tools'
+
+export type { SessionControl } from './session-control'
+
+export { InMemoryTaskStore } from './task-store'
 
 export type { SystemPromptInput, SystemPrompt } from './system-prompt'
 export { buildSystemPrompt } from './system-prompt'
