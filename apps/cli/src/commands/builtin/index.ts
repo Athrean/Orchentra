@@ -17,6 +17,9 @@ import { McpCommand } from './mcp-cmd'
 import { DoctorCommand } from './doctor-cmd'
 import { ExportCommand } from './export'
 import { ResumeCommand } from './resume'
+import { LoginCommand } from './login'
+import { LogoutCommand } from './logout'
+import { AuthStatusCommand } from './auth-status'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -41,6 +44,10 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new DoctorCommand())
   registry.register(new ExportCommand())
   registry.register(new ResumeCommand())
+  // Auth
+  registry.register(new LoginCommand())
+  registry.register(new LogoutCommand())
+  registry.register(new AuthStatusCommand())
 
   return registry
 }

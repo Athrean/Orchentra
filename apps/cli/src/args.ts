@@ -27,6 +27,9 @@ export type CliAction =
   | { kind: 'watch'; repo: string; intervalMs?: number }
   | { kind: 'mcp'; sub: 'list' }
   | { kind: 'mcp'; sub: 'test'; name: string }
+  | { kind: 'login'; provider: string; apiKey?: string }
+  | { kind: 'logout'; provider: string }
+  | { kind: 'auth-status' }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -72,6 +75,20 @@ export function parseArgs(argv: string[]): CliAction {
 
   if (first === 'mcp') {
     return parseMcpArgs(args.slice(1))
+  }
+
+  if (first === 'login') {
+    return parseLoginArgs(args.slice(1))
+  }
+
+  if (first === 'logout') {
+    const provider = args[1]
+    if (!provider) throw new Error('logout: missing <provider>')
+    return { kind: 'logout', provider }
+  }
+
+  if (first === 'whoami' || first === 'auth') {
+    return { kind: 'auth-status' }
   }
 
   let model = defaultModel()
@@ -136,6 +153,9 @@ USAGE
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
   orchentra mcp list                      List configured MCP servers + connection status
   orchentra mcp test <name>               Connect to one MCP server and print its tools
+  orchentra login <provider> [--api-key]  Sign in (anthropic|gemini|github|openai|xai|dashscope)
+  orchentra logout <provider>             Remove stored credentials for a provider
+  orchentra whoami                        Show signed-in providers and credential sources
   orchentra --version                     Print version
 
 FLAGS
@@ -230,6 +250,26 @@ function parseMcpArgs(rest: string[]): CliAction {
     return { kind: 'mcp', sub: 'test', name }
   }
   throw new Error(`mcp: unknown subcommand '${sub}'. expected 'list' or 'test <name>'`)
+}
+
+function parseLoginArgs(rest: string[]): CliAction {
+  let provider: string | undefined
+  let apiKey: string | undefined
+  let i = 0
+  while (i < rest.length) {
+    const arg = rest[i]
+    if (arg === '--api-key') {
+      apiKey = rest[++i]
+      if (!apiKey) throw new Error('login: --api-key requires a value')
+    } else if (!arg.startsWith('-') && provider === undefined) {
+      provider = arg
+    } else if (arg.startsWith('-')) {
+      throw new Error(`login: unknown flag: ${arg}`)
+    }
+    i++
+  }
+  if (!provider) throw new Error('login: missing <provider>')
+  return apiKey ? { kind: 'login', provider, apiKey } : { kind: 'login', provider }
 }
 
 function parseWatchArgs(rest: string[]): CliAction {

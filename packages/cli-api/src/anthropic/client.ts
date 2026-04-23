@@ -4,6 +4,7 @@ import { classifyError, enrichAuthError, missingCredentialsError, type Anthropic
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
 import { injectCacheBoundary } from './cache'
 import type { MessageRequest, StreamEvent, Usage } from './types'
+import { getCredential } from '../credential-store'
 
 export interface AnthropicConfig {
   apiKey?: string
@@ -37,8 +38,10 @@ export class AnthropicProvider implements Provider {
     this.maxTokens = config.maxTokens ?? 64000
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config.retries }
 
-    const apiKey = config.apiKey ?? process.env['ANTHROPIC_API_KEY']
-    const authToken = config.authToken ?? process.env['ANTHROPIC_AUTH_TOKEN']
+    const stored = getCredential('anthropic')
+    const apiKey = config.apiKey ?? process.env['ANTHROPIC_API_KEY'] ?? stored?.apiKey
+    const authToken =
+      config.authToken ?? process.env['ANTHROPIC_AUTH_TOKEN'] ?? stored?.accessToken
 
     if (apiKey && authToken) {
       this.authHeaders = {
