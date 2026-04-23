@@ -10,18 +10,17 @@ import { MASCOT_EYE, MASCOT_WHITE, ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, 
 // Design matches the "Wave" mascot: blocky body with left arm raised in a wave,
 // three motion ticks above the hand, two eyes, small right-arm tab, two feet.
 const PIXEL_ROWS: readonly string[] = [
-  '#  #  #       ',
-  ' #  #  #      ',
-  '   ##         ',
-  '   ##         ',
-  '   ########   ',
-  '   ########## ',
-  '   ##K##K##   ',
-  '   ##K##K##   ',
-  '   ########   ',
-  '   ########   ',
-  '   ##    ##   ',
-  '   ##    ##   ',
+  '      ####      ', // top curve
+  '    ########    ', // rounding out
+  '   ##########   ', // upper body
+  '   ##KK##KK##   ', // top of vertical eyes
+  ' ####KK##KK#### ', // arms stick out + middle of eyes
+  ' ####KK##KK#### ', // bottom of arms + bottom of eyes
+  '   ##########   ', // lower body
+  '    ########    ', // rounding in
+  '      ####      ', // bottom curve
+  '     ##  ##     ', // legs
+  '     ##  ##     ', // feet
 ]
 
 interface Pixel {
