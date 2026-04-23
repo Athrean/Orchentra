@@ -30,6 +30,7 @@ const BUILTIN_MODEL_ALIASES: Record<string, string> = {
 export interface ResolvedModel {
   readonly model: string
   readonly provider: Provider
+  readonly providerName: string
 }
 
 export type ModelResolver = (raw: string) => ResolvedModel
@@ -43,8 +44,10 @@ export interface CliContextOptions {
 export interface CliContext {
   readonly cli: LiveCli
   readonly sessionId: string
+  readonly sessionPath: string
   readonly resolvedModel: string
   readonly resolvedPermissionMode: PermissionMode
+  readonly providerName: string
   close(): Promise<void>
 }
 
@@ -53,7 +56,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   const userAliases = config.featureConfig.aliases as Record<string, string> | undefined
   const resolveModel: ModelResolver = (raw: string) => {
     const model = resolveModelAlias(raw, userAliases)
-    return { model, provider: resolveProvider(model) }
+    return { model, provider: resolveProvider(model), providerName: resolveProviderName(model) }
   }
 
   const rawModel = config.featureConfig.model ?? options.model
@@ -100,8 +103,10 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   return {
     cli,
     sessionId,
+    sessionPath: session.path,
     resolvedModel: initial.model,
     resolvedPermissionMode,
+    providerName: initial.providerName,
     async close(): Promise<void> {
       await cli.persistSession()
       await mcpManager.shutdown()
@@ -122,6 +127,14 @@ function resolveProvider(model: string): Provider {
   if (lower.startsWith('grok') || lower.includes('xai')) return new OpenAiCompatProvider(XAI_CONFIG)
   if (lower.includes('qwen') || lower.includes('dashscope')) return new OpenAiCompatProvider(DASHSCOPE_CONFIG)
   return new AnthropicProvider()
+}
+
+function resolveProviderName(model: string): string {
+  const lower = model.toLowerCase()
+  if (lower.startsWith('gpt') || lower.includes('openai')) return 'openai'
+  if (lower.startsWith('grok') || lower.includes('xai')) return 'xai'
+  if (lower.includes('qwen') || lower.includes('dashscope')) return 'dashscope'
+  return 'anthropic'
 }
 
 function buildToolRegistry(): ToolRegistry {
