@@ -35,7 +35,7 @@ import {
 } from './renderer'
 import { readLine } from './input'
 
-export type ModelResolver = (raw: string) => { model: string; provider: Provider }
+export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
 
 export class LiveCli implements SessionControl {
   private model: string
