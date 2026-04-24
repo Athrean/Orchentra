@@ -6,8 +6,11 @@ export {
   loginAnthropic,
   logoutAnthropic,
   resolveAnthropicAuthToken,
+  startAnthropicLogin,
+  completeAnthropicLogin,
   type AnthropicLoginOptions,
   type AnthropicLoginResult,
+  type AnthropicPendingLogin,
 } from './anthropic/oauth'
 
 export { GeminiProvider, type GeminiConfig } from './gemini'
