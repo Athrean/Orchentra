@@ -2,6 +2,45 @@ export const API_VERSION = '0.1.0'
 
 export { AnthropicProvider, type AnthropicConfig } from './anthropic/client'
 export { injectCacheBoundary } from './anthropic/cache'
+export {
+  loginAnthropic,
+  logoutAnthropic,
+  resolveAnthropicAuthToken,
+  type AnthropicLoginOptions,
+  type AnthropicLoginResult,
+} from './anthropic/oauth'
+
+export { GeminiProvider, type GeminiConfig } from './gemini'
+export {
+  loginGemini,
+  logoutGemini,
+  resolveGeminiAccessToken,
+  type GeminiLoginOptions,
+  type GeminiLoginResult,
+} from './gemini/oauth'
+
+export {
+  credentialsPath,
+  loadCredentials,
+  getCredential,
+  saveCredential,
+  clearCredential,
+  listCredentialProviders,
+  resolveApiKey,
+  type ProviderKey,
+  type StoredCredential,
+  type ResolvedApiKey,
+} from './credential-store'
+
+export {
+  generatePkce,
+  generateState,
+  captureLoopbackCode,
+  buildAuthorizeUrl,
+  type PkcePair,
+  type LoopbackResult,
+  type LoopbackOptions,
+} from './oauth-pkce'
 export type {
   StreamEvent,
   Usage,
