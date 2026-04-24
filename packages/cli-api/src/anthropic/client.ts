@@ -22,7 +22,9 @@ interface AuthHeaders {
 }
 
 const ANTHROPIC_VERSION = '2023-06-01'
-const ANTHROPIC_BETA = 'claude-code-20250219,prompt-caching-scope-2026-01-05'
+// Only public betas we actually use. The `claude-code-*` beta is Anthropic-internal
+// and sending it from a non-Claude-Code client risks account flags / throttling.
+const ANTHROPIC_BETA = 'prompt-caching-scope-2026-01-05'
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 export class AnthropicProvider implements Provider {
@@ -40,8 +42,7 @@ export class AnthropicProvider implements Provider {
 
     const stored = getCredential('anthropic')
     const apiKey = config.apiKey ?? process.env['ANTHROPIC_API_KEY'] ?? stored?.apiKey
-    const authToken =
-      config.authToken ?? process.env['ANTHROPIC_AUTH_TOKEN'] ?? stored?.accessToken
+    const authToken = config.authToken ?? process.env['ANTHROPIC_AUTH_TOKEN'] ?? stored?.accessToken
 
     if (apiKey && authToken) {
       this.authHeaders = {
