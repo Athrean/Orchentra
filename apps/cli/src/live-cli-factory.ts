@@ -12,6 +12,7 @@ import {
 import {
   AnthropicProvider,
   OpenAiCompatProvider,
+  GeminiProvider,
   OPENAI_CONFIG,
   XAI_CONFIG,
   DASHSCOPE_CONFIG,
@@ -25,6 +26,9 @@ const BUILTIN_MODEL_ALIASES: Record<string, string> = {
   haiku: 'claude-haiku-4-20250514',
   grok: 'grok-3',
   'grok-mini': 'grok-3-mini',
+  gemini: 'gemini-2.0-flash',
+  'gemini-pro': 'gemini-2.0-pro',
+  'gemini-flash': 'gemini-2.0-flash',
 }
 
 export interface ResolvedModel {
@@ -126,6 +130,7 @@ function resolveProvider(model: string): Provider {
   if (lower.startsWith('gpt') || lower.includes('openai')) return new OpenAiCompatProvider(OPENAI_CONFIG)
   if (lower.startsWith('grok') || lower.includes('xai')) return new OpenAiCompatProvider(XAI_CONFIG)
   if (lower.includes('qwen') || lower.includes('dashscope')) return new OpenAiCompatProvider(DASHSCOPE_CONFIG)
+  if (lower.startsWith('gemini') || lower.includes('google')) return new GeminiProvider({ model })
   return new AnthropicProvider()
 }
 
@@ -134,6 +139,7 @@ function resolveProviderName(model: string): string {
   if (lower.startsWith('gpt') || lower.includes('openai')) return 'openai'
   if (lower.startsWith('grok') || lower.includes('xai')) return 'xai'
   if (lower.includes('qwen') || lower.includes('dashscope')) return 'dashscope'
+  if (lower.startsWith('gemini') || lower.includes('google')) return 'gemini'
   return 'anthropic'
 }
 
