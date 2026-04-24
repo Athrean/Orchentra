@@ -27,7 +27,7 @@ export type CliAction =
   | { kind: 'watch'; repo: string; intervalMs?: number }
   | { kind: 'mcp'; sub: 'list' }
   | { kind: 'mcp'; sub: 'test'; name: string }
-  | { kind: 'login'; provider: string; apiKey?: string }
+  | { kind: 'login'; provider?: string; apiKey?: string }
   | { kind: 'logout'; provider: string }
   | { kind: 'auth-status' }
 
@@ -268,7 +268,7 @@ function parseLoginArgs(rest: string[]): CliAction {
     }
     i++
   }
-  if (!provider) throw new Error('login: missing <provider>')
+  if (!provider) return { kind: 'login' }
   return apiKey ? { kind: 'login', provider, apiKey } : { kind: 'login', provider }
 }
 

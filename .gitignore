@@ -29,9 +29,15 @@ CLAUDE.md
 
 # Claude Code local settings (may contain secrets)
 .claude/settings.json
+.claude/skills/
 .claude.env
 .mcp.json
 
-# Local reference copies of competing CLIs — not part of this repo
+# Local session state
+.orchentra/
+
+# Local reference copies of other CLIs — not part of this repo
 claw-code-main-3/
 gemini-cli-main/
+codebuff-main/
+opencode-dev/
