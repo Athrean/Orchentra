@@ -31,3 +31,5 @@ CLAUDE.md
 .claude/settings.json
 .claude.env
 .mcp.json
+
+# Local reference copies of competing CLIs — not part of this repo
