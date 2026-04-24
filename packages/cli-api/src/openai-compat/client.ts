@@ -8,12 +8,14 @@ import type {
 } from '@orchentra/cli-core'
 import { emptyUsage } from '@orchentra/cli-core'
 import type { OpenAiMessage, OpenAiToolCall, OpenAiToolDefinition, OpenAiStreamDelta } from './types'
+import { getCredential, type ProviderKey } from '../credential-store'
 
 export interface OpenAiCompatConfig {
   providerName: string
   apiKeyEnv: string
   baseUrlEnv: string
   defaultBaseUrl: string
+  credentialKey?: ProviderKey
 }
 
 const XAI_CONFIG: OpenAiCompatConfig = {
@@ -21,6 +23,7 @@ const XAI_CONFIG: OpenAiCompatConfig = {
   apiKeyEnv: 'XAI_API_KEY',
   baseUrlEnv: 'XAI_BASE_URL',
   defaultBaseUrl: 'https://api.x.ai/v1',
+  credentialKey: 'xai',
 }
 
 const OPENAI_CONFIG: OpenAiCompatConfig = {
@@ -28,6 +31,7 @@ const OPENAI_CONFIG: OpenAiCompatConfig = {
   apiKeyEnv: 'OPENAI_API_KEY',
   baseUrlEnv: 'OPENAI_BASE_URL',
   defaultBaseUrl: 'https://api.openai.com/v1',
+  credentialKey: 'openai',
 }
 
 const DASHSCOPE_CONFIG: OpenAiCompatConfig = {
@@ -35,6 +39,7 @@ const DASHSCOPE_CONFIG: OpenAiCompatConfig = {
   apiKeyEnv: 'DASHSCOPE_API_KEY',
   baseUrlEnv: 'DASHSCOPE_BASE_URL',
   defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  credentialKey: 'dashscope',
 }
 
 export { XAI_CONFIG, OPENAI_CONFIG, DASHSCOPE_CONFIG }
@@ -46,7 +51,8 @@ export class OpenAiCompatProvider implements Provider {
 
   constructor(config: OpenAiCompatConfig, apiKey?: string, baseUrl?: string) {
     this.config = config
-    this.apiKey = apiKey ?? process.env[config.apiKeyEnv] ?? ''
+    const stored = config.credentialKey ? getCredential(config.credentialKey) : null
+    this.apiKey = apiKey ?? process.env[config.apiKeyEnv] ?? stored?.apiKey ?? ''
     this.baseUrl = (baseUrl ?? process.env[config.baseUrlEnv] ?? config.defaultBaseUrl).replace(/\/$/, '')
   }
 
