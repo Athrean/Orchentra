@@ -5,6 +5,7 @@ import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry
 import { injectCacheBoundary } from './cache'
 import type { MessageRequest, StreamEvent, Usage } from './types'
 import { getCredential } from '../credential-store'
+import { parseToolArguments } from '../tool-arguments'
 
 export interface AnthropicConfig {
   apiKey?: string
@@ -249,15 +250,10 @@ export class AnthropicProvider implements Provider {
             case 'content_block_stop': {
               const pending = pendingTools.get(event.index)
               if (pending) {
-                let parsedInput: unknown
-                try {
-                  parsedInput = JSON.parse(pending.input || '{}')
-                } catch {
-                  parsedInput = {}
-                }
+                const { args } = parseToolArguments(pending.input, pending.name)
                 yield {
                   kind: 'tool-use',
-                  call: { id: pending.id, name: pending.name, input: parsedInput },
+                  call: { id: pending.id, name: pending.name, input: args },
                 }
                 pendingTools.delete(event.index)
               }

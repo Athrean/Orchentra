@@ -38,19 +38,22 @@ describe('decide (backward compat)', () => {
     expect(decide('read-only', 'admin').allowed).toBe(false)
   })
 
-  test('prompt-on-write allows read, confirms write, blocks admin', () => {
-    expect(decide('prompt-on-write', 'write')).toEqual({
+  test('workspace-write allows read, confirms write, blocks admin', () => {
+    expect(decide('workspace-write', 'read')).toEqual({
+      allowed: true,
+      requiresConfirmation: false,
+    })
+    expect(decide('workspace-write', 'write')).toEqual({
       allowed: true,
       requiresConfirmation: true,
     })
-    expect(decide('prompt-on-write', 'admin').allowed).toBe(false)
+    expect(decide('workspace-write', 'admin').allowed).toBe(false)
   })
 })
 
 describe('isPermissionMode', () => {
   test('accepts valid modes', () => {
     expect(isPermissionMode('read-only')).toBe(true)
-    expect(isPermissionMode('prompt-on-write')).toBe(true)
     expect(isPermissionMode('danger-full-access')).toBe(true)
     expect(isPermissionMode('workspace-write')).toBe(true)
     expect(isPermissionMode('prompt')).toBe(true)
@@ -59,6 +62,7 @@ describe('isPermissionMode', () => {
 
   test('rejects invalid strings', () => {
     expect(isPermissionMode('admin')).toBe(false)
+    expect(isPermissionMode('prompt-on-write')).toBe(false)
     expect(isPermissionMode('')).toBe(false)
   })
 })
