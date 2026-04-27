@@ -4,8 +4,6 @@ import { describe, test, expect, mock, beforeEach } from 'bun:test'
 let storedIncidents: Record<string, Record<string, unknown>> = {}
 let insertedActions: Record<string, unknown>[] = []
 let updatedFields: Record<string, unknown>[] = []
-let slackPostedMessages: { channel: string; text: string; thread_ts?: string }[] = []
-let slackUpdatedMessages: { channel: string; ts: string; text: string }[] = []
 let githubApiCalls: { method: string; args: Record<string, unknown> }[] = []
 let emittedEvents: { type: string; incidentId: string }[] = []
 let savedPatternIncidentIds: string[] = []
@@ -31,8 +29,6 @@ const TEST_INCIDENT = {
   rootCause: 'Missing DATABASE_URL environment variable',
   suggestedFix: 'Add DATABASE_URL to CI environment secrets',
   confidence: 0.92,
-  slackChannel: '#ci-alerts',
-  slackMessageTs: '1234567890.123456',
   githubIssueUrl: null,
   githubPrUrl: null,
   snoozedUntil: null,
@@ -47,7 +43,6 @@ const TEST_INCIDENT = {
 mock.module('../src/config', () => ({
   config: {
     github: { webhook_secret: 'secret', token: 'ghp_test', repos: [] },
-    delivery: { slack: { bot_token: 'xoxb-test', signing_secret: 'ss', channel: '#ci-alerts' } },
   },
 }))
 
@@ -106,21 +101,6 @@ mock.module('../src/db/client', () => ({
   sessions: {},
   apiKeys: {},
   monitoredRepos: {},
-}))
-
-mock.module('../src/slack/client', () => ({
-  slack: {
-    chat: {
-      postMessage: async (opts: { channel: string; text: string; thread_ts?: string }) => {
-        slackPostedMessages.push(opts)
-        return { ok: true, ts: '1234567890.999' }
-      },
-      update: async (opts: { channel: string; ts: string; text: string }) => {
-        slackUpdatedMessages.push(opts)
-        return { ok: true }
-      },
-    },
-  },
 }))
 
 mock.module('@octokit/rest', () => ({
@@ -226,8 +206,6 @@ beforeEach(() => {
   storedIncidents = { 'inc-001': { ...TEST_INCIDENT } }
   insertedActions = []
   updatedFields = []
-  slackPostedMessages = []
-  slackUpdatedMessages = []
   githubApiCalls = []
   emittedEvents = []
   savedPatternIncidentIds = []
@@ -261,11 +239,6 @@ describe('rerunWorkflow', () => {
     // Emitted SSE event
     expect(emittedEvents.length).toBe(1)
     expect(emittedEvents[0].type).toBe('incident:status_changed')
-
-    // Posted Slack thread reply
-    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
-    expect(threadReplies.length).toBeGreaterThanOrEqual(1)
-    expect(threadReplies[0].text).toContain('re-run')
   })
 
   test('rejects if incident not found', async () => {
@@ -320,14 +293,6 @@ describe('createGithubIssue', () => {
     const event = emittedEvents.find((e) => e.type === 'incident:updated')
     expect(event).toBeTruthy()
     expect(event!.incidentId).toBe('inc-001')
-  })
-
-  test('posts thread reply with issue number', async () => {
-    await createGithubIssue('inc-001', 'user-1')
-
-    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
-    expect(threadReplies).toHaveLength(1)
-    expect(threadReplies[0].text).toContain('#42')
   })
 
   test('returns existing URL if issue already created', async () => {
@@ -531,13 +496,6 @@ describe('updateIncidentStatus', () => {
     expect(emittedEvents[0].incidentId).toBe('inc-001')
   })
 
-  test('posts thread reply with human-readable action label', async () => {
-    await updateIncidentStatus('inc-001', 'dismissed', null)
-    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
-    expect(threadReplies).toHaveLength(1)
-    expect(threadReplies[0].text).toContain('dismissed')
-  })
-
   test('resolve without triggeredAt skips MTTR', async () => {
     storedIncidents['inc-001'] = { ...TEST_INCIDENT, triggeredAt: null }
     const result = await updateIncidentStatus('inc-001', 'resolved', null)
@@ -550,17 +508,10 @@ describe('updateIncidentStatus', () => {
 // ─── Escalate ───────────────────────────────
 
 describe('escalateIncident', () => {
-  test('posts escalation to Slack and updates status', async () => {
+  test('updates status, records action, and emits event', async () => {
     const result = await escalateIncident('inc-001', 'user-1')
 
     expect(result.success).toBe(true)
-
-    // Posted escalation message to Slack channel (non-threaded)
-    const directMessages = slackPostedMessages.filter((m) => !m.thread_ts)
-    expect(directMessages.length).toBeGreaterThanOrEqual(1)
-    const escalationMsg = directMessages.find((m) => m.text.includes('ESCALATED'))
-    expect(escalationMsg).toBeTruthy()
-    expect(escalationMsg!.text).toContain('my-org/api')
 
     // Updated status
     expect(updatedFields[0]?.status).toBe('escalated')
@@ -589,16 +540,13 @@ describe('escalateIncident', () => {
 })
 
 describe('handleFixPRMerged', () => {
-  test('records action and posts thread update when incident exists', async () => {
+  test('records action when incident exists', async () => {
     findIncidentByPrUrlResult = { ...TEST_INCIDENT }
 
     await handleFixPRMerged('https://github.com/my-org/api/pull/7', 7, 'org-1')
 
     const prMergedAction = insertedActions.find((action) => action.actionType === 'pr_merged')
     expect(prMergedAction).toBeTruthy()
-
-    const threadReplies = slackPostedMessages.filter((m) => m.thread_ts)
-    expect(threadReplies.some((reply) => reply.text.includes('merged'))).toBe(true)
   })
 
   test('no-ops when PR URL does not map to an incident', async () => {
