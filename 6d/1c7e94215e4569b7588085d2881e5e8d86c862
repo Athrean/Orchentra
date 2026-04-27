@@ -1,0 +1,29 @@
+apps/web/components/marketing/Footer.tsx
+  b1d5c5b8db40de23 2,47
+apps/web/components/marketing/TopNav.tsx
+  b1d5c5b8db40de23 3,17-18
+apps/web/components/marketing/index.ts
+  b1d5c5b8db40de23 10
+apps/web/components/marketing/Logo.tsx
+  b1d5c5b8db40de23 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "6d1c7e94215e4569b7588085d2881e5e8d86c862",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 221,
+      "total_deletions": 14,
+      "accepted_lines": 510,
+      "overriden_lines": 6
+    }
+  }
+}
