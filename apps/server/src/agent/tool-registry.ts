@@ -21,9 +21,10 @@ export class ToolRegistry {
     this.tools.set(def.name, def)
   }
 
-  getTools(_allowed: Set<Permission>): Record<string, CoreTool> {
+  getTools(allowed: Set<Permission>): Record<string, CoreTool> {
     const out: Record<string, CoreTool> = {}
     for (const [name, def] of this.tools) {
+      if (!allowed.has(def.permission)) continue
       out[name] = tool({
         description: def.description,
         parameters: def.parameters,
