@@ -9,6 +9,7 @@ import type {
 import { emptyUsage } from '@orchentra/cli-core'
 import type { OpenAiMessage, OpenAiToolCall, OpenAiToolDefinition, OpenAiStreamDelta } from './types'
 import { getCredential, type ProviderKey } from '../credential-store'
+import { parseToolArguments } from '../tool-arguments'
 
 export interface OpenAiCompatConfig {
   providerName: string
@@ -99,9 +100,10 @@ export class OpenAiCompatProvider implements Provider {
         const data = trimmed.slice(6)
         if (data === '[DONE]') {
           for (const tc of Array.from(pendingToolCalls.values())) {
+            const { args } = parseToolArguments(tc.args, tc.name)
             yield {
               kind: 'tool-use',
-              call: { id: tc.id, name: tc.name, input: safeParseJson(tc.args) },
+              call: { id: tc.id, name: tc.name, input: args },
             }
           }
           yield { kind: 'usage', usage: emptyUsage() }

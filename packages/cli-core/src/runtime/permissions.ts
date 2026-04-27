@@ -318,5 +318,5 @@ export function decide(mode: PermissionMode, level: ToolLevel): PermissionDecisi
 }
 
 export function isPermissionMode(value: string): value is PermissionMode {
-  return ['read-only', 'prompt-on-write', 'workspace-write', 'danger-full-access', 'prompt', 'allow'].includes(value)
+  return ['read-only', 'workspace-write', 'danger-full-access', 'prompt', 'allow'].includes(value)
 }

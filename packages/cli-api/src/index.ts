@@ -65,6 +65,7 @@ export {
 } from './errors'
 export { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from './retry'
 export { validateApiKey } from './preflight'
+export { parseToolArguments, type ParseToolArgumentsResult } from './tool-arguments'
 
 export {
   OpenAiCompatProvider,
