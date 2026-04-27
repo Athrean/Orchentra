@@ -58,6 +58,15 @@ export interface TurnStatus {
   readonly tokens: UsageTotals
 }
 
+export interface ActiveCardState {
+  readonly id: string
+  readonly title?: string
+  readonly subtitle?: string
+  readonly tabs?: import('../commands/ui-output').UiTabs
+  readonly activeTab: number
+  readonly sectionsByTab: readonly (readonly import('../commands/ui-output').UiCardSection[])[]
+}
+
 export interface TuiState {
   readonly buffer: string
   readonly cursor: number
@@ -76,6 +85,13 @@ export interface TuiState {
   readonly exitHintUntil: number | null
   /** Id of the assistant row currently being streamed into, if any. */
   readonly streamingRowId: string | null
+  /**
+   * Currently-focused interactive card, if any. The card lives in the live
+   * region (not in Static), so the user can switch tabs with ←/→ or Tab and
+   * dismiss with ↓/Esc. Once dismissed, the active tab's content is
+   * committed into the transcript.
+   */
+  readonly activeCard: ActiveCardState | null
 }
 
 export type TuiAction =
@@ -106,6 +122,9 @@ export type TuiAction =
   | { type: 'paste/add'; chip: PasteChip }
   | { type: 'exit-hint/show'; until: number }
   | { type: 'exit-hint/clear' }
+  | { type: 'card/open'; card: ActiveCardState }
+  | { type: 'card/set-tab'; index: number }
+  | { type: 'card/dismiss' }
 
 export const PERMISSION_MODE_CYCLE: readonly PermissionMode[] = [
   'prompt',
