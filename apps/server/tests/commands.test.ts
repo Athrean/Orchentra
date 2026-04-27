@@ -77,6 +77,8 @@ mock.module('../src/lib/incident-queue', () => ({
   },
 }))
 
+const incidentResets: Array<{ id: string; orgId: string }> = []
+
 mock.module('../src/queries/incidents', () => ({
   findIncident: async (id: string, orgId: string) => {
     const row = incidentsById.get(id)
@@ -85,6 +87,11 @@ mock.module('../src/queries/incidents', () => ({
   },
   findIncidentByRunId: async (orgId: string, repo: string, runId: number) => {
     return incidentsByRunId.get(`${orgId}:${repo}:${runId}`) ?? undefined
+  },
+  resetIncidentForRetry: async (id: string, orgId: string) => {
+    incidentResets.push({ id, orgId })
+    const row = incidentsById.get(id)
+    if (row) row.status = 'investigating'
   },
 }))
 
@@ -113,6 +120,7 @@ beforeEach(() => {
   enqueueCalls.length = 0
   incidentsById.clear()
   incidentsByRunId.clear()
+  incidentResets.length = 0
   triageBus.removeAllListeners()
 })
 
@@ -467,6 +475,87 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(body).toContain('resolved')
     expect(body).not.toContain(otherInc.id)
     expect(triageBus.listenerCount('*')).toBe(0)
+  })
+
+  test('/retry on errored incident resets fields and enqueues', async () => {
+    const inc: FixtureIncident = {
+      id: '77777777-7777-4777-8777-777777777777',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 11,
+      status: 'error',
+    }
+    incidentsById.set(inc.id, inc)
+
+    const app = makeApp()
+    const resPromise = app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'retry',
+        args: [inc.id],
+        sessionId: 's-retry-ok',
+      }),
+    })
+    setTimeout(() => emitTerminal(inc.id, inc.repo), 5)
+    const res = await resPromise
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+
+    expect(incidentResets).toHaveLength(1)
+    expect(incidentResets[0].id).toBe(inc.id)
+    expect(enqueueCalls).toHaveLength(1)
+    expect(enqueueCalls[0].id).toBe(inc.id)
+    expect(body.toLowerCase()).toContain('retry')
+    expect(body).toContain(inc.id)
+  })
+
+  test('/retry on resolved incident is rejected, no reset, no enqueue', async () => {
+    const inc: FixtureIncident = {
+      id: '88888888-8888-4888-8888-888888888888',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 12,
+      status: 'resolved',
+    }
+    incidentsById.set(inc.id, inc)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'retry',
+        args: [inc.id],
+        sessionId: 's-retry-resolved',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toMatch(/not retryable|cannot retry|status/)
+    expect(incidentResets).toHaveLength(0)
+    expect(enqueueCalls).toHaveLength(0)
+  })
+
+  test('/retry with unknown UUID returns not found', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'retry',
+        args: ['99999999-9999-4999-8999-999999999999'],
+        sessionId: 's-retry-missing',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('not found')
+    expect(incidentResets).toHaveLength(0)
+    expect(enqueueCalls).toHaveLength(0)
   })
 
   test('/triage cross-org incident lookup returns not-found', async () => {
