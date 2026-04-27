@@ -9,9 +9,15 @@ mock.module('../src/config', () => ({
   },
 }))
 
+let selectCalls: Array<{
+  whereClauses: unknown
+  limit: number | null
+}> = []
+let selectRows: Record<string, unknown>[] = []
+
 mock.module('drizzle-orm', () => ({
-  eq: (_col: unknown, _val: unknown) => ({}),
-  and: (...clauses: unknown[]) => clauses,
+  eq: (col: unknown, val: unknown) => ({ op: 'eq', col, val }),
+  and: (...clauses: unknown[]) => ({ op: 'and', clauses: clauses.filter(Boolean) }),
   asc: (col: unknown) => col,
   desc: (col: unknown) => col,
 }))
@@ -26,13 +32,28 @@ mock.module('../src/db/client', () => ({
     }),
     select: () => ({
       from: () => ({
-        where: () => ({
-          orderBy: () => ({ limit: () => [] }),
+        where: (whereClauses: unknown) => ({
+          orderBy: () => ({
+            limit: (limit: number) => {
+              selectCalls.push({ whereClauses, limit })
+              return selectRows
+            },
+          }),
         }),
       }),
     }),
   },
   chatMessages: {},
+  incidents: {
+    id: { _name: 'id' },
+    orgId: { _name: 'org_id' },
+    repo: { _name: 'repo' },
+    branch: { _name: 'branch' },
+    workflowName: { _name: 'workflow_name' },
+    status: { _name: 'status' },
+    confidence: { _name: 'confidence' },
+    triggeredAt: { _name: 'triggered_at' },
+  },
 }))
 
 const { commandsRouter } = await import('../src/routes/commands')
@@ -51,6 +72,8 @@ function makeApp(): Hono {
 
 beforeEach(() => {
   chatInserts = []
+  selectCalls = []
+  selectRows = []
 })
 
 async function readSseBody(res: Response): Promise<string> {
@@ -140,5 +163,18 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(assistantRow.role).toBe('assistant')
     expect(assistantRow.sessionId).toBe('s42')
     expect(assistantRow.content).toContain('/help')
+  })
+
+  test('/status with no incidents returns empty-state line', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'status', sessionId: 's-empty' }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('no incidents')
   })
 })
