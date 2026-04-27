@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { renderWelcomeBanner } from '../src/render/banner'
+import React from 'react'
+import { render as inkRender } from 'ink-testing-library'
+import { WelcomeBanner } from '../src/render/banner'
 
-describe('renderWelcomeBanner', () => {
+describe('WelcomeBanner', () => {
   const baseOpts = {
     cliName: 'orchentra',
     cliVersion: '0.1.0',
@@ -11,7 +13,7 @@ describe('renderWelcomeBanner', () => {
   }
 
   test('produces multi-line output including the product name and version', () => {
-    const out = runWith({ NO_COLOR: '1' }, () => renderWelcomeBanner(baseOpts))
+    const out = runWith({ NO_COLOR: '1' }, () => renderFrame(baseOpts))
     const lines = out.trimEnd().split('\n')
     expect(lines.length).toBeGreaterThanOrEqual(3)
     expect(out).toContain('Orchentra')
@@ -19,32 +21,35 @@ describe('renderWelcomeBanner', () => {
   })
 
   test('includes model and permission mode on the info block', () => {
-    const out = runWith({ NO_COLOR: '1' }, () => renderWelcomeBanner(baseOpts))
+    const out = runWith({ NO_COLOR: '1' }, () => renderFrame(baseOpts))
     expect(out).toContain('claude-sonnet-4-6')
     expect(out).toContain('workspace-write')
   })
 
   test('shortens the home directory to ~ in the cwd line', () => {
     const home = process.env.HOME ?? '/home/u'
-    const out = runWith({ NO_COLOR: '1', HOME: home }, () =>
-      renderWelcomeBanner({ ...baseOpts, cwd: `${home}/projects/foo` }),
-    )
+    const out = runWith({ NO_COLOR: '1', HOME: home }, () => renderFrame({ ...baseOpts, cwd: `${home}/projects/foo` }))
     expect(out).toContain('~/projects/foo')
     expect(out).not.toContain(home)
   })
 
   test('emits NO escape sequences when NO_COLOR is set', () => {
-    const out = runWith({ NO_COLOR: '1' }, () => renderWelcomeBanner(baseOpts))
+    const out = runWith({ NO_COLOR: '1' }, () => renderFrame(baseOpts))
     // eslint-disable-next-line no-control-regex
     expect(/\x1b\[/.test(out)).toBe(false)
   })
 
   test('emits escape sequences when FORCE_COLOR=truecolor', () => {
-    const out = runWith({ FORCE_COLOR: '3', COLORTERM: 'truecolor' }, () => renderWelcomeBanner(baseOpts))
+    const out = runWith({ FORCE_COLOR: '3', COLORTERM: 'truecolor' }, () => renderFrame(baseOpts))
     // eslint-disable-next-line no-control-regex
     expect(/\x1b\[/.test(out)).toBe(true)
   })
 })
+
+function renderFrame(opts: Parameters<typeof WelcomeBanner>[0]): string {
+  const { lastFrame } = inkRender(<WelcomeBanner {...opts} />)
+  return lastFrame() ?? ''
+}
 
 function runWith<T>(env: Record<string, string>, fn: () => T): T {
   const saved: Record<string, string | undefined> = {}

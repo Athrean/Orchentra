@@ -1,7 +1,8 @@
 {
   "extends": "@orchentra/typescript-config/base.json",
   "compilerOptions": {
-    "types": ["bun"]
+    "types": ["bun"],
+    "jsx": "react-jsx"
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
