@@ -96,6 +96,15 @@ export type { SessionControl } from './session-control'
 
 export { isKnownModel } from './model-availability'
 
+export { parseFrontmatter, loadSkills } from './skills'
+export type {
+  ParseFrontmatterResult,
+  ParsedSkill,
+  LoadError as SkillLoadError,
+  LoadSkillsOptions,
+  LoadSkillsResult,
+} from './skills'
+
 export { InMemoryTaskStore } from './task-store'
 
 export type { SystemPromptInput, SystemPrompt } from './system-prompt'
