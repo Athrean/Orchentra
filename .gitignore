@@ -30,6 +30,7 @@ CLAUDE.md
 # Claude Code local settings (may contain secrets)
 .claude/settings.json
 .claude/skills/
+.claude/hooks/
 .claude.env
 .mcp.json
 
