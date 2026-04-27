@@ -1,0 +1,25 @@
+apps/cli/src/tui/types.ts
+  b1d5c5b8db40de23 103-107
+apps/cli/src/tui/components/Footer.tsx
+  b1d5c5b8db40de23 6-7,22,27-28,30-32,35-36,38,44-45,51,54,56,58,78,87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "94340388c83629572d02f04d8748725c0b8734a0",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 25,
+      "total_deletions": 58,
+      "accepted_lines": 24,
+      "overriden_lines": 0
+    }
+  }
+}
