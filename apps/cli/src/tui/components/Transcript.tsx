@@ -2,6 +2,10 @@ import React from 'react'
 import { Box, Static, Text } from 'ink'
 import { formatUsd, pricingForModel, type UsageTotals } from '@orchentra/cli-core'
 import { BRAND_GREEN, type TranscriptRow } from '../types'
+import { THEME } from '../theme'
+import { Card } from './Card'
+import { KVList } from './KVList'
+import { Tabs } from './Tabs'
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -93,6 +97,41 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
           <Text dimColor>
             Context compacted: {row.dropped} messages dropped, ~{row.saved} tokens saved
           </Text>
+        </Box>
+      )
+    case 'stream':
+      return (
+        <Box paddingX={1} flexDirection="column">
+          {row.label ? (
+            <Text color={THEME.brand} bold>
+              {row.label}
+            </Text>
+          ) : null}
+          <Text>{row.text}</Text>
+        </Box>
+      )
+    case 'card':
+      return (
+        <Box paddingX={1}>
+          <Card title={row.title} subtitle={row.subtitle}>
+            {row.tabs ? (
+              <Box flexDirection="column">
+                <Tabs items={row.tabs.items} active={row.tabs.active} />
+                <Box height={1} />
+              </Box>
+            ) : null}
+            {row.sections.map((section, i) => (
+              <Box key={i} flexDirection="column">
+                {section.title ? (
+                  <Text color={THEME.brand} bold>
+                    {section.title}
+                  </Text>
+                ) : null}
+                <KVList rows={section.rows.map((r) => ({ ...r }))} />
+                {i < row.sections.length - 1 ? <Box height={1} /> : null}
+              </Box>
+            ))}
+          </Card>
         </Box>
       )
     case 'done':

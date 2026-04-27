@@ -145,12 +145,43 @@ export function Tui(props: TuiProps): React.ReactElement {
           return
         }
         if (resolved !== null) {
-          const ctx: CommandContext = { cwd, session: cli }
+          let usedUiSink = false
+          const ui = (output: import('../commands/ui-output').UiOutput): void => {
+            usedUiSink = true
+            switch (output.kind) {
+              case 'text':
+                dispatch({
+                  type: 'transcript/push',
+                  row: { kind: 'system', id: randomUUID(), text: output.text, tone: 'info' },
+                })
+                return
+              case 'note':
+                dispatch({
+                  type: 'transcript/push',
+                  row: { kind: 'system', id: randomUUID(), text: output.text, tone: output.tone ?? 'info' },
+                })
+                return
+              case 'card':
+                dispatch({
+                  type: 'transcript/push',
+                  row: {
+                    kind: 'card',
+                    id: randomUUID(),
+                    title: output.title,
+                    subtitle: output.subtitle,
+                    tabs: output.tabs,
+                    sections: output.sections,
+                  },
+                })
+                return
+            }
+          }
+          const ctx: CommandContext = { cwd, session: cli, ui }
           const captured = captureStdio()
           try {
             const shouldContinue = await resolved.handler.execute(resolved.args, ctx)
             const output = captured.stop().trimEnd()
-            if (output.length > 0) {
+            if (output.length > 0 && !usedUiSink) {
               dispatch({
                 type: 'transcript/push',
                 row: { kind: 'system', id: randomUUID(), text: output, tone: 'info' },
@@ -159,7 +190,7 @@ export function Tui(props: TuiProps): React.ReactElement {
             if (!shouldContinue) exit()
           } catch (err) {
             const output = captured.stop().trimEnd()
-            if (output.length > 0) {
+            if (output.length > 0 && !usedUiSink) {
               dispatch({
                 type: 'transcript/push',
                 row: { kind: 'system', id: randomUUID(), text: output, tone: 'info' },

@@ -1,4 +1,14 @@
 import type { PermissionMode, UsageTotals } from '@orchentra/cli-core'
+import type { UiCardSection, UiTabs } from '../commands/ui-output'
+
+export interface CardRow {
+  readonly kind: 'card'
+  readonly id: string
+  readonly title?: string
+  readonly subtitle?: string
+  readonly tabs?: UiTabs
+  readonly sections: readonly UiCardSection[]
+}
 
 export type TranscriptRow =
   | { kind: 'user'; id: string; text: string }
@@ -6,9 +16,11 @@ export type TranscriptRow =
   | { kind: 'tool_call'; id: string; name: string; input: string }
   | { kind: 'tool_result'; id: string; preview: string; isError: boolean }
   | { kind: 'system'; id: string; text: string; tone?: 'info' | 'warn' }
+  | { kind: 'stream'; id: string; text: string; label?: string }
   | { kind: 'error'; id: string; message: string }
   | { kind: 'done'; id: string; steps: number; usage: UsageTotals; model: string }
   | { kind: 'compacted'; id: string; dropped: number; saved: number }
+  | CardRow
 
 export type SuggestionTrigger = '/' | '@' | '!'
 
