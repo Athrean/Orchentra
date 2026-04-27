@@ -20,10 +20,10 @@
   --color-app-text-muted: #b0aea5;
   --color-app-text-subtle: #9c9a92;
 
-  /* ── Brand (coral) ── */
-  --color-brand: #cc785c;
-  --color-brand-dim: rgba(204, 120, 92, 0.12);
-  --color-brand-border: rgba(204, 120, 92, 0.2);
+  /* ── Brand (green) ── */
+  --color-brand: #156545;
+  --color-brand-dim: rgba(21, 101, 69, 0.12);
+  --color-brand-border: rgba(21, 101, 69, 0.2);
 
   /* ── Green (positive / action) ── */
   --color-green: #2EA043;
@@ -46,11 +46,11 @@
   --color-text-secondary: #5e5d59;
   --color-text-muted: #87867f;
 
-  --color-accent: #cc785c;
-  --color-accent-hover: #a9583e;
-  --color-accent-dim: rgba(204, 120, 92, 0.12);
-  --color-accent-warm: #cc785c;
-  --color-accent-shadow: rgba(204, 120, 92, 0.25);
+  --color-accent: #156545;
+  --color-accent-hover: #23A470;
+  --color-accent-dim: rgba(21, 101, 69, 0.12);
+  --color-accent-warm: #156545;
+  --color-accent-shadow: rgba(21, 101, 69, 0.25);
   --color-hero-bg: #f5f4ed;
   --color-hero-text: #141413;
   --color-hero-text-secondary: #5e5d59;
@@ -58,7 +58,7 @@
   --color-hero-border: rgba(20, 20, 19, 0.12);
   --hero-illustration-filter: none;
 
-  /* ── Marketing surface ramp (DESIGN-claude.md, coral override) ── */
+  /* ── Marketing surface ramp (DESIGN-claude.md, green override) ── */
   --color-canvas: #faf9f5;
   --color-surface-soft: #f5f0e8;
   --color-surface-card: #efe9de;
@@ -80,10 +80,10 @@
   --color-hairline: #e6dfd8;
   --color-hairline-soft: #ebe6df;
 
-  --color-coral: #cc785c;
-  --color-coral-active: #a9583e;
+  --color-coral: #156545;
+  --color-coral-active: #23A470;
   --color-coral-disabled: #e6dfd8;
-  --color-accent-amber: #e8a55a;
+  --color-accent-amber: #3DD699;
   --color-accent-teal: #5db8a6;
 
   /* ── Status ── */

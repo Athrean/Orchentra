@@ -9,7 +9,7 @@ export function Hero({ loginHref }: { loginHref: string }): React.ReactNode {
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[480px]"
         style={{
-          background: 'radial-gradient(ellipse 60% 50% at 30% 20%, rgba(204, 120, 92, 0.10), transparent 70%)',
+          background: 'radial-gradient(ellipse 60% 50% at 30% 20%, rgba(21, 101, 69, 0.10), transparent 70%)',
         }}
       />
       <Container>
