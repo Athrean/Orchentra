@@ -6,8 +6,11 @@ export {
   loginAnthropic,
   logoutAnthropic,
   resolveAnthropicAuthToken,
+  startAnthropicLogin,
+  completeAnthropicLogin,
   type AnthropicLoginOptions,
   type AnthropicLoginResult,
+  type AnthropicPendingLogin,
 } from './anthropic/oauth'
 
 export { GeminiProvider, type GeminiConfig } from './gemini'
@@ -57,7 +60,7 @@ export {
   isRetryableStatus,
   enrichAuthError,
   missingCredentialsError,
-  type AnthropicApiError,
+  AnthropicApiError,
   type FailureClass,
 } from './errors'
 export { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from './retry'

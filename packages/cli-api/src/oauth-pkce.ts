@@ -85,7 +85,7 @@ export async function captureLoopbackCode(options: LoopbackOptions = {}): Promis
   })
 
   const port = await listenOnFirstFreePort(server, options.preferredPorts)
-  const redirectUri = `http://127.0.0.1:${port}${path}`
+  const redirectUri = `http://localhost:${port}${path}`
 
   let timer: ReturnType<typeof setTimeout> | null = null
   if (options.timeoutMs && options.timeoutMs > 0) {
@@ -117,7 +117,7 @@ function listenOnFirstFreePort(server: Server, preferred?: readonly number[]): P
   return new Promise((resolve, reject) => {
     const candidates = preferred && preferred.length > 0 ? [...preferred, 0] : [0]
     let index = 0
-    const tryNext = () => {
+    const tryNext = (): void => {
       if (index >= candidates.length) {
         reject(new Error('no free port available for oauth loopback'))
         return
@@ -143,10 +143,7 @@ function listenOnFirstFreePort(server: Server, preferred?: readonly number[]): P
   })
 }
 
-export function buildAuthorizeUrl(
-  authorizeUrl: string,
-  params: Record<string, string>,
-): string {
+export function buildAuthorizeUrl(authorizeUrl: string, params: Record<string, string>): string {
   const url = new URL(authorizeUrl)
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v)
