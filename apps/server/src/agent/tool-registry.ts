@@ -15,6 +15,9 @@ export class ToolRegistry {
   private tools = new Map<string, ToolDefinition>()
 
   register(def: ToolDefinition): void {
+    if (this.tools.has(def.name)) {
+      throw new Error(`Tool already registered: ${def.name}`)
+    }
     this.tools.set(def.name, def)
   }
 
