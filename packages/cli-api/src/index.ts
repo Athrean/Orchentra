@@ -129,3 +129,9 @@ export {
 } from './github'
 
 export { postSlashCommand, CommandHttpError, type PostSlashCommandOptions } from './orchentra/commands'
+export {
+  resolveOrchentraConfig,
+  MissingOrchentraConfigError,
+  type OrchentraConfig,
+  type ResolveConfigOptions,
+} from './orchentra/config'

@@ -12,6 +12,7 @@ export type ProviderKey =
   | 'aws'
   | 'gcp'
   | 'azure'
+  | 'orchentra'
 
 export interface StoredCredential {
   readonly apiKey?: string
@@ -53,11 +54,7 @@ export function getCredential(provider: ProviderKey, home: string = homedir()): 
   return file.providers[provider] ?? null
 }
 
-export function saveCredential(
-  provider: ProviderKey,
-  credential: StoredCredential,
-  home: string = homedir(),
-): string {
+export function saveCredential(provider: ProviderKey, credential: StoredCredential, home: string = homedir()): string {
   const path = credentialsPath(home)
   const file = loadCredentials(home)
   file.providers[provider] = credential
