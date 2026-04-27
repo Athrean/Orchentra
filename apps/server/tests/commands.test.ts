@@ -92,4 +92,33 @@ describe('POST /api/orgs/:orgId/commands', () => {
     const json = (await res.json()) as { error: string }
     expect(json.error).toContain('nope')
   })
+
+  test('persists user input and assembled assistant output to chat_messages', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'help', sessionId: 's42' }),
+    })
+
+    await readSseBody(res)
+
+    expect(chatInserts).toHaveLength(2)
+
+    const [userRow, assistantRow] = chatInserts as Array<{
+      orgId: string
+      sessionId: string
+      role: 'user' | 'assistant'
+      content: string
+    }>
+
+    expect(userRow.role).toBe('user')
+    expect(userRow.orgId).toBe('org-1')
+    expect(userRow.sessionId).toBe('s42')
+    expect(userRow.content).toBe('/help')
+
+    expect(assistantRow.role).toBe('assistant')
+    expect(assistantRow.sessionId).toBe('s42')
+    expect(assistantRow.content).toContain('/help')
+  })
 })
