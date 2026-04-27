@@ -16,44 +16,7 @@ import { generatePatches } from './patch-generator'
 
 type IncidentRow = typeof incidents.$inferSelect
 
-// ── Error classification ──────────────────────────────────────────────────
-
-type ErrorClass = 'retryable' | 'permanent'
-
-function classifyError(error: unknown): ErrorClass {
-  if (error instanceof Response) {
-    const s = error.status
-    if (s === 429 || (s >= 500 && s < 600)) return 'retryable'
-  }
-  if (error && typeof error === 'object' && 'status' in error) {
-    const s = (error as { status: number }).status
-    if (s === 429 || (s >= 500 && s < 600)) return 'retryable'
-  }
-  if (error instanceof TypeError && error.message.includes('fetch')) return 'retryable'
-  if (error instanceof Error && error.message.includes('ECONNRESET')) return 'retryable'
-  if (error instanceof Error && error.message.includes('ETIMEDOUT')) return 'retryable'
-  return 'permanent'
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(10_000 * Math.pow(2, attempt - 1), 60_000)
-}
-
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts: number = 3): Promise<T> {
-  let lastError: unknown
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn()
-    } catch (err) {
-      lastError = err
-      if (attempt >= maxAttempts || classifyError(err) === 'permanent') throw err
-      const delay = backoffMs(attempt)
-      console.warn(`Retryable error (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms:`, err)
-      await new Promise((resolve) => setTimeout(resolve, delay))
-    }
-  }
-  throw lastError
-}
+import { withRetry } from './retry'
 
 // ── Budget tracking ──────────────────────────────────────────────────────
 
