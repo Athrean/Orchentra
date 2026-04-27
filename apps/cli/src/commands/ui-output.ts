@@ -29,7 +29,14 @@ export type UiOutput =
       readonly title?: string
       readonly subtitle?: string
       readonly tabs?: UiTabs
+      /**
+       * Section list for the currently-shown view. When `sectionsByTab` is
+       * also provided, the TUI uses that for arrow-key tab switching and
+       * `sections` is treated as the initial render (typically `sectionsByTab[tabs.active]`).
+       */
       readonly sections: readonly UiCardSection[]
+      /** Optional per-tab content. Required for interactive tab switching. */
+      readonly sectionsByTab?: readonly (readonly UiCardSection[])[]
     }
   | {
       /**

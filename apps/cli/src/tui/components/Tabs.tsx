@@ -9,9 +9,9 @@ export interface TabsProps {
 }
 
 /**
- * Text-based tab strip. Active tab is bracketed and brand-coloured; inactive
- * tabs render dim. Used as a visual nav above structured slash-command
- * output cards.
+ * Text tab strip. The active tab is rendered as a brand-coloured "pill"
+ * (inverse text), inactive tabs render in the default colour. Spacing
+ * between items mirrors Claude Code's status surface.
  */
 export function Tabs(props: TabsProps): React.ReactElement {
   const accent = props.accent ?? THEME.brand
@@ -19,15 +19,17 @@ export function Tabs(props: TabsProps): React.ReactElement {
     <Box flexDirection="row">
       {props.items.map((item, i) => {
         const isActive = i === props.active
+        const padded = ` ${item} `
         return (
           <React.Fragment key={item}>
             {isActive ? (
-              <Text color={accent} bold>
-                {`[ ${item} ]`}
+              <Text color={accent} inverse bold>
+                {padded}
               </Text>
             ) : (
-              <Text dimColor>{`  ${item}  `}</Text>
+              <Text>{padded}</Text>
             )}
+            {i < props.items.length - 1 ? <Text>{'  '}</Text> : null}
           </React.Fragment>
         )
       })}

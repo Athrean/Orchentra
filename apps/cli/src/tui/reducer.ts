@@ -19,6 +19,7 @@ export function initialState(args: { model: string; mode: PermissionMode; histor
     pastes: {},
     exitHintUntil: null,
     streamingRowId: null,
+    activeCard: null,
   }
 }
 
@@ -157,6 +158,34 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
 
     case 'exit-hint/clear':
       return { ...state, exitHintUntil: null }
+
+    case 'card/open':
+      return { ...state, activeCard: action.card }
+
+    case 'card/set-tab': {
+      if (!state.activeCard) return state
+      const tabs = state.activeCard.tabs
+      if (!tabs || tabs.items.length === 0) return state
+      const len = tabs.items.length
+      const next = ((action.index % len) + len) % len
+      return { ...state, activeCard: { ...state.activeCard, activeTab: next } }
+    }
+
+    case 'card/dismiss': {
+      if (!state.activeCard) return state
+      const card = state.activeCard
+      const sections = card.sectionsByTab[card.activeTab] ?? []
+      const tabName = card.tabs?.items[card.activeTab]
+      const subtitle = tabName ? `${card.subtitle ? card.subtitle + ' · ' : ''}${tabName}` : card.subtitle
+      const row: TranscriptRow = {
+        kind: 'card',
+        id: card.id,
+        title: card.title,
+        subtitle,
+        sections,
+      }
+      return { ...state, activeCard: null, transcript: [...state.transcript, row] }
+    }
   }
 }
 

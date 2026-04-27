@@ -13,6 +13,7 @@ import { InputBox } from './components/InputBox'
 import { Suggestions } from './components/Suggestions'
 import { Footer } from './components/Footer'
 import { Transcript } from './components/Transcript'
+import { ActiveCard } from './components/ActiveCard'
 import type { TuiAction, TuiState } from './types'
 
 export interface TuiProps {
@@ -163,17 +164,31 @@ export function Tui(props: TuiProps): React.ReactElement {
                 })
                 return
               case 'card':
-                dispatch({
-                  type: 'transcript/push',
-                  row: {
-                    kind: 'card',
-                    id: randomUUID(),
-                    title: output.title,
-                    subtitle: output.subtitle,
-                    tabs: output.tabs,
-                    sections: output.sections,
-                  },
-                })
+                if (output.sectionsByTab && output.tabs) {
+                  dispatch({
+                    type: 'card/open',
+                    card: {
+                      id: randomUUID(),
+                      title: output.title,
+                      subtitle: output.subtitle,
+                      tabs: output.tabs,
+                      activeTab: output.tabs.active,
+                      sectionsByTab: output.sectionsByTab,
+                    },
+                  })
+                } else {
+                  dispatch({
+                    type: 'transcript/push',
+                    row: {
+                      kind: 'card',
+                      id: randomUUID(),
+                      title: output.title,
+                      subtitle: output.subtitle,
+                      tabs: output.tabs,
+                      sections: output.sections,
+                    },
+                  })
+                }
                 return
               case 'stream':
                 if (activeStreamId === null) {
@@ -280,6 +295,16 @@ export function Tui(props: TuiProps): React.ReactElement {
     if (key.shift && key.tab) {
       dispatch({ type: 'mode/cycle' })
       return
+    }
+
+    // Active card hijacks navigation keys while focused.
+    if (cur.activeCard) {
+      const tabsLen = cur.activeCard.tabs?.items.length ?? 0
+      if (tabsLen > 0 && key.leftArrow) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab - 1 })
+      if (tabsLen > 0 && key.rightArrow) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
+      if (tabsLen > 0 && key.tab) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
+      if (key.downArrow || key.escape) return dispatch({ type: 'card/dismiss' })
+      // Anything else falls through to normal handling.
     }
 
     if (cur.suggestions.open) {
@@ -429,6 +454,7 @@ export function Tui(props: TuiProps): React.ReactElement {
     <Box flexDirection="column">
       <Transcript rows={state.transcript} streamingRowId={state.streamingRowId} />
       <Box flexDirection="column">
+        {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
         {showSuggestions ? <Suggestions state={state.suggestions} width={suggestionsWidth} /> : null}
         <InputBox
           buffer={state.buffer}
