@@ -14,13 +14,17 @@
   "dependencies": {
     "@orchentra/cli-api": "workspace:*",
     "@orchentra/cli-core": "workspace:*",
-    "@orchentra/cli-tools": "workspace:*"
+    "@orchentra/cli-tools": "workspace:*",
+    "ink": "^7",
+    "react": "^19"
   },
   "devDependencies": {
     "@orchentra/eslint-config": "workspace:*",
     "@orchentra/typescript-config": "workspace:*",
     "@types/bun": "latest",
+    "@types/react": "^19",
     "eslint": "^8.57.0",
+    "ink-testing-library": "^4.0.0",
     "typescript": "^5.9.3"
   }
 }

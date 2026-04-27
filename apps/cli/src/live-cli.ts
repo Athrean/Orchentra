@@ -37,9 +37,12 @@ import { readLine } from './input'
 
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
 
+export type RuntimeEventSink = (event: RuntimeEvent) => void
+export type AskUserOverride = (prompt: string) => Promise<string>
+
 export class LiveCli implements SessionControl {
   private model: string
-  private readonly permissionMode: PermissionMode
+  private permissionMode: PermissionMode
   private provider: Provider
   private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
@@ -54,6 +57,9 @@ export class LiveCli implements SessionControl {
   private session: SessionWriter | null = null
   private runtime: ConversationRuntime | null = null
   private forceCompactFlag = false
+  private eventSink: RuntimeEventSink | null = null
+  private askUserOverride: AskUserOverride | null = null
+  private currentAbort: AbortController | null = null
 
   constructor(deps: {
     model: string
@@ -93,6 +99,27 @@ export class LiveCli implements SessionControl {
 
   getPermissionMode(): PermissionMode {
     return this.permissionMode
+  }
+
+  setPermissionMode(mode: PermissionMode): PermissionMode {
+    this.permissionMode = mode
+    return mode
+  }
+
+  setEventSink(sink: RuntimeEventSink | null): void {
+    this.eventSink = sink
+  }
+
+  setAskUser(askUser: AskUserOverride | null): void {
+    this.askUserOverride = askUser
+  }
+
+  abort(): void {
+    this.currentAbort?.abort()
+  }
+
+  isRunning(): boolean {
+    return this.currentAbort !== null
   }
 
   getSessionId(): string {
@@ -137,6 +164,7 @@ export class LiveCli implements SessionControl {
   }
 
   async runTurn(input: string): Promise<void> {
+    const sink = this.eventSink
     // Handle forced compaction
     if (this.forceCompactFlag) {
       this.forceCompactFlag = false
@@ -150,12 +178,21 @@ export class LiveCli implements SessionControl {
         })
         if (result.compacted) {
           this.messages = result.messages
-          process.stdout.write(renderCompactNotice(result.droppedCount, result.tokensSaved) + '\n')
+          if (sink) {
+            sink({
+              kind: 'compacted',
+              droppedMessageCount: result.droppedCount,
+              tokensSaved: result.tokensSaved,
+              summary: '',
+            })
+          } else {
+            process.stdout.write(renderCompactNotice(result.droppedCount, result.tokensSaved) + '\n')
+          }
         }
       }
     }
 
-    this.spinner.start('Thinking...')
+    if (!sink) this.spinner.start('Thinking...')
 
     // Build dynamic prompt parts (memory context)
     const dynamicParts: string[] = []
@@ -198,19 +235,22 @@ export class LiveCli implements SessionControl {
     })
 
     const askUser = async (prompt: string): Promise<string> => {
+      if (this.askUserOverride) return this.askUserOverride(prompt)
       this.spinner.stop()
       process.stdout.write(`\n${prompt}\n`)
       const outcome = await readLine('> ')
-      this.spinner.start('Thinking...')
+      if (!sink) this.spinner.start('Thinking...')
       return outcome.type === 'submit' ? outcome.text : ''
     }
 
+    this.currentAbort = new AbortController()
     const deps: ConversationDeps = {
       provider: this.provider,
       tools: this.tools,
       systemPrompt,
       sharedState: this.sharedState,
       askUser,
+      signal: this.currentAbort.signal,
     }
 
     this.runtime = new ConversationRuntime(config, deps)
@@ -234,34 +274,48 @@ export class LiveCli implements SessionControl {
       // Capture the full conversation state (user + assistant + tool messages)
       // so the next turn sees assistant/tool context, not just user prompts.
       this.messages = this.runtime.getFinalMessages()
-      this.spinner.stop()
-      process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
+      if (sink) {
+        sink({ kind: 'done', reason: 'stop', steps, usage: lastUsage })
+      } else {
+        this.spinner.stop()
+        process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
+      }
     } catch (err) {
-      this.spinner.stop()
       const message = err instanceof Error ? err.message : String(err)
-      process.stdout.write(renderErrorLine(message) + '\n')
+      if (sink) {
+        sink({ kind: 'error', message, retryable: false })
+      } else {
+        this.spinner.stop()
+        process.stdout.write(renderErrorLine(message) + '\n')
+      }
+    } finally {
+      this.currentAbort = null
     }
   }
 
   private async handleEvent(event: RuntimeEvent): Promise<void> {
-    switch (event.kind) {
-      case 'text':
-        process.stdout.write(event.delta)
-        break
-      case 'tool_use':
-        process.stdout.write('\n' + renderToolCall(event.call.name, event.call.input) + '\n')
-        break
-      case 'tool_result':
-        process.stdout.write(renderToolResult(event.result.content, event.result.isError) + '\n')
-        break
-      case 'compacted':
-        process.stdout.write(renderCompactNotice(event.droppedMessageCount, event.tokensSaved) + '\n')
-        break
-      case 'error':
-        if (!event.retryable) {
-          process.stdout.write(renderErrorLine(event.message) + '\n')
-        }
-        break
+    if (this.eventSink) {
+      this.eventSink(event)
+    } else {
+      switch (event.kind) {
+        case 'text':
+          process.stdout.write(event.delta)
+          break
+        case 'tool_use':
+          process.stdout.write('\n' + renderToolCall(event.call.name, event.call.input) + '\n')
+          break
+        case 'tool_result':
+          process.stdout.write(renderToolResult(event.result.content, event.result.isError) + '\n')
+          break
+        case 'compacted':
+          process.stdout.write(renderCompactNotice(event.droppedMessageCount, event.tokensSaved) + '\n')
+          break
+        case 'error':
+          if (!event.retryable) {
+            process.stdout.write(renderErrorLine(event.message) + '\n')
+          }
+          break
+      }
     }
 
     if (this.session) {
