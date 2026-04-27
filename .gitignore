@@ -29,7 +29,12 @@ CLAUDE.md
 
 # Claude Code local settings (may contain secrets)
 .claude/settings.json
+.claude/skills/
 .claude.env
 .mcp.json
 
-# Local reference copies of competing CLIs — not part of this repo
+# Local sprint planning notes (not part of product repo)
+.claude/*.md
+
+# Local session state
+.orchentra/
