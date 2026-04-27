@@ -127,3 +127,5 @@ export {
   type PullRequestRef,
   type CreatePullRequestInput,
 } from './github'
+
+export { postSlashCommand, CommandHttpError, type PostSlashCommandOptions } from './orchentra/commands'
