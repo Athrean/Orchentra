@@ -40,8 +40,6 @@ export type IncidentListResponse = z.infer<typeof IncidentListResponseSchema>
 export const IncidentDetailSchema = IncidentListItemSchema.extend({
   briefJson: z.string().nullable(),
   suggestedFix: z.string().nullable(),
-  slackChannel: z.string().nullable(),
-  slackMessageTs: z.string().nullable(),
   githubIssueUrl: z.string().nullable(),
   githubPrUrl: z.string().nullable(),
   snoozedUntil: z.coerce.date().nullable(),

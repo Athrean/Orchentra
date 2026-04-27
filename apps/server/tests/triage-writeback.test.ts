@@ -6,10 +6,6 @@ let githubCalls: { method: string; args: Record<string, unknown> }[] = []
 mock.module('../src/config', () => ({
   config: {
     github: { token: 'ghp_test', webhook_secret: 'secret', repos: [] },
-    delivery: {
-      slack: { bot_token: 'xoxb-test', signing_secret: 'ss', channel: '#ci-alerts' },
-      github_comments: true,
-    },
   },
 }))
 
