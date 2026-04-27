@@ -1,0 +1,25 @@
+apps/server/src/agent/prompts.ts
+  b1d5c5b8db40de23 5-9,14-33,107-108,113-114,118-119,121-124,129-130
+apps/server/tests/agent-prompt-kind.test.ts
+  b1d5c5b8db40de23 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "91ef41f01156929e8a758c4ead9bf5fd0e2579f5",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 96,
+      "total_deletions": 8,
+      "accepted_lines": 96,
+      "overriden_lines": 0
+    }
+  }
+}
