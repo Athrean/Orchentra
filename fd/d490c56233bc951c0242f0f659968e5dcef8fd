@@ -1,0 +1,27 @@
+apps/server/src/agent/tools/builtin.ts
+  b1d5c5b8db40de23 1-25
+apps/server/tests/tools-builtin.test.ts
+  b1d5c5b8db40de23 1-31
+apps/server/src/agent/runner.ts
+  b1d5c5b8db40de23 8-9,15,212-215,238,260,281,284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "fdd490c56233bc951c0242f0f659968e5dcef8fd",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 67,
+      "total_deletions": 15,
+      "accepted_lines": 284,
+      "overriden_lines": 0
+    }
+  }
+}
