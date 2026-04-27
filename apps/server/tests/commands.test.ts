@@ -286,6 +286,16 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(values).toContain('fixing')
   })
 
+  function emitTerminal(incidentId: string, repo = 'acme/api'): void {
+    triageBus.emit('*', {
+      type: 'incident:status_changed',
+      incidentId,
+      orgId: 'org-1',
+      repo,
+      data: { status: 'resolved' },
+    })
+  }
+
   test('/triage <uuid> enqueues the existing incident and yields a header', async () => {
     const inc: FixtureIncident = {
       id: '11111111-1111-4111-8111-111111111111',
@@ -297,7 +307,7 @@ describe('POST /api/orgs/:orgId/commands', () => {
     incidentsById.set(inc.id, inc)
 
     const app = makeApp()
-    const res = await app.request('/api/orgs/org-1/commands', {
+    const resPromise = app.request('/api/orgs/org-1/commands', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -306,6 +316,8 @@ describe('POST /api/orgs/:orgId/commands', () => {
         sessionId: 's-triage-uuid',
       }),
     })
+    setTimeout(() => emitTerminal(inc.id, inc.repo), 5)
+    const res = await resPromise
 
     expect(res.status).toBe(200)
     const body = await readSseBody(res)
@@ -328,7 +340,7 @@ describe('POST /api/orgs/:orgId/commands', () => {
     incidentsByRunId.set('org-1:acme/api:4242', inc)
 
     const app = makeApp()
-    const res = await app.request('/api/orgs/org-1/commands', {
+    const resPromise = app.request('/api/orgs/org-1/commands', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -337,6 +349,8 @@ describe('POST /api/orgs/:orgId/commands', () => {
         sessionId: 's-triage-runid',
       }),
     })
+    setTimeout(() => emitTerminal(inc.id, inc.repo), 5)
+    const res = await resPromise
 
     expect(res.status).toBe(200)
     await readSseBody(res)
@@ -375,6 +389,84 @@ describe('POST /api/orgs/:orgId/commands', () => {
     const body = await readSseBody(res)
     expect(body.toLowerCase()).toContain('not found')
     expect(enqueueCalls).toHaveLength(0)
+  })
+
+  test('/triage streams incidentEvents for the target incident and closes on terminal status', async () => {
+    const inc: FixtureIncident = {
+      id: '55555555-5555-4555-8555-555555555555',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 7,
+      status: 'investigating',
+    }
+    const otherInc: FixtureIncident = {
+      id: '66666666-6666-4666-8666-666666666666',
+      orgId: 'org-1',
+      repo: 'acme/web',
+      workflowRunId: 8,
+      status: 'investigating',
+    }
+    incidentsById.set(inc.id, inc)
+    incidentsById.set(otherInc.id, otherInc)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: [inc.id],
+        sessionId: 's-triage-stream',
+      }),
+    })
+    expect(res.status).toBe(200)
+
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let body = ''
+
+    const drainOnce = async (): Promise<void> => {
+      const { value, done } = await reader.read()
+      if (!done && value) body += decoder.decode(value, { stream: true })
+    }
+
+    await drainOnce()
+
+    triageBus.emit('*', {
+      type: 'incident:updated',
+      incidentId: otherInc.id,
+      orgId: 'org-1',
+      repo: otherInc.repo,
+      data: { note: 'should be ignored' },
+    })
+    triageBus.emit('*', {
+      type: 'incident:updated',
+      incidentId: inc.id,
+      orgId: 'org-1',
+      repo: inc.repo,
+      data: { tool: 'github.fetch_logs' },
+    })
+    await drainOnce()
+
+    triageBus.emit('*', {
+      type: 'incident:status_changed',
+      incidentId: inc.id,
+      orgId: 'org-1',
+      repo: inc.repo,
+      data: { status: 'resolved' },
+    })
+
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      if (value) body += decoder.decode(value, { stream: true })
+    }
+    body += decoder.decode()
+
+    expect(body).toContain('incident:updated')
+    expect(body).toContain('resolved')
+    expect(body).not.toContain(otherInc.id)
+    expect(triageBus.listenerCount('*')).toBe(0)
   })
 
   test('/triage cross-org incident lookup returns not-found', async () => {
