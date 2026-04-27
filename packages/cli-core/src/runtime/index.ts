@@ -94,6 +94,8 @@ export type {
 
 export type { SessionControl } from './session-control'
 
+export { isKnownModel } from './model-availability'
+
 export { InMemoryTaskStore } from './task-store'
 
 export type { SystemPromptInput, SystemPrompt } from './system-prompt'
