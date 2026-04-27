@@ -1,5 +1,12 @@
-import { Github } from 'lucide-react'
 import { Container } from './Container'
+
+function GithubMark({ className }: { className?: string }): React.ReactNode {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.34c-2.23.49-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.24.83 1.24.83.72 1.24 1.89.88 2.35.67.07-.52.28-.88.5-1.08-1.78-.2-3.65-.89-3.65-3.97 0-.88.31-1.6.83-2.16-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.83a7.6 7.6 0 014 0c1.53-1.04 2.2-.83 2.2-.83.44 1.11.16 1.93.08 2.13.52.56.83 1.28.83 2.16 0 3.09-1.87 3.77-3.66 3.97.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  )
+}
 
 type Status = 'live' | 'soon'
 
@@ -27,7 +34,7 @@ const CONNECTORS: Array<{ name: string; desc: string; glyph: string; status: Sta
 ]
 
 function Glyph({ name, lucide }: { name: string; lucide?: 'github' }): React.ReactNode {
-  if (lucide === 'github') return <Github className="h-4 w-4 mk-text-ink" strokeWidth={2} />
+  if (lucide === 'github') return <GithubMark className="h-4 w-4 mk-text-ink" />
   return <span className="mk-mono text-[12px] font-medium mk-text-ink">{name}</span>
 }
 
