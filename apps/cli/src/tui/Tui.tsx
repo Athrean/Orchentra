@@ -146,6 +146,7 @@ export function Tui(props: TuiProps): React.ReactElement {
         }
         if (resolved !== null) {
           let usedUiSink = false
+          let activeStreamId: string | null = null
           const ui = (output: import('../commands/ui-output').UiOutput): void => {
             usedUiSink = true
             switch (output.kind) {
@@ -174,6 +175,21 @@ export function Tui(props: TuiProps): React.ReactElement {
                   },
                 })
                 return
+              case 'stream':
+                if (activeStreamId === null) {
+                  activeStreamId = randomUUID()
+                  dispatch({
+                    type: 'transcript/system-stream-begin',
+                    rowId: activeStreamId,
+                    label: output.label,
+                  })
+                }
+                dispatch({
+                  type: 'transcript/system-stream-append',
+                  rowId: activeStreamId,
+                  delta: output.delta,
+                })
+                return
             }
           }
           const ctx: CommandContext = { cwd, session: cli, ui }
@@ -187,6 +203,7 @@ export function Tui(props: TuiProps): React.ReactElement {
                 row: { kind: 'system', id: randomUUID(), text: output, tone: 'info' },
               })
             }
+            if (activeStreamId !== null) dispatch({ type: 'transcript/system-stream-end' })
             if (!shouldContinue) exit()
           } catch (err) {
             const output = captured.stop().trimEnd()
@@ -196,6 +213,7 @@ export function Tui(props: TuiProps): React.ReactElement {
                 row: { kind: 'system', id: randomUUID(), text: output, tone: 'info' },
               })
             }
+            if (activeStreamId !== null) dispatch({ type: 'transcript/system-stream-end' })
             dispatch({
               type: 'transcript/push',
               row: {

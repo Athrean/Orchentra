@@ -98,6 +98,22 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
     case 'transcript/stream-end':
       return { ...state, streamingRowId: null }
 
+    case 'transcript/system-stream-begin': {
+      const row: TranscriptRow = { kind: 'stream', id: action.rowId, text: '', label: action.label }
+      return { ...state, transcript: [...state.transcript, row], streamingRowId: action.rowId }
+    }
+
+    case 'transcript/system-stream-append': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.rowId || row.kind !== 'stream') return row
+        return { ...row, text: row.text + action.delta }
+      })
+      return { ...state, transcript: next }
+    }
+
+    case 'transcript/system-stream-end':
+      return { ...state, streamingRowId: null }
+
     case 'turn/start':
       return {
         ...state,
