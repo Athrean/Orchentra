@@ -1,0 +1,27 @@
+packages/cli-api/src/index.ts
+  b1d5c5b8db40de23 130-131
+packages/cli-api/src/orchentra/commands.ts
+  b1d5c5b8db40de23 1-79
+packages/cli-api/tests/orchentra-commands.test.ts
+  b1d5c5b8db40de23 1-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "2712d32e7f05516c371536bb239ddeb35215717f",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 361,
+      "total_deletions": 224,
+      "accepted_lines": 216,
+      "overriden_lines": 0
+    }
+  }
+}
