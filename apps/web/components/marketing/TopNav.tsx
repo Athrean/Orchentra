@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Container } from './Container'
-import { SpikeMark } from './SpikeMark'
+import { Logo } from './Logo'
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -14,11 +14,8 @@ export function TopNav({ loginHref }: { loginHref: string }): React.ReactNode {
     <header className="mk-canvas sticky top-0 z-30 h-16 border-b mk-border-hairline-soft">
       <Container className="flex h-full items-center justify-between">
         <div className="flex items-center gap-10">
-          <Link href="/" className="flex items-center gap-2 mk-text-ink">
-            <SpikeMark size={20} />
-            <span className="text-[20px] tracking-tight" style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }}>
-              Orchentra
-            </span>
+          <Link href="/" aria-label="Orchentra home">
+            <Logo size={28} color="var(--color-coral)" />
           </Link>
           <nav className="hidden items-center gap-7 md:flex">
             {NAV_LINKS.map((l) => (

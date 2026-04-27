@@ -1,5 +1,5 @@
 import { Container } from './Container'
-import { SpikeMark } from './SpikeMark'
+import { Logo } from './Logo'
 
 const COLUMNS = [
   {
@@ -44,12 +44,7 @@ export function Footer(): React.ReactNode {
       <Container className="py-16">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <div className="flex items-center gap-2 mk-text-on-dark">
-              <SpikeMark size={20} />
-              <span className="text-[20px]" style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }}>
-                Orchentra
-              </span>
-            </div>
+            <Logo size={28} color="var(--color-on-dark)" />
             <p className="mt-4 max-w-[280px] text-[14px] leading-[1.6] mk-text-on-dark-soft">
               Open-source AI incident triage for engineering teams.
             </p>
