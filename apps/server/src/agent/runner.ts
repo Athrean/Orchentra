@@ -13,6 +13,7 @@ import { config } from '../config'
 import { publishFinalGithubTriage } from '../github/triage-writeback'
 import { generatePatches } from './patch-generator'
 import { withRetry } from './retry'
+import { redactToJson } from './redact'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -215,7 +216,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     pre: () => {
       stepNumber++
     },
-    post: async ({ name, result, error, durationMs }) => {
+    post: async ({ name, args, result, error, durationMs }) => {
       try {
         const payload =
           error !== undefined
@@ -227,7 +228,8 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
           integration: name,
           round: stepNumber,
           durationMs,
-          resultJson: payload === undefined ? null : JSON.stringify(payload),
+          argsJson: redactToJson(args),
+          resultJson: redactToJson(payload),
         })
       } catch (err) {
         console.error(`Failed to log tool call for ${incident.id}:`, err)
