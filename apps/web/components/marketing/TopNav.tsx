@@ -14,8 +14,8 @@ export function TopNav({ loginHref }: { loginHref: string }): React.ReactNode {
     <header className="mk-canvas sticky top-0 z-30 h-16 border-b mk-border-hairline-soft">
       <Container className="flex h-full items-center justify-between">
         <div className="flex items-center gap-10">
-          <Link href="/" aria-label="Orchentra home">
-            <Logo size={28} color="var(--color-coral)" />
+          <Link href="/" aria-label="Orchentra home" className="inline-flex">
+            <Logo height={44} wordmarkColor="var(--color-brand)" />
           </Link>
           <nav className="hidden items-center gap-7 md:flex">
             {NAV_LINKS.map((l) => (
