@@ -66,7 +66,7 @@ export function Hero({ loginHref }: { loginHref: string }): React.ReactNode {
                 { prefix: '→', text: 'sentry  14× ECONNRESET in last 60min', tone: 'muted' },
                 { prefix: '→', text: 'pr #1183  bumps undici 5.x → 6.x', tone: 'muted' },
                 { text: '', tone: 'muted' },
-                { prefix: '✓', text: 'root cause located', tone: 'teal' },
+                { prefix: '✓', text: 'root cause located', tone: 'amber' },
                 {
                   text: 'undici 6.x default keep-alive triggers ECONNRESET against',
                   tone: 'default',

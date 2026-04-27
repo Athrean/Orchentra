@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils'
 
 export interface CodeLine {
   text: string
-  tone?: 'default' | 'muted' | 'coral' | 'amber' | 'teal'
+  tone?: 'default' | 'muted' | 'coral' | 'amber'
   prefix?: string
 }
 
@@ -27,7 +27,6 @@ export function CodeWindow({
     muted: 'mk-text-on-dark-soft',
     coral: 'mk-text-coral',
     amber: 'text-[var(--color-accent-amber)]',
-    teal: 'text-[var(--color-accent-teal)]',
   }
   const containerVariants = {
     hidden: {},
@@ -40,9 +39,9 @@ export function CodeWindow({
   return (
     <div className={cn('mk-surface-dark overflow-hidden rounded-xl shadow-2xl', className)}>
       <div className="flex items-center gap-2 border-b border-white/8 px-4 py-3">
-        <span className="block h-3 w-3 rounded-full bg-[#ff6155]" />
-        <span className="block h-3 w-3 rounded-full bg-[#ffbe2e]" />
-        <span className="block h-3 w-3 rounded-full bg-[#36cd4b]" />
+        <span className="block h-2.5 w-2.5 rounded-full bg-white/15" />
+        <span className="block h-2.5 w-2.5 rounded-full bg-white/15" />
+        <span className="block h-2.5 w-2.5 rounded-full bg-white/15" />
         <span className="ml-3 mk-mono text-[12px] mk-text-on-dark-soft">{title}</span>
       </div>
       <motion.div
