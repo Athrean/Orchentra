@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { writeFileSync } from 'node:fs'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
@@ -21,17 +21,13 @@ export class ExportCommand implements CommandHandler {
     // Find session file
     let files: string[]
     try {
-      files = await import('node:fs').then((fs) => fs.readdirSync(dir))
+      files = await readdir(dir)
     } catch {
-      process.stdout.write('No session data found.\n')
-      return true
+      return note(ctx, 'No session data found.', 'warn')
     }
 
     const match = files.find((f) => f.startsWith(sessionId.slice(0, 8)) && f.endsWith('.jsonl'))
-    if (!match) {
-      process.stdout.write('Current session file not found.\n')
-      return true
-    }
+    if (!match) return note(ctx, 'Current session file not found.', 'warn')
 
     const raw = await readFile(join(dir, match), 'utf8')
     const lines = raw
@@ -60,12 +56,35 @@ export class ExportCommand implements CommandHandler {
 
     if (outputPath) {
       writeFileSync(outputPath, output)
-      process.stdout.write(`Exported to ${outputPath}\n`)
+      if (ctx.ui) {
+        ctx.ui({
+          kind: 'card',
+          title: 'Exported',
+          sections: [
+            {
+              rows: [
+                { key: 'Format', value: format },
+                { key: 'Path', value: outputPath },
+                { key: 'Records', value: String(records.length) },
+              ],
+            },
+          ],
+        })
+      } else {
+        process.stdout.write(`Exported to ${outputPath}\n`)
+      }
     } else {
-      process.stdout.write(output + '\n')
+      if (ctx.ui) ctx.ui({ kind: 'text', text: output })
+      else process.stdout.write(output + '\n')
     }
     return true
   }
+}
+
+function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {
+  if (ctx.ui) ctx.ui({ kind: 'note', tone, text })
+  else process.stdout.write(text + '\n')
+  return true
 }
 
 function extractFlag(args: string[], flag: string): string | undefined {
