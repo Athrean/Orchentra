@@ -14,6 +14,7 @@ export interface SkillAdapterDeps {
 
 let loadedSkills: ParsedSkill[] = []
 let loadErrors: SkillLoadError[] = []
+let reloadCallback: SkillsCommandDeps['reload'] | undefined
 
 export function registerSkillCommands(registry: CommandRegistry, skills: ParsedSkill[], deps: SkillAdapterDeps): void {
   loadedSkills = skills.slice()
@@ -32,6 +33,10 @@ export function getLoadedSkills(): readonly ParsedSkill[] {
 
 export function getLoadErrors(): readonly SkillLoadError[] {
   return loadErrors
+}
+
+export function recordSkillsReloadCallback(fn: SkillsCommandDeps['reload']): void {
+  reloadCallback = fn
 }
 
 function buildSkillHandler(skill: ParsedSkill, deps: SkillAdapterDeps): CommandHandler {
@@ -55,14 +60,64 @@ function buildSkillHandler(skill: ParsedSkill, deps: SkillAdapterDeps): CommandH
   }
 }
 
+export interface SkillsCommandDeps {
+  reload?: () => Promise<{ added: number; removed: number; errors: number }>
+}
+
 export class SkillsCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'skills',
     aliases: [],
-    summary: 'List loaded skills + load errors',
+    summary: 'List loaded skills · /skills reload to rescan',
+    argumentHint: '[reload]',
   }
 
-  async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
+  private readonly deps: SkillsCommandDeps
+
+  constructor(deps: SkillsCommandDeps = {}) {
+    this.deps = deps
+  }
+
+  private effectiveReload(): SkillsCommandDeps['reload'] | undefined {
+    return this.deps.reload ?? reloadCallback
+  }
+
+  async execute(args: string[], ctx: CommandContext): Promise<boolean> {
+    if (args[0] === 'reload') return this.handleReload(ctx)
+    return this.handleList(ctx)
+  }
+
+  private async handleReload(ctx: CommandContext): Promise<boolean> {
+    const reload = this.effectiveReload()
+    if (!reload) {
+      const msg = 'reload not wired (no loader callback configured)'
+      if (ctx.ui) {
+        ctx.ui({
+          kind: 'note',
+          text: msg,
+          tone: 'warn',
+        })
+      } else {
+        process.stdout.write(`${msg}\n`)
+      }
+      return true
+    }
+    const result = await reload()
+    const summary = `reloaded · +${result.added} added · -${result.removed} removed · ${result.errors} errors`
+    if (ctx.ui) {
+      ctx.ui({
+        kind: 'card',
+        title: 'Skills',
+        subtitle: summary,
+        sections: [{ rows: [{ key: 'Status', value: 'Re-scan complete' }] }],
+      })
+    } else {
+      process.stdout.write(`${summary}\n`)
+    }
+    return true
+  }
+
+  private async handleList(ctx: CommandContext): Promise<boolean> {
     const skills = getLoadedSkills()
     const errors = getLoadErrors()
 

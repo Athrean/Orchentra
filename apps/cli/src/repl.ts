@@ -4,7 +4,12 @@ import { loadSkills } from '@orchentra/cli-core'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { createCliContext } from './live-cli-factory'
 import { registry } from './commands'
-import { registerSkillCommands, recordLoadErrors } from './commands/builtin/skills-adapter'
+import {
+  registerSkillCommands,
+  recordLoadErrors,
+  recordSkillsReloadCallback,
+  getLoadedSkills,
+} from './commands/builtin/skills-adapter'
 import { printWelcomeBanner } from './render/banner'
 import { runTui } from './tui'
 
@@ -23,19 +28,35 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   })
   const { cli, resolvedModel, resolvedPermissionMode: resolvedMode, sessionId, sessionPath, providerName } = cliCtx
 
-  const { skills, errors: skillErrors } = await loadSkills({
+  const skillLoadOptions = {
     workspaceRoot: options.cwd,
     configHome: process.env.ORCHENTRA_CONFIG_HOME ?? (process.env.HOME ? `${process.env.HOME}/.orchentra` : undefined),
-  })
-  registerSkillCommands(registry, skills, {
-    runTurn: async (text) => {
+  }
+  const runTurnDep = {
+    runTurn: async (text: string): Promise<void> => {
       await cli.runTurn(text)
     },
-  })
+  }
+
+  const { skills, errors: skillErrors } = await loadSkills(skillLoadOptions)
+  registerSkillCommands(registry, skills, runTurnDep)
   recordLoadErrors(skillErrors)
   for (const err of skillErrors) {
     process.stderr.write(`[orchentra] skill '${err.path}' invalid: ${err.message}\n`)
   }
+
+  recordSkillsReloadCallback(async () => {
+    const before = new Set(getLoadedSkills().map((s) => s.name))
+    const fresh = await loadSkills(skillLoadOptions)
+    registerSkillCommands(registry, fresh.skills, runTurnDep)
+    recordLoadErrors(fresh.errors)
+    const after = new Set(fresh.skills.map((s) => s.name))
+    let added = 0
+    let removed = 0
+    for (const name of Array.from(after)) if (!before.has(name)) added++
+    for (const name of Array.from(before)) if (!after.has(name)) removed++
+    return { added, removed, errors: fresh.errors.length }
+  })
 
   if (options.prompt) {
     await cli.runTurn(options.prompt)

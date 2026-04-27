@@ -76,6 +76,32 @@ describe('SkillsCommand', () => {
     expect(captured!.subtitle).toContain('0 loaded')
   })
 
+  test('reload subcommand re-runs the loader callback and refreshes registered skills', async () => {
+    const registry = new CommandRegistry()
+    registerSkillCommands(registry, [fixtureSkill({ name: 'old' })], { runTurn: async () => {} })
+    recordLoadErrors([])
+
+    let reloadCalls = 0
+    const command = new SkillsCommand({
+      reload: async () => {
+        reloadCalls++
+        registerSkillCommands(registry, [fixtureSkill({ name: 'fresh', description: 'reloaded' })], {
+          runTurn: async () => {},
+        })
+        return { added: 1, removed: 1, errors: 0 }
+      },
+    })
+
+    let captured: { subtitle?: string } | null = null
+    const ui = (output: { subtitle?: string }): void => {
+      captured = { subtitle: output.subtitle }
+    }
+    await command.execute(['reload'], { cwd: '/', session: fakeSession, ui: ui as never })
+
+    expect(reloadCalls).toBe(1)
+    expect(captured!.subtitle).toContain('reloaded')
+  })
+
   test('surfaces load errors when they exist', async () => {
     const registry = new CommandRegistry()
     registerSkillCommands(registry, [fixtureSkill()], { runTurn: async () => {} })
