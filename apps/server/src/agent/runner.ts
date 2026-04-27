@@ -211,6 +211,29 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
   const registry = new ToolRegistry()
   registerBuiltinTools(registry)
+  registry.setHooks({
+    pre: () => {
+      stepNumber++
+    },
+    post: async ({ name, result, error, durationMs }) => {
+      try {
+        const payload =
+          error !== undefined
+            ? { isError: true, message: error instanceof Error ? error.message : String(error) }
+            : result
+        await db.insert(toolCalls).values({
+          id: crypto.randomUUID(),
+          incidentId: incident.id,
+          integration: name,
+          round: stepNumber,
+          durationMs,
+          resultJson: payload === undefined ? null : JSON.stringify(payload),
+        })
+      } catch (err) {
+        console.error(`Failed to log tool call for ${incident.id}:`, err)
+      }
+    },
+  })
   const agentTools = registry.getTools(new Set(['read']))
 
   try {
@@ -237,7 +260,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
             }),
         tools: agentTools,
         maxSteps: budget.stepBudget,
-        onStepFinish: async ({ toolCalls: calls, toolResults: results, usage }) => {
+        onStepFinish: async ({ usage }) => {
           // Track token budget
           if (usage) {
             recordUsage(budget, usage.promptTokens ?? 0, usage.completionTokens ?? 0)
@@ -245,24 +268,6 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
           }
 
           budget.stepCount++
-          if (!calls || calls.length === 0) return
-
-          stepNumber++
-          try {
-            for (let i = 0; i < calls.length; i++) {
-              const call = calls[i]
-              await db.insert(toolCalls).values({
-                id: crypto.randomUUID(),
-                incidentId: incident.id,
-                integration: call.toolName,
-                round: stepNumber,
-                durationMs: null,
-                resultJson: results?.[i] ? JSON.stringify((results[i] as { result: unknown }).result) : null,
-              })
-            }
-          } catch (err) {
-            console.error(`Failed to log tool call for ${incident.id}:`, err)
-          }
         },
       }),
     )
