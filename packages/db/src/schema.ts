@@ -66,6 +66,7 @@ export const toolCalls = pgTable('tool_calls', {
   integration: text('integration').notNull(),
   round: integer('round').notNull(),
   durationMs: integer('duration_ms'),
+  argsJson: text('args_json'),
   resultJson: text('result_json'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
