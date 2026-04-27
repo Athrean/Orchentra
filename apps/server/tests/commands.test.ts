@@ -78,6 +78,23 @@ mock.module('../src/lib/incident-queue', () => ({
 }))
 
 const incidentResets: Array<{ id: string; orgId: string }> = []
+let modelCalls: Array<{ system?: string; messages: unknown }> = []
+let modelOutput = ''
+
+mock.module('ai', () => ({
+  streamText: ({ system, messages }: { system?: string; messages: unknown }) => {
+    modelCalls.push({ system, messages })
+    return {
+      textStream: (async function* () {
+        for (const chunk of modelOutput.match(/.{1,8}/g) ?? []) yield chunk
+      })(),
+    }
+  },
+}))
+
+mock.module('../src/agent/llm', () => ({
+  createModel: () => ({}),
+}))
 
 mock.module('../src/queries/incidents', () => ({
   findIncident: async (id: string, orgId: string) => {
@@ -121,6 +138,8 @@ beforeEach(() => {
   incidentsById.clear()
   incidentsByRunId.clear()
   incidentResets.length = 0
+  modelCalls = []
+  modelOutput = ''
   triageBus.removeAllListeners()
 })
 
@@ -556,6 +575,93 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(body.toLowerCase()).toContain('not found')
     expect(incidentResets).toHaveLength(0)
     expect(enqueueCalls).toHaveLength(0)
+  })
+
+  test('/explain on an incident with a brief streams a prose answer from the model', async () => {
+    const inc = {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 21,
+      status: 'resolved',
+      briefJson: JSON.stringify({
+        rootCause: 'npm install hit ETIMEDOUT against the registry',
+        suggestedFix: 'pin npm to 10.5 in CI and add a 120s install timeout',
+      }),
+      failedStep: 'install dependencies',
+    }
+    incidentsById.set(inc.id, inc as unknown as FixtureIncident)
+
+    modelOutput = 'The CI run timed out talking to the npm registry. Pin npm and bump the install timeout.'
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'explain',
+        args: [inc.id],
+        sessionId: 's-explain-ok',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+
+    expect(modelCalls).toHaveLength(1)
+    const call = modelCalls[0]
+    expect(call.system).toMatch(/plain.*english|prose|sentences|incident/i)
+    expect(JSON.stringify(call.messages)).toContain('npm install')
+
+    expect(body).toContain('timed out')
+    expect(body).toContain('Pin npm')
+  })
+
+  test('/explain with no brief returns a hint and does not call the model', async () => {
+    const inc = {
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 22,
+      status: 'investigating',
+      briefJson: null,
+    }
+    incidentsById.set(inc.id, inc as unknown as FixtureIncident)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'explain',
+        args: [inc.id],
+        sessionId: 's-explain-no-brief',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toMatch(/still running|no brief|investigation/i)
+    expect(body).toContain('/status')
+    expect(modelCalls).toHaveLength(0)
+  })
+
+  test('/explain with unknown UUID returns not found, no model call', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'explain',
+        args: ['cccccccc-cccc-4ccc-8ccc-cccccccccccc'],
+        sessionId: 's-explain-missing',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('not found')
+    expect(modelCalls).toHaveLength(0)
   })
 
   test('/triage cross-org incident lookup returns not-found', async () => {
