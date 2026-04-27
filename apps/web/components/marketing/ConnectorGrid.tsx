@@ -1,4 +1,5 @@
 import { Container } from './Container'
+import { Reveal, StaggerGroup, StaggerItem } from './Reveal'
 
 function GithubMark({ className }: { className?: string }): React.ReactNode {
   return (
@@ -42,23 +43,25 @@ export function ConnectorGrid(): React.ReactNode {
   return (
     <section id="integrations" className="mk-surface-soft py-24 md:py-32">
       <Container>
-        <div className="mb-14 grid items-end gap-6 md:grid-cols-12">
-          <div className="md:col-span-7">
-            <span className="mk-caption-upper mk-text-coral">Integrations</span>
-            <h2 className="mk-display-lg mk-text-ink mt-3 text-[34px] md:text-[44px]">
-              Connect the tools your incidents already live in.
-            </h2>
+        <Reveal>
+          <div className="mb-14 grid items-end gap-6 md:grid-cols-12">
+            <div className="md:col-span-7">
+              <span className="mk-caption-upper mk-text-coral">Integrations</span>
+              <h2 className="mk-display-lg mk-text-ink mt-3 text-[34px] md:text-[44px]">
+                Connect the tools your incidents already live in.
+              </h2>
+            </div>
+            <p className="text-[15px] leading-[1.6] mk-text-body md:col-span-5">
+              Orchentra ships with read-only GitHub access today. Sentry, Datadog, Linear, PagerDuty, and Vercel land
+              next — each scoped through the same per-tool permission model so you grant exactly what the agent needs.
+            </p>
           </div>
-          <p className="text-[15px] leading-[1.6] mk-text-body md:col-span-5">
-            Orchentra ships with read-only GitHub access today. Sentry, Datadog, Linear, PagerDuty, and Vercel land next
-            — each scoped through the same per-tool permission model so you grant exactly what the agent needs.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+        </Reveal>
+        <StaggerGroup className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4" stagger={0.05}>
           {CONNECTORS.map((c) => (
-            <div
+            <StaggerItem
               key={c.name}
-              className="mk-canvas relative flex flex-col gap-3 rounded-xl border mk-border-hairline p-5"
+              className="mk-canvas relative flex flex-col gap-3 rounded-xl border mk-border-hairline p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
             >
               <div className="flex items-center justify-between">
                 <div className="mk-surface-card inline-flex h-9 w-9 items-center justify-center rounded-lg">
@@ -72,9 +75,9 @@ export function ConnectorGrid(): React.ReactNode {
               </div>
               <h3 className="text-[15px] font-medium mk-text-ink">{c.name}</h3>
               <p className="text-[13px] leading-[1.5] mk-text-body">{c.desc}</p>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGroup>
       </Container>
     </section>
   )

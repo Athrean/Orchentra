@@ -1,10 +1,11 @@
 import { Container } from './Container'
+import { Reveal } from './Reveal'
 
 export function CoralCTA({ loginHref }: { loginHref: string }): React.ReactNode {
   return (
     <section className="mk-canvas pb-24 pt-8 md:pb-32">
       <Container>
-        <div className="mk-coral overflow-hidden rounded-2xl px-8 py-16 md:px-16 md:py-20">
+        <Reveal className="mk-coral overflow-hidden rounded-2xl px-8 py-16 md:px-16 md:py-20">
           <div className="grid items-end gap-10 md:grid-cols-12">
             <div className="md:col-span-8">
               <span className="mk-caption-upper mk-text-on-dark">Get started</span>
@@ -34,7 +35,7 @@ export function CoralCTA({ loginHref }: { loginHref: string }): React.ReactNode 
               </a>
             </div>
           </div>
-        </div>
+        </Reveal>
       </Container>
     </section>
   )

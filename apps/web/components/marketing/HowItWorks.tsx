@@ -1,4 +1,5 @@
 import { Container } from './Container'
+import { Reveal, StaggerGroup, StaggerItem } from './Reveal'
 
 const STEPS = [
   {
@@ -25,16 +26,16 @@ export function HowItWorks(): React.ReactNode {
   return (
     <section id="how-it-works" className="mk-canvas py-24 md:py-32">
       <Container>
-        <div className="mk-surface-dark overflow-hidden rounded-2xl px-8 py-16 md:px-16 md:py-20">
+        <Reveal className="mk-surface-dark overflow-hidden rounded-2xl px-8 py-16 md:px-16 md:py-20">
           <div className="mb-14 max-w-[680px]">
             <span className="mk-caption-upper text-[var(--color-accent-amber)]">How it works</span>
             <h2 className="mk-display-lg mt-3 text-[34px] mk-text-on-dark md:text-[44px]">
               Three steps from a red CI badge to a written-up root cause.
             </h2>
           </div>
-          <div className="grid gap-5 md:grid-cols-3">
+          <StaggerGroup className="grid gap-5 md:grid-cols-3" stagger={0.12}>
             {STEPS.map((s) => (
-              <div key={s.n} className="mk-surface-dark-elevated relative flex flex-col gap-4 rounded-xl p-8">
+              <StaggerItem key={s.n} className="mk-surface-dark-elevated relative flex flex-col gap-4 rounded-xl p-8">
                 <div className="flex items-center gap-3">
                   <span className="mk-mono mk-text-coral text-[13px] tracking-widest" aria-hidden="true">
                     {s.n}
@@ -46,10 +47,10 @@ export function HowItWorks(): React.ReactNode {
                 <span className="mk-mono mk-surface-dark-soft mk-text-on-dark-soft mt-2 inline-flex w-fit items-center rounded-md px-2.5 py-1 text-[12px]">
                   {s.chip}
                 </span>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
-        </div>
+          </StaggerGroup>
+        </Reveal>
       </Container>
     </section>
   )
