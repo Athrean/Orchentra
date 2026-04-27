@@ -1,11 +1,18 @@
 import type { Metadata } from 'next'
-import { Source_Serif_4, Inter, JetBrains_Mono } from 'next/font/google'
+import { Source_Serif_4, Inter, JetBrains_Mono, Cormorant_Garamond } from 'next/font/google'
 import { QueryProvider } from '../lib/query-provider'
 import './globals.css'
 
 const sourceSerif = Source_Serif_4({
   subsets: ['latin'],
   variable: '--font-serif',
+  display: 'swap',
+})
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-display',
   display: 'swap',
 })
 
@@ -35,7 +42,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
-    <html lang="en" className={`${sourceSerif.variable} ${inter.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${sourceSerif.variable} ${cormorant.variable} ${inter.variable} ${jetbrains.variable}`}>
       <body>
         <QueryProvider>{children}</QueryProvider>
       </body>
