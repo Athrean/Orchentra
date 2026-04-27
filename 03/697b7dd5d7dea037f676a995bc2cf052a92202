@@ -1,0 +1,25 @@
+apps/server/src/agent/tool-registry.ts
+  b1d5c5b8db40de23 1-32
+apps/server/tests/tool-registry.test.ts
+  b1d5c5b8db40de23 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "03697b7dd5d7dea037f676a995bc2cf052a92202",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 269,
+      "total_deletions": 0,
+      "accepted_lines": 269,
+      "overriden_lines": 0
+    }
+  }
+}
