@@ -34,10 +34,6 @@ export const incidents = pgTable(
     suggestedFix: text('suggested_fix'),
     patchJson: text('patch_json'),
 
-    // Slack
-    slackChannel: text('slack_channel'),
-    slackMessageTs: text('slack_message_ts'),
-
     // Actions
     githubIssueUrl: text('github_issue_url'),
     githubPrUrl: text('github_pr_url'),
