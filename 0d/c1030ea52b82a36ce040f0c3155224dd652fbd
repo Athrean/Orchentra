@@ -1,0 +1,29 @@
+apps/server/src/queries/incidents.ts
+  b1d5c5b8db40de23 131-140
+apps/server/src/commands/builtin/triage.ts
+  b1d5c5b8db40de23 1-60
+apps/server/src/routes/commands.ts
+  b1d5c5b8db40de23 6,21
+apps/server/tests/commands.test.ts
+  b1d5c5b8db40de23 2,60-94,113-116,289-319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0dc1030ea52b82a36ce040f0c3155224dd652fbd",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 207,
+      "total_deletions": 63,
+      "accepted_lines": 143,
+      "overriden_lines": 0
+    }
+  }
+}
