@@ -17,6 +17,7 @@ export interface LoadError {
 
 export interface LoadSkillsOptions {
   workspaceRoot: string
+  configHome?: string
 }
 
 export interface LoadSkillsResult {

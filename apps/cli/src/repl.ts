@@ -23,7 +23,10 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   })
   const { cli, resolvedModel, resolvedPermissionMode: resolvedMode, sessionId, sessionPath, providerName } = cliCtx
 
-  const { skills, errors: skillErrors } = await loadSkills({ workspaceRoot: options.cwd })
+  const { skills, errors: skillErrors } = await loadSkills({
+    workspaceRoot: options.cwd,
+    configHome: process.env.ORCHENTRA_CONFIG_HOME ?? (process.env.HOME ? `${process.env.HOME}/.orchentra` : undefined),
+  })
   registerSkillCommands(registry, skills, {
     runTurn: async (text) => {
       await cli.runTurn(text)
