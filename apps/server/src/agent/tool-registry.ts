@@ -11,14 +11,32 @@ export interface ToolDefinition {
   execute: (args: unknown) => Promise<unknown>
 }
 
+export interface ToolPostContext {
+  name: string
+  args: unknown
+  result?: unknown
+  error?: unknown
+  durationMs: number
+}
+
+export interface ToolHooks {
+  pre?: (ctx: { name: string; args: unknown }) => Promise<void> | void
+  post?: (ctx: ToolPostContext) => Promise<void> | void
+}
+
 export class ToolRegistry {
   private tools = new Map<string, ToolDefinition>()
+  private hooks: ToolHooks = {}
 
   register(def: ToolDefinition): void {
     if (this.tools.has(def.name)) {
       throw new Error(`Tool already registered: ${def.name}`)
     }
     this.tools.set(def.name, def)
+  }
+
+  setHooks(hooks: ToolHooks): void {
+    this.hooks = hooks
   }
 
   getTools(allowed: Set<Permission>): Record<string, CoreTool> {
@@ -28,7 +46,13 @@ export class ToolRegistry {
       out[name] = tool({
         description: def.description,
         parameters: def.parameters,
-        execute: def.execute,
+        execute: async (args: unknown) => {
+          const start = Date.now()
+          if (this.hooks.pre) await this.hooks.pre({ name, args })
+          const result = await def.execute(args)
+          if (this.hooks.post) await this.hooks.post({ name, args, result, durationMs: Date.now() - start })
+          return result
+        },
       })
     }
     return out
