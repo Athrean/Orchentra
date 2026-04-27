@@ -281,7 +281,7 @@ export class LiveCli implements SessionControl {
         process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = formatThrown(err)
       if (sink) {
         sink({ kind: 'error', message, retryable: false })
       } else {
@@ -327,5 +327,22 @@ export class LiveCli implements SessionControl {
     if (this.session) {
       await this.session.close()
     }
+  }
+}
+
+// Defensive stringifier for unknown thrown values. Plain `String(err)` on an
+// object literal produces "[object Object]" — useless to the user. Errors with
+// a `.message` field surface that; otherwise we fall back to JSON.
+function formatThrown(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object' && 'message' in err) {
+    const m = (err as { message?: unknown }).message
+    if (typeof m === 'string' && m.length > 0) return m
+  }
+  if (typeof err === 'string') return err
+  try {
+    return JSON.stringify(err)
+  } catch {
+    return String(err)
   }
 }
