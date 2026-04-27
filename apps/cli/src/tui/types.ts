@@ -92,6 +92,9 @@ export type TuiAction =
   | { type: 'transcript/stream-begin'; rowId: string }
   | { type: 'transcript/stream-append'; rowId: string; delta: string }
   | { type: 'transcript/stream-end' }
+  | { type: 'transcript/system-stream-begin'; rowId: string; label?: string }
+  | { type: 'transcript/system-stream-append'; rowId: string; delta: string }
+  | { type: 'transcript/system-stream-end' }
   | { type: 'turn/start' }
   | { type: 'turn/cancelling' }
   | { type: 'turn/end' }
