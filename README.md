@@ -64,7 +64,7 @@ Something breaks
 | --------------------------------------- | ---------------------------------------------------- |
 | Prometheus alert rules you never get to | AI detects failures from webhooks automatically      |
 | Grafana dashboards nobody reads         | Root-cause briefs that tell you _what broke and why_ |
-| PagerDuty pages at 3 AM                 | Slack messages with the answer already written       |
+| PagerDuty pages at 3 AM                 | A root-cause brief delivered with the failure        |
 | Manual log diving for 45 minutes        | Agent investigates in 60 seconds                     |
 | Copy-pasting stack traces into Google   | Pattern memory from past incidents across your org   |
 | Writing a fix PR yourself               | Auto-generated patch PRs you just review and approve |
@@ -82,7 +82,6 @@ Something breaks
 - Code patch generation — creates real fix PRs with file diffs, not metadata-only commits
 - Auto-resolve loop — watches CI after a fix PR and closes the incident when tests pass
 - GitHub-native output — check runs, commit statuses, and PR comments
-- Slack integration — briefs, thread replies, and state updates via Block Kit
 
 **Platform**
 
@@ -146,13 +145,6 @@ github:
 llm:
   api_key: 'sk-or-xxx'
   model: 'anthropic/claude-sonnet-4-5'
-
-delivery:
-  slack:
-    bot_token: 'xoxb-xxx'
-    signing_secret: 'xxx'
-    channel: '#incidents'
-  github_comments: true
 ```
 
 ### 3. Set up the Database
@@ -183,7 +175,7 @@ This starts PostgreSQL and the Orchentra server. Mount your `orchentra.yml` — 
 ```
 Orchentra/
 ├── apps/
-│   ├── server/              # Hono backend — webhooks, agent, queue, GitHub/Slack
+│   ├── server/              # Hono backend — webhooks, agent, queue, GitHub integrations
 │   └── web/                 # Next.js frontend — dashboard, landing, onboarding
 ├── packages/
 │   ├── core/                # Shared types, schemas, utilities
