@@ -4,7 +4,7 @@ import { loadSkills } from '@orchentra/cli-core'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { createCliContext } from './live-cli-factory'
 import { registry } from './commands'
-import { registerSkillCommands } from './commands/builtin/skills-adapter'
+import { registerSkillCommands, recordLoadErrors } from './commands/builtin/skills-adapter'
 import { printWelcomeBanner } from './render/banner'
 import { runTui } from './tui'
 
@@ -32,6 +32,7 @@ export async function runRepl(options: ReplOptions): Promise<number> {
       await cli.runTurn(text)
     },
   })
+  recordLoadErrors(skillErrors)
   for (const err of skillErrors) {
     process.stderr.write(`[orchentra] skill '${err.path}' invalid: ${err.message}\n`)
   }
