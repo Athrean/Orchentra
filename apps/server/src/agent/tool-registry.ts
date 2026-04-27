@@ -49,9 +49,15 @@ export class ToolRegistry {
         execute: async (args: unknown) => {
           const start = Date.now()
           if (this.hooks.pre) await this.hooks.pre({ name, args })
-          const result = await def.execute(args)
-          if (this.hooks.post) await this.hooks.post({ name, args, result, durationMs: Date.now() - start })
-          return result
+          try {
+            const result = await def.execute(args)
+            if (this.hooks.post) await this.hooks.post({ name, args, result, durationMs: Date.now() - start })
+            return result
+          } catch (err) {
+            if (this.hooks.post) await this.hooks.post({ name, args, error: err, durationMs: Date.now() - start })
+            const message = err instanceof Error ? err.message : String(err)
+            return { isError: true as const, error: message }
+          }
         },
       })
     }
