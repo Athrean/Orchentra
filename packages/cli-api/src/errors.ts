@@ -7,13 +7,35 @@ export type FailureClass =
   | 'provider_error'
   | 'provider_retry_exhausted'
 
-export interface AnthropicApiError {
+export interface AnthropicApiErrorProps {
   readonly status: number
   readonly errorType?: string
   readonly message: string
   readonly requestId?: string
   readonly retryable: boolean
   readonly failureClass: FailureClass
+}
+
+// Real Error subclass so `err instanceof Error` and `err.message` work in catch
+// sites that don't know about the structured fields. Prior to this, the throw
+// sites used a bare object literal, which surfaced as "[object Object]" when
+// stringified by generic error handlers.
+export class AnthropicApiError extends Error {
+  readonly status: number
+  readonly errorType?: string
+  readonly requestId?: string
+  readonly retryable: boolean
+  readonly failureClass: FailureClass
+
+  constructor(props: AnthropicApiErrorProps) {
+    super(props.message)
+    this.name = 'AnthropicApiError'
+    this.status = props.status
+    this.errorType = props.errorType
+    this.requestId = props.requestId
+    this.retryable = props.retryable
+    this.failureClass = props.failureClass
+  }
 }
 
 const RETRYABLE_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504])
@@ -68,32 +90,36 @@ export function classifyError(status: number, body: string, errorType?: string):
     message = body
   }
 
-  return {
+  return new AnthropicApiError({
     status,
     errorType,
     message,
     retryable,
     failureClass,
-  }
+  })
 }
 
 export function enrichAuthError(error: AnthropicApiError, authSource: string, rawToken?: string): AnthropicApiError {
   if (error.status === 401 && authSource === 'bearer' && rawToken && rawToken.startsWith('sk-ant-')) {
-    return {
-      ...error,
+    return new AnthropicApiError({
+      status: error.status,
+      errorType: error.errorType,
+      requestId: error.requestId,
+      retryable: error.retryable,
+      failureClass: error.failureClass,
       message:
         error.message +
         ' sk-ant-* keys go in ANTHROPIC_API_KEY (x-api-key header), not ANTHROPIC_AUTH_TOKEN (Bearer header).',
-    }
+    })
   }
   return error
 }
 
 export function missingCredentialsError(): AnthropicApiError {
-  return {
+  return new AnthropicApiError({
     status: 0,
     message: 'No API key found. Set ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable.',
     retryable: false,
     failureClass: 'provider_auth',
-  }
+  })
 }

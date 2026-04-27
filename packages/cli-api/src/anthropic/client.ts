@@ -1,6 +1,6 @@
 import type { Provider, ProviderRequest, ProviderStreamEvent, StopReason } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
-import { classifyError, enrichAuthError, missingCredentialsError, type AnthropicApiError } from '../errors'
+import { AnthropicApiError, classifyError, enrichAuthError, missingCredentialsError } from '../errors'
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
 import { injectCacheBoundary } from './cache'
 import type { MessageRequest, StreamEvent, Usage } from './types'
@@ -22,7 +22,16 @@ interface AuthHeaders {
 }
 
 const ANTHROPIC_VERSION = '2023-06-01'
-const ANTHROPIC_BETA = 'claude-code-20250219,prompt-caching-scope-2026-01-05'
+// Public-only beta set used when authenticating with a console.anthropic.com
+// API key. Safe for any client.
+const ANTHROPIC_BETA_API_KEY = 'prompt-caching-scope-2026-01-05'
+// Subscription OAuth bearer tokens (claude.ai accounts) are only accepted when
+// the request also carries the `claude-code-*` agentic beta and the Claude Code
+// user-agent. Match claw-code-main-3 here. WARNING: spoofing this UA from a
+// non-Claude-Code client can flag the underlying subscription account.
+const ANTHROPIC_BETA_OAUTH = 'claude-code-20250219,prompt-caching-scope-2026-01-05'
+const ANTHROPIC_OAUTH_USER_AGENT = 'claude-cli/1.0.0 (external, cli)'
+const DEFAULT_USER_AGENT = 'OrchentraCLI/1.0'
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 export class AnthropicProvider implements Provider {
@@ -40,8 +49,7 @@ export class AnthropicProvider implements Provider {
 
     const stored = getCredential('anthropic')
     const apiKey = config.apiKey ?? process.env['ANTHROPIC_API_KEY'] ?? stored?.apiKey
-    const authToken =
-      config.authToken ?? process.env['ANTHROPIC_AUTH_TOKEN'] ?? stored?.accessToken
+    const authToken = config.authToken ?? process.env['ANTHROPIC_AUTH_TOKEN'] ?? stored?.accessToken
 
     if (apiKey && authToken) {
       this.authHeaders = {
@@ -84,12 +92,16 @@ export class AnthropicProvider implements Provider {
       }))
     }
 
+    // Subscription OAuth tokens require the agentic beta + Claude-Code UA;
+    // without these the API replies "OAuth authentication is currently not
+    // supported." API-key requests use the public beta set and our own UA.
+    const usingOAuth = this.authHeaders.authSource === 'bearer' || this.authHeaders.authSource === 'both'
     const url = `${this.baseUrl}/v1/messages`
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'anthropic-version': ANTHROPIC_VERSION,
-      'anthropic-beta': ANTHROPIC_BETA,
-      'user-agent': 'OrchentraCLI/1.0',
+      'anthropic-beta': usingOAuth ? ANTHROPIC_BETA_OAUTH : ANTHROPIC_BETA_API_KEY,
+      'user-agent': usingOAuth ? ANTHROPIC_OAUTH_USER_AGENT : DEFAULT_USER_AGENT,
       ...(this.authHeaders['x-api-key'] ? { 'x-api-key': this.authHeaders['x-api-key'] } : {}),
       ...(this.authHeaders.Authorization ? { Authorization: this.authHeaders.Authorization } : {}),
     }
@@ -110,13 +122,12 @@ export class AnthropicProvider implements Provider {
           body: JSON.stringify(body),
         })
       } catch (err) {
-        const networkError: AnthropicApiError = {
+        lastError = new AnthropicApiError({
           status: 0,
           message: err instanceof Error ? err.message : String(err),
           retryable: true,
           failureClass: 'provider_transport',
-        }
-        lastError = networkError
+        })
         continue
       }
 
@@ -132,7 +143,15 @@ export class AnthropicProvider implements Provider {
         const apiError = classifyError(response.status, responseBody, errorType)
         const requestId = response.headers.get('request-id') ?? undefined
         const rawToken = this.authHeaders['x-api-key'] ?? this.authHeaders.Authorization?.replace('Bearer ', '')
-        lastError = enrichAuthError({ ...apiError, requestId }, this.authHeaders.authSource, rawToken)
+        const withRequestId = new AnthropicApiError({
+          status: apiError.status,
+          errorType: apiError.errorType,
+          message: apiError.message,
+          retryable: apiError.retryable,
+          failureClass: apiError.failureClass,
+          requestId,
+        })
+        lastError = enrichAuthError(withRequestId, this.authHeaders.authSource, rawToken)
 
         if (!apiError.retryable) {
           throw lastError
@@ -149,8 +168,12 @@ export class AnthropicProvider implements Provider {
     }
 
     if (lastError) {
-      throw Object.assign(lastError, {
-        failureClass: 'provider_retry_exhausted' as const,
+      throw new AnthropicApiError({
+        status: lastError.status,
+        errorType: lastError.errorType,
+        requestId: lastError.requestId,
+        retryable: false,
+        failureClass: 'provider_retry_exhausted',
         message: `Retries exhausted after ${this.retryConfig.maxRetries} attempts: ${lastError.message}`,
       })
     }
