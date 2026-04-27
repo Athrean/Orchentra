@@ -5,55 +5,16 @@ import { db, incidents, toolCalls } from '../db/client'
 import { createModel, isAnthropicModel, ANTHROPIC_CACHE_OPTIONS } from './llm'
 import { estimateCostUsd } from './token-cost'
 import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
-import { githubActionsTool } from './tools/github-actions'
-import { getCommitChangesTool, getFileContentTool } from './tools/github-repo'
-import { getPullRequestTool, getIssueTool, searchCodeTool } from './tools/github-issues'
+import { ToolRegistry } from './tool-registry'
+import { registerBuiltinTools } from './tools/builtin'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
 import { incidentEvents } from '../events'
 import { config } from '../config'
 import { publishFinalGithubTriage } from '../github/triage-writeback'
 import { generatePatches } from './patch-generator'
+import { withRetry } from './retry'
 
 type IncidentRow = typeof incidents.$inferSelect
-
-// ── Error classification ──────────────────────────────────────────────────
-
-type ErrorClass = 'retryable' | 'permanent'
-
-function classifyError(error: unknown): ErrorClass {
-  if (error instanceof Response) {
-    const s = error.status
-    if (s === 429 || (s >= 500 && s < 600)) return 'retryable'
-  }
-  if (error && typeof error === 'object' && 'status' in error) {
-    const s = (error as { status: number }).status
-    if (s === 429 || (s >= 500 && s < 600)) return 'retryable'
-  }
-  if (error instanceof TypeError && error.message.includes('fetch')) return 'retryable'
-  if (error instanceof Error && error.message.includes('ECONNRESET')) return 'retryable'
-  if (error instanceof Error && error.message.includes('ETIMEDOUT')) return 'retryable'
-  return 'permanent'
-}
-
-function backoffMs(attempt: number): number {
-  return Math.min(10_000 * Math.pow(2, attempt - 1), 60_000)
-}
-
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts: number = 3): Promise<T> {
-  let lastError: unknown
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn()
-    } catch (err) {
-      lastError = err
-      if (attempt >= maxAttempts || classifyError(err) === 'permanent') throw err
-      const delay = backoffMs(attempt)
-      console.warn(`Retryable error (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms:`, err)
-      await new Promise((resolve) => setTimeout(resolve, delay))
-    }
-  }
-  throw lastError
-}
 
 // ── Budget tracking ──────────────────────────────────────────────────────
 
@@ -248,6 +209,33 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
   const useCache = isAnthropicModel()
 
+  const registry = new ToolRegistry()
+  registerBuiltinTools(registry)
+  registry.setHooks({
+    pre: () => {
+      stepNumber++
+    },
+    post: async ({ name, result, error, durationMs }) => {
+      try {
+        const payload =
+          error !== undefined
+            ? { isError: true, message: error instanceof Error ? error.message : String(error) }
+            : result
+        await db.insert(toolCalls).values({
+          id: crypto.randomUUID(),
+          incidentId: incident.id,
+          integration: name,
+          round: stepNumber,
+          durationMs,
+          resultJson: payload === undefined ? null : JSON.stringify(payload),
+        })
+      } catch (err) {
+        console.error(`Failed to log tool call for ${incident.id}:`, err)
+      }
+    },
+  })
+  const agentTools = registry.getTools(new Set(['read']))
+
   try {
     // Phase A: Investigation — tool-use loop with dual budget enforcement.
     // When using Anthropic, mark the system prompt for caching (5-min ephemeral TTL)
@@ -270,16 +258,9 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
               system: AGENT_SYSTEM_PROMPT,
               prompt: incidentContext,
             }),
-        tools: {
-          get_workflow_logs: githubActionsTool,
-          get_commit_changes: getCommitChangesTool,
-          get_file_content: getFileContentTool,
-          get_pull_request: getPullRequestTool,
-          get_issue: getIssueTool,
-          search_code: searchCodeTool,
-        },
+        tools: agentTools,
         maxSteps: budget.stepBudget,
-        onStepFinish: async ({ toolCalls: calls, toolResults: results, usage }) => {
+        onStepFinish: async ({ usage }) => {
           // Track token budget
           if (usage) {
             recordUsage(budget, usage.promptTokens ?? 0, usage.completionTokens ?? 0)
@@ -287,24 +268,6 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
           }
 
           budget.stepCount++
-          if (!calls || calls.length === 0) return
-
-          stepNumber++
-          try {
-            for (let i = 0; i < calls.length; i++) {
-              const call = calls[i]
-              await db.insert(toolCalls).values({
-                id: crypto.randomUUID(),
-                incidentId: incident.id,
-                integration: call.toolName,
-                round: stepNumber,
-                durationMs: null,
-                resultJson: results?.[i] ? JSON.stringify(results[i].result) : null,
-              })
-            }
-          } catch (err) {
-            console.error(`Failed to log tool call for ${incident.id}:`, err)
-          }
         },
       }),
     )
@@ -320,9 +283,10 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         })
       }
       for (const toolResult of step.toolResults ?? []) {
+        const tr = toolResult as { toolName: string; result: unknown }
         investigationMessages.push({
           role: 'user',
-          content: `Tool result (${toolResult.toolName}): ${JSON.stringify(toolResult.result)}`,
+          content: `Tool result (${tr.toolName}): ${JSON.stringify(tr.result)}`,
         })
       }
     }
