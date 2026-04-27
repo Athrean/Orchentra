@@ -3,6 +3,9 @@ export interface ParsedSkill {
   description: string
   body: string
   source: string
+  allowedTools: string[]
+  argumentNames: string[]
+  disableModelInvocation: boolean
   meta: Record<string, unknown>
 }
 

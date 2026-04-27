@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseFrontmatter } from './frontmatter'
+import { validateSkillFrontmatter } from './validator'
 import type { LoadError, LoadSkillsOptions, LoadSkillsResult, ParsedSkill } from './types'
 
 export async function loadSkills(opts: LoadSkillsOptions): Promise<LoadSkillsResult> {
@@ -23,18 +24,22 @@ export async function loadSkills(opts: LoadSkillsOptions): Promise<LoadSkillsRes
       continue
     }
 
-    const name = typeof parsed.meta.name === 'string' ? parsed.meta.name : null
-    const description = typeof parsed.meta.description === 'string' ? parsed.meta.description : null
-    if (!name) {
-      errors.push({ path: skillFile, message: 'missing required field: name', field: 'name' })
-      continue
-    }
-    if (!description) {
-      errors.push({ path: skillFile, message: 'missing required field: description', field: 'description' })
+    const validated = validateSkillFrontmatter(parsed.meta)
+    if (validated.kind === 'error') {
+      errors.push({ path: skillFile, message: validated.message, field: validated.field })
       continue
     }
 
-    skills.push({ name, description, body: parsed.body, source: skillFile, meta: parsed.meta })
+    skills.push({
+      name: validated.value.name,
+      description: validated.value.description,
+      body: parsed.body,
+      source: skillFile,
+      allowedTools: validated.value.allowedTools,
+      argumentNames: validated.value.argumentNames,
+      disableModelInvocation: validated.value.disableModelInvocation,
+      meta: parsed.meta,
+    })
   }
 
   return { skills, errors }
