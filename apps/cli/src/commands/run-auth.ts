@@ -186,6 +186,7 @@ function describe(provider: ProviderKey, hasStored: boolean): string {
     aws: [],
     gcp: [],
     azure: [],
+    orchentra: ['ORCHENTRA_API_KEY'],
   }
   for (const v of envMap[provider] ?? []) {
     if (process.env[v] && process.env[v]!.trim()) return `env:${v}`
