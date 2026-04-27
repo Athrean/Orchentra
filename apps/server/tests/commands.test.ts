@@ -317,6 +317,93 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(body).toContain('queued')
   })
 
+  test('/triage <owner/repo> <runId> resolves the incident and enqueues', async () => {
+    const inc: FixtureIncident = {
+      id: '22222222-2222-4222-8222-222222222222',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 4242,
+      status: 'investigating',
+    }
+    incidentsByRunId.set('org-1:acme/api:4242', inc)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: ['Acme/API', '4242'],
+        sessionId: 's-triage-runid',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    await readSseBody(res)
+
+    expect(enqueueCalls).toHaveLength(1)
+    expect(enqueueCalls[0].id).toBe(inc.id)
+  })
+
+  test('/triage with no args yields an error frame, no enqueue', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'triage', sessionId: 's-triage-empty' }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('error')
+    expect(enqueueCalls).toHaveLength(0)
+  })
+
+  test('/triage with unknown UUID yields not-found error, no enqueue', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: ['33333333-3333-4333-8333-333333333333'],
+        sessionId: 's-triage-missing',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('not found')
+    expect(enqueueCalls).toHaveLength(0)
+  })
+
+  test('/triage cross-org incident lookup returns not-found', async () => {
+    const inc: FixtureIncident = {
+      id: '44444444-4444-4444-8444-444444444444',
+      orgId: 'other-org',
+      repo: 'acme/api',
+      workflowRunId: 1,
+      status: 'investigating',
+    }
+    incidentsById.set(inc.id, inc)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: [inc.id],
+        sessionId: 's-triage-xorg',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('not found')
+    expect(enqueueCalls).toHaveLength(0)
+  })
+
   test('/status with invalid --status emits an error frame (not a 500)', async () => {
     const app = makeApp()
     const res = await app.request('/api/orgs/org-1/commands', {
