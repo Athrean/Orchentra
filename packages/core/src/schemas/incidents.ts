@@ -88,3 +88,30 @@ export const IncidentDetailResponseSchema = z.object({
 })
 
 export type IncidentDetailResponse = z.infer<typeof IncidentDetailResponseSchema>
+
+// --- Execution graph primitives ---
+//
+// Phase 1 of the graph repositioning. Executions are the root unit (one per
+// trigger); nodes are children (currently tool_call kind, future: decision,
+// human_review, patch, rollback). The aliases below let consumers adopt the
+// new names ahead of the schema-rename cleanup pass without churn.
+
+export const ExecutionKindSchema = z.enum(['ci_failure', 'alert', 'deploy', 'cron', 'manual'])
+export type ExecutionKind = z.infer<typeof ExecutionKindSchema>
+
+export const NodeKindSchema = z.enum(['tool_call', 'decision', 'human_review', 'patch', 'rollback'])
+export type NodeKind = z.infer<typeof NodeKindSchema>
+
+export const ExecutionStatusSchema = IncidentStatusSchema
+export type ExecutionStatus = IncidentStatus
+
+/** Same shape as `IncidentListItem` — kept as an alias so callers can adopt the
+ * graph-shaped name without waiting for the full rename pass. */
+export type ExecutionListItem = IncidentListItem
+export const ExecutionListItemSchema = IncidentListItemSchema
+
+export type ExecutionDetail = IncidentDetail
+export const ExecutionDetailSchema = IncidentDetailSchema
+
+/** Same shape as `ToolCall` — alias for the graph rename. */
+export const NodeSchema = ToolCallSchema
