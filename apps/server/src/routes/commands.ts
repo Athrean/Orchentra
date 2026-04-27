@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { CommandRegistry } from '../commands/registry'
 import { HelpCommand } from '../commands/builtin/help'
+import { StatusCommand } from '../commands/builtin/status'
 import { db, chatMessages } from '../db/client'
 import type { AppVariables } from '../types'
 
@@ -15,6 +16,7 @@ export const commandsRouter = new Hono<{ Variables: AppVariables }>()
 
 const registry = new CommandRegistry()
 registry.register(new HelpCommand(registry))
+registry.register(new StatusCommand())
 
 commandsRouter.post('/commands', async (c) => {
   let parsed: z.infer<typeof BodySchema>
@@ -27,14 +29,18 @@ commandsRouter.post('/commands', async (c) => {
   const orgId = c.get('orgId')!
   const userId = c.get('user')?.id ?? null
 
-  const input = parsed.command.startsWith('/') ? parsed.command : `/${parsed.command}`
+  const head = parsed.command.startsWith('/') ? parsed.command : `/${parsed.command}`
+  const tail = parsed.args && parsed.args.length > 0 ? ' ' + parsed.args.join(' ') : ''
+  const input = head + tail
   const resolved = registry.resolve(input)
   if (!resolved) return c.json({ error: 'invalid command' }, 400)
   if (resolved instanceof Error) return c.json({ error: resolved.message }, 400)
 
+  const args = parsed.args ?? resolved.args
+
   const ctx = { orgId, userId, sessionId: parsed.sessionId }
 
-  const userInput = `/${resolved.handler.spec.name}${resolved.args.length > 0 ? ' ' + resolved.args.join(' ') : ''}`
+  const userInput = `/${resolved.handler.spec.name}${args.length > 0 ? ' ' + args.join(' ') : ''}`
   await db.insert(chatMessages).values({
     id: crypto.randomUUID(),
     orgId,
@@ -48,7 +54,7 @@ commandsRouter.post('/commands', async (c) => {
       const encoder = new TextEncoder()
       const collected: string[] = []
       try {
-        for await (const chunk of resolved.handler.execute(resolved.args, ctx)) {
+        for await (const chunk of resolved.handler.execute(args, ctx)) {
           collected.push(chunk)
           controller.enqueue(encoder.encode(chunk))
         }
