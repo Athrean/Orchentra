@@ -59,6 +59,52 @@ export function verifySentrySignature(rawBody: string, signature: string | null 
   return timingSafeEqual(Buffer.from(signature, 'utf-8'), Buffer.from(expected, 'utf-8'))
 }
 
+export interface AlertExecutionContext {
+  orgId: string
+  id: string
+  triggeredAt: Date
+}
+
+export interface AlertExecutionRow {
+  id: string
+  orgId: string
+  kind: 'alert'
+  repo: string
+  branch: string
+  commit: string
+  workflowName: string
+  commitMessage: string
+  status: 'investigating'
+  triggeredAt: Date
+}
+
+/**
+ * Map a parsed Sentry event into the execution-row shape that
+ * `executions` expects. Existing GitHub-CI columns (repo / branch /
+ * commit / workflowName) are reused to keep the dashboard rendering
+ * the alert without per-kind UI work in Phase 2:
+ *
+ * - `repo` <- tag `repo` (fallback `'unknown'`)
+ * - `commit` <- tag `release` (fallback `'unknown'`)
+ * - `branch` <- tag `environment` (fallback `'unknown'`)
+ * - `workflowName` <- Sentry `shortId` (e.g. `PROJECT-1`)
+ * - `commitMessage` <- Sentry issue title (so the alert summary renders)
+ */
+export function buildAlertExecution(event: SentryEvent, ctx: AlertExecutionContext): AlertExecutionRow {
+  return {
+    id: ctx.id,
+    orgId: ctx.orgId,
+    kind: 'alert',
+    repo: event.tags.repo ?? 'unknown',
+    branch: event.tags.environment ?? 'unknown',
+    commit: event.tags.release ?? 'unknown',
+    workflowName: event.shortId,
+    commitMessage: event.title,
+    status: 'investigating',
+    triggeredAt: ctx.triggeredAt,
+  }
+}
+
 export function parseSentryEvent(input: unknown): ParseResult<SentryEvent> {
   if (input === null || typeof input !== 'object') {
     return { kind: 'error', message: 'payload must be an object' }
