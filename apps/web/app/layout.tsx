@@ -24,11 +24,11 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Orchentra — AI incident triage for engineering teams',
   description:
-    'Open source AI agent that reads your CI logs, queries observability tools, and delivers a root cause brief in Slack — in 30 seconds.',
+    'Open source AI agent that reads your CI logs, queries observability tools, and delivers a root cause brief on every pipeline failure — in 30 seconds.',
   openGraph: {
     title: 'Orchentra',
     description:
-      'Your CI fails. Orchentra investigates. AI agent that reads your GitHub Actions logs, queries Sentry, and posts a root cause brief in Slack — in 30 seconds.',
+      'Your CI fails. Orchentra investigates. AI agent that reads your GitHub Actions logs, queries Sentry, and posts a root cause brief — in 30 seconds.',
     type: 'website',
   },
 }
