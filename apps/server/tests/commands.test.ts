@@ -218,4 +218,49 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(body).toContain('1h ago')
     expect(body).toContain('— 2 incidents')
   })
+
+  test('/status passes --repo and --status filters into the incidents query', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'status',
+        args: ['--repo', 'Acme/API', '--status', 'fixing', '--limit', '5'],
+        sessionId: 's-filter',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    await readSseBody(res)
+
+    expect(selectCalls).toHaveLength(1)
+    const call = selectCalls[0]
+    expect(call.limit).toBe(5)
+
+    const where = call.whereClauses as { op: string; clauses: Array<{ op: string; val: unknown }> }
+    expect(where.op).toBe('and')
+    const values = where.clauses.map((c) => c.val)
+    expect(values).toContain('org-1')
+    expect(values).toContain('acme/api')
+    expect(values).toContain('fixing')
+  })
+
+  test('/status with invalid --status emits an error frame (not a 500)', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'status',
+        args: ['--status', 'on-fire'],
+        sessionId: 's-bad-status',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('error')
+    expect(selectCalls).toHaveLength(0)
+  })
 })
