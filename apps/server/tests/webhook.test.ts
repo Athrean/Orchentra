@@ -434,3 +434,121 @@ describe('GitHub Webhook — Pipeline', () => {
     expect(incident.workflowRunId).toBe(42)
   })
 })
+
+function makeCheckRunPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    action: 'completed',
+    check_run: {
+      id: Date.now(),
+      name: 'lint',
+      head_sha: 'abc1234def5678',
+      status: 'completed',
+      conclusion: 'failure',
+      started_at: '2026-04-01T10:00:00Z',
+      completed_at: '2026-04-01T10:01:00Z',
+      check_suite: { id: 9001, head_branch: 'main' },
+      ...(overrides.check_run ?? {}),
+    },
+    repository: {
+      full_name: 'my-org/api',
+      name: 'api',
+      ...(overrides.repository ?? {}),
+    },
+  }
+}
+
+function makeCheckSuitePayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    action: 'completed',
+    check_suite: {
+      id: 4242,
+      head_branch: 'main',
+      head_sha: 'suite-sha-aaaa',
+      conclusion: 'failure',
+      created_at: '2026-04-01T10:00:00Z',
+      ...(overrides.check_suite ?? {}),
+    },
+    repository: {
+      full_name: 'my-org/api',
+      name: 'api',
+      ...(overrides.repository ?? {}),
+    },
+  }
+}
+
+describe('GitHub Webhook — check_run normalization', () => {
+  test('processes check_run completed failures into an incident', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makeCheckRunPayload())
+
+    await sendWebhook(app, body, { event: 'check_run' })
+    await Bun.sleep(100)
+
+    expect(insertedIncidents.length).toBe(1)
+    const incident = insertedIncidents[0]
+    expect(incident.repo).toBe('my-org/api')
+    expect(incident.branch).toBe('main')
+    expect(incident.commit).toBe('abc1234def5678')
+    expect(incident.workflowName).toBe('lint')
+    expect(incident.status).toBe('investigating')
+  })
+
+  test('skips check_run with non-failure conclusion', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(
+      makeCheckRunPayload({
+        check_run: {
+          id: 11,
+          name: 'lint',
+          head_sha: 'sha-success',
+          conclusion: 'success',
+          check_suite: { id: 1, head_branch: 'main' },
+        },
+      }),
+    )
+
+    await sendWebhook(app, body, { event: 'check_run' })
+    await Bun.sleep(50)
+
+    expect(insertedIncidents.length).toBe(0)
+  })
+})
+
+describe('GitHub Webhook — check_suite normalization', () => {
+  test('processes a check_suite failure into an incident', async () => {
+    const app = makeApp()
+    const body = JSON.stringify(makeCheckSuitePayload())
+
+    await sendWebhook(app, body, { event: 'check_suite' })
+    await Bun.sleep(100)
+
+    expect(insertedIncidents.length).toBe(1)
+    const incident = insertedIncidents[0]
+    expect(incident.repo).toBe('my-org/api')
+    expect(incident.commit).toBe('suite-sha-aaaa')
+  })
+
+  test('debounces multiple check_run failures for the same (repo, branch, commit)', async () => {
+    const app = makeApp()
+    const sharedSha = 'storm-sha-bbbb'
+    const make = (id: number, name: string): string =>
+      JSON.stringify(
+        makeCheckRunPayload({
+          check_run: {
+            id,
+            name,
+            head_sha: sharedSha,
+            conclusion: 'failure',
+            check_suite: { id: 99, head_branch: 'main' },
+          },
+        }),
+      )
+
+    await sendWebhook(app, make(1, 'lint'), { event: 'check_run' })
+    await sendWebhook(app, make(2, 'typecheck'), { event: 'check_run' })
+    await sendWebhook(app, make(3, 'unit-tests'), { event: 'check_run' })
+    await Bun.sleep(100)
+
+    expect(insertedIncidents.length).toBe(1)
+  })
+})
