@@ -24,7 +24,11 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   const { cli, resolvedModel, resolvedPermissionMode: resolvedMode, sessionId, sessionPath, providerName } = cliCtx
 
   const { skills, errors: skillErrors } = await loadSkills({ workspaceRoot: options.cwd })
-  registerSkillCommands(registry, skills, { runTurn: (text) => cli.runTurn(text) })
+  registerSkillCommands(registry, skills, {
+    runTurn: async (text) => {
+      await cli.runTurn(text)
+    },
+  })
   for (const err of skillErrors) {
     process.stderr.write(`[orchentra] skill '${err.path}' invalid: ${err.message}\n`)
   }

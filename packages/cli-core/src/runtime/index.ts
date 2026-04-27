@@ -96,7 +96,13 @@ export type { SessionControl } from './session-control'
 
 export { isKnownModel } from './model-availability'
 
-export { parseFrontmatter, loadSkills, validateSkillFrontmatter, substituteSkillArguments } from './skills'
+export {
+  parseFrontmatter,
+  loadSkills,
+  validateSkillFrontmatter,
+  substituteSkillArguments,
+  translateAllowedTools,
+} from './skills'
 export type {
   ParseFrontmatterResult,
   ParsedSkill,

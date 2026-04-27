@@ -1,9 +1,13 @@
-import type { ParsedSkill } from '@orchentra/cli-core'
-import { substituteSkillArguments } from '@orchentra/cli-core'
+import type { ParsedSkill, PermissionRuleConfig } from '@orchentra/cli-core'
+import { substituteSkillArguments, translateAllowedTools } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, CommandRegistry, SlashCommandSpec } from '../registry'
 
+export interface SkillTurnOptions {
+  permissionOverlay?: PermissionRuleConfig
+}
+
 export interface SkillAdapterDeps {
-  runTurn: (text: string) => Promise<void>
+  runTurn: (text: string, opts?: SkillTurnOptions) => Promise<void>
 }
 
 export function registerSkillCommands(registry: CommandRegistry, skills: ParsedSkill[], deps: SkillAdapterDeps): void {
@@ -23,7 +27,11 @@ function buildSkillHandler(skill: ParsedSkill, deps: SkillAdapterDeps): CommandH
     spec,
     async execute(args: string[], _ctx: CommandContext): Promise<boolean> {
       const resolvedBody = substituteSkillArguments(skill.body, args)
-      await deps.runTurn(resolvedBody)
+      const { config: permissionOverlay, warnings } = translateAllowedTools(skill.allowedTools)
+      for (const warning of warnings) {
+        process.stderr.write(`[orchentra] skill '${skill.name}': ${warning}\n`)
+      }
+      await deps.runTurn(resolvedBody, permissionOverlay.allow.length > 0 ? { permissionOverlay } : undefined)
       return true
     },
   }

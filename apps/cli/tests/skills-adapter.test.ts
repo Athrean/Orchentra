@@ -12,6 +12,9 @@ function fixtureSkill(overrides: Partial<ParsedSkill> = {}): ParsedSkill {
     description: 'say hi',
     body: 'Greet the user warmly.',
     source: '/tmp/skills/hello/SKILL.md',
+    allowedTools: [],
+    argumentNames: [],
+    disableModelInvocation: false,
     meta: { name: 'hello', description: 'say hi' },
     ...overrides,
   }
@@ -87,5 +90,41 @@ describe('registerSkillCommands', () => {
     await resolved.handler.execute(['api', 'prod'], { cwd: '/', session: fakeSession })
 
     expect(received).toBe('Deploy api to prod (raw: api prod)')
+  })
+
+  test('forwards allowed-tools as a permissionOverlay to runTurn', async () => {
+    const registry = new CommandRegistry()
+    let receivedOverlay: unknown = 'unset'
+    registerSkillCommands(
+      registry,
+      [fixtureSkill({ name: 'deploy', description: 'd', allowedTools: ['Bash(kubectl:*)'] })],
+      {
+        runTurn: async (_text, opts) => {
+          receivedOverlay = opts?.permissionOverlay
+        },
+      },
+    )
+
+    const resolved = registry.resolve('/deploy')
+    if (resolved === null || resolved instanceof Error) throw new Error('expected handler')
+    await resolved.handler.execute([], { cwd: '/', session: fakeSession })
+
+    expect(receivedOverlay).toEqual({ allow: ['Bash(kubectl:*)'], deny: [], ask: [] })
+  })
+
+  test('omits permissionOverlay when allowed-tools is empty', async () => {
+    const registry = new CommandRegistry()
+    let receivedOpts: unknown = 'unset'
+    registerSkillCommands(registry, [fixtureSkill()], {
+      runTurn: async (_text, opts) => {
+        receivedOpts = opts
+      },
+    })
+
+    const resolved = registry.resolve('/hello')
+    if (resolved === null || resolved instanceof Error) throw new Error('expected handler')
+    await resolved.handler.execute([], { cwd: '/', session: fakeSession })
+
+    expect(receivedOpts).toBeUndefined()
   })
 })
