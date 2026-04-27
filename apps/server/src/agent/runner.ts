@@ -5,18 +5,16 @@ import { db, incidents, toolCalls } from '../db/client'
 import { createModel, isAnthropicModel, ANTHROPIC_CACHE_OPTIONS } from './llm'
 import { estimateCostUsd } from './token-cost'
 import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
-import { githubActionsTool } from './tools/github-actions'
-import { getCommitChangesTool, getFileContentTool } from './tools/github-repo'
-import { getPullRequestTool, getIssueTool, searchCodeTool } from './tools/github-issues'
+import { ToolRegistry } from './tool-registry'
+import { registerBuiltinTools } from './tools/builtin'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
 import { incidentEvents } from '../events'
 import { config } from '../config'
 import { publishFinalGithubTriage } from '../github/triage-writeback'
 import { generatePatches } from './patch-generator'
+import { withRetry } from './retry'
 
 type IncidentRow = typeof incidents.$inferSelect
-
-import { withRetry } from './retry'
 
 // ── Budget tracking ──────────────────────────────────────────────────────
 
@@ -211,6 +209,10 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
 
   const useCache = isAnthropicModel()
 
+  const registry = new ToolRegistry()
+  registerBuiltinTools(registry)
+  const agentTools = registry.getTools(new Set(['read']))
+
   try {
     // Phase A: Investigation — tool-use loop with dual budget enforcement.
     // When using Anthropic, mark the system prompt for caching (5-min ephemeral TTL)
@@ -233,14 +235,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
               system: AGENT_SYSTEM_PROMPT,
               prompt: incidentContext,
             }),
-        tools: {
-          get_workflow_logs: githubActionsTool,
-          get_commit_changes: getCommitChangesTool,
-          get_file_content: getFileContentTool,
-          get_pull_request: getPullRequestTool,
-          get_issue: getIssueTool,
-          search_code: searchCodeTool,
-        },
+        tools: agentTools,
         maxSteps: budget.stepBudget,
         onStepFinish: async ({ toolCalls: calls, toolResults: results, usage }) => {
           // Track token budget
@@ -262,7 +257,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
                 integration: call.toolName,
                 round: stepNumber,
                 durationMs: null,
-                resultJson: results?.[i] ? JSON.stringify(results[i].result) : null,
+                resultJson: results?.[i] ? JSON.stringify((results[i] as { result: unknown }).result) : null,
               })
             }
           } catch (err) {
@@ -283,9 +278,10 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         })
       }
       for (const toolResult of step.toolResults ?? []) {
+        const tr = toolResult as { toolName: string; result: unknown }
         investigationMessages.push({
           role: 'user',
-          content: `Tool result (${toolResult.toolName}): ${JSON.stringify(toolResult.result)}`,
+          content: `Tool result (${tr.toolName}): ${JSON.stringify(tr.result)}`,
         })
       }
     }
