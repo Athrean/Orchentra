@@ -42,6 +42,33 @@ describe('ToolRegistry', () => {
     expect(Object.keys(all).sort()).toEqual(['create_pr', 'read_logs'])
   })
 
+  test('runs pre/post hooks around execute and reports duration', async () => {
+    const registry = new ToolRegistry()
+    const events: string[] = []
+    registry.setHooks({
+      pre: ({ name, args }) => {
+        events.push(`pre:${name}:${JSON.stringify(args)}`)
+      },
+      post: ({ name, result, durationMs }) => {
+        expect(durationMs).toBeGreaterThanOrEqual(0)
+        events.push(`post:${name}:${JSON.stringify(result)}`)
+      },
+    })
+    registry.register({
+      name: 'echo',
+      permission: 'read',
+      description: '',
+      parameters: z.object({ msg: z.string() }),
+      execute: async ({ msg }) => ({ echoed: msg }),
+    })
+
+    const tools = registry.getTools(new Set(['read']))
+    const result = await tools.echo.execute!({ msg: 'hi' }, { toolCallId: 't1', messages: [] })
+
+    expect(result).toEqual({ echoed: 'hi' })
+    expect(events).toEqual(['pre:echo:{"msg":"hi"}', 'post:echo:{"echoed":"hi"}'])
+  })
+
   test('register throws when name is already registered', () => {
     const registry = new ToolRegistry()
     const def = {
