@@ -79,4 +79,17 @@ describe('POST /api/orgs/:orgId/commands', () => {
     const body = await readSseBody(res)
     expect(body).toContain('/help')
   })
+
+  test('unknown command returns 400 with the command name in the error', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'nope', sessionId: 's1' }),
+    })
+
+    expect(res.status).toBe(400)
+    const json = (await res.json()) as { error: string }
+    expect(json.error).toContain('nope')
+  })
 })
