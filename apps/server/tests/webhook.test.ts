@@ -19,13 +19,6 @@ mock.module('../src/config', () => ({
       token: 'ghp_test',
       repos: ['my-org/api'],
     },
-    delivery: {
-      slack: {
-        bot_token: 'xoxb-test',
-        signing_secret: 'slack-secret',
-        channel: '#test',
-      },
-    },
   },
 }))
 
@@ -98,37 +91,6 @@ mock.module('../src/lib/repo-cache', () => ({
   isRepoMonitored: async () => true,
   getMonitoredRepos: async () => new Set(['my-org/api']),
   invalidateMonitoredReposCache: () => {},
-}))
-
-// Provide complete mock of slack/message with ALL exported functions.
-// Bun's mock.module is global — an incomplete mock here would break slack-message.test.ts
-// which imports `updateSlackWithBrief` from the same module.
-const slackPostedMessages: { channel: string; text: string }[] = []
-const slackUpdatedMessages: { channel: string; ts: string; text: string }[] = []
-
-mock.module('../src/slack/client', () => ({
-  slack: {
-    chat: {
-      postMessage: async (opts: { channel: string; text: string }) => {
-        slackPostedMessages.push(opts)
-        return { ok: true, ts: '1234567890.123456' }
-      },
-      update: async (opts: { channel: string; ts: string; text: string }) => {
-        slackUpdatedMessages.push(opts)
-        return { ok: true }
-      },
-    },
-  },
-}))
-
-mock.module('../src/slack/message', () => ({
-  postInitialSlackMessage: async (incident: { id: string }) => {
-    queueCalls.push(incident.id)
-  },
-  updateSlackWithBrief: async (_id: string, _brief: unknown) => {},
-  updateSlackToFixing: async (_id: string, _brief: unknown, _statusText: string, _performedBy: string | null) => {},
-  updateSlackToResolved: async (_id: string, _reason: string, _mttrSeconds: number | null) => {},
-  postThreadReply: async (_id: string, _text: string) => {},
 }))
 
 mock.module('../src/lib/incident-queue', () => ({
@@ -230,8 +192,6 @@ beforeEach(() => {
   insertedWebhookEvents = []
   queueCalls = []
   githubInitialWrites = []
-  slackPostedMessages.length = 0
-  slackUpdatedMessages.length = 0
   simulateDuplicate = false
   simulateWebhookEventDuplicate = false
   resetDedupState()
