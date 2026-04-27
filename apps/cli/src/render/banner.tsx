@@ -4,6 +4,8 @@ import React from 'react'
 import { Box, render, Text, useApp, useStdout } from 'ink'
 import type { PermissionMode } from '@orchentra/cli-core'
 import { THEME, modeAccent } from '../tui/theme'
+import { detectColorMode } from './ansi'
+import { renderMascot } from './mascot'
 
 export interface BannerOptions {
   readonly cliName: string
@@ -19,8 +21,13 @@ export interface BannerOptions {
 }
 
 const TIP_LINE = `${THEME.bullet} /help  ${THEME.bullet} /login  ${THEME.bullet} /incidents  ${THEME.bullet} /triage <id>`
+const MASCOT_MIN_COLS = 60
 
 export function WelcomeBanner(props: BannerOptions): React.ReactElement {
+  const { stdout } = useStdout()
+  const cols = stdout?.columns ?? 80
+  const showMascot = cols >= MASCOT_MIN_COLS
+
   const title = `${capitalize(props.cliName)} v${props.cliVersion}`
   const provider = props.providerName ?? 'anthropic'
   const cwd = prettyCwd(props.cwd)
@@ -30,29 +37,35 @@ export function WelcomeBanner(props: BannerOptions): React.ReactElement {
     .filter(Boolean)
     .join(`  ${THEME.bullet}  `)
 
+  const mascotLines = showMascot ? renderMascot(detectColorMode()) : []
+
   return (
     <Box flexDirection="column">
-      <Box borderStyle="round" borderColor={THEME.brand} paddingX={1} flexDirection="column">
-        <Box>
-          <Text color={THEME.brand} bold>
-            ✦ {title}
-          </Text>
-          <Box flexGrow={1} />
-          <Text color={modeAccent(props.permissionMode)}>{props.permissionMode}</Text>
+      <Box borderStyle="round" borderColor={THEME.brand} paddingX={1} flexDirection="row">
+        {showMascot ? (
+          <Box flexDirection="column" marginRight={2}>
+            {mascotLines.map((line, i) => (
+              <Text key={i}>{line}</Text>
+            ))}
+          </Box>
+        ) : null}
+        <Box flexDirection="column" flexGrow={1}>
+          <Box flexDirection="row">
+            <Text color={THEME.brand} bold>
+              ✦ {title}
+            </Text>
+            <Box flexGrow={1} />
+            <Text color={modeAccent(props.permissionMode)}>{props.permissionMode}</Text>
+          </Box>
+          <Text dimColor>{TIP_LINE}</Text>
+          <Text dimColor>{where}</Text>
+          {meta.length > 0 ? <Text dimColor>{meta}</Text> : null}
         </Box>
-        <Text dimColor>{TIP_LINE}</Text>
-        <Text dimColor>{where}</Text>
-        {meta.length > 0 ? <Text dimColor>{meta}</Text> : null}
       </Box>
     </Box>
   )
 }
 
-/**
- * Wrapper component used by `printWelcomeBanner` — exits Ink one tick after
- * the frame commits so the banner renders without the live-update cursor
- * machinery clipping borders.
- */
 function OneShotBanner(props: BannerOptions): React.ReactElement {
   const { exit } = useApp()
   React.useEffect(() => {
@@ -95,13 +108,11 @@ export async function printWelcomeBanner(opts: BannerOptions): Promise<void> {
   await instance.waitUntilExit()
 
   // eslint-disable-next-line no-control-regex
-  const frame = captured.read().replace(/\[\?(25|2026)[hl]/g, '')
+  const frame = captured.read().replace(/\[\?(25|2026)[hl]/g, '')
   process.stdout.write(frame)
   if (!frame.endsWith('\n')) process.stdout.write('\n')
 }
 
-// `useStdout` retained only for compatibility with previous import surface
-// in case external callers import it from this module.
 export { useStdout }
 
 function capitalize(value: string): string {
