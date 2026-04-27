@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { EventEmitter } from 'events'
 
 let chatInserts: Record<string, unknown>[] = []
 
@@ -56,6 +57,41 @@ mock.module('../src/db/client', () => ({
   },
 }))
 
+interface FixtureIncident {
+  id: string
+  orgId: string
+  repo: string
+  workflowRunId: number | null
+  status: string
+}
+
+const enqueueCalls: FixtureIncident[] = []
+const incidentsById = new Map<string, FixtureIncident>()
+const incidentsByRunId = new Map<string, FixtureIncident>()
+const triageBus = new EventEmitter()
+triageBus.setMaxListeners(0)
+
+mock.module('../src/lib/incident-queue', () => ({
+  enqueueInvestigateJob: async (incident: FixtureIncident) => {
+    enqueueCalls.push(incident)
+  },
+}))
+
+mock.module('../src/queries/incidents', () => ({
+  findIncident: async (id: string, orgId: string) => {
+    const row = incidentsById.get(id)
+    if (!row || row.orgId !== orgId) return undefined
+    return row
+  },
+  findIncidentByRunId: async (orgId: string, repo: string, runId: number) => {
+    return incidentsByRunId.get(`${orgId}:${repo}:${runId}`) ?? undefined
+  },
+}))
+
+mock.module('../src/events', () => ({
+  incidentEvents: triageBus,
+}))
+
 const { commandsRouter } = await import('../src/routes/commands')
 import { Hono } from 'hono'
 
@@ -74,6 +110,10 @@ beforeEach(() => {
   chatInserts = []
   selectCalls = []
   selectRows = []
+  enqueueCalls.length = 0
+  incidentsById.clear()
+  incidentsByRunId.clear()
+  triageBus.removeAllListeners()
 })
 
 async function readSseBody(res: Response): Promise<string> {
@@ -244,6 +284,37 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(values).toContain('org-1')
     expect(values).toContain('acme/api')
     expect(values).toContain('fixing')
+  })
+
+  test('/triage <uuid> enqueues the existing incident and yields a header', async () => {
+    const inc: FixtureIncident = {
+      id: '11111111-1111-4111-8111-111111111111',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 99,
+      status: 'investigating',
+    }
+    incidentsById.set(inc.id, inc)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: [inc.id],
+        sessionId: 's-triage-uuid',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+
+    expect(enqueueCalls).toHaveLength(1)
+    expect(enqueueCalls[0].id).toBe(inc.id)
+    expect(body.toLowerCase()).toContain('triag')
+    expect(body).toContain(inc.id)
+    expect(body).toContain('queued')
   })
 
   test('/status with invalid --status emits an error frame (not a 500)', async () => {
