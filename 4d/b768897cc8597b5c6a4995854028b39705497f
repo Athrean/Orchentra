@@ -1,0 +1,29 @@
+packages/cli-api/src/index.ts
+  b1d5c5b8db40de23 132-137
+packages/cli-api/tests/orchentra-config.test.ts
+  b1d5c5b8db40de23 1-93
+packages/cli-api/src/credential-store.ts
+  b1d5c5b8db40de23 15,57
+packages/cli-api/src/orchentra/config.ts
+  b1d5c5b8db40de23 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "4db768897cc8597b5c6a4995854028b39705497f",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 168,
+      "total_deletions": 5,
+      "accepted_lines": 168,
+      "overriden_lines": 0
+    }
+  }
+}
