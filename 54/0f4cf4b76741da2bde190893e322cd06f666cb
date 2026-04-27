@@ -1,0 +1,25 @@
+packages/cli-core/tests/permissions.test.ts
+  b1d5c5b8db40de23 41-46,50,65
+packages/cli-core/src/runtime/permissions.ts
+  b1d5c5b8db40de23 321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "540f4cf4b76741da2bde190893e322cd06f666cb",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 5,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
