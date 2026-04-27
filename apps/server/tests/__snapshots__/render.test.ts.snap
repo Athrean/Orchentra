@@ -1,0 +1,27 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`renderAgentEventSequence canonical investigation sequence matches snapshot 1`] = `
+"▸ Investigating my-org/api · build_test
+  ↳ get_workflow_logs(owner: my-org, repo: api, runId: 12345)
+  ✓ get_workflow_logs · 412 ms
+  ↳ get_commit_changes(owner: my-org, repo: api, sha: abc123)
+  ✓ get_commit_changes · 88 ms
+  ↳ search_code(owner: my-org, repo: api, query: ECONNRESET)
+  ✓ search_code · 145 ms
+▸ Synthesizing brief…
+✓ dependency_regression · 85% · undici 6.x default keep-alive triggers ECONNRESET against auth-service.
+"
+`;
+
+exports[`renderAgentEventSequence plain style snapshot for the same canonical sequence 1`] = `
+"> Investigating my-org/api · build_test
+  -> get_workflow_logs(owner: my-org, repo: api, runId: 12345)
+  ok get_workflow_logs · 412 ms
+  -> get_commit_changes(owner: my-org, repo: api, sha: abc123)
+  ok get_commit_changes · 88 ms
+  -> search_code(owner: my-org, repo: api, query: ECONNRESET)
+  ok search_code · 145 ms
+> Synthesizing brief…
+ok dependency_regression · 85% · undici 6.x default keep-alive triggers ECONNRESET against auth-service.
+"
+`;
