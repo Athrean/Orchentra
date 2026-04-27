@@ -1,0 +1,23 @@
+apps/server/src/routes/webhooks.ts
+  b1d5c5b8db40de23 1,55-92,165-171,173,184-226,235-256,278-282,284,287,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "83f00650c4cd50f83c7cf687e17ada12f4ff63a6",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 239,
+      "total_deletions": 884,
+      "accepted_lines": 238,
+      "overriden_lines": 0
+    }
+  }
+}
