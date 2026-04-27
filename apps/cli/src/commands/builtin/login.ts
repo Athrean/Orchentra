@@ -23,6 +23,7 @@ const PROVIDER_LABELS: Record<ProviderKey, string> = {
   aws: 'AWS',
   gcp: 'GCP',
   azure: 'Azure',
+  orchentra: 'Orchentra Server',
 }
 
 export class LoginCommand implements CommandHandler {
