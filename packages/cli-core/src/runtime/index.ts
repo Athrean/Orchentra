@@ -96,13 +96,21 @@ export type { SessionControl } from './session-control'
 
 export { isKnownModel } from './model-availability'
 
-export { parseFrontmatter, loadSkills } from './skills'
+export {
+  parseFrontmatter,
+  loadSkills,
+  validateSkillFrontmatter,
+  substituteSkillArguments,
+  translateAllowedTools,
+} from './skills'
 export type {
   ParseFrontmatterResult,
   ParsedSkill,
   LoadError as SkillLoadError,
   LoadSkillsOptions,
   LoadSkillsResult,
+  ValidatedSkillFrontmatter,
+  ValidateSkillResult,
 } from './skills'
 
 export { InMemoryTaskStore } from './task-store'
