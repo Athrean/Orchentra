@@ -39,6 +39,15 @@ export class ToolRegistry {
     this.hooks = hooks
   }
 
+  /** List registered tool definitions filtered by permission. Stable insertion order. */
+  listDefinitions(allowed: Set<Permission>): ToolDefinition[] {
+    const out: ToolDefinition[] = []
+    for (const def of this.tools.values()) {
+      if (allowed.has(def.permission)) out.push(def)
+    }
+    return out
+  }
+
   getTools(allowed: Set<Permission>): Record<string, CoreTool> {
     const out: Record<string, CoreTool> = {}
     for (const [name, def] of this.tools) {
