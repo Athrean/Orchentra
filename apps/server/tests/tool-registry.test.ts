@@ -18,6 +18,30 @@ describe('ToolRegistry', () => {
     expect(tools.echo.description).toBe('echo input')
   })
 
+  test('getTools filters by allowed permissions', () => {
+    const registry = new ToolRegistry()
+    registry.register({
+      name: 'read_logs',
+      permission: 'read',
+      description: '',
+      parameters: z.object({}),
+      execute: async () => null,
+    })
+    registry.register({
+      name: 'create_pr',
+      permission: 'admin',
+      description: '',
+      parameters: z.object({}),
+      execute: async () => null,
+    })
+
+    const readOnly = registry.getTools(new Set(['read']))
+    expect(Object.keys(readOnly)).toEqual(['read_logs'])
+
+    const all = registry.getTools(new Set(['read', 'admin']))
+    expect(Object.keys(all).sort()).toEqual(['create_pr', 'read_logs'])
+  })
+
   test('register throws when name is already registered', () => {
     const registry = new ToolRegistry()
     const def = {
