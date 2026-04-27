@@ -18,8 +18,7 @@ export class CommitCommand implements CommandHandler {
     })
     const statusOut = new TextDecoder().decode(statusResult.stdout).trim()
     if (!statusOut) {
-      process.stdout.write('No changes to commit.\n')
-      return true
+      return note(ctx, 'No changes to commit.')
     }
 
     // Stage all changes
@@ -55,14 +54,34 @@ export class CommitCommand implements CommandHandler {
     const commitErr = new TextDecoder().decode(commitResult.stderr).trim()
 
     if (commitResult.exitCode !== 0) {
-      process.stdout.write(`Commit failed: ${commitErr || commitOut}\n`)
-      return true
+      return note(ctx, `Commit failed: ${commitErr || commitOut}`, 'warn')
     }
 
-    process.stdout.write(`${commitOut || commitErr}\n`)
-    process.stdout.write(`Message: ${message}\n`)
+    if (ctx.ui) {
+      ctx.ui({
+        kind: 'card',
+        title: 'Commit',
+        sections: [
+          {
+            rows: [
+              { key: 'Result', value: (commitOut || commitErr).split('\n')[0] ?? '' },
+              { key: 'Message', value: message },
+            ],
+          },
+        ],
+      })
+    } else {
+      process.stdout.write(`${commitOut || commitErr}\n`)
+      process.stdout.write(`Message: ${message}\n`)
+    }
     return true
   }
+}
+
+function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {
+  if (ctx.ui) ctx.ui({ kind: 'note', tone, text })
+  else process.stdout.write(text + '\n')
+  return true
 }
 
 function extractFlag(args: string[], flag: string): string | undefined {

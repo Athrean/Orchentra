@@ -15,13 +15,13 @@ export class DiffCommand implements CommandHandler {
         stderr: 'pipe',
       })
       const stdout = new TextDecoder().decode(proc.stdout).trim()
-      if (stdout) {
-        process.stdout.write(stdout + '\n')
-      } else {
-        process.stdout.write('No uncommitted changes.\n')
-      }
+      const text = stdout.length > 0 ? stdout : 'No uncommitted changes.'
+      if (ctx.ui) ctx.ui({ kind: 'text', text })
+      else process.stdout.write(text + '\n')
     } catch {
-      process.stdout.write('Could not run git diff.\n')
+      const text = 'Could not run git diff.'
+      if (ctx.ui) ctx.ui({ kind: 'note', tone: 'warn', text })
+      else process.stdout.write(text + '\n')
     }
     return true
   }
