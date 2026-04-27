@@ -22,13 +22,6 @@ github:
 llm:
   api_key: "sk-ant-test123"
   model: "anthropic/claude-sonnet-4-5"
-
-delivery:
-  slack:
-    bot_token: "xoxb-test"
-    signing_secret: "slack-secret"
-    channel: "#test-incidents"
-  github_comments: false
 `
 
 beforeEach(() => {
@@ -45,8 +38,6 @@ describe('Config Loader', () => {
     expect(config.github.repos).toEqual(['my-org/api'])
     expect(config.llm.api_key).toBe('sk-ant-test123')
     expect(config.llm.model).toBe('anthropic/claude-sonnet-4-5')
-    expect(config.delivery.slack.bot_token).toBe('xoxb-test')
-    expect(config.delivery.slack.channel).toBe('#test-incidents')
   })
 
   test('throws on missing config file', () => {
@@ -72,11 +63,6 @@ github:
   repos: ["org/repo"]
 llm:
   api_key: "sk-test"
-delivery:
-  slack:
-    bot_token: "xoxb-test"
-    signing_secret: "secret"
-    channel: "#incidents"
 `)
     expect(() => {
       loadConfigFromPath(configPath)
@@ -92,17 +78,10 @@ github:
 
 llm:
   api_key: "sk-ant-test"
-
-delivery:
-  slack:
-    bot_token: "xoxb-test"
-    signing_secret: "secret"
-    channel: "#incidents"
 `)
     const config = loadConfigFromPath(configPath)
 
     expect(config.llm.model).toBe('anthropic/claude-sonnet-4-5')
-    expect(config.delivery.github_comments).toBe(false)
   })
 
   test('accepts optional integrations section', () => {
@@ -119,12 +98,6 @@ integrations:
   sentry:
     auth_token: "sntryu_test"
     org: "my-org"
-
-delivery:
-  slack:
-    bot_token: "xoxb-test"
-    signing_secret: "secret"
-    channel: "#incidents"
 `)
     const config = loadConfigFromPath(configPath)
 
@@ -142,12 +115,6 @@ github:
 
 llm:
   api_key: "sk-ant-test"
-
-delivery:
-  slack:
-    bot_token: "xoxb-test"
-    signing_secret: "secret"
-    channel: "#incidents"
 `)
     const config = loadConfigFromPath(configPath)
     expect(config.integrations).toBeUndefined()
