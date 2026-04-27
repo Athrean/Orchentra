@@ -31,14 +31,6 @@ mock.module('../src/config', () => ({
       model: 'test-model',
       embedding_model: 'test-embedding-model',
     },
-    delivery: {
-      slack: {
-        bot_token: 'xoxb-test',
-        signing_secret: 'signing-secret',
-        channel: '#test-incidents',
-      },
-      github_comments: false,
-    },
   },
 }))
 

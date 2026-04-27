@@ -35,8 +35,6 @@ export const mockIncident = {
   confidence: null,
   rootCause: null,
   suggestedFix: null,
-  slackChannel: '#test',
-  slackMessageTs: '1234567890.123456',
   triggeredAt: new Date(),
   resolvedAt: null,
   mttrSeconds: null,
