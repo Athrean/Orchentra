@@ -1,0 +1,33 @@
+apps/cli/src/tui/reducer.ts
+  b1d5c5b8db40de23 101-116
+apps/cli/src/commands/builtin/server-bridge.ts
+  b1d5c5b8db40de23 40,50-54,57-60,63-64
+apps/cli/tests/render-banner.test.tsx
+  b1d5c5b8db40de23 36,38-39
+apps/cli/src/tui/Tui.tsx
+  b1d5c5b8db40de23 149,178-192,206,216
+apps/cli/src/commands/ui-output.ts
+  b1d5c5b8db40de23 34-43
+apps/cli/src/tui/types.ts
+  b1d5c5b8db40de23 95-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "13fb4e8cd1def4cd24c54822c327ebf9ac4b2bd8",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 62,
+      "total_deletions": 12,
+      "accepted_lines": 159,
+      "overriden_lines": 0
+    }
+  }
+}
