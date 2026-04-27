@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { EventEmitter } from 'events'
 
 let chatInserts: Record<string, unknown>[] = []
 
@@ -56,6 +57,41 @@ mock.module('../src/db/client', () => ({
   },
 }))
 
+interface FixtureIncident {
+  id: string
+  orgId: string
+  repo: string
+  workflowRunId: number | null
+  status: string
+}
+
+const enqueueCalls: FixtureIncident[] = []
+const incidentsById = new Map<string, FixtureIncident>()
+const incidentsByRunId = new Map<string, FixtureIncident>()
+const triageBus = new EventEmitter()
+triageBus.setMaxListeners(0)
+
+mock.module('../src/lib/incident-queue', () => ({
+  enqueueInvestigateJob: async (incident: FixtureIncident) => {
+    enqueueCalls.push(incident)
+  },
+}))
+
+mock.module('../src/queries/incidents', () => ({
+  findIncident: async (id: string, orgId: string) => {
+    const row = incidentsById.get(id)
+    if (!row || row.orgId !== orgId) return undefined
+    return row
+  },
+  findIncidentByRunId: async (orgId: string, repo: string, runId: number) => {
+    return incidentsByRunId.get(`${orgId}:${repo}:${runId}`) ?? undefined
+  },
+}))
+
+mock.module('../src/events', () => ({
+  incidentEvents: triageBus,
+}))
+
 const { commandsRouter } = await import('../src/routes/commands')
 import { Hono } from 'hono'
 
@@ -74,6 +110,10 @@ beforeEach(() => {
   chatInserts = []
   selectCalls = []
   selectRows = []
+  enqueueCalls.length = 0
+  incidentsById.clear()
+  incidentsByRunId.clear()
+  triageBus.removeAllListeners()
 })
 
 async function readSseBody(res: Response): Promise<string> {
@@ -244,6 +284,216 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(values).toContain('org-1')
     expect(values).toContain('acme/api')
     expect(values).toContain('fixing')
+  })
+
+  function emitTerminal(incidentId: string, repo = 'acme/api'): void {
+    triageBus.emit('*', {
+      type: 'incident:status_changed',
+      incidentId,
+      orgId: 'org-1',
+      repo,
+      data: { status: 'resolved' },
+    })
+  }
+
+  test('/triage <uuid> enqueues the existing incident and yields a header', async () => {
+    const inc: FixtureIncident = {
+      id: '11111111-1111-4111-8111-111111111111',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 99,
+      status: 'investigating',
+    }
+    incidentsById.set(inc.id, inc)
+
+    const app = makeApp()
+    const resPromise = app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: [inc.id],
+        sessionId: 's-triage-uuid',
+      }),
+    })
+    setTimeout(() => emitTerminal(inc.id, inc.repo), 5)
+    const res = await resPromise
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+
+    expect(enqueueCalls).toHaveLength(1)
+    expect(enqueueCalls[0].id).toBe(inc.id)
+    expect(body.toLowerCase()).toContain('triag')
+    expect(body).toContain(inc.id)
+    expect(body).toContain('queued')
+  })
+
+  test('/triage <owner/repo> <runId> resolves the incident and enqueues', async () => {
+    const inc: FixtureIncident = {
+      id: '22222222-2222-4222-8222-222222222222',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 4242,
+      status: 'investigating',
+    }
+    incidentsByRunId.set('org-1:acme/api:4242', inc)
+
+    const app = makeApp()
+    const resPromise = app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: ['Acme/API', '4242'],
+        sessionId: 's-triage-runid',
+      }),
+    })
+    setTimeout(() => emitTerminal(inc.id, inc.repo), 5)
+    const res = await resPromise
+
+    expect(res.status).toBe(200)
+    await readSseBody(res)
+
+    expect(enqueueCalls).toHaveLength(1)
+    expect(enqueueCalls[0].id).toBe(inc.id)
+  })
+
+  test('/triage with no args yields an error frame, no enqueue', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'triage', sessionId: 's-triage-empty' }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('error')
+    expect(enqueueCalls).toHaveLength(0)
+  })
+
+  test('/triage with unknown UUID yields not-found error, no enqueue', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: ['33333333-3333-4333-8333-333333333333'],
+        sessionId: 's-triage-missing',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('not found')
+    expect(enqueueCalls).toHaveLength(0)
+  })
+
+  test('/triage streams incidentEvents for the target incident and closes on terminal status', async () => {
+    const inc: FixtureIncident = {
+      id: '55555555-5555-4555-8555-555555555555',
+      orgId: 'org-1',
+      repo: 'acme/api',
+      workflowRunId: 7,
+      status: 'investigating',
+    }
+    const otherInc: FixtureIncident = {
+      id: '66666666-6666-4666-8666-666666666666',
+      orgId: 'org-1',
+      repo: 'acme/web',
+      workflowRunId: 8,
+      status: 'investigating',
+    }
+    incidentsById.set(inc.id, inc)
+    incidentsById.set(otherInc.id, otherInc)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: [inc.id],
+        sessionId: 's-triage-stream',
+      }),
+    })
+    expect(res.status).toBe(200)
+
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let body = ''
+
+    const drainOnce = async (): Promise<void> => {
+      const { value, done } = await reader.read()
+      if (!done && value) body += decoder.decode(value, { stream: true })
+    }
+
+    await drainOnce()
+
+    triageBus.emit('*', {
+      type: 'incident:updated',
+      incidentId: otherInc.id,
+      orgId: 'org-1',
+      repo: otherInc.repo,
+      data: { note: 'should be ignored' },
+    })
+    triageBus.emit('*', {
+      type: 'incident:updated',
+      incidentId: inc.id,
+      orgId: 'org-1',
+      repo: inc.repo,
+      data: { tool: 'github.fetch_logs' },
+    })
+    await drainOnce()
+
+    triageBus.emit('*', {
+      type: 'incident:status_changed',
+      incidentId: inc.id,
+      orgId: 'org-1',
+      repo: inc.repo,
+      data: { status: 'resolved' },
+    })
+
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      if (value) body += decoder.decode(value, { stream: true })
+    }
+    body += decoder.decode()
+
+    expect(body).toContain('incident:updated')
+    expect(body).toContain('resolved')
+    expect(body).not.toContain(otherInc.id)
+    expect(triageBus.listenerCount('*')).toBe(0)
+  })
+
+  test('/triage cross-org incident lookup returns not-found', async () => {
+    const inc: FixtureIncident = {
+      id: '44444444-4444-4444-8444-444444444444',
+      orgId: 'other-org',
+      repo: 'acme/api',
+      workflowRunId: 1,
+      status: 'investigating',
+    }
+    incidentsById.set(inc.id, inc)
+
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        command: 'triage',
+        args: [inc.id],
+        sessionId: 's-triage-xorg',
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body.toLowerCase()).toContain('not found')
+    expect(enqueueCalls).toHaveLength(0)
   })
 
   test('/status with invalid --status emits an error frame (not a 500)', async () => {

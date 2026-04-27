@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { CommandRegistry } from '../commands/registry'
 import { HelpCommand } from '../commands/builtin/help'
 import { StatusCommand } from '../commands/builtin/status'
+import { TriageCommand } from '../commands/builtin/triage'
 import { db, chatMessages } from '../db/client'
 import type { AppVariables } from '../types'
 
@@ -17,6 +18,7 @@ export const commandsRouter = new Hono<{ Variables: AppVariables }>()
 const registry = new CommandRegistry()
 registry.register(new HelpCommand(registry))
 registry.register(new StatusCommand())
+registry.register(new TriageCommand())
 
 commandsRouter.post('/commands', async (c) => {
   let parsed: z.infer<typeof BodySchema>

@@ -128,6 +128,16 @@ export async function findIncidentByPrUrl(
   })
 }
 
+export async function findIncidentByRunId(
+  orgId: string,
+  repo: string,
+  runId: number,
+): Promise<typeof incidents.$inferSelect | undefined> {
+  return db.query.incidents.findFirst({
+    where: (t, { and: a, eq: e }) => a(e(t.orgId, orgId), e(t.repo, repo.toLowerCase()), e(t.workflowRunId, runId)),
+  })
+}
+
 /** Find the most recent 'fixing' incident with a fix PR for this repo+branch — used for auto-resolve after CI passes. */
 export async function findFixingIncidentForRepoBranch(
   repo: string,
