@@ -4,6 +4,7 @@ import { CommandRegistry } from '../commands/registry'
 import { HelpCommand } from '../commands/builtin/help'
 import { StatusCommand } from '../commands/builtin/status'
 import { TriageCommand } from '../commands/builtin/triage'
+import { RetryCommand } from '../commands/builtin/retry'
 import { db, chatMessages } from '../db/client'
 import type { AppVariables } from '../types'
 
@@ -19,6 +20,7 @@ const registry = new CommandRegistry()
 registry.register(new HelpCommand(registry))
 registry.register(new StatusCommand())
 registry.register(new TriageCommand())
+registry.register(new RetryCommand())
 
 commandsRouter.post('/commands', async (c) => {
   let parsed: z.infer<typeof BodySchema>
