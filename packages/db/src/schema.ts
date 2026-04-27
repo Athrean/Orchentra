@@ -11,13 +11,24 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core'
 
-export const incidents = pgTable(
-  'incidents',
+/**
+ * Executions are the root unit of the execution graph. Each row represents one
+ * end-to-end run produced by a trigger (CI failure today; future: alert, deploy,
+ * cron). The `kind` column discriminates the trigger source. `root_node_id`
+ * points at the entry node of the graph for this execution.
+ *
+ * The legacy `incidents` export is kept as a TS alias so existing consumers
+ * continue to compile during the migration to the graph primitive.
+ */
+export const executions = pgTable(
+  'executions',
   {
     id: text('id').primaryKey(),
     orgId: text('org_id')
       .notNull()
       .references(() => organizations.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull().default('ci_failure'),
+    rootNodeId: text('root_node_id'),
     repo: text('repo').notNull(),
     branch: text('branch').notNull(),
     commit: text('commit').notNull(),
@@ -57,12 +68,26 @@ export const incidents = pgTable(
   (table) => [
     uniqueIndex('incidents_workflow_run_id_idx').on(table.orgId, table.workflowRunId),
     index('incidents_org_id_idx').on(table.orgId),
+    index('executions_kind_idx').on(table.kind),
   ],
 )
 
-export const toolCalls = pgTable('tool_calls', {
+/** Legacy alias — same table, same row shape. Drop after consumer migration. */
+export const incidents = executions
+
+/**
+ * Nodes are the children of an execution. Each row is one step the engine took
+ * (LLM tool call today; future: decision, human_review, patch, rollback).
+ * `parent_node_id` introduces the DAG edge that was previously implicit in
+ * `tool_calls.round`.
+ *
+ * The legacy `toolCalls` export is kept as a TS alias.
+ */
+export const nodes = pgTable('nodes', {
   id: text('id').primaryKey(),
-  incidentId: text('incident_id').references(() => incidents.id, { onDelete: 'cascade' }),
+  incidentId: text('incident_id').references(() => executions.id, { onDelete: 'cascade' }),
+  parentNodeId: text('parent_node_id'),
+  kind: text('kind').notNull().default('tool_call'),
   integration: text('integration').notNull(),
   round: integer('round').notNull(),
   durationMs: integer('duration_ms'),
@@ -70,6 +95,9 @@ export const toolCalls = pgTable('tool_calls', {
   resultJson: text('result_json'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/** Legacy alias — same table. */
+export const toolCalls = nodes
 
 export const resolvedPatterns = pgTable('resolved_patterns', {
   id: text('id').primaryKey(),
