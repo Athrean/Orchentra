@@ -1,0 +1,82 @@
+import { describe, test, expect, mock, beforeEach } from 'bun:test'
+
+let chatInserts: Record<string, unknown>[] = []
+
+mock.module('../src/config', () => ({
+  config: {
+    github: { token: 'ghp_test', webhook_secret: 'test', repos: [] },
+    llm: { api_key: 'sk-or-test', model: 'anthropic/claude-sonnet-4-5' },
+  },
+}))
+
+mock.module('drizzle-orm', () => ({
+  eq: (_col: unknown, _val: unknown) => ({}),
+  and: (...clauses: unknown[]) => clauses,
+  asc: (col: unknown) => col,
+  desc: (col: unknown) => col,
+}))
+
+mock.module('../src/db/client', () => ({
+  db: {
+    insert: () => ({
+      values: (val: Record<string, unknown>) => {
+        chatInserts.push(val)
+        return Promise.resolve([val])
+      },
+    }),
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          orderBy: () => ({ limit: () => [] }),
+        }),
+      }),
+    }),
+  },
+  chatMessages: {},
+}))
+
+const { commandsRouter } = await import('../src/routes/commands')
+import { Hono } from 'hono'
+
+function makeApp(): Hono {
+  const app = new Hono()
+  app.use('*', async (c, next) => {
+    c.set('orgId', 'org-1')
+    c.set('user', { id: 'user-1' })
+    await next()
+  })
+  app.route('/api/orgs/:orgId', commandsRouter)
+  return app
+}
+
+beforeEach(() => {
+  chatInserts = []
+})
+
+async function readSseBody(res: Response): Promise<string> {
+  const reader = res.body?.getReader()
+  if (!reader) return ''
+  const decoder = new TextDecoder()
+  let out = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    out += decoder.decode(value, { stream: true })
+  }
+  return out + decoder.decode()
+}
+
+describe('POST /api/orgs/:orgId/commands', () => {
+  test('streams help output for /help', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'help', sessionId: 's1' }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body).toContain('/help')
+  })
+})
