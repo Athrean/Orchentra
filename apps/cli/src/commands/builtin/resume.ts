@@ -1,5 +1,4 @@
-import { readFile } from 'node:fs/promises'
-import { readdir } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 
@@ -19,22 +18,17 @@ export class ResumeCommand implements CommandHandler {
     try {
       files = await readdir(dir)
     } catch {
-      process.stdout.write('No sessions found.\n')
-      return true
+      return note(ctx, 'No sessions found.', 'warn')
     }
 
     const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'))
-    if (jsonlFiles.length === 0) {
-      process.stdout.write('No sessions found.\n')
-      return true
-    }
+    if (jsonlFiles.length === 0) return note(ctx, 'No sessions found.', 'warn')
 
     let targetFile: string | undefined
     if (idArg === 'latest') {
-      // Find most recently modified
       let latestTime = 0
       for (const f of jsonlFiles) {
-        const s = await import('node:fs').then((fs) => fs.statSync(join(dir, f)))
+        const s = await stat(join(dir, f))
         if (s.mtimeMs > latestTime) {
           latestTime = s.mtimeMs
           targetFile = f
@@ -44,10 +38,7 @@ export class ResumeCommand implements CommandHandler {
       targetFile = jsonlFiles.find((f) => f.startsWith(idArg))
     }
 
-    if (!targetFile) {
-      process.stdout.write(`Session not found: ${idArg}\n`)
-      return true
-    }
+    if (!targetFile) return note(ctx, `Session not found: ${idArg}`, 'warn')
 
     const raw = await readFile(join(dir, targetFile), 'utf8')
     const lines = raw
@@ -55,7 +46,6 @@ export class ResumeCommand implements CommandHandler {
       .split('\n')
       .filter((l) => l.length > 0)
 
-    // Extract text events as summary
     const textParts: string[] = []
     let toolCallCount = 0
     for (const line of lines) {
@@ -69,11 +59,34 @@ export class ResumeCommand implements CommandHandler {
       }
     }
 
-    process.stdout.write(`Session: ${targetFile}\n`)
-    process.stdout.write(`Events: ${lines.length}, Tool calls: ${toolCallCount}\n`)
-    process.stdout.write(`---\n`)
     const fullText = textParts.join('')
-    process.stdout.write(fullText.slice(0, 2000) + (fullText.length > 2000 ? '\n...(truncated)' : '') + '\n')
+    const preview = fullText.slice(0, 2000) + (fullText.length > 2000 ? '\n…(truncated)' : '')
+
+    if (ctx.ui) {
+      ctx.ui({
+        kind: 'card',
+        title: 'Resume',
+        subtitle: targetFile,
+        sections: [
+          {
+            rows: [
+              { key: 'Events', value: String(lines.length) },
+              { key: 'Tool calls', value: String(toolCallCount) },
+            ],
+          },
+        ],
+      })
+      if (preview.trim().length > 0) ctx.ui({ kind: 'text', text: preview })
+    } else {
+      process.stdout.write(`Session: ${targetFile}\n`)
+      process.stdout.write(`Events: ${lines.length}, Tool calls: ${toolCallCount}\n---\n${preview}\n`)
+    }
     return true
   }
+}
+
+function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {
+  if (ctx.ui) ctx.ui({ kind: 'note', tone, text })
+  else process.stdout.write(text + '\n')
+  return true
 }
