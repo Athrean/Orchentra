@@ -113,7 +113,7 @@ export type {
   ValidateSkillResult,
 } from './skills'
 
-export { findStreamSafeBoundary } from './markdown/stream-boundary'
+export { findStreamSafeBoundary, MarkdownStreamState } from './markdown/stream-boundary'
 
 export { InMemoryTaskStore } from './task-store'
 

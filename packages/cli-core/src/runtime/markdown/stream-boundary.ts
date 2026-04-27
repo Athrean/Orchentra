@@ -3,6 +3,35 @@ interface FenceMarker {
   length: number
 }
 
+/**
+ * Buffers streamed markdown deltas and only releases text at safe boundaries
+ * — paragraph breaks outside any open code fence, or right after a closed
+ * fence. Prevents callers from rendering half-open fences or other partial-
+ * token markup.
+ */
+export class MarkdownStreamState {
+  private pending = ''
+
+  push(delta: string): string | null {
+    this.pending += delta
+    const split = findStreamSafeBoundary(this.pending)
+    if (split === null) return null
+    const ready = this.pending.slice(0, split)
+    this.pending = this.pending.slice(split)
+    return ready
+  }
+
+  flush(): string | null {
+    if (this.pending.trim().length === 0) {
+      this.pending = ''
+      return null
+    }
+    const out = this.pending
+    this.pending = ''
+    return out
+  }
+}
+
 export function findStreamSafeBoundary(markdown: string): number | null {
   let lastBoundary: number | null = null
   let openFence: FenceMarker | null = null
