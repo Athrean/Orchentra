@@ -20,10 +20,11 @@ export class PrCommand implements CommandHandler {
     })
     const branch = new TextDecoder().decode(branchResult.stdout).trim()
     if (!branch || branch === base) {
-      process.stdout.write(
-        `error: current branch "${branch}" is not a valid PR branch (must differ from base "${base}")\n`,
+      return note(
+        ctx,
+        `error: current branch "${branch}" is not a valid PR branch (must differ from base "${base}")`,
+        'warn',
       )
-      return true
     }
 
     // Detect remote repo
@@ -34,12 +35,10 @@ export class PrCommand implements CommandHandler {
     const remoteUrl = new TextDecoder().decode(remoteResult.stdout).trim()
     const repoInfo = parseGitRemote(remoteUrl)
     if (!repoInfo) {
-      process.stdout.write('error: could not determine owner/repo from git remote\n')
-      return true
+      return note(ctx, 'error: could not determine owner/repo from git remote', 'warn')
     }
 
-    // Push current branch
-    process.stdout.write(`Pushing ${branch}...\n`)
+    note(ctx, `Pushing ${branch}…`)
     const pushResult = Bun.spawnSync(['git', 'push', '-u', 'origin', branch], {
       cwd: ctx.cwd,
       stdout: 'pipe',
@@ -48,17 +47,13 @@ export class PrCommand implements CommandHandler {
     if (pushResult.exitCode !== 0) {
       const stdout = new TextDecoder().decode(pushResult.stdout).trim()
       const stderr = new TextDecoder().decode(pushResult.stderr).trim()
-      process.stdout.write(`error: git push failed (exit ${pushResult.exitCode})\n`)
-      if (stderr) process.stdout.write(`${stderr}\n`)
-      else if (stdout) process.stdout.write(`${stdout}\n`)
-      return true
+      return note(ctx, `error: git push failed (exit ${pushResult.exitCode})\n${stderr || stdout}`, 'warn')
     }
 
     // Create PR
     const token = resolveToken()
     if (!token) {
-      process.stdout.write('error: GitHub token not found. Run `orchentra doctor` to diagnose.\n')
-      return true
+      return note(ctx, 'error: GitHub token not found. Run `orchentra doctor` to diagnose.', 'warn')
     }
 
     const client = new GitHubClient({ token: token.token })
@@ -68,8 +63,7 @@ export class PrCommand implements CommandHandler {
     // Check for existing PR
     const existing = await findOpenPullByHead(client, repoInfo.owner, repoInfo.repo, branch)
     if (existing) {
-      process.stdout.write(`PR already exists: ${existing.html_url}\n`)
-      return true
+      return prCard(ctx, 'PR already exists', existing.html_url, prTitle, branch, base)
     }
 
     try {
@@ -79,12 +73,45 @@ export class PrCommand implements CommandHandler {
         base,
         body,
       })
-      process.stdout.write(`PR created: ${pr.html_url}\n`)
+      return prCard(ctx, 'PR created', pr.html_url, prTitle, branch, base)
     } catch (e) {
-      process.stdout.write(`error creating PR: ${(e as Error).message}\n`)
+      return note(ctx, `error creating PR: ${(e as Error).message}`, 'warn')
     }
-    return true
   }
+}
+
+function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {
+  if (ctx.ui) ctx.ui({ kind: 'note', tone, text })
+  else process.stdout.write(text + '\n')
+  return true
+}
+
+function prCard(
+  ctx: CommandContext,
+  title: string,
+  url: string,
+  prTitle: string,
+  branch: string,
+  base: string,
+): boolean {
+  if (ctx.ui) {
+    ctx.ui({
+      kind: 'card',
+      title,
+      sections: [
+        {
+          rows: [
+            { key: 'Title', value: prTitle },
+            { key: 'Branch', value: `${branch} → ${base}` },
+            { key: 'URL', value: url },
+          ],
+        },
+      ],
+    })
+  } else {
+    process.stdout.write(`${title}: ${url}\n`)
+  }
+  return true
 }
 
 function extractFlag(args: string[], flag: string): string | undefined {

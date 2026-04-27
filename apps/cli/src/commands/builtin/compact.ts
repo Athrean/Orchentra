@@ -9,7 +9,9 @@ export class CompactCommand implements CommandHandler {
 
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
     ctx.session.forceCompact()
-    process.stdout.write('Compaction will be applied on next turn.\n')
+    const text = 'Compaction will be applied on next turn.'
+    if (ctx.ui) ctx.ui({ kind: 'note', text })
+    else process.stdout.write(text + '\n')
     return true
   }
 }
