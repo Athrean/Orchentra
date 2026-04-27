@@ -16,14 +16,34 @@ export class CostCommand implements CommandHandler {
     const outputCost = (usage.outputTokens / 1_000_000) * (pricing?.outputCostPerMillion ?? 0)
     const total = inputCost + outputCost
 
-    const lines = [
-      `Model: ${model}`,
-      `Input tokens:  ${usage.inputTokens.toLocaleString()}`,
-      `Output tokens: ${usage.outputTokens.toLocaleString()}`,
-      `Cache read:    ${usage.cacheReadTokens?.toLocaleString() ?? '0'}`,
-      `Cache create:  ${usage.cacheCreationTokens?.toLocaleString() ?? '0'}`,
-      `Estimated cost: ${formatUsd(total)}`,
+    const tokenRows = [
+      { key: 'Input', value: usage.inputTokens.toLocaleString() },
+      { key: 'Output', value: usage.outputTokens.toLocaleString() },
+      { key: 'Cache read', value: (usage.cacheReadTokens ?? 0).toLocaleString() },
+      { key: 'Cache create', value: (usage.cacheCreationTokens ?? 0).toLocaleString() },
     ]
+    const costRows = [
+      { key: 'Input cost', value: formatUsd(inputCost) },
+      { key: 'Output cost', value: formatUsd(outputCost) },
+      { key: 'Estimated total', value: formatUsd(total), bold: true },
+    ]
+
+    if (ctx.ui) {
+      ctx.ui({
+        kind: 'card',
+        title: 'Cost',
+        subtitle: model,
+        sections: [
+          { title: 'Tokens', rows: tokenRows },
+          { title: 'Estimated cost', rows: costRows },
+        ],
+      })
+      return true
+    }
+
+    const all = [...tokenRows, ...costRows]
+    const w = Math.max(...all.map((r) => r.key.length))
+    const lines = [`Cost — ${model}`, ...all.map((r) => `  ${r.key.padEnd(w)}  ${r.value}`)]
     process.stdout.write(lines.join('\n') + '\n')
     return true
   }
