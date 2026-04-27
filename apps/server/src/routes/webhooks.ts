@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { config } from '../config'
@@ -51,6 +51,44 @@ const WorkflowRunPayload = z.object({
     full_name: z.string(),
   }),
 })
+
+const CheckRunPayload = z.object({
+  action: z.string(),
+  check_run: z.object({
+    id: z.number(),
+    name: z.string(),
+    head_sha: z.string(),
+    conclusion: z.string().nullable(),
+    started_at: z.string().nullable().optional(),
+    completed_at: z.string().nullable().optional(),
+    check_suite: z.object({
+      id: z.number(),
+      head_branch: z.string().nullable(),
+    }),
+  }),
+  repository: z.object({ full_name: z.string() }),
+})
+
+const CheckSuitePayload = z.object({
+  action: z.string(),
+  check_suite: z.object({
+    id: z.number(),
+    head_branch: z.string().nullable(),
+    head_sha: z.string(),
+    conclusion: z.string().nullable(),
+    created_at: z.string().nullable().optional(),
+  }),
+  repository: z.object({ full_name: z.string() }),
+})
+
+interface NormalizedFailure {
+  runId: number
+  workflowName: string
+  branch: string
+  commit: string
+  commitMessage: string | null
+  createdAt: string
+}
 
 webhooksRouter.post('/github', async (c) => {
   const body = await c.req.text()
@@ -124,16 +162,15 @@ webhooksRouter.post('/github', async (c) => {
 
     if (run.conclusion === 'failure') {
       const repo = repository.full_name.toLowerCase()
-      // Debounce: skip if the same (repo, branch, commit) failure was recently processed
-      if (isDebounced(repo, run.head_branch, run.head_sha)) {
-        markWebhookSkipped(webhookEventId).catch(console.error)
-        return c.json({ ok: true, debounced: true })
+      const failure: NormalizedFailure = {
+        runId: run.id,
+        workflowName: run.name,
+        branch: run.head_branch,
+        commit: run.head_sha,
+        commitMessage: run.head_commit?.message?.split('\n')[0] ?? null,
+        createdAt: run.created_at,
       }
-      registerDebounce(repo, run.head_branch, run.head_sha)
-
-      const processingPromise = processWorkflowFailure(run, repo, webhookEventId)
-      registerInFlight('github', deliveryId, processingPromise)
-      processingPromise.catch(console.error)
+      return await dispatchFailure(c, failure, repo, webhookEventId, deliveryId)
     } else if (run.conclusion === 'success' && (await isRepoMonitored(repository.full_name))) {
       const repo = repository.full_name.toLowerCase()
       const monitoredRepoRows = await findMonitoredReposByRepo(repo)
@@ -144,6 +181,49 @@ webhooksRouter.post('/github', async (c) => {
     } else {
       markWebhookSkipped(webhookEventId).catch(console.error)
     }
+  } else if (event === 'check_run') {
+    const parsed = CheckRunPayload.safeParse(payload)
+    if (!parsed.success || parsed.data.action !== 'completed' || parsed.data.check_run.conclusion !== 'failure') {
+      markWebhookSkipped(webhookEventId).catch(console.error)
+      return c.json({ ok: true })
+    }
+    const { check_run: run, repository } = parsed.data
+    const branch = run.check_suite.head_branch
+    if (!branch) {
+      markWebhookSkipped(webhookEventId).catch(console.error)
+      return c.json({ ok: true })
+    }
+    const repo = repository.full_name.toLowerCase()
+    const failure: NormalizedFailure = {
+      runId: run.id,
+      workflowName: run.name,
+      branch,
+      commit: run.head_sha,
+      commitMessage: null,
+      createdAt: run.started_at ?? run.completed_at ?? new Date().toISOString(),
+    }
+    return await dispatchFailure(c, failure, repo, webhookEventId, deliveryId)
+  } else if (event === 'check_suite') {
+    const parsed = CheckSuitePayload.safeParse(payload)
+    if (!parsed.success || parsed.data.action !== 'completed' || parsed.data.check_suite.conclusion !== 'failure') {
+      markWebhookSkipped(webhookEventId).catch(console.error)
+      return c.json({ ok: true })
+    }
+    const { check_suite: suite, repository } = parsed.data
+    if (!suite.head_branch) {
+      markWebhookSkipped(webhookEventId).catch(console.error)
+      return c.json({ ok: true })
+    }
+    const repo = repository.full_name.toLowerCase()
+    const failure: NormalizedFailure = {
+      runId: suite.id,
+      workflowName: 'check_suite',
+      branch: suite.head_branch,
+      commit: suite.head_sha,
+      commitMessage: null,
+      createdAt: suite.created_at ?? new Date().toISOString(),
+    }
+    return await dispatchFailure(c, failure, repo, webhookEventId, deliveryId)
   } else {
     // Unhandled event type
     markWebhookSkipped(webhookEventId).catch(console.error)
@@ -152,8 +232,28 @@ webhooksRouter.post('/github', async (c) => {
   return c.json({ ok: true })
 })
 
-async function processWorkflowFailure(
-  run: z.infer<typeof WorkflowRunPayload>['workflow_run'],
+async function dispatchFailure(
+  c: Context,
+  failure: NormalizedFailure,
+  repo: string,
+  webhookEventId: string,
+  deliveryId: string,
+): Promise<Response> {
+  if (isDebounced(repo, failure.branch, failure.commit)) {
+    markWebhookSkipped(webhookEventId).catch(console.error)
+    return c.json({ ok: true, debounced: true })
+  }
+  registerDebounce(repo, failure.branch, failure.commit)
+
+  const processingPromise = processNormalizedFailure(failure, repo, webhookEventId)
+  registerInFlight('github', deliveryId, processingPromise)
+  processingPromise.catch(console.error)
+
+  return c.json({ ok: true })
+}
+
+async function processNormalizedFailure(
+  failure: NormalizedFailure,
   repo: string,
   webhookEventId: string,
 ): Promise<void> {
@@ -175,18 +275,18 @@ async function processWorkflowFailure(
           id: crypto.randomUUID(),
           orgId: monitoredRepo.orgId,
           repo,
-          branch: run.head_branch,
-          commit: run.head_sha,
-          workflowName: run.name,
-          commitMessage: run.head_commit?.message?.split('\n')[0] ?? null,
-          workflowRunId: run.id,
+          branch: failure.branch,
+          commit: failure.commit,
+          workflowName: failure.workflowName,
+          commitMessage: failure.commitMessage,
+          workflowRunId: failure.runId,
           status: 'investigating',
-          triggeredAt: new Date(run.created_at),
+          triggeredAt: new Date(failure.createdAt),
         })
 
-        if (!incident) return // duplicate workflow run for this org — already processing
+        if (!incident) return // duplicate run id for this org — already processing
 
-        console.log(`Incident ${incident.id} queued — ${repo} / ${run.name} (org: ${monitoredRepo.orgId})`)
+        console.log(`Incident ${incident.id} queued — ${repo} / ${failure.workflowName} (org: ${monitoredRepo.orgId})`)
 
         incidentEvents.emitIncidentEvent({
           type: 'incident:created',
