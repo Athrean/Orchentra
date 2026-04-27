@@ -1,4 +1,5 @@
 export { parseFrontmatter, type ParseFrontmatterResult } from './frontmatter'
 export { loadSkills } from './loader'
 export { validateSkillFrontmatter, type ValidatedSkillFrontmatter, type ValidateSkillResult } from './validator'
+export { substituteSkillArguments } from './arguments'
 export type { ParsedSkill, LoadError, LoadSkillsOptions, LoadSkillsResult } from './types'

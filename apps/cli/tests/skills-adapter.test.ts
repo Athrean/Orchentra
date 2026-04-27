@@ -62,4 +62,30 @@ describe('registerSkillCommands', () => {
     const spec = registry.allSpecs().find((s) => s.name === 'deploy')
     expect(spec?.summary).toBe('deploy a service')
   })
+
+  test('substitutes positional and $ARGUMENTS placeholders before dispatch', async () => {
+    const registry = new CommandRegistry()
+    let received: string | null = null
+    registerSkillCommands(
+      registry,
+      [
+        fixtureSkill({
+          name: 'deploy',
+          description: 'd',
+          body: 'Deploy $0 to $1 (raw: $ARGUMENTS)',
+        }),
+      ],
+      {
+        runTurn: async (text) => {
+          received = text
+        },
+      },
+    )
+
+    const resolved = registry.resolve('/deploy api prod')
+    if (resolved === null || resolved instanceof Error) throw new Error('expected handler')
+    await resolved.handler.execute(['api', 'prod'], { cwd: '/', session: fakeSession })
+
+    expect(received).toBe('Deploy api to prod (raw: api prod)')
+  })
 })

@@ -1,4 +1,5 @@
 import type { ParsedSkill } from '@orchentra/cli-core'
+import { substituteSkillArguments } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, CommandRegistry, SlashCommandSpec } from '../registry'
 
 export interface SkillAdapterDeps {
@@ -20,8 +21,9 @@ function buildSkillHandler(skill: ParsedSkill, deps: SkillAdapterDeps): CommandH
 
   return {
     spec,
-    async execute(_args: string[], _ctx: CommandContext): Promise<boolean> {
-      await deps.runTurn(skill.body)
+    async execute(args: string[], _ctx: CommandContext): Promise<boolean> {
+      const resolvedBody = substituteSkillArguments(skill.body, args)
+      await deps.runTurn(resolvedBody)
       return true
     },
   }
