@@ -31,5 +31,15 @@ export type UiOutput =
       readonly tabs?: UiTabs
       readonly sections: readonly UiCardSection[]
     }
+  | {
+      /**
+       * Streaming text chunk. The first emit during a single command
+       * invocation begins a streaming row; subsequent emits append to
+       * the same row. The TUI ends the stream when the handler returns.
+       */
+      readonly kind: 'stream'
+      readonly delta: string
+      readonly label?: string
+    }
 
 export type UiSink = (output: UiOutput) => void
