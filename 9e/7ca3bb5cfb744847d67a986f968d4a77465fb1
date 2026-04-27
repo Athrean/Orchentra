@@ -1,0 +1,29 @@
+apps/cli/src/commands/run-auth.ts
+  b1d5c5b8db40de23 189
+apps/cli/src/commands/builtin/index.ts
+  b1d5c5b8db40de23 23,53-98
+apps/cli/src/commands/builtin/login.ts
+  b1d5c5b8db40de23 26
+apps/cli/tests/server-bridge-registry.test.ts
+  b1d5c5b8db40de23 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9e7ca3bb5cfb744847d67a986f968d4a77465fb1",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 75,
+      "overriden_lines": 0
+    }
+  }
+}
