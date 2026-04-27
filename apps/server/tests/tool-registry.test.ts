@@ -69,6 +69,35 @@ describe('ToolRegistry', () => {
     expect(events).toEqual(['pre:echo:{"msg":"hi"}', 'post:echo:{"echoed":"hi"}'])
   })
 
+  test('thrown tool errors return is_error result instead of crashing the loop', async () => {
+    const registry = new ToolRegistry()
+    const events: string[] = []
+    registry.setHooks({
+      post: ({ name, error, result }) => {
+        events.push(`post:${name}:err=${error instanceof Error ? error.message : 'none'}:res=${JSON.stringify(result)}`)
+      },
+    })
+    registry.register({
+      name: 'crash',
+      permission: 'read',
+      description: '',
+      parameters: z.object({}),
+      execute: async () => {
+        throw new Error('upstream 500')
+      },
+    })
+
+    const tools = registry.getTools(new Set(['read']))
+    const result = (await tools.crash.execute!({}, { toolCallId: 't1', messages: [] })) as {
+      isError: true
+      error: string
+    }
+
+    expect(result.isError).toBe(true)
+    expect(result.error).toContain('upstream 500')
+    expect(events).toEqual(['post:crash:err=upstream 500:res=undefined'])
+  })
+
   test('register throws when name is already registered', () => {
     const registry = new ToolRegistry()
     const def = {
