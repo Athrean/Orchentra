@@ -93,6 +93,26 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(json.error).toContain('nope')
   })
 
+  test('rejects body without sessionId with 400', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'help' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  test('rejects body with oversized command name', async () => {
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'x'.repeat(200), sessionId: 's1' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
   test('persists user input and assembled assistant output to chat_messages', async () => {
     const app = makeApp()
     const res = await app.request('/api/orgs/org-1/commands', {
