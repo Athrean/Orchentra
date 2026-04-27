@@ -16,6 +16,7 @@ import { reposRouter } from './routes/repos'
 import { actionsRouter } from './routes/actions'
 import { orgsRouter } from './routes/orgs'
 import { chatRouter } from './routes/chat'
+import { commandsRouter } from './routes/commands'
 import { workflowsRouter } from './routes/workflows'
 import { analyticsRouter } from './routes/analytics'
 import { usageRouter } from './routes/usage'
@@ -140,6 +141,7 @@ app.route('/api/orgs/:orgId', actionsRouter) // incident actions
 app.route('/api/orgs/:orgId/repos', reposRouter) // repo management
 app.route('/api/orgs/:orgId', orgsRouter) // org + member management
 app.route('/api/orgs/:orgId', chatRouter) // natural language chat
+app.route('/api/orgs/:orgId', commandsRouter) // slash command surface
 app.route('/api/orgs/:orgId', workflowsRouter) // CI/CD workflow management
 app.route('/api/orgs/:orgId', analyticsRouter) // CI/CD health analytics
 app.route('/api/orgs/:orgId', usageRouter) // token usage aggregates
