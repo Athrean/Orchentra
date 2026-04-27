@@ -4,7 +4,7 @@ import { BriefSchema, type IncidentBrief } from '@orchentra/core'
 import { db, incidents, toolCalls } from '../db/client'
 import { createModel, isAnthropicModel, ANTHROPIC_CACHE_OPTIONS } from './llm'
 import { estimateCostUsd } from './token-cost'
-import { AGENT_SYSTEM_PROMPT, SYNTHESIS_PROMPT } from './prompts'
+import { buildAgentSystemPrompt, SYNTHESIS_PROMPT } from './prompts'
 import { ToolRegistry } from './tool-registry'
 import { registerBuiltinTools } from './tools/builtin'
 import { findSimilarPatterns, formatPatternContext } from './patterns'
@@ -236,7 +236,9 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       }
     },
   })
-  const agentTools = registry.getTools(new Set(['read']))
+  const agentPermissions = new Set<'read' | 'write' | 'admin'>(['read'])
+  const agentTools = registry.getTools(agentPermissions)
+  const systemPrompt = buildAgentSystemPrompt({ registry, permissions: agentPermissions })
 
   try {
     // Phase A: Investigation — tool-use loop with dual budget enforcement.
@@ -250,14 +252,14 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
               messages: [
                 {
                   role: 'system' as const,
-                  content: AGENT_SYSTEM_PROMPT,
+                  content: systemPrompt,
                   providerOptions: ANTHROPIC_CACHE_OPTIONS,
                 },
                 { role: 'user' as const, content: incidentContext },
               ],
             }
           : {
-              system: AGENT_SYSTEM_PROMPT,
+              system: systemPrompt,
               prompt: incidentContext,
             }),
         tools: agentTools,
