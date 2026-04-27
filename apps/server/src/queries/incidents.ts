@@ -138,6 +138,21 @@ export async function findIncidentByRunId(
   })
 }
 
+/** Reset brief fields and flip status back to investigating for re-run. Token totals are preserved. */
+export async function resetIncidentForRetry(id: string, orgId: string): Promise<void> {
+  await db
+    .update(incidents)
+    .set({
+      status: 'investigating',
+      briefJson: null,
+      rootCause: null,
+      suggestedFix: null,
+      patchJson: null,
+      confidence: null,
+    })
+    .where(and(eq(incidents.id, id), eq(incidents.orgId, orgId)))
+}
+
 /** Find the most recent 'fixing' incident with a fix PR for this repo+branch — used for auto-resolve after CI passes. */
 export async function findFixingIncidentForRepoBranch(
   repo: string,
