@@ -16,21 +16,42 @@ export class ConfigCommand implements CommandHandler {
     if (args[0] === 'get' && args[1]) {
       const key = args[1]
       const value = (fc as unknown as Record<string, unknown>)[key]
-      if (value === undefined) {
-        process.stdout.write(`Key "${key}" not found.\n`)
-      } else {
-        process.stdout.write(`${key}: ${JSON.stringify(value, null, 2)}\n`)
-      }
+      const text = value === undefined ? `Key "${key}" not found.` : `${key}: ${JSON.stringify(value, null, 2)}`
+      if (ctx.ui) ctx.ui({ kind: 'note', text })
+      else process.stdout.write(text + '\n')
       return true
     }
 
-    const lines = [
-      `model: ${fc.model ?? '(default)'}`,
-      `permissionMode: ${fc.permissionMode ?? '(default)'}`,
-      `memory.enabled: ${fc.memory?.enabled ?? true}`,
-      `memory.similarityThreshold: ${fc.memory?.similarityThreshold ?? 0.78}`,
-      `memory.embeddingModel: ${fc.memory?.embeddingModel ?? 'text-embedding-3-small'}`,
+    const memory = fc.memory ?? {}
+    const sections = [
+      {
+        title: 'Session',
+        rows: [
+          { key: 'model', value: fc.model ?? '(default)' },
+          { key: 'permissionMode', value: fc.permissionMode ?? '(default)' },
+        ],
+      },
+      {
+        title: 'Memory',
+        rows: [
+          { key: 'enabled', value: String(memory.enabled ?? true) },
+          { key: 'similarityThreshold', value: String(memory.similarityThreshold ?? 0.78) },
+          { key: 'embeddingModel', value: memory.embeddingModel ?? 'text-embedding-3-small' },
+        ],
+      },
     ]
+
+    if (ctx.ui) {
+      ctx.ui({ kind: 'card', title: 'Config', sections })
+      return true
+    }
+
+    const lines: string[] = ['Config']
+    for (const s of sections) {
+      lines.push('', s.title)
+      const w = Math.max(...s.rows.map((r) => r.key.length))
+      for (const r of s.rows) lines.push(`  ${r.key.padEnd(w)}  ${r.value}`)
+    }
     process.stdout.write(lines.join('\n') + '\n')
     return true
   }

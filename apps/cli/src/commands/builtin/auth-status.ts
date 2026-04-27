@@ -1,5 +1,10 @@
 import { listCredentialProviders, getCredential, credentialsPath } from '@orchentra/cli-api'
+import { THEME } from '../../tui/theme'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
+import type { UiKVRow } from '../ui-output'
+
+const PROVIDERS = ['anthropic', 'gemini', 'openai', 'xai', 'dashscope', 'github', 'orchentra'] as const
+type Provider = (typeof PROVIDERS)[number]
 
 export class AuthStatusCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -8,42 +13,57 @@ export class AuthStatusCommand implements CommandHandler {
     summary: 'Show signed-in providers and how each credential resolves',
   }
 
-  async execute(_args: string[], _ctx: CommandContext): Promise<boolean> {
-    const lines: string[] = []
-    lines.push(`Credential store: ${credentialsPath()}`)
-    lines.push('')
-
+  async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
     const signedIn = listCredentialProviders()
-    const rows: Array<{ provider: string; status: string }> = []
+    const rows: UiKVRow[] = PROVIDERS.map((p) => describeProvider(p, signedIn.includes(p)))
 
-    for (const p of ['anthropic', 'gemini', 'openai', 'xai', 'dashscope', 'github'] as const) {
-      const env = envStatus(p)
-      const stored = signedIn.includes(p) ? describeStored(p) : null
-      rows.push({
-        provider: p,
-        status: env ?? stored ?? 'not signed in',
+    if (ctx.ui) {
+      ctx.ui({
+        kind: 'card',
+        title: 'Authentication',
+        subtitle: credentialsPath(),
+        sections: [
+          { rows },
+          {
+            title: 'Notes',
+            rows: [
+              { key: 'Env vars', value: 'override stored credentials' },
+              { key: 'Sign in', value: '/login <provider>' },
+            ],
+          },
+        ],
       })
+      return true
     }
 
-    const width = Math.max(...rows.map((r) => r.provider.length))
-    for (const r of rows) {
-      lines.push(`  ${r.provider.padEnd(width)}  ${r.status}`)
-    }
-    lines.push('')
-    lines.push('Env vars override stored credentials. Sign in with /login <provider>.')
+    const lines = [`Credential store: ${credentialsPath()}`, '']
+    const w = Math.max(...rows.map((r) => r.key.length))
+    for (const r of rows) lines.push(`  ${r.key.padEnd(w)}  ${r.value}`)
+    lines.push('', 'Env vars override stored credentials. Sign in with /login <provider>.')
     process.stdout.write(lines.join('\n') + '\n')
     return true
   }
 }
 
-function envStatus(provider: string): string | null {
-  const map: Record<string, readonly string[]> = {
+function describeProvider(provider: Provider, hasStored: boolean): UiKVRow {
+  const env = envStatus(provider)
+  if (env) return { key: provider, value: env, valueColor: THEME.brand, bold: true }
+  if (hasStored) {
+    const stored = describeStored(provider)
+    return { key: provider, value: stored, valueColor: THEME.accent }
+  }
+  return { key: provider, value: 'not signed in', valueColor: THEME.muted }
+}
+
+function envStatus(provider: Provider): string | null {
+  const map: Record<Provider, readonly string[]> = {
     anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
     gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_OAUTH_TOKEN'],
     openai: ['OPENAI_API_KEY'],
     xai: ['XAI_API_KEY'],
     dashscope: ['DASHSCOPE_API_KEY'],
     github: ['ORCHENTRA_GITHUB_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN'],
+    orchentra: ['ORCHENTRA_API_KEY'],
   }
   const vars = map[provider] ?? []
   for (const v of vars) {
@@ -54,7 +74,7 @@ function envStatus(provider: string): string | null {
   return null
 }
 
-function describeStored(provider: 'anthropic' | 'gemini' | 'openai' | 'xai' | 'dashscope' | 'github'): string {
+function describeStored(provider: Provider): string {
   const c = getCredential(provider)
   if (!c) return 'not signed in'
   const bits: string[] = []
