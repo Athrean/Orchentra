@@ -4,8 +4,6 @@ import { mockStepData, mockGenerateTextResponse, mockBrief, mockIncident } from 
 let generateTextCalls: unknown[] = []
 let generateObjectCalls: unknown[] = []
 let dbUpdates: Record<string, unknown>[] = []
-let slackBriefUpdates: { incidentId: string; brief: unknown }[] = []
-let slackThreadReplies: { incidentId: string; text: string }[] = []
 let toolCallInserts: Record<string, unknown>[] = []
 let githubFinalWrites: { incidentId: string; status: 'brief_ready' | 'error' }[] = []
 let shouldThrowOnGenerate = false
@@ -63,17 +61,6 @@ mock.module('../src/db/client', () => ({
   chatMessages: {},
   webhookEvents: {},
   incidentJobs: {},
-}))
-
-mock.module('../src/slack/message', () => ({
-  updateSlackWithBrief: async (incidentId: string, brief: unknown) => {
-    slackBriefUpdates.push({ incidentId, brief })
-  },
-  updateSlackToFixing: async (_id: string, _brief: unknown, _statusText: string, _performedBy: string | null) => {},
-  updateSlackToResolved: async (_id: string, _reason: string, _mttrSeconds: number | null) => {},
-  postThreadReply: async (incidentId: string, text: string) => {
-    slackThreadReplies.push({ incidentId, text })
-  },
 }))
 
 mock.module('ai', () => ({
@@ -137,8 +124,6 @@ beforeEach(() => {
   generateTextCalls = []
   generateObjectCalls = []
   dbUpdates = []
-  slackBriefUpdates = []
-  slackThreadReplies = []
   toolCallInserts = []
   githubFinalWrites = []
   shouldThrowOnGenerate = false
@@ -175,21 +160,9 @@ describe('Agent Runner — ReAct Loop', () => {
     expect(update!.confidence).toBe(0.85)
   })
 
-  test('updates Slack with brief', async () => {
-    await runIncidentAgent(mockIncident)
-
-    expect(slackBriefUpdates.length).toBe(1)
-    expect(slackBriefUpdates[0].incidentId).toBe('test-incident-1')
-  })
-
   test('logs tool calls to DB', async () => {
     await runIncidentAgent(mockIncident)
     expect(toolCallInserts.length).toBeGreaterThan(0)
-  })
-
-  test('posts tool trace as thread reply', async () => {
-    await runIncidentAgent(mockIncident)
-    expect(slackThreadReplies.length).toBeGreaterThan(0)
   })
 
   test('publishes final GitHub triage on success', async () => {
