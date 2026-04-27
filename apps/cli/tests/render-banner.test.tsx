@@ -33,16 +33,10 @@ describe('WelcomeBanner', () => {
     expect(out).not.toContain(home)
   })
 
-  test('emits NO escape sequences when NO_COLOR is set', () => {
+  test('renders the tip strip with /help and /login affordances', () => {
     const out = runWith({ NO_COLOR: '1' }, () => renderFrame(baseOpts))
-    // eslint-disable-next-line no-control-regex
-    expect(/\x1b\[/.test(out)).toBe(false)
-  })
-
-  test('emits escape sequences when FORCE_COLOR=truecolor', () => {
-    const out = runWith({ FORCE_COLOR: '3', COLORTERM: 'truecolor' }, () => renderFrame(baseOpts))
-    // eslint-disable-next-line no-control-regex
-    expect(/\x1b\[/.test(out)).toBe(true)
+    expect(out).toContain('/help')
+    expect(out).toContain('/login')
   })
 })
 

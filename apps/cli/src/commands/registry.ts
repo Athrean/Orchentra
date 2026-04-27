@@ -1,4 +1,5 @@
 import type { SessionControl } from '@orchentra/cli-core'
+import type { UiSink } from './ui-output'
 
 export interface SlashCommandSpec {
   name: string
@@ -10,6 +11,12 @@ export interface SlashCommandSpec {
 export interface CommandContext {
   cwd: string
   session: SessionControl
+  /**
+   * Structured UI sink. Handlers should emit cards/notes/text here when
+   * available; the TUI renders them as styled transcript rows. When absent
+   * (e.g. one-shot CLI mode), handlers can fall back to stdout.
+   */
+  ui?: UiSink
 }
 
 export interface CommandHandler {
