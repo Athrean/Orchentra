@@ -6,8 +6,8 @@ import type { PermissionMode } from '@orchentra/cli-core'
  */
 export const THEME = {
   // Brand
-  brand: '#cc785c',
-  brandDim: '#a9583e',
+  brand: '#156545',
+  brandDim: '#23A470',
 
   // Semantic accents
   fg: 'white',
