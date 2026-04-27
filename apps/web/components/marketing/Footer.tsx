@@ -44,7 +44,7 @@ export function Footer(): React.ReactNode {
       <Container className="py-16">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-4">
-            <Logo size={28} color="var(--color-on-dark)" />
+            <Logo height={32} wordmarkColor="var(--color-on-dark)" tint="var(--color-on-dark)" />
             <p className="mt-4 max-w-[280px] text-[14px] leading-[1.6] mk-text-on-dark-soft">
               Open-source AI incident triage for engineering teams.
             </p>
