@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 
 /**
@@ -42,6 +43,21 @@ const SentryWebhookSchema = z.object({
   }),
   installation: z.object({ uuid: z.string() }).optional(),
 })
+
+/**
+ * Verify a Sentry webhook signature. Sentry signs the raw request body with
+ * an HMAC-SHA256 keyed by the integration's client secret and sends the hex
+ * digest in the `Sentry-Hook-Signature` header.
+ *
+ * Empty / wrong-length signatures are rejected before reaching `timingSafeEqual`
+ * — that primitive throws on mismatched buffer lengths.
+ */
+export function verifySentrySignature(rawBody: string, signature: string | null | undefined, secret: string): boolean {
+  if (!signature || typeof signature !== 'string') return false
+  const expected = createHmac('sha256', secret).update(rawBody, 'utf-8').digest('hex')
+  if (signature.length !== expected.length) return false
+  return timingSafeEqual(Buffer.from(signature, 'utf-8'), Buffer.from(expected, 'utf-8'))
+}
 
 export function parseSentryEvent(input: unknown): ParseResult<SentryEvent> {
   if (input === null || typeof input !== 'object') {
