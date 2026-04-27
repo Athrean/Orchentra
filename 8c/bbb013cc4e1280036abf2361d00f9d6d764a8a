@@ -1,0 +1,31 @@
+packages/cli-core/src/runtime/skills/types.ts
+  b1d5c5b8db40de23 20
+turbo.json
+  b1d5c5b8db40de23 34
+packages/cli-core/tests/skills-loader.test.ts
+  b1d5c5b8db40de23 8,11-12,17,26-31,72-92
+packages/cli-core/src/runtime/skills/loader.ts
+  b1d5c5b8db40de23 7-11,13-16,18-21,24-25,27-30,32-43,45-67,70
+apps/cli/src/repl.ts
+  b1d5c5b8db40de23 26-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8cbbb013cc4e1280036abf2361d00f9d6d764a8a",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 95,
+      "total_deletions": 35,
+      "accepted_lines": 145,
+      "overriden_lines": 0
+    }
+  }
+}
