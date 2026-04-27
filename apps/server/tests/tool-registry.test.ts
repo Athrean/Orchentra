@@ -17,4 +17,17 @@ describe('ToolRegistry', () => {
     expect(Object.keys(tools)).toEqual(['echo'])
     expect(tools.echo.description).toBe('echo input')
   })
+
+  test('register throws when name is already registered', () => {
+    const registry = new ToolRegistry()
+    const def = {
+      name: 'echo',
+      permission: 'read' as const,
+      description: 'first',
+      parameters: z.object({}),
+      execute: async () => null,
+    }
+    registry.register(def)
+    expect(() => registry.register({ ...def, description: 'second' })).toThrow(/already registered/)
+  })
 })
