@@ -5,17 +5,26 @@ import { join } from 'node:path'
 import { loadSkills } from '../src/runtime/skills/loader'
 
 let workspaceRoot: string
+let configHome: string
 
 beforeEach(() => {
-  workspaceRoot = mkdtempSync(join(tmpdir(), 'orchentra-skills-'))
+  workspaceRoot = mkdtempSync(join(tmpdir(), 'orchentra-skills-ws-'))
+  configHome = mkdtempSync(join(tmpdir(), 'orchentra-skills-home-'))
 })
 
 afterEach(() => {
   rmSync(workspaceRoot, { recursive: true, force: true })
+  rmSync(configHome, { recursive: true, force: true })
 })
 
 function writeSkill(name: string, content: string): void {
   const dir = join(workspaceRoot, '.orchentra', 'skills', name)
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, 'SKILL.md'), content)
+}
+
+function writeUserSkill(name: string, content: string): void {
+  const dir = join(configHome, 'skills', name)
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, 'SKILL.md'), content)
 }
@@ -59,5 +68,26 @@ describe('loadSkills', () => {
     expect(result.skills.map((s) => s.name)).toEqual(['ok'])
     expect(result.errors.length).toBe(1)
     expect(result.errors[0].path).toContain('garbled/SKILL.md')
+  })
+
+  test('loads skills from configHome alongside workspaceRoot', async () => {
+    writeSkill('ws', ['---', 'name: ws', 'description: workspace skill', '---', 'b'].join('\n'))
+    writeUserSkill('user', ['---', 'name: user', 'description: user skill', '---', 'b'].join('\n'))
+
+    const result = await loadSkills({ workspaceRoot, configHome })
+    const names = result.skills.map((s) => s.name).sort()
+    expect(names).toEqual(['user', 'ws'])
+    expect(result.errors).toEqual([])
+  })
+
+  test('workspace skill overrides user skill of the same name with a warning', async () => {
+    writeSkill('deploy', ['---', 'name: deploy', 'description: workspace deploy', '---', 'ws'].join('\n'))
+    writeUserSkill('deploy', ['---', 'name: deploy', 'description: user deploy', '---', 'user'].join('\n'))
+
+    const result = await loadSkills({ workspaceRoot, configHome })
+    expect(result.skills.length).toBe(1)
+    expect(result.skills[0].description).toBe('workspace deploy')
+    expect(result.errors.length).toBe(1)
+    expect(result.errors[0].message).toContain('overrides')
   })
 })
