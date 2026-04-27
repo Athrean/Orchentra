@@ -33,6 +33,9 @@ CLAUDE.md
 .claude.env
 .mcp.json
 
+# Local sprint planning notes (not part of product repo)
+.claude/*.md
+
 # Local session state
 .orchentra/
 
