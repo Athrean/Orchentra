@@ -3,6 +3,9 @@ export interface ParsedSkill {
   description: string
   body: string
   source: string
+  allowedTools: string[]
+  argumentNames: string[]
+  disableModelInvocation: boolean
   meta: Record<string, unknown>
 }
 
@@ -14,6 +17,7 @@ export interface LoadError {
 
 export interface LoadSkillsOptions {
   workspaceRoot: string
+  configHome?: string
 }
 
 export interface LoadSkillsResult {

@@ -21,6 +21,8 @@ import { LoginCommand } from './login'
 import { LogoutCommand } from './logout'
 import { AuthStatusCommand } from './auth-status'
 import { createServerCommand } from './server-bridge'
+import { SkillsCommand } from './skills-adapter'
+import { RestartCommand } from './restart'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -49,6 +51,12 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new LoginCommand())
   registry.register(new LogoutCommand())
   registry.register(new AuthStatusCommand())
+
+  // Skills meta-command (lists user-authored skills + load errors)
+  registry.register(new SkillsCommand())
+
+  // Re-exec the CLI to pick up code/config changes (dev workflow)
+  registry.register(new RestartCommand())
 
   // Server-bridge: route to POST /api/orgs/:orgId/commands
   registry.register(
