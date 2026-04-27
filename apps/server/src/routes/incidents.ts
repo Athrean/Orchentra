@@ -4,6 +4,7 @@ import { UpdateIncidentStatusSchema } from '@orchentra/core'
 import { updateIncidentStatus } from '../actions/handlers'
 import { listIncidents, findIncident, findIncidentForOrg, getIncidentRelations } from '../queries/incidents'
 import { createModel } from '../agent/llm'
+import { getReplay } from '../agent/agent-event-bus'
 import type { AppVariables } from '../types'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
@@ -39,6 +40,15 @@ incidentsRouter.get('/incidents/:id', async (c) => {
   const [calls, actions] = await getIncidentRelations(id)
 
   return c.json({ incident, toolCalls: calls, actions })
+})
+
+incidentsRouter.get('/incidents/:id/agent-events', async (c) => {
+  const id = c.req.param('id')
+  const orgId = c.get('orgId')!
+
+  if (!(await findIncidentForOrg(id, orgId))) return c.json({ error: 'Incident not found' }, 404)
+
+  return c.json({ events: getReplay(id) })
 })
 
 incidentsRouter.patch('/incidents/:id/status', async (c) => {
