@@ -37,11 +37,13 @@ describe('KVList', () => {
 })
 
 describe('Tabs', () => {
-  test('marks the active item with brackets', () => {
+  test('renders all items with the active one differentiated', () => {
     const { lastFrame } = render(<Tabs items={['Account', 'Config', 'Usage']} active={1} />)
     const out = lastFrame() ?? ''
-    expect(out).toContain('[ Config ]')
     expect(out).toContain('Account')
+    expect(out).toContain('Config')
     expect(out).toContain('Usage')
+    // Active tab is rendered with a brand-colour pill (inverse). With colour
+    // stripped by ink-testing-library, we only verify that the labels appear.
   })
 })

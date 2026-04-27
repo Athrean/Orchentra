@@ -32,39 +32,41 @@ function makeCtx(): { ctx: CommandContext; events: UiOutput[] } {
 }
 
 describe('StatusCommand', () => {
-  test('emits a card with all 4 tabs and Account active by default', async () => {
+  test('emits a tabbed card with Status active by default and sectionsByTab populated', async () => {
     const { ctx, events } = makeCtx()
     await new StatusCommand().execute([], ctx)
 
     expect(events).toHaveLength(1)
     const ev = events[0]
     if (ev.kind !== 'card') throw new Error('expected card')
-    expect(ev.tabs?.items).toEqual(['Account', 'Config', 'Usage', 'Stats'])
+    expect(ev.tabs?.items).toEqual(['Status', 'Config', 'Usage', 'Stats'])
     expect(ev.tabs?.active).toBe(0)
-    expect(ev.title).toBe('Status — Account')
+    expect(ev.sectionsByTab).toBeDefined()
+    expect(ev.sectionsByTab?.length).toBe(4)
   })
 
   test.each([
-    ['config', 1, 'Config'],
-    ['usage', 2, 'Usage'],
-    ['stats', 3, 'Stats'],
-  ])('arg %s selects tab index %d', async (arg, idx, label) => {
+    ['config', 1],
+    ['usage', 2],
+    ['stats', 3],
+  ])('arg %s selects tab index %d', async (arg, idx) => {
     const { ctx, events } = makeCtx()
     await new StatusCommand().execute([arg], ctx)
     const ev = events[0]
     if (ev.kind !== 'card') throw new Error('expected card')
     expect(ev.tabs?.active).toBe(idx)
-    expect(ev.title).toContain(label)
   })
 
-  test('Account section includes session and cwd', async () => {
+  test('Status tab includes session id, cwd, model, permission mode', async () => {
     const { ctx, events } = makeCtx()
     await new StatusCommand().execute([], ctx)
     const ev = events[0]
     if (ev.kind !== 'card') throw new Error('expected card')
-    const keys = ev.sections.flatMap((s) => s.rows.map((r) => r.key))
-    expect(keys).toContain('Session')
-    expect(keys).toContain('CWD')
+    const keys = ev.sectionsByTab![0].flatMap((s) => s.rows.map((r) => r.key))
+    expect(keys).toContain('Session ID')
+    expect(keys).toContain('cwd')
+    expect(keys).toContain('Model')
+    expect(keys).toContain('Permission mode')
   })
 
   test('Usage tab reports token columns', async () => {
@@ -72,9 +74,9 @@ describe('StatusCommand', () => {
     await new StatusCommand().execute(['usage'], ctx)
     const ev = events[0]
     if (ev.kind !== 'card') throw new Error('expected card')
-    const keys = ev.sections.flatMap((s) => s.rows.map((r) => r.key))
-    expect(keys).toContain('Input tokens')
-    expect(keys).toContain('Output tokens')
+    const keys = ev.sectionsByTab![2].flatMap((s) => s.rows.map((r) => r.key))
+    expect(keys).toContain('Input')
+    expect(keys).toContain('Output')
     expect(keys).toContain('Total')
   })
 })
