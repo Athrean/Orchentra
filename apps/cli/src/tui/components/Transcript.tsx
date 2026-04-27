@@ -2,6 +2,8 @@ import React from 'react'
 import { Box, Static, Text } from 'ink'
 import { formatUsd, pricingForModel, type UsageTotals } from '@orchentra/cli-core'
 import { BRAND_GREEN, type TranscriptRow } from '../types'
+import { THEME } from '../theme'
+import { CardSections } from './CardSections'
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -93,6 +95,29 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
           <Text dimColor>
             Context compacted: {row.dropped} messages dropped, ~{row.saved} tokens saved
           </Text>
+        </Box>
+      )
+    case 'stream':
+      return (
+        <Box paddingX={1} flexDirection="column">
+          {row.label ? (
+            <Text color={THEME.brand} bold>
+              {row.label}
+            </Text>
+          ) : null}
+          <Text>{row.text}</Text>
+        </Box>
+      )
+    case 'card':
+      return (
+        <Box paddingX={1} flexDirection="column">
+          {row.title ? (
+            <Text bold color={THEME.brand}>
+              {row.title}
+              {row.subtitle ? <Text dimColor>{`  ${row.subtitle}`}</Text> : null}
+            </Text>
+          ) : null}
+          <CardSections sections={row.sections} />
         </Box>
       )
     case 'done':

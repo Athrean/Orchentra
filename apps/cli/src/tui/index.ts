@@ -14,6 +14,26 @@ export interface RunTuiOptions {
   readonly branch?: string
 }
 
+/**
+ * Wrap `process.stdout` in a Proxy whose `write` is permanently bound to the
+ * original write method. captureStdio (used to collect handler stdout into
+ * the transcript) replaces `process.stdout.write`; without this proxy, Ink's
+ * own frame writes would also be intercepted, and the live region would
+ * stop redrawing while a slash-command was running.
+ *
+ * Bind happens once at TUI mount, before any handler can swap the method,
+ * so the proxy keeps writing to the real terminal regardless.
+ */
+function inkStableStdout(): NodeJS.WriteStream {
+  const realWrite = process.stdout.write.bind(process.stdout)
+  return new Proxy(process.stdout, {
+    get(target, prop, receiver) {
+      if (prop === 'write') return realWrite
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as unknown as NodeJS.WriteStream
+}
+
 export async function runTui(opts: RunTuiOptions): Promise<void> {
   const instance = render(
     React.createElement(Tui, {
@@ -25,6 +45,7 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
       branch: opts.branch,
     }),
     {
+      stdout: inkStableStdout(),
       exitOnCtrlC: false,
       patchConsole: false,
     },
