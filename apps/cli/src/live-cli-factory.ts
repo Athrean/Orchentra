@@ -4,6 +4,7 @@ import {
   ConfigLoader,
   InMemoryTaskStore,
   SessionWriter,
+  isKnownModel,
   type PermissionMode,
   type Provider,
   type SharedToolState,
@@ -60,6 +61,11 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   const userAliases = config.featureConfig.aliases as Record<string, string> | undefined
   const resolveModel: ModelResolver = (raw: string) => {
     const model = resolveModelAlias(raw, userAliases)
+    if (!isKnownModel(model)) {
+      process.stderr.write(
+        `[orchentra] warn: model '${model}' is not in the known-model list. Provider will still try to call it, but typos here usually surface as opaque API errors. Aliases: ${Object.keys(BUILTIN_MODEL_ALIASES).join(', ')}.\n`,
+      )
+    }
     return { model, provider: resolveProvider(model), providerName: resolveProviderName(model) }
   }
 
