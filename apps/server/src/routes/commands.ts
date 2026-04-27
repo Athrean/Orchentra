@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { CommandRegistry } from '../commands/registry'
 import { HelpCommand } from '../commands/builtin/help'
+import { StatusCommand } from '../commands/builtin/status'
 import { db, chatMessages } from '../db/client'
 import type { AppVariables } from '../types'
 
@@ -15,6 +16,7 @@ export const commandsRouter = new Hono<{ Variables: AppVariables }>()
 
 const registry = new CommandRegistry()
 registry.register(new HelpCommand(registry))
+registry.register(new StatusCommand())
 
 commandsRouter.post('/commands', async (c) => {
   let parsed: z.infer<typeof BodySchema>
