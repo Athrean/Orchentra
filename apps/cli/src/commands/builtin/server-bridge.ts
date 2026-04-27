@@ -37,6 +37,7 @@ export function createServerCommand(
   return {
     spec,
     async execute(args: string[], ctx: CommandContext): Promise<boolean> {
+      const label = `/${spec.name}`
       let lastChar = ''
       try {
         for await (const chunk of deps.send({
@@ -46,13 +47,21 @@ export function createServerCommand(
           cwd: ctx.cwd,
         })) {
           if (chunk.length === 0) continue
-          process.stdout.write(chunk)
+          if (ctx.ui) {
+            ctx.ui({ kind: 'stream', delta: chunk, label })
+          } else {
+            process.stdout.write(chunk)
+          }
           lastChar = chunk[chunk.length - 1]
         }
-        if (lastChar !== '\n') process.stdout.write('\n')
+        if (lastChar !== '\n') {
+          if (ctx.ui) ctx.ui({ kind: 'stream', delta: '\n', label })
+          else process.stdout.write('\n')
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        process.stdout.write(`error: ${msg}\n`)
+        if (ctx.ui) ctx.ui({ kind: 'note', tone: 'warn', text: `error: ${msg}` })
+        else process.stdout.write(`error: ${msg}\n`)
       }
       return true
     },

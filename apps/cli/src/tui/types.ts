@@ -1,4 +1,14 @@
 import type { PermissionMode, UsageTotals } from '@orchentra/cli-core'
+import type { UiCardSection, UiTabs } from '../commands/ui-output'
+
+export interface CardRow {
+  readonly kind: 'card'
+  readonly id: string
+  readonly title?: string
+  readonly subtitle?: string
+  readonly tabs?: UiTabs
+  readonly sections: readonly UiCardSection[]
+}
 
 export type TranscriptRow =
   | { kind: 'user'; id: string; text: string }
@@ -6,9 +16,11 @@ export type TranscriptRow =
   | { kind: 'tool_call'; id: string; name: string; input: string }
   | { kind: 'tool_result'; id: string; preview: string; isError: boolean }
   | { kind: 'system'; id: string; text: string; tone?: 'info' | 'warn' }
+  | { kind: 'stream'; id: string; text: string; label?: string }
   | { kind: 'error'; id: string; message: string }
   | { kind: 'done'; id: string; steps: number; usage: UsageTotals; model: string }
   | { kind: 'compacted'; id: string; dropped: number; saved: number }
+  | CardRow
 
 export type SuggestionTrigger = '/' | '@' | '!'
 
@@ -46,6 +58,15 @@ export interface TurnStatus {
   readonly tokens: UsageTotals
 }
 
+export interface ActiveCardState {
+  readonly id: string
+  readonly title?: string
+  readonly subtitle?: string
+  readonly tabs?: import('../commands/ui-output').UiTabs
+  readonly activeTab: number
+  readonly sectionsByTab: readonly (readonly import('../commands/ui-output').UiCardSection[])[]
+}
+
 export interface TuiState {
   readonly buffer: string
   readonly cursor: number
@@ -64,6 +85,13 @@ export interface TuiState {
   readonly exitHintUntil: number | null
   /** Id of the assistant row currently being streamed into, if any. */
   readonly streamingRowId: string | null
+  /**
+   * Currently-focused interactive card, if any. The card lives in the live
+   * region (not in Static), so the user can switch tabs with ←/→ or Tab and
+   * dismiss with ↓/Esc. Once dismissed, the active tab's content is
+   * committed into the transcript.
+   */
+  readonly activeCard: ActiveCardState | null
 }
 
 export type TuiAction =
@@ -80,6 +108,9 @@ export type TuiAction =
   | { type: 'transcript/stream-begin'; rowId: string }
   | { type: 'transcript/stream-append'; rowId: string; delta: string }
   | { type: 'transcript/stream-end' }
+  | { type: 'transcript/system-stream-begin'; rowId: string; label?: string }
+  | { type: 'transcript/system-stream-append'; rowId: string; delta: string }
+  | { type: 'transcript/system-stream-end' }
   | { type: 'turn/start' }
   | { type: 'turn/cancelling' }
   | { type: 'turn/end' }
@@ -91,6 +122,9 @@ export type TuiAction =
   | { type: 'paste/add'; chip: PasteChip }
   | { type: 'exit-hint/show'; until: number }
   | { type: 'exit-hint/clear' }
+  | { type: 'card/open'; card: ActiveCardState }
+  | { type: 'card/set-tab'; index: number }
+  | { type: 'card/dismiss' }
 
 export const PERMISSION_MODE_CYCLE: readonly PermissionMode[] = [
   'prompt',
@@ -100,4 +134,8 @@ export const PERMISSION_MODE_CYCLE: readonly PermissionMode[] = [
   'danger-full-access',
 ] as const
 
-export const BRAND_GREEN = '#3dd699'
+// Deprecated: import from `theme.ts` instead. Kept as a re-export so the
+// existing call sites compile without churn.
+export { THEME } from './theme'
+import { THEME as _THEME } from './theme'
+export const BRAND_GREEN = _THEME.brand
