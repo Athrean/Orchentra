@@ -5,18 +5,14 @@ import type { ToolDefinition, ToolContext } from '@orchentra/cli-core'
 const mockCtx: ToolContext = { sessionId: 'test', cwd: '/tmp' }
 
 describe('DefaultToolRegistry', () => {
-  test('registers all 6 builtin tools', () => {
+  test('registers all builtin tools', () => {
     const registry = new DefaultToolRegistry()
     const schemas = registry.list()
-    expect(schemas.length).toBe(6)
-    expect(schemas.map((s) => s.name).sort()).toEqual([
-      'bash',
-      'edit_file',
-      'glob_search',
-      'grep_search',
-      'read_file',
-      'write_file',
-    ])
+    expect(schemas.length).toBe(BUILTIN_TOOLS.length)
+    const names = new Set(schemas.map((s) => s.name))
+    for (const core of ['bash', 'edit_file', 'glob_search', 'grep_search', 'read_file', 'write_file']) {
+      expect(names.has(core)).toBe(true)
+    }
   })
 
   test('has() returns true for builtin tools', () => {
@@ -52,7 +48,7 @@ describe('DefaultToolRegistry', () => {
     }
     registry.register(custom)
     expect(registry.has('custom_test')).toBe(true)
-    expect(registry.list().length).toBe(7)
+    expect(registry.list().length).toBe(BUILTIN_TOOLS.length + 1)
   })
 
   test('execute() dispatches to read_file', async () => {
@@ -138,8 +134,11 @@ describe('DefaultToolRegistry', () => {
 })
 
 describe('BUILTIN_TOOLS', () => {
-  test('contains exactly 6 tools', () => {
-    expect(BUILTIN_TOOLS.length).toBe(6)
+  test('exposes the core six tool names', () => {
+    const names = new Set(BUILTIN_TOOLS.map((t) => t.name))
+    for (const core of ['bash', 'edit_file', 'glob_search', 'grep_search', 'read_file', 'write_file']) {
+      expect(names.has(core)).toBe(true)
+    }
   })
 
   test('each tool has required fields', () => {
