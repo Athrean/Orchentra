@@ -1,6 +1,8 @@
-import { readdir, stat, unlink } from 'node:fs/promises'
+import { readdir, stat, unlink, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
+import { THEME } from '../../tui/theme'
+import type { UiKVRow } from '../ui-output'
 
 export class SessionCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -15,18 +17,12 @@ export class SessionCommand implements CommandHandler {
 
     if (sub === 'delete' || sub === 'rm') {
       const id = args[1]
-      if (!id) {
-        process.stdout.write('error: session ID required\n')
-        return true
-      }
+      if (!id) return note(ctx, 'session ID required', 'warn')
       return this.handleDelete(ctx, id)
     }
     if (sub === 'show') {
       const id = args[1]
-      if (!id) {
-        process.stdout.write('error: session ID required\n')
-        return true
-      }
+      if (!id) return note(ctx, 'session ID required', 'warn')
       return this.handleShow(ctx, id)
     }
     return this.handleList(ctx)
@@ -38,26 +34,43 @@ export class SessionCommand implements CommandHandler {
     try {
       files = await readdir(dir)
     } catch {
-      process.stdout.write('No sessions found.\n')
-      return true
+      return note(ctx, 'No sessions found.')
     }
 
-    const jsonlFiles = files.filter((f) => f.endsWith('.jsonl')).sort()
-    if (jsonlFiles.length === 0) {
-      process.stdout.write('No sessions found.\n')
-      return true
-    }
+    const jsonlFiles = files
+      .filter((f) => f.endsWith('.jsonl'))
+      .sort()
+      .reverse()
+    if (jsonlFiles.length === 0) return note(ctx, 'No sessions found.')
 
     const sessionId = ctx.session.getSessionId()
-    for (const f of jsonlFiles) {
+    const rows: UiKVRow[] = []
+    for (const f of jsonlFiles.slice(0, 20)) {
       const filePath = join(dir, f)
       const s = await stat(filePath)
       const size = (s.size / 1024).toFixed(1)
       const id = f.replace('.jsonl', '')
-      const current = id === sessionId.slice(0, id.length) || f.startsWith(sessionId.slice(0, 8)) ? ' (current)' : ''
-      process.stdout.write(`  ${f}  ${size}KB  ${s.mtime.toISOString().slice(0, 16)}${current}\n`)
+      const isCurrent = id === sessionId.slice(0, id.length) || f.startsWith(sessionId.slice(0, 8))
+      rows.push({
+        key: id.slice(0, 12),
+        value: `${size.padStart(6)}KB  ${s.mtime.toISOString().slice(0, 16)}${isCurrent ? '  · current' : ''}`,
+        valueColor: isCurrent ? THEME.brand : undefined,
+        bold: isCurrent,
+      })
     }
-    process.stdout.write(`\n${jsonlFiles.length} session(s)\n`)
+
+    if (ctx.ui) {
+      ctx.ui({
+        kind: 'card',
+        title: 'Sessions',
+        subtitle: `${jsonlFiles.length} total · showing ${rows.length}`,
+        sections: [{ rows }],
+      })
+      return true
+    }
+    const w = Math.max(...rows.map((r) => r.key.length))
+    const lines = ['Sessions', ...rows.map((r) => `  ${r.key.padEnd(w)}  ${r.value}`)]
+    process.stdout.write(lines.join('\n') + '\n')
     return true
   }
 
@@ -67,23 +80,38 @@ export class SessionCommand implements CommandHandler {
     try {
       files = await readdir(dir)
     } catch {
-      process.stdout.write('Session not found.\n')
-      return true
+      return note(ctx, 'Session not found.', 'warn')
     }
 
     const match = files.find((f) => f.startsWith(idPrefix) && f.endsWith('.jsonl'))
-    if (!match) {
-      process.stdout.write(`Session not found: ${idPrefix}\n`)
-      return true
-    }
+    if (!match) return note(ctx, `Session not found: ${idPrefix}`, 'warn')
 
     const filePath = join(dir, match)
-    const content = await import('node:fs').then((fs) => fs.readFileSync(filePath, 'utf8'))
-    const lines = content
+    const content = await readFile(filePath, 'utf8')
+    const events = content
       .trim()
       .split('\n')
-      .filter((l: string) => l.length > 0)
-    process.stdout.write(`Session: ${match}\nEvents: ${lines.length}\n`)
+      .filter((l) => l.length > 0)
+    const s = await stat(filePath)
+
+    if (ctx.ui) {
+      ctx.ui({
+        kind: 'card',
+        title: 'Session',
+        subtitle: match,
+        sections: [
+          {
+            rows: [
+              { key: 'Events', value: String(events.length) },
+              { key: 'Size', value: `${(s.size / 1024).toFixed(1)} KB` },
+              { key: 'Modified', value: s.mtime.toISOString().slice(0, 19).replace('T', ' ') },
+            ],
+          },
+        ],
+      })
+      return true
+    }
+    process.stdout.write(`Session: ${match}\nEvents: ${events.length}\n`)
     return true
   }
 
@@ -93,18 +121,19 @@ export class SessionCommand implements CommandHandler {
     try {
       files = await readdir(dir)
     } catch {
-      process.stdout.write('Session not found.\n')
-      return true
+      return note(ctx, 'Session not found.', 'warn')
     }
 
     const match = files.find((f) => f.startsWith(idPrefix) && f.endsWith('.jsonl'))
-    if (!match) {
-      process.stdout.write(`Session not found: ${idPrefix}\n`)
-      return true
-    }
+    if (!match) return note(ctx, `Session not found: ${idPrefix}`, 'warn')
 
     await unlink(join(dir, match))
-    process.stdout.write(`Deleted session: ${match}\n`)
-    return true
+    return note(ctx, `Deleted session: ${match}`)
   }
+}
+
+function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {
+  if (ctx.ui) ctx.ui({ kind: 'note', tone, text })
+  else process.stdout.write(text + '\n')
+  return true
 }
