@@ -177,4 +177,45 @@ describe('POST /api/orgs/:orgId/commands', () => {
     const body = await readSseBody(res)
     expect(body.toLowerCase()).toContain('no incidents')
   })
+
+  test('/status renders a row per incident with status glyph, repo, branch, workflow, confidence and ago', async () => {
+    selectRows = [
+      {
+        id: 'inc-1',
+        repo: 'acme/api',
+        branch: 'main',
+        workflowName: 'CI',
+        status: 'investigating',
+        confidence: 0.82,
+        triggeredAt: new Date(Date.now() - 5 * 60 * 1000),
+      },
+      {
+        id: 'inc-2',
+        repo: 'acme/web',
+        branch: 'feat/x',
+        workflowName: 'tests',
+        status: 'fixing',
+        confidence: null,
+        triggeredAt: new Date(Date.now() - 90 * 60 * 1000),
+      },
+    ]
+    const app = makeApp()
+    const res = await app.request('/api/orgs/org-1/commands', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ command: 'status', sessionId: 's-rows' }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await readSseBody(res)
+    expect(body).toContain('acme/api')
+    expect(body).toContain('main')
+    expect(body).toContain('CI')
+    expect(body).toContain('82%')
+    expect(body).toContain('5m ago')
+    expect(body).toContain('acme/web')
+    expect(body).toContain('feat/x')
+    expect(body).toContain('1h ago')
+    expect(body).toContain('— 2 incidents')
+  })
 })
