@@ -1,0 +1,25 @@
+apps/web/app/layout.tsx
+  b1d5c5b8db40de23 2,12-18,45
+apps/web/app/globals.css
+  b1d5c5b8db40de23 23-26,49-53,61-88,99-100,307-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b07c260f91a3b3dc98969e1ceed41e5b90cb0127",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 515,
+      "total_deletions": 13,
+      "accepted_lines": 93,
+      "overriden_lines": 0
+    }
+  }
+}
