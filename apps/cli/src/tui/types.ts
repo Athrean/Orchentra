@@ -100,4 +100,8 @@ export const PERMISSION_MODE_CYCLE: readonly PermissionMode[] = [
   'danger-full-access',
 ] as const
 
-export const BRAND_GREEN = '#3dd699'
+// Deprecated: import from `theme.ts` instead. Kept as a re-export so the
+// existing call sites compile without churn.
+export { THEME } from './theme'
+import { THEME as _THEME } from './theme'
+export const BRAND_GREEN = _THEME.brand
