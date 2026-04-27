@@ -175,13 +175,21 @@ This starts PostgreSQL and the Orchentra server. Mount your `orchentra.yml` — 
 ```
 Orchentra/
 ├── apps/
+│   ├── cli/                 # Interactive Ink TUI — REPL, slash commands, skills
 │   ├── server/              # Hono backend — webhooks, agent, queue, GitHub integrations
 │   └── web/                 # Next.js frontend — dashboard, landing, onboarding
 ├── packages/
+│   ├── cli-core/            # Skill loader, permissions, runtime primitives
+│   ├── cli-api/             # Tool argument parsing + API helpers
+│   ├── cli-tools/           # Built-in tool registry
 │   ├── core/                # Shared types, schemas, utilities
 │   ├── db/                  # Drizzle schema, migrations, client
 │   ├── config-eslint/       # Shared ESLint config
 │   └── config-typescript/   # Shared TypeScript config
+├── docs/
+│   └── cli/                 # CLI guides (skills authoring, etc.)
+├── examples/
+│   └── skills/              # Sample SKILL.md files (incident, deploy)
 ├── docker-compose.yml
 ├── orchentra.yml.example    # Configuration template
 └── CLAUDE.md                # AI agent instructions
@@ -196,6 +204,15 @@ investigating → brief_ready → fixing → resolved
 ```
 
 Each incident tracks: failure context, agent tool calls, structured brief, confidence score, token usage, MTTR, and all actions taken.
+
+## CLI
+
+The interactive CLI ships in `apps/cli/`. It's an Ink-based REPL with slash commands, hook integrations, and a **skills system** for shipping reusable prompts.
+
+- **Author guide:** [`docs/cli/skills.md`](docs/cli/skills.md) — frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload, troubleshooting.
+- **Examples:** [`examples/skills/`](examples/skills/) — drop-in `SKILL.md` samples for `/incident` and `/deploy`.
+
+Quick start: drop a `SKILL.md` at `<repo>/.orchentra/skills/<name>/SKILL.md`, restart the CLI (or `/skills reload`), and invoke `/<name>`.
 
 ## Development
 
