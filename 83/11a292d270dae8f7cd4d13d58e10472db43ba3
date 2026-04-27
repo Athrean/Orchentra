@@ -1,0 +1,23 @@
+apps/server/src/agent/redact.ts
+  b1d5c5b8db40de23 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8311a292d270dae8f7cd4d13d58e10472db43ba3",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 157,
+      "total_deletions": 2,
+      "accepted_lines": 826,
+      "overriden_lines": 0
+    }
+  }
+}
