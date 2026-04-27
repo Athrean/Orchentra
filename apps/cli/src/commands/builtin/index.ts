@@ -20,6 +20,7 @@ import { ResumeCommand } from './resume'
 import { LoginCommand } from './login'
 import { LogoutCommand } from './logout'
 import { AuthStatusCommand } from './auth-status'
+import { createServerCommand } from './server-bridge'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -48,6 +49,52 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new LoginCommand())
   registry.register(new LogoutCommand())
   registry.register(new AuthStatusCommand())
+
+  // Server-bridge: route to POST /api/orgs/:orgId/commands
+  registry.register(
+    createServerCommand(
+      {
+        name: 'incidents',
+        aliases: ['inc'],
+        summary: 'List incidents from the Orchentra server',
+        argumentHint: '<filters>',
+      },
+      'status',
+    ),
+  )
+  registry.register(
+    createServerCommand(
+      {
+        name: 'triage',
+        aliases: [],
+        summary: 'Trigger triage for a workflow run via the server',
+        argumentHint: '<id|owner/repo> [run-id]',
+      },
+      'triage',
+    ),
+  )
+  registry.register(
+    createServerCommand(
+      {
+        name: 'retry',
+        aliases: [],
+        summary: 'Re-enqueue an errored or dismissed incident',
+        argumentHint: '<id>',
+      },
+      'retry',
+    ),
+  )
+  registry.register(
+    createServerCommand(
+      {
+        name: 'explain',
+        aliases: [],
+        summary: 'Plain-English summary of a stored incident brief',
+        argumentHint: '<id>',
+      },
+      'explain',
+    ),
+  )
 
   return registry
 }
