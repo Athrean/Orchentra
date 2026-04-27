@@ -113,6 +113,8 @@ export type {
   ValidateSkillResult,
 } from './skills'
 
+export { findStreamSafeBoundary, MarkdownStreamState } from './markdown/stream-boundary'
+
 export { InMemoryTaskStore } from './task-store'
 
 export type { SystemPromptInput, SystemPrompt } from './system-prompt'
