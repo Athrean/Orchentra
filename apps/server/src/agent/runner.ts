@@ -14,6 +14,7 @@ import { publishFinalGithubTriage } from '../github/triage-writeback'
 import { generatePatches } from './patch-generator'
 import { withRetry } from './retry'
 import { redactToJson } from './redact'
+import { emitAgentEvent } from './agent-event-bus'
 
 type IncidentRow = typeof incidents.$inferSelect
 
@@ -213,10 +214,31 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
   const registry = new ToolRegistry()
   registerBuiltinTools(registry)
   registry.setHooks({
-    pre: () => {
+    pre: ({ name, args }) => {
       stepNumber++
+      emitAgentEvent({
+        incidentId: incident.id,
+        orgId: incident.orgId,
+        repo: incident.repo,
+        event: {
+          kind: 'agent:tool_call',
+          tool: name,
+          args: args && typeof args === 'object' ? (args as Record<string, unknown>) : {},
+        },
+      })
     },
     post: async ({ name, args, result, error, durationMs }) => {
+      emitAgentEvent({
+        incidentId: incident.id,
+        orgId: incident.orgId,
+        repo: incident.repo,
+        event: {
+          kind: 'agent:tool_result',
+          tool: name,
+          durationMs,
+          ...(error !== undefined ? { isError: true } : {}),
+        },
+      })
       try {
         const payload =
           error !== undefined
@@ -239,6 +261,13 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
   const agentPermissions = new Set<'read' | 'write' | 'admin'>(['read'])
   const agentTools = registry.getTools(agentPermissions)
   const systemPrompt = buildAgentSystemPrompt({ registry, permissions: agentPermissions })
+
+  emitAgentEvent({
+    incidentId: incident.id,
+    orgId: incident.orgId,
+    repo: incident.repo,
+    event: { kind: 'agent:started', repo: incident.repo, workflow: incident.workflowName },
+  })
 
   try {
     // Phase A: Investigation — tool-use loop with dual budget enforcement.
@@ -337,6 +366,12 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
     }
 
     // Phase B: Synthesis — structured brief with retry + fallback
+    emitAgentEvent({
+      incidentId: incident.id,
+      orgId: incident.orgId,
+      repo: incident.repo,
+      event: { kind: 'agent:synthesis' },
+    })
     const synthesis = await synthesizeBrief(investigationMessages, result.text ?? '')
     recordUsage(budget, synthesis.promptTokens, synthesis.completionTokens)
 
@@ -384,6 +419,18 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       'brief_ready',
     )
 
+    emitAgentEvent({
+      incidentId: incident.id,
+      orgId: incident.orgId,
+      repo: incident.repo,
+      event: {
+        kind: 'agent:completed',
+        failureType: synthesis.brief.failureType,
+        confidence: synthesis.brief.confidence,
+        rootCause: synthesis.brief.rootCause,
+      },
+    })
+
     incidentEvents.emitIncidentEvent({
       type: 'incident:updated',
       incidentId: incident.id,
@@ -427,6 +474,13 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
       },
       'error',
     )
+
+    emitAgentEvent({
+      incidentId: incident.id,
+      orgId: incident.orgId,
+      repo: incident.repo,
+      event: { kind: 'agent:error', message: errorRootCause },
+    })
 
     incidentEvents.emitIncidentEvent({
       type: 'incident:updated',
