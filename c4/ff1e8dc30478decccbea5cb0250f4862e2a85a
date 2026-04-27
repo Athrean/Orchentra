@@ -1,0 +1,31 @@
+apps/server/src/db/client.ts
+  b1d5c5b8db40de23 3-6
+packages/core/src/schemas/incidents.ts
+  b1d5c5b8db40de23 91-117
+packages/db/src/migrations/meta/_journal.json
+  b1d5c5b8db40de23 116-122
+packages/db/src/migrations/0016_executions_nodes.sql
+  b1d5c5b8db40de23 1-13
+packages/db/src/schema.ts
+  b1d5c5b8db40de23 14-24,30-31,71,75-86,88-90,99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c4ff1e8dc30478decccbea5cb0250f4862e2a85a",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 391,
+      "total_deletions": 78,
+      "accepted_lines": 317,
+      "overriden_lines": 0
+    }
+  }
+}
