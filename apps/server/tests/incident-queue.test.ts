@@ -2,12 +2,11 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test'
 
 let insertedJobs: Record<string, unknown>[] = []
 let insertConflictTargets: unknown[] = []
-let initialSlackCalls: string[] = []
 let agentCalls: string[] = []
 let completedJobIds: string[] = []
 let nextIncidentStatusAfterRun: 'brief_ready' | 'error' = 'brief_ready'
 
-const incidentsById: Record<string, { id: string; slackMessageTs: string | null; status: string }> = {}
+const incidentsById: Record<string, { id: string; status: string }> = {}
 
 mock.module('drizzle-orm', () => ({
   eq: (_col: unknown, val: unknown) => ({ val }),
@@ -71,12 +70,6 @@ mock.module('../src/db/client', () => ({
   webhookEvents: {},
 }))
 
-mock.module('../src/slack/message', () => ({
-  postInitialSlackMessage: async (incident: { id: string }) => {
-    initialSlackCalls.push(incident.id)
-  },
-}))
-
 mock.module('../src/agent/runner', () => ({
   runIncidentAgent: async (incident: { id: string }) => {
     agentCalls.push(incident.id)
@@ -89,14 +82,12 @@ const { enqueueInvestigateJob, processIncidentJob } = await import('../src/lib/i
 beforeEach(() => {
   insertedJobs = []
   insertConflictTargets = []
-  initialSlackCalls = []
   agentCalls = []
   completedJobIds = []
   nextIncidentStatusAfterRun = 'brief_ready'
 
   incidentsById['inc-1'] = {
     id: 'inc-1',
-    slackMessageTs: null,
     status: 'investigating',
   }
 })
@@ -118,8 +109,6 @@ describe('incident queue', () => {
       confidence: null,
       rootCause: null,
       suggestedFix: null,
-      slackChannel: null,
-      slackMessageTs: null,
       githubIssueUrl: null,
       githubPrUrl: null,
       githubCheckRunId: null,
@@ -141,7 +130,7 @@ describe('incident queue', () => {
     expect(insertConflictTargets).toHaveLength(1)
   })
 
-  test('retry processing does not duplicate initial side effects', async () => {
+  test('retry processing runs agent again and marks both jobs completed', async () => {
     await processIncidentJob({
       id: 'job-1',
       incidentId: 'inc-1',
@@ -155,7 +144,6 @@ describe('incident queue', () => {
       createdAt: new Date(),
     })
 
-    incidentsById['inc-1'].slackMessageTs = '1234567890.123'
     incidentsById['inc-1'].status = 'investigating'
 
     await processIncidentJob({
@@ -171,7 +159,6 @@ describe('incident queue', () => {
       createdAt: new Date(),
     })
 
-    expect(initialSlackCalls).toEqual(['inc-1'])
     expect(agentCalls).toEqual(['inc-1', 'inc-1'])
     expect(completedJobIds).toEqual(['job-1', 'job-2'])
   })
