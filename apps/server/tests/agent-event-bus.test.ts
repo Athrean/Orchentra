@@ -1,12 +1,6 @@
-import { describe, expect, test, beforeEach, mock } from 'bun:test'
+import { describe, expect, test, beforeEach, beforeAll, afterAll } from 'bun:test'
 
 const broadcastCalls: Array<{ orgId: string; payload: unknown; repo?: string }> = []
-
-mock.module('../src/ws', () => ({
-  broadcastToOrg: (orgId: string, payload: unknown, repo?: string) => {
-    broadcastCalls.push({ orgId, payload, repo })
-  },
-}))
 
 import {
   emitAgentEvent,
@@ -14,8 +8,19 @@ import {
   clearReplay,
   REPLAY_MAX_EVENTS,
   REPLAY_MAX_BYTES,
+  setBroadcasterForTesting,
 } from '../src/agent/agent-event-bus'
 import type { AgentEvent } from '../src/agent/agent-events'
+
+beforeAll(() => {
+  setBroadcasterForTesting((orgId, payload, repo) => {
+    broadcastCalls.push({ orgId, payload, repo })
+  })
+})
+
+afterAll(() => {
+  setBroadcasterForTesting(null)
+})
 
 const ORG = 'org-1'
 const REPO = 'my-org/api'
