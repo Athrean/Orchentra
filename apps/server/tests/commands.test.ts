@@ -1,6 +1,9 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 import { EventEmitter } from 'events'
 import { aiMockBase } from './helpers/ai-mock'
+import { llmMockBase } from './helpers/llm-mock'
+import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
 
 let chatInserts: Record<string, unknown>[] = []
 
@@ -25,6 +28,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: (val: Record<string, unknown>) => {
@@ -95,10 +99,12 @@ mock.module('ai', () => ({
 }))
 
 mock.module('../src/agent/llm', () => ({
+  ...llmMockBase(),
   createModel: () => ({}),
 }))
 
 mock.module('../src/queries/incidents', () => ({
+  ...incidentsQueriesMockBase(),
   findIncident: async (id: string, orgId: string) => {
     const row = incidentsById.get(id)
     if (!row || row.orgId !== orgId) return undefined

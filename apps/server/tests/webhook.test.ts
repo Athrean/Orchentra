@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 import { createHmac } from 'crypto'
 
 const TEST_SECRET = 'test-webhook-secret-123'
@@ -41,6 +42,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: (val: Record<string, unknown>) => ({

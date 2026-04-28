@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 
 let sessionRows: Record<string, unknown>[] = []
 let userRows: Record<string, unknown>[] = []
@@ -16,6 +17,7 @@ const mockUser = {
 }
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: (table: unknown) => ({
       values: (val: Record<string, unknown>) => {

@@ -1,5 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
 import { aiMockBase } from './helpers/ai-mock'
+import { llmMockBase } from './helpers/llm-mock'
 
 let generateObjectResult: { object: unknown; usage: unknown } | null = null
 let generateObjectShouldFail = false
@@ -20,6 +21,7 @@ mock.module('ai', () => ({
 }))
 
 mock.module('../src/agent/llm', () => ({
+  ...llmMockBase(),
   createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
 }))
 

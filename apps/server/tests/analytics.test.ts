@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 
 // ── DB mock ──────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,7 @@ const mockSelect = mock(() => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     execute: mockExecute,
     select: mockSelect,
