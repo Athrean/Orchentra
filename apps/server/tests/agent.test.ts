@@ -1,5 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
 import { mockStepData, mockGenerateTextResponse, mockBrief, mockIncident } from './fixtures/agent-fixtures'
+import { aiMockBase } from './helpers/ai-mock'
 
 let generateTextCalls: unknown[] = []
 let generateObjectCalls: unknown[] = []
@@ -64,6 +65,7 @@ mock.module('../src/db/client', () => ({
 }))
 
 mock.module('ai', () => ({
+  ...aiMockBase(),
   tool: (definition: unknown) => definition,
   generateText: async (opts: {
     onStepFinish?: (step: typeof mockStepData) => Promise<void>
@@ -96,6 +98,8 @@ mock.module('ai', () => ({
 mock.module('../src/agent/llm', () => ({
   createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
   createEmbeddingModel: () => ({ modelId: 'text-embedding-3-small' }),
+  isAnthropicModel: () => false,
+  ANTHROPIC_CACHE_OPTIONS: { anthropic: { cacheControl: { type: 'ephemeral' as const } } },
 }))
 
 mock.module('../src/agent/patterns', () => ({
