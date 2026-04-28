@@ -81,7 +81,7 @@ mock.module('../src/agent/runner', () => ({
   },
 }))
 
-const { enqueueInvestigateJob, processIncidentJob } = await import('../src/lib/incident-queue')
+const { enqueueInvestigateJob, processIncidentJob } = await import('../src/lib/incident-queue-impl')
 
 beforeEach(() => {
   insertedJobs = []
