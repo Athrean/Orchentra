@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { aiMockBase } from './helpers/ai-mock'
 
 // --- State trackers ---
 let embedCalls: { value: string }[] = []
@@ -68,6 +69,7 @@ mock.module('../src/agent/llm', () => ({
 }))
 
 mock.module('ai', () => ({
+  ...aiMockBase(),
   embed: async (opts: { value: string }) => {
     embedCalls.push({ value: opts.value })
     // Return similar embedding for similar text, different for different text

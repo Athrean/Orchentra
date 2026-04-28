@@ -1,5 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
 import { EventEmitter } from 'events'
+import { aiMockBase } from './helpers/ai-mock'
 
 let chatInserts: Record<string, unknown>[] = []
 
@@ -82,6 +83,7 @@ let modelCalls: Array<{ system?: string; messages: unknown }> = []
 let modelOutput = ''
 
 mock.module('ai', () => ({
+  ...aiMockBase(),
   streamText: ({ system, messages }: { system?: string; messages: unknown }) => {
     modelCalls.push({ system, messages })
     return {

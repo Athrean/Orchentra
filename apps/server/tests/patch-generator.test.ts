@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { aiMockBase } from './helpers/ai-mock'
 
 let generateObjectResult: { object: unknown; usage: unknown } | null = null
 let generateObjectShouldFail = false
@@ -11,6 +12,7 @@ mock.module('../src/config', () => ({
 }))
 
 mock.module('ai', () => ({
+  ...aiMockBase(),
   generateObject: async (_opts: { system?: string }) => {
     if (generateObjectShouldFail) throw new Error('LLM error')
     return generateObjectResult ?? { object: { patches: [] }, usage: null }
