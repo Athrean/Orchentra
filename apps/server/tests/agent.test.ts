@@ -4,6 +4,7 @@ import { dbClientMockBase } from './helpers/db-client-mock'
 import { mockStepData, mockGenerateTextResponse, mockBrief, mockIncident } from './fixtures/agent-fixtures'
 import { aiMockBase } from './helpers/ai-mock'
 import { llmMockBase } from './helpers/llm-mock'
+import { triageWritebackMockBase } from './helpers/triage-writeback-mock'
 
 let generateTextCalls: unknown[] = []
 let generateObjectCalls: unknown[] = []
@@ -73,11 +74,25 @@ mock.module('ai', () => ({
   ...aiMockBase(),
   tool: (definition: unknown) => definition,
   generateText: async (opts: {
+    tools?: Record<string, { execute?: (args: unknown) => Promise<unknown> }>
     onStepFinish?: (step: typeof mockStepData) => Promise<void>
     [key: string]: unknown
   }) => {
     generateTextCalls.push(opts)
     if (shouldThrowOnGenerate) throw new Error('LLM call failed')
+    // Invoke tools so the registry's post-hook records each call to the DB.
+    if (opts.tools) {
+      for (const call of mockStepData.toolCalls) {
+        const t = opts.tools[call.toolName]
+        if (t?.execute) {
+          try {
+            await t.execute(call.args)
+          } catch {
+            // Registry post-hook fires on error too; swallow here.
+          }
+        }
+      }
+    }
     if (opts.onStepFinish) {
       await opts.onStepFinish(mockStepData)
     }
@@ -113,6 +128,7 @@ mock.module('../src/agent/patterns', () => ({
 }))
 
 mock.module('../src/github/triage-writeback', () => ({
+  ...triageWritebackMockBase(),
   publishFinalGithubTriage: async (incident: { id: string }, status: 'brief_ready' | 'error'): Promise<void> => {
     githubFinalWrites.push({ incidentId: incident.id, status })
   },

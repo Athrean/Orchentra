@@ -5,6 +5,7 @@ import { EventEmitter } from 'events'
 import { aiMockBase } from './helpers/ai-mock'
 import { llmMockBase } from './helpers/llm-mock'
 import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
+import { incidentQueueMockBase } from './helpers/incident-queue-mock'
 
 let chatInserts: Record<string, unknown>[] = []
 
@@ -79,6 +80,7 @@ const triageBus = new EventEmitter()
 triageBus.setMaxListeners(0)
 
 mock.module('../src/lib/incident-queue', () => ({
+  ...incidentQueueMockBase(),
   enqueueInvestigateJob: async (incident: FixtureIncident) => {
     enqueueCalls.push(incident)
   },
