@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 
 let dbUpdates: Record<string, unknown>[] = []
 let githubCalls: { method: string; args: Record<string, unknown> }[] = []
@@ -28,6 +29,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     update: () => ({
       set: (values: Record<string, unknown>) => {

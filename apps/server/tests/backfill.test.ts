@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, mock } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 
 const octokitAuths: string[] = []
 let workflowRunResponses: Array<() => Promise<{ data: { workflow_runs: [] } }>> = []
@@ -43,6 +44,7 @@ mock.module('../src/events', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: () => ({

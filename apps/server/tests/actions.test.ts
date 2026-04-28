@@ -1,4 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
+import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
 
 // --- Test state ---
 let storedIncidents: Record<string, Record<string, unknown>> = {}
@@ -53,6 +55,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: (val: Record<string, unknown>) => {
@@ -181,6 +184,7 @@ mock.module('../src/agent/patterns', () => ({
 }))
 
 mock.module('../src/queries/incidents', () => ({
+  ...incidentsQueriesMockBase(),
   findIncidentByPrUrl: async (_prUrl: string, _orgId: string) => findIncidentByPrUrlResult,
   findFixingIncidentForRepoBranch: async (_repo: string, _branch: string, _orgId: string) => findFixingIncidentResult,
 }))

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 
 let insertedJobs: Record<string, unknown>[] = []
 let insertConflictTargets: unknown[] = []
@@ -14,6 +15,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: (values: Record<string, unknown>) => {

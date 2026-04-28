@@ -1,5 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 import { aiMockBase } from './helpers/ai-mock'
+import { llmMockBase } from './helpers/llm-mock'
 
 // --- State trackers ---
 let embedCalls: { value: string }[] = []
@@ -26,6 +28,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     query: {
       incidents: {
@@ -65,6 +68,7 @@ mock.module('../src/db/client', () => ({
 }))
 
 mock.module('../src/agent/llm', () => ({
+  ...llmMockBase(),
   createEmbeddingModel: () => ({ modelId: 'text-embedding-3-small' }),
 }))
 

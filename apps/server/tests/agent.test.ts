@@ -1,6 +1,8 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { dbClientMockBase } from './helpers/db-client-mock'
 import { mockStepData, mockGenerateTextResponse, mockBrief, mockIncident } from './fixtures/agent-fixtures'
 import { aiMockBase } from './helpers/ai-mock'
+import { llmMockBase } from './helpers/llm-mock'
 
 let generateTextCalls: unknown[] = []
 let generateObjectCalls: unknown[] = []
@@ -35,6 +37,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     update: () => ({
       set: (values: Record<string, unknown>) => {
@@ -96,10 +99,9 @@ mock.module('ai', () => ({
 }))
 
 mock.module('../src/agent/llm', () => ({
+  ...llmMockBase(),
   createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
   createEmbeddingModel: () => ({ modelId: 'text-embedding-3-small' }),
-  isAnthropicModel: () => false,
-  ANTHROPIC_CACHE_OPTIONS: { anthropic: { cacheControl: { type: 'ephemeral' as const } } },
 }))
 
 mock.module('../src/agent/patterns', () => ({
