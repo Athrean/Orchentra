@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { mockStepData, mockGenerateTextResponse, mockBrief, mockIncident } from './fixtures/agent-fixtures'
 import { aiMockBase } from './helpers/ai-mock'
@@ -20,6 +21,7 @@ mock.module('../src/config', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (_col: unknown, _val: unknown) => ({}),
   and: (...clauses: unknown[]) => clauses,
   or: (...clauses: unknown[]) => clauses,
@@ -108,14 +110,6 @@ mock.module('../src/agent/patterns', () => ({
   findSimilarPatterns: async () => [],
   formatPatternContext: () => '',
   saveResolvedPattern: async (_incidentId: string) => {},
-}))
-
-mock.module('../src/agent/tools/github-actions', () => ({
-  githubActionsTool: {
-    description: 'mock tool',
-    parameters: {},
-    execute: async () => ({ jobName: 'Build', logs: 'error', failedStep: 'test' }),
-  },
 }))
 
 mock.module('../src/github/triage-writeback', () => ({

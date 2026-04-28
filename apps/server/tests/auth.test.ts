@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 
 let sessionRows: Record<string, unknown>[] = []
@@ -55,6 +56,7 @@ mock.module('../src/db/client', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: () => ({}),
   and: () => ({}),
   gt: () => ({}),

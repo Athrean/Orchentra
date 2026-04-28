@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { EventEmitter } from 'events'
 import { aiMockBase } from './helpers/ai-mock'
@@ -21,6 +22,7 @@ let selectCalls: Array<{
 let selectRows: Record<string, unknown>[] = []
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (col: unknown, val: unknown) => ({ op: 'eq', col, val }),
   and: (...clauses: unknown[]) => ({ op: 'and', clauses: clauses.filter(Boolean) }),
   asc: (col: unknown) => col,
@@ -121,7 +123,12 @@ mock.module('../src/queries/incidents', () => ({
 }))
 
 mock.module('../src/events', () => ({
-  incidentEvents: triageBus,
+  incidentEvents: Object.assign(triageBus, {
+    emitIncidentEvent: (event: { type: string }) => {
+      triageBus.emit(event.type, event)
+      triageBus.emit('*', event)
+    },
+  }),
 }))
 
 const { commandsRouter } = await import('../src/routes/commands')

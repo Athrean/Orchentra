@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, mock } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 
 const octokitAuths: string[] = []
@@ -38,8 +39,13 @@ mock.module('../src/config', () => ({
 mock.module('../src/events', () => ({
   incidentEvents: {
     emitIncidentEvent: () => {},
-    on: () => {},
-    off: () => {},
+    emit: () => true,
+    on: () => ({}),
+    off: () => ({}),
+    addListener: () => ({}),
+    removeListener: () => ({}),
+    setMaxListeners: () => ({}),
+    listeners: () => [],
   },
 }))
 
@@ -98,11 +104,12 @@ mock.module('../src/db/client', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: () => ({}),
   max: () => ({}),
 }))
 
-import { backfillRepoIncidents } from '../src/lib/backfill'
+const { backfillRepoIncidents } = await import('../src/lib/backfill')
 
 describe('backfillRepoIncidents', () => {
   beforeEach(() => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 
 // ── DB mock ──────────────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ mock.module('../src/db/client', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   sql: new Proxy(
     (strings: TemplateStringsArray, ...values: unknown[]) => ({
       _tag: 'SQL',
