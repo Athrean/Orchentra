@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ mock.module('../src/db/client', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: () => ({}),
   and: () => ({}),
   gt: () => ({}),

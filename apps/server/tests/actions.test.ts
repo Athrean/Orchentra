@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
 
@@ -49,6 +50,7 @@ mock.module('../src/config', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (col: unknown, val: unknown) => ({ col, val }),
   desc: (col: unknown) => ({ col, dir: 'desc' }),
   count: () => 'count',
@@ -174,6 +176,13 @@ mock.module('../src/events', () => ({
     emitIncidentEvent: (event: { type: string; incidentId: string }) => {
       emittedEvents.push(event)
     },
+    emit: () => true,
+    on: () => ({}),
+    off: () => ({}),
+    addListener: () => ({}),
+    removeListener: () => ({}),
+    setMaxListeners: () => ({}),
+    listeners: () => [],
   },
 }))
 

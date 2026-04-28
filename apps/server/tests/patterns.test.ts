@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { aiMockBase } from './helpers/ai-mock'
 import { llmMockBase } from './helpers/llm-mock'
@@ -23,6 +24,7 @@ mock.module('../src/config', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (col: unknown, val: unknown) => ({ col, val }),
   sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ __sql: true, strings, values }),
 }))

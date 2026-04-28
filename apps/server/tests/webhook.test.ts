@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { createHmac } from 'crypto'
 
@@ -24,6 +25,7 @@ mock.module('../src/config', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (_col: unknown, _val: unknown) => ({}),
   and: (...clauses: unknown[]) => clauses,
   or: (...clauses: unknown[]) => clauses,
