@@ -24,6 +24,11 @@ export interface TextEvent {
   delta: string
 }
 
+export interface ReasoningEvent {
+  kind: 'reasoning'
+  delta: string
+}
+
 export interface ToolUseEvent {
   kind: 'tool_use'
   call: ToolCall
@@ -83,6 +88,7 @@ export interface SpanEndEvent {
 
 export type RuntimeEvent =
   | TextEvent
+  | ReasoningEvent
   | ToolUseEvent
   | ToolResultEvent
   | UsageEvent

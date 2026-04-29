@@ -4,7 +4,7 @@ import { AnthropicApiError, classifyError, enrichAuthError, missingCredentialsEr
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
 import { injectCacheBoundary } from './cache'
 import type { MessageRequest, StreamEvent, Usage } from './types'
-import { getCredential } from '../credential-store'
+import { resolveAnthropicAuthToken } from './oauth'
 import { parseToolArguments } from '../tool-arguments'
 
 export interface AnthropicConfig {
@@ -39,36 +39,47 @@ export class AnthropicProvider implements Provider {
   private readonly baseUrl: string
   private readonly model: string
   private readonly maxTokens: number
-  private readonly authHeaders: AuthHeaders
   private readonly retryConfig: RetryConfig
+  private readonly explicitApiKey: string | undefined
+  private readonly explicitAuthToken: string | undefined
 
   constructor(config: AnthropicConfig = {}) {
     this.baseUrl = (config.baseUrl ?? 'https://api.anthropic.com').replace(/\/$/, '')
     this.model = config.model ?? DEFAULT_MODEL
     this.maxTokens = config.maxTokens ?? 64000
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config.retries }
+    this.explicitApiKey = config.apiKey
+    this.explicitAuthToken = config.authToken
+  }
 
-    const stored = getCredential('anthropic')
-    const apiKey = config.apiKey ?? process.env['ANTHROPIC_API_KEY'] ?? stored?.apiKey
-    const authToken = config.authToken ?? process.env['ANTHROPIC_AUTH_TOKEN'] ?? stored?.accessToken
+  // Resolve credentials at request time so a stored OAuth token that has
+  // expired since the CLI was launched gets refreshed before the next
+  // request goes out — otherwise the API replies "OAuth authentication
+  // is currently not supported" and the user sees a flashing red error.
+  private async resolveAuthHeaders(): Promise<AuthHeaders> {
+    const apiKey = this.explicitApiKey ?? process.env['ANTHROPIC_API_KEY']
+    let authToken = this.explicitAuthToken ?? process.env['ANTHROPIC_AUTH_TOKEN']
+
+    if (!apiKey && !authToken) {
+      const refreshed = await resolveAnthropicAuthToken()
+      if (refreshed) authToken = refreshed
+    }
 
     if (apiKey && authToken) {
-      this.authHeaders = {
+      return {
         'x-api-key': apiKey,
         Authorization: `Bearer ${authToken}`,
         authSource: 'both',
       }
-    } else if (apiKey) {
-      this.authHeaders = { 'x-api-key': apiKey, authSource: 'api_key' }
-    } else if (authToken) {
-      this.authHeaders = { Authorization: `Bearer ${authToken}`, authSource: 'bearer' }
-    } else {
-      this.authHeaders = { authSource: 'api_key' }
     }
+    if (apiKey) return { 'x-api-key': apiKey, authSource: 'api_key' }
+    if (authToken) return { Authorization: `Bearer ${authToken}`, authSource: 'bearer' }
+    return { authSource: 'api_key' }
   }
 
   async *stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
-    if (!this.authHeaders['x-api-key'] && !this.authHeaders.Authorization) {
+    const authHeaders = await this.resolveAuthHeaders()
+    if (!authHeaders['x-api-key'] && !authHeaders.Authorization) {
       yield { kind: 'finish', stopReason: 'error' as StopReason }
       throw missingCredentialsError()
     }
@@ -96,15 +107,15 @@ export class AnthropicProvider implements Provider {
     // Subscription OAuth tokens require the agentic beta + Claude-Code UA;
     // without these the API replies "OAuth authentication is currently not
     // supported." API-key requests use the public beta set and our own UA.
-    const usingOAuth = this.authHeaders.authSource === 'bearer' || this.authHeaders.authSource === 'both'
+    const usingOAuth = authHeaders.authSource === 'bearer' || authHeaders.authSource === 'both'
     const url = `${this.baseUrl}/v1/messages`
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'anthropic-version': ANTHROPIC_VERSION,
       'anthropic-beta': usingOAuth ? ANTHROPIC_BETA_OAUTH : ANTHROPIC_BETA_API_KEY,
       'user-agent': usingOAuth ? ANTHROPIC_OAUTH_USER_AGENT : DEFAULT_USER_AGENT,
-      ...(this.authHeaders['x-api-key'] ? { 'x-api-key': this.authHeaders['x-api-key'] } : {}),
-      ...(this.authHeaders.Authorization ? { Authorization: this.authHeaders.Authorization } : {}),
+      ...(authHeaders['x-api-key'] ? { 'x-api-key': authHeaders['x-api-key'] } : {}),
+      ...(authHeaders.Authorization ? { Authorization: authHeaders.Authorization } : {}),
     }
 
     let lastError: AnthropicApiError | null = null
@@ -143,7 +154,7 @@ export class AnthropicProvider implements Provider {
 
         const apiError = classifyError(response.status, responseBody, errorType)
         const requestId = response.headers.get('request-id') ?? undefined
-        const rawToken = this.authHeaders['x-api-key'] ?? this.authHeaders.Authorization?.replace('Bearer ', '')
+        const rawToken = authHeaders['x-api-key'] ?? authHeaders.Authorization?.replace('Bearer ', '')
         const withRequestId = new AnthropicApiError({
           status: apiError.status,
           errorType: apiError.errorType,
@@ -152,7 +163,7 @@ export class AnthropicProvider implements Provider {
           failureClass: apiError.failureClass,
           requestId,
         })
-        lastError = enrichAuthError(withRequestId, this.authHeaders.authSource, rawToken)
+        lastError = enrichAuthError(withRequestId, authHeaders.authSource, rawToken)
 
         if (!apiError.retryable) {
           throw lastError

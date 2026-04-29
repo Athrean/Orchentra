@@ -10,6 +10,15 @@ export interface CardRow {
   readonly sections: readonly UiCardSection[]
 }
 
+export interface ReasoningRow {
+  readonly kind: 'reasoning'
+  readonly id: string
+  readonly text: string
+  readonly startedAt: number
+  readonly endedAt: number | null
+  readonly expanded: boolean
+}
+
 export type TranscriptRow =
   | { kind: 'user'; id: string; text: string }
   | { kind: 'assistant'; id: string; text: string }
@@ -20,6 +29,7 @@ export type TranscriptRow =
   | { kind: 'error'; id: string; message: string }
   | { kind: 'done'; id: string; steps: number; usage: UsageTotals; model: string }
   | { kind: 'compacted'; id: string; dropped: number; saved: number }
+  | ReasoningRow
   | CardRow
 
 export type SuggestionTrigger = '/' | '@' | '!'
@@ -111,6 +121,11 @@ export type TuiAction =
   | { type: 'transcript/system-stream-begin'; rowId: string; label?: string }
   | { type: 'transcript/system-stream-append'; rowId: string; delta: string }
   | { type: 'transcript/system-stream-end' }
+  | { type: 'transcript/reasoning-begin'; rowId: string; startedAt: number }
+  | { type: 'transcript/reasoning-append'; rowId: string; delta: string }
+  | { type: 'transcript/reasoning-end'; rowId: string; endedAt: number }
+  | { type: 'reasoning/toggle-last' }
+  | { type: 'reasoning/toggle'; rowId: string }
   | { type: 'turn/start' }
   | { type: 'turn/cancelling' }
   | { type: 'turn/end' }

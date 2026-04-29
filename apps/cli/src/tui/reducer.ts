@@ -115,6 +115,58 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
     case 'transcript/system-stream-end':
       return { ...state, streamingRowId: null }
 
+    case 'transcript/reasoning-begin': {
+      const row: TranscriptRow = {
+        kind: 'reasoning',
+        id: action.rowId,
+        text: '',
+        startedAt: action.startedAt,
+        endedAt: null,
+        expanded: false,
+      }
+      return { ...state, transcript: [...state.transcript, row], streamingRowId: action.rowId }
+    }
+
+    case 'transcript/reasoning-append': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.rowId || row.kind !== 'reasoning') return row
+        return { ...row, text: row.text + action.delta }
+      })
+      return { ...state, transcript: next }
+    }
+
+    case 'transcript/reasoning-end': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.rowId || row.kind !== 'reasoning') return row
+        return { ...row, endedAt: action.endedAt }
+      })
+      return { ...state, transcript: next, streamingRowId: null }
+    }
+
+    case 'reasoning/toggle': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.rowId || row.kind !== 'reasoning') return row
+        return { ...row, expanded: !row.expanded }
+      })
+      return { ...state, transcript: next }
+    }
+
+    case 'reasoning/toggle-last': {
+      let lastIdx = -1
+      for (let i = state.transcript.length - 1; i >= 0; i--) {
+        if (state.transcript[i].kind === 'reasoning') {
+          lastIdx = i
+          break
+        }
+      }
+      if (lastIdx === -1) return state
+      const next = state.transcript.map((row, i) => {
+        if (i !== lastIdx || row.kind !== 'reasoning') return row
+        return { ...row, expanded: !row.expanded }
+      })
+      return { ...state, transcript: next }
+    }
+
     case 'turn/start':
       return {
         ...state,
