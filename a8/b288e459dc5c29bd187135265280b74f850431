@@ -1,0 +1,29 @@
+apps/server/src/actions/handlers.ts
+  b1d5c5b8db40de23 7,55,132,208,216,237,251,261,268,278-279,289,315
+apps/server/src/lib/github-workflows.ts
+  b1d5c5b8db40de23 1,48-49,65
+apps/server/src/github/triage-writeback.ts
+  b1d5c5b8db40de23 3,97,111,133,148,215,224,233,243
+apps/server/src/lib/backfill.ts
+  b1d5c5b8db40de23 2,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a8b288e459dc5c29bd187135265280b74f850431",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 964,
+      "overriden_lines": 0
+    }
+  }
+}
