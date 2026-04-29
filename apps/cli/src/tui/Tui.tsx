@@ -48,13 +48,14 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   const wireEvents = useCallback(() => {
     const sink = (event: RuntimeEvent): void => {
-      handleRuntimeEvent(event, dispatch, streamingIdRef)
+      handleRuntimeEvent(event, dispatch, streamingIdRef, reasoningIdRef)
     }
     cli.setEventSink(sink)
     return () => cli.setEventSink(null)
   }, [cli])
 
   const streamingIdRef = useRef<string | null>(null)
+  const reasoningIdRef = useRef<string | null>(null)
 
   // Mount/unmount: load history, wire event sink, hide terminal cursor.
   useEffect(() => {
@@ -356,6 +357,24 @@ export function Tui(props: TuiProps): React.ReactElement {
       return dispatch({ type: 'transcript/clear' })
     }
 
+    if (key.ctrl && input === 'r') {
+      return dispatch({ type: 'reasoning/toggle-last' })
+    }
+
+    if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
+      dispatch({
+        type: 'card/open',
+        card: {
+          id: randomUUID(),
+          title: 'Keyboard shortcuts',
+          subtitle: 'Press ↓ or Esc to dismiss',
+          activeTab: 0,
+          sectionsByTab: [SHORTCUT_SECTIONS],
+        },
+      })
+      return
+    }
+
     if (key.ctrl && input === 'u') {
       const next = cur.buffer.slice(cur.cursor)
       return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
@@ -477,15 +496,54 @@ export function Tui(props: TuiProps): React.ReactElement {
   )
 }
 
+const SHORTCUT_SECTIONS = [
+  {
+    title: 'Editing',
+    rows: [
+      { key: 'enter', value: 'submit' },
+      { key: 'shift+enter', value: 'newline' },
+      { key: 'ctrl+u', value: 'delete to start of line' },
+      { key: 'ctrl+k', value: 'delete to end of line' },
+      { key: 'ctrl+w', value: 'delete previous word' },
+      { key: '↑ / ↓', value: 'history (or move cursor in multi-line)' },
+    ],
+  },
+  {
+    title: 'Session',
+    rows: [
+      { key: 'ctrl+l', value: 'clear transcript' },
+      { key: 'ctrl+r', value: 'expand / collapse last reasoning block' },
+      { key: 'shift+tab', value: 'cycle permission mode' },
+      { key: 'esc', value: 'cancel running turn / clear buffer' },
+      { key: 'ctrl+c', value: 'cancel turn / quit' },
+      { key: 'ctrl+d', value: 'forward delete / quit on empty line' },
+    ],
+  },
+  {
+    title: 'Discovery',
+    rows: [
+      { key: '/', value: 'slash command picker' },
+      { key: '@', value: 'file path picker' },
+      { key: '!', value: 'shell shortcut' },
+      { key: '?', value: 'this help (when buffer is empty)' },
+    ],
+  },
+] as const
+
 // ---- handlers / helpers ----
 
 function handleRuntimeEvent(
   event: RuntimeEvent,
   dispatch: React.Dispatch<TuiAction>,
   streamingIdRef: React.MutableRefObject<string | null>,
+  reasoningIdRef: React.MutableRefObject<string | null>,
 ): void {
   switch (event.kind) {
     case 'text': {
+      if (reasoningIdRef.current !== null) {
+        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
+        reasoningIdRef.current = null
+      }
       let id = streamingIdRef.current
       if (id === null) {
         id = randomUUID()
@@ -495,7 +553,21 @@ function handleRuntimeEvent(
       dispatch({ type: 'transcript/stream-append', rowId: id, delta: event.delta })
       break
     }
+    case 'reasoning': {
+      let id = reasoningIdRef.current
+      if (id === null) {
+        id = randomUUID()
+        reasoningIdRef.current = id
+        dispatch({ type: 'transcript/reasoning-begin', rowId: id, startedAt: Date.now() })
+      }
+      dispatch({ type: 'transcript/reasoning-append', rowId: id, delta: event.delta })
+      break
+    }
     case 'tool_use':
+      if (reasoningIdRef.current !== null) {
+        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
+        reasoningIdRef.current = null
+      }
       streamingIdRef.current = null
       dispatch({ type: 'transcript/stream-end' })
       dispatch({
@@ -529,6 +601,10 @@ function handleRuntimeEvent(
       }
       break
     case 'done':
+      if (reasoningIdRef.current !== null) {
+        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
+        reasoningIdRef.current = null
+      }
       streamingIdRef.current = null
       dispatch({ type: 'transcript/stream-end' })
       break
