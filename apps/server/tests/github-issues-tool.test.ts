@@ -1,94 +1,64 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { spawnFakeGitHub } from './fakes/github-server'
+import { makeFakeOctokit } from './helpers/fake-octokit'
 
-let pullsGetResult: Record<string, unknown> = {}
-let pullsListFilesResult: Record<string, unknown>[] = []
-let prReviewCommentsResult: Record<string, unknown>[] = []
-let issuesGetResult: Record<string, unknown> = {}
-let issueCommentsResult: Record<string, unknown>[] = []
-let searchCodeResult: { total_count: number; items: Record<string, unknown>[] } = { total_count: 0, items: [] }
-let searchCodeQuery: string | null = null
-let apiError: Error | null = null
+const fake = await spawnFakeGitHub()
 
 mock.module('../src/config', () => ({
   config: {
     github: {
       token: 'ghp_test',
       webhook_secret: 'test',
+      api_base_url: fake.baseUrl,
       repos: ['my-org/api'],
     },
   },
 }))
 
 const monitoredSet = new Set(['my-org/api'])
-
 mock.module('../src/lib/repo-cache', () => ({
   isRepoMonitored: async (fullName: string) => monitoredSet.has(fullName.toLowerCase()),
   getMonitoredRepos: async () => monitoredSet,
   invalidateMonitoredReposCache: () => {},
 }))
 
-mock.module('@octokit/rest', () => ({
-  Octokit: class {
-    pulls = {
-      get: async () => {
-        if (apiError) throw apiError
-        return { data: pullsGetResult }
-      },
-      listFiles: async () => {
-        return { data: pullsListFilesResult }
-      },
-      listReviewComments: async () => {
-        return { data: prReviewCommentsResult }
-      },
-    }
-    issues = {
-      get: async () => {
-        if (apiError) throw apiError
-        return { data: issuesGetResult }
-      },
-      listComments: async () => {
-        return { data: issueCommentsResult }
-      },
-    }
-    search = {
-      code: async (opts: { q: string }) => {
-        searchCodeQuery = opts.q
-        if (apiError) throw apiError
-        return { data: searchCodeResult }
-      },
-    }
-  },
-}))
-
+const { setOctokitForTesting } = await import('../src/github/octokit')
 const { getPullRequestTool, getIssueTool, searchCodeTool } = await import('../src/agent/tools/github-issues')
+
+setOctokitForTesting(makeFakeOctokit(fake.baseUrl) as never)
+
+afterAll(async () => {
+  await fake.shutdown()
+})
 
 const ctx = { toolCallId: 'test', messages: [], abortSignal: undefined as unknown as AbortSignal }
 
 beforeEach(() => {
-  pullsGetResult = {}
-  pullsListFilesResult = []
-  prReviewCommentsResult = []
-  issuesGetResult = {}
-  issueCommentsResult = []
-  searchCodeResult = { total_count: 0, items: [] }
-  searchCodeQuery = null
-  apiError = null
+  fake.requests.length = 0
+  fake.setScenario({})
 })
 
 describe('getPullRequestTool', () => {
   test('fetches PR details with files and comments', async () => {
-    pullsGetResult = {
-      title: 'Fix login bug',
-      body: 'This PR fixes the login issue',
-      state: 'open',
-      merged: false,
-      user: { login: 'dev1' },
-      base: { ref: 'main' },
-      head: { ref: 'fix/login' },
-      created_at: '2026-04-01T10:00:00Z',
-    }
-    pullsListFilesResult = [{ filename: 'src/auth.ts', status: 'modified', additions: 5, deletions: 2 }]
-    prReviewCommentsResult = [{ user: { login: 'reviewer1' }, body: 'LGTM' }]
+    fake.setScenario({
+      routes: {
+        'GET /repos/:owner/:repo/pulls/:pull_number': (c) =>
+          c.json({
+            title: 'Fix login bug',
+            body: 'This PR fixes the login issue',
+            state: 'open',
+            merged: false,
+            user: { login: 'dev1' },
+            base: { ref: 'main' },
+            head: { ref: 'fix/login' },
+            created_at: '2026-04-01T10:00:00Z',
+          }),
+        'GET /repos/:owner/:repo/pulls/:pull_number/files': (c) =>
+          c.json([{ filename: 'src/auth.ts', status: 'modified', additions: 5, deletions: 2 }]),
+        'GET /repos/:owner/:repo/pulls/:pull_number/comments': (c) =>
+          c.json([{ user: { login: 'reviewer1' }, body: 'LGTM' }]),
+      },
+    })
 
     const result = await getPullRequestTool.execute({ owner: 'my-org', repo: 'api', number: 42 }, ctx)
 
@@ -100,18 +70,23 @@ describe('getPullRequestTool', () => {
   })
 
   test('truncates long body', async () => {
-    pullsGetResult = {
-      title: 'Big PR',
-      body: 'x'.repeat(5000),
-      state: 'open',
-      merged: false,
-      user: { login: 'dev' },
-      base: { ref: 'main' },
-      head: { ref: 'feature' },
-      created_at: '2026-04-01T10:00:00Z',
-    }
-    pullsListFilesResult = []
-    prReviewCommentsResult = []
+    fake.setScenario({
+      routes: {
+        'GET /repos/:owner/:repo/pulls/:pull_number': (c) =>
+          c.json({
+            title: 'Big PR',
+            body: 'x'.repeat(5000),
+            state: 'open',
+            merged: false,
+            user: { login: 'dev' },
+            base: { ref: 'main' },
+            head: { ref: 'feature' },
+            created_at: '2026-04-01T10:00:00Z',
+          }),
+        'GET /repos/:owner/:repo/pulls/:pull_number/files': (c) => c.json([]),
+        'GET /repos/:owner/:repo/pulls/:pull_number/comments': (c) => c.json([]),
+      },
+    })
 
     const result = await getPullRequestTool.execute({ owner: 'my-org', repo: 'api', number: 1 }, ctx)
 
@@ -125,7 +100,12 @@ describe('getPullRequestTool', () => {
   })
 
   test('returns error on API failure', async () => {
-    apiError = new Error('Not Found')
+    fake.setScenario({
+      routes: {
+        'GET /repos/:owner/:repo/pulls/:pull_number': (c) => c.json({ message: 'Not Found' }, 404),
+      },
+    })
+
     const result = await getPullRequestTool.execute({ owner: 'my-org', repo: 'api', number: 999 }, ctx)
     expect(result).toHaveProperty('error')
     expect(result.error).toContain('Failed to fetch PR')
@@ -134,15 +114,21 @@ describe('getPullRequestTool', () => {
 
 describe('getIssueTool', () => {
   test('fetches issue details with labels and comments', async () => {
-    issuesGetResult = {
-      title: 'CI keeps failing on main',
-      body: 'The build has been broken since yesterday',
-      state: 'open',
-      labels: [{ name: 'bug' }, { name: 'ci' }],
-      user: { login: 'dev1' },
-      created_at: '2026-04-01T10:00:00Z',
-    }
-    issueCommentsResult = [{ user: { login: 'dev2' }, body: 'Same issue here' }]
+    fake.setScenario({
+      routes: {
+        'GET /repos/:owner/:repo/issues/:issue_number': (c) =>
+          c.json({
+            title: 'CI keeps failing on main',
+            body: 'The build has been broken since yesterday',
+            state: 'open',
+            labels: [{ name: 'bug' }, { name: 'ci' }],
+            user: { login: 'dev1' },
+            created_at: '2026-04-01T10:00:00Z',
+          }),
+        'GET /repos/:owner/:repo/issues/:issue_number/comments': (c) =>
+          c.json([{ user: { login: 'dev2' }, body: 'Same issue here' }]),
+      },
+    })
 
     const result = await getIssueTool.execute({ owner: 'my-org', repo: 'api', number: 10 }, ctx)
 
@@ -152,15 +138,20 @@ describe('getIssueTool', () => {
   })
 
   test('handles issues with string labels', async () => {
-    issuesGetResult = {
-      title: 'Test',
-      body: null,
-      state: 'open',
-      labels: ['bug', 'ci'],
-      user: { login: 'dev' },
-      created_at: '2026-04-01T10:00:00Z',
-    }
-    issueCommentsResult = []
+    fake.setScenario({
+      routes: {
+        'GET /repos/:owner/:repo/issues/:issue_number': (c) =>
+          c.json({
+            title: 'Test',
+            body: null,
+            state: 'open',
+            labels: ['bug', 'ci'],
+            user: { login: 'dev' },
+            created_at: '2026-04-01T10:00:00Z',
+          }),
+        'GET /repos/:owner/:repo/issues/:issue_number/comments': (c) => c.json([]),
+      },
+    })
 
     const result = await getIssueTool.execute({ owner: 'my-org', repo: 'api', number: 5 }, ctx)
 
@@ -175,13 +166,18 @@ describe('getIssueTool', () => {
 
 describe('searchCodeTool', () => {
   test('returns matching file paths', async () => {
-    searchCodeResult = {
-      total_count: 2,
-      items: [
-        { path: 'src/auth/login.ts', name: 'login.ts' },
-        { path: 'tests/auth/login.test.ts', name: 'login.test.ts' },
-      ],
-    }
+    fake.setScenario({
+      routes: {
+        'GET /search/code': (c) =>
+          c.json({
+            total_count: 2,
+            items: [
+              { path: 'src/auth/login.ts', name: 'login.ts' },
+              { path: 'tests/auth/login.test.ts', name: 'login.test.ts' },
+            ],
+          }),
+      },
+    })
 
     const result = await searchCodeTool.execute({ owner: 'my-org', repo: 'api', query: 'loginHandler' }, ctx)
 
@@ -191,7 +187,11 @@ describe('searchCodeTool', () => {
   })
 
   test('returns empty results when no matches', async () => {
-    searchCodeResult = { total_count: 0, items: [] }
+    fake.setScenario({
+      routes: {
+        'GET /search/code': (c) => c.json({ total_count: 0, items: [] }),
+      },
+    })
 
     const result = await searchCodeTool.execute({ owner: 'my-org', repo: 'api', query: 'nonexistent' }, ctx)
 
@@ -205,17 +205,27 @@ describe('searchCodeTool', () => {
   })
 
   test('returns error on API failure', async () => {
-    apiError = new Error('Search rate limited')
+    fake.setScenario({
+      routes: {
+        'GET /search/code': (c) => c.json({ message: 'Search rate limited' }, 429),
+      },
+    })
     const result = await searchCodeTool.execute({ owner: 'my-org', repo: 'api', query: 'test' }, ctx)
     expect(result).toHaveProperty('error')
     expect(result.error).toContain('Failed to search code')
   })
 
   test('strips scope qualifiers from query to prevent cross-repo leakage', async () => {
-    searchCodeResult = { total_count: 0, items: [] }
+    fake.setScenario({
+      routes: {
+        'GET /search/code': (c) => c.json({ total_count: 0, items: [] }),
+      },
+    })
 
     await searchCodeTool.execute({ owner: 'my-org', repo: 'api', query: 'password repo:other-org/secret-repo' }, ctx)
 
-    expect(searchCodeQuery).toBe('password repo:my-org/api')
+    const searchReq = fake.requests.find((r) => r.path === '/search/code')
+    expect(searchReq).toBeDefined()
+    expect(searchReq!.query.q).toBe('password repo:my-org/api')
   })
 })

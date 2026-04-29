@@ -1,31 +1,20 @@
-import { beforeEach, describe, expect, test, mock } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, test, mock } from 'bun:test'
 import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
+import { spawnFakeGitHub } from './fakes/github-server'
+import { makeFakeOctokit } from './helpers/fake-octokit'
+
+const fake = await spawnFakeGitHub()
 
 const octokitAuths: string[] = []
-let workflowRunResponses: Array<() => Promise<{ data: { workflow_runs: [] } }>> = []
-
-mock.module('@octokit/rest', () => ({
-  Octokit: class {
-    constructor(options: { auth: string }) {
-      octokitAuths.push(options.auth)
-    }
-
-    actions = {
-      listWorkflowRunsForRepo: async () => {
-        const nextResponse = workflowRunResponses.shift()
-        if (!nextResponse) throw new Error('No mock workflow run response configured')
-        return nextResponse()
-      },
-    }
-  },
-}))
+let workflowRunResponses: Array<() => Promise<{ data: { workflow_runs: Array<Record<string, unknown>> } }>> = []
 
 mock.module('../src/config', () => ({
   config: {
     github: {
       webhook_secret: 'secret',
       token: 'app-token',
+      api_base_url: fake.baseUrl,
       repos: [],
     },
     llm: {
@@ -109,7 +98,31 @@ mock.module('drizzle-orm', () => ({
   max: () => ({}),
 }))
 
+const { setOctokitBuilderForTesting } = await import('../src/github/octokit')
+
+// Each call to buildOctokit({auth}) records the auth token and returns a fresh
+// fake-octokit whose listWorkflowRunsForRepo pulls from workflowRunResponses.
+setOctokitBuilderForTesting(({ auth }) => {
+  octokitAuths.push(auth ?? '')
+  const realFake = makeFakeOctokit(fake.baseUrl)
+  return {
+    ...realFake,
+    actions: {
+      ...realFake.actions,
+      listWorkflowRunsForRepo: async () => {
+        const next = workflowRunResponses.shift()
+        if (!next) throw new Error('No mock workflow run response configured')
+        return next()
+      },
+    },
+  } as never
+})
+
 const { backfillRepoIncidents } = await import('../src/lib/backfill')
+
+afterAll(async () => {
+  await fake.shutdown()
+})
 
 describe('backfillRepoIncidents', () => {
   beforeEach(() => {
@@ -204,12 +217,10 @@ describe('backfillRepoIncidents', () => {
       mockDb.insert = originalInsert
     }
 
-    // Only failure (id=2) and timed_out (id=4) should be inserted
     expect(insertedValues).toHaveLength(2)
     const runIds = (insertedValues as Array<{ workflowRunId: number }>).map((v) => v.workflowRunId)
     expect(runIds).toEqual([2, 4])
 
-    // All inserted with 'error' status
     const statuses = (insertedValues as Array<{ status: string }>).map((v) => v.status)
     expect(statuses).toEqual(['error', 'error'])
   })

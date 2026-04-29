@@ -1,7 +1,11 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { afterAll, describe, test, expect, mock, beforeEach } from 'bun:test'
 import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
+import { spawnFakeGitHub } from './fakes/github-server'
+import { makeFakeOctokit } from './helpers/fake-octokit'
+
+const fake = await spawnFakeGitHub()
 
 // --- Test state ---
 let storedIncidents: Record<string, Record<string, unknown>> = {}
@@ -45,7 +49,7 @@ const TEST_INCIDENT = {
 // --- Mocks ---
 mock.module('../src/config', () => ({
   config: {
-    github: { webhook_secret: 'secret', token: 'ghp_test', repos: [] },
+    github: { webhook_secret: 'secret', token: 'ghp_test', api_base_url: fake.baseUrl, repos: [] },
   },
 }))
 
@@ -108,68 +112,37 @@ mock.module('../src/db/client', () => ({
   monitoredRepos: {},
 }))
 
-mock.module('@octokit/rest', () => ({
-  Octokit: class MockOctokit {
-    actions = {
-      reRunWorkflowFailedJobs: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'reRunWorkflowFailedJobs', args })
-        return { status: 201 }
-      },
-    }
-    issues = {
-      create: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'issues.create', args })
-        return {
-          data: {
-            html_url: `https://github.com/${args.owner}/${args.repo}/issues/42`,
-            number: 42,
-          },
-        }
-      },
-    }
-    git = {
-      getRef: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'git.getRef', args })
-        return { data: { object: { sha: 'base-sha-123' } } }
-      },
-      createRef: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'git.createRef', args })
-        return { data: {} }
-      },
-      getCommit: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'git.getCommit', args })
-        return { data: { tree: { sha: 'tree-sha-456' } } }
-      },
-      createCommit: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'git.createCommit', args })
-        return { data: { sha: 'new-commit-sha-789' } }
-      },
-      updateRef: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'git.updateRef', args })
-        return { data: {} }
-      },
-      createBlob: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'git.createBlob', args })
-        return { data: { sha: `blob-sha-${args.content?.toString().slice(0, 8)}` } }
-      },
-      createTree: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'git.createTree', args })
-        return { data: { sha: 'new-tree-sha-999' } }
-      },
-    }
-    pulls = {
-      create: async (args: Record<string, unknown>) => {
-        githubApiCalls.push({ method: 'pulls.create', args })
-        return {
-          data: {
-            html_url: `https://github.com/${args.owner}/${args.repo}/pull/7`,
-            number: 7,
-          },
-        }
-      },
-    }
+// Configure fake-server routes with canned responses, then inject a recording
+// wrapper that captures the (method, args) for each Octokit call.
+fake.setScenario({
+  routes: {
+    'POST /repos/:owner/:repo/actions/runs/:runId/rerun-failed-jobs': (c) => c.json({}, 201),
+    'POST /repos/:owner/:repo/issues': (c) => {
+      const owner = c.req.param('owner')
+      const repo = c.req.param('repo')
+      return c.json({ html_url: `https://github.com/${owner}/${repo}/issues/42`, number: 42 })
+    },
+    'GET /repos/:owner/:repo/git/ref/:ref{.+}': (c) => c.json({ object: { sha: 'base-sha-123' } }),
+    'POST /repos/:owner/:repo/git/refs': (c) => c.json({}),
+    'GET /repos/:owner/:repo/git/commits/:sha': (c) => c.json({ tree: { sha: 'tree-sha-456' } }),
+    'POST /repos/:owner/:repo/git/commits': (c) => c.json({ sha: 'new-commit-sha-789' }),
+    'PATCH /repos/:owner/:repo/git/refs/:ref{.+}': (c) => c.json({}),
+    'POST /repos/:owner/:repo/git/blobs': async (c) => {
+      const body = (await c.req.json()) as { content?: string }
+      return c.json({ sha: `blob-sha-${(body.content ?? '').slice(0, 8)}` })
+    },
+    'POST /repos/:owner/:repo/git/trees': (c) => c.json({ sha: 'new-tree-sha-999' }),
+    'POST /repos/:owner/:repo/pulls': (c) => {
+      const owner = c.req.param('owner')
+      const repo = c.req.param('repo')
+      return c.json({ html_url: `https://github.com/${owner}/${repo}/pull/7`, number: 7 })
+    },
   },
-}))
+})
+
+afterAll(async () => {
+  await fake.shutdown()
+})
 
 mock.module('../src/events', () => ({
   incidentEvents: {
@@ -204,7 +177,47 @@ mock.module('../src/lib/repo-cache', () => ({
   invalidateMonitoredReposCache: () => {},
 }))
 
-// Import handlers AFTER mocks
+const { setOctokitForTesting } = await import('../src/github/octokit')
+
+// Wrap fake-octokit with a recorder so we can keep the (method, args)-based
+// assertions from the original test.
+const realFake = makeFakeOctokit(fake.baseUrl)
+
+function record<T extends (...args: never[]) => Promise<unknown>>(method: string, fn: T): T {
+  return (async (args: Parameters<T>[0]) => {
+    githubApiCalls.push({ method, args: args as unknown as Record<string, unknown> })
+    return fn(args)
+  }) as unknown as T
+}
+
+const recordedFake = {
+  ...realFake,
+  actions: {
+    ...realFake.actions,
+    reRunWorkflowFailedJobs: record('reRunWorkflowFailedJobs', realFake.actions.reRunWorkflowFailedJobs),
+  },
+  issues: {
+    ...realFake.issues,
+    create: record('issues.create', realFake.issues.create),
+  },
+  git: {
+    getRef: record('git.getRef', realFake.git.getRef),
+    createRef: record('git.createRef', realFake.git.createRef),
+    updateRef: record('git.updateRef', realFake.git.updateRef),
+    getCommit: record('git.getCommit', realFake.git.getCommit),
+    createCommit: record('git.createCommit', realFake.git.createCommit),
+    createBlob: record('git.createBlob', realFake.git.createBlob),
+    createTree: record('git.createTree', realFake.git.createTree),
+  },
+  pulls: {
+    ...realFake.pulls,
+    create: record('pulls.create', realFake.pulls.create),
+  },
+}
+
+setOctokitForTesting(recordedFake as never)
+
+// Import handlers AFTER mocks + DI seam wired up
 const {
   rerunWorkflow,
   createGithubIssue,
