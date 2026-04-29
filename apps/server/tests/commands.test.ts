@@ -1,5 +1,11 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
+import { dbClientMockBase } from './helpers/db-client-mock'
 import { EventEmitter } from 'events'
+import { aiMockBase } from './helpers/ai-mock'
+import { llmMockBase } from './helpers/llm-mock'
+import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
+import { incidentQueueMockBase } from './helpers/incident-queue-mock'
 
 let chatInserts: Record<string, unknown>[] = []
 
@@ -17,6 +23,7 @@ let selectCalls: Array<{
 let selectRows: Record<string, unknown>[] = []
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (col: unknown, val: unknown) => ({ op: 'eq', col, val }),
   and: (...clauses: unknown[]) => ({ op: 'and', clauses: clauses.filter(Boolean) }),
   asc: (col: unknown) => col,
@@ -24,6 +31,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: (val: Record<string, unknown>) => {
@@ -72,6 +80,7 @@ const triageBus = new EventEmitter()
 triageBus.setMaxListeners(0)
 
 mock.module('../src/lib/incident-queue', () => ({
+  ...incidentQueueMockBase(),
   enqueueInvestigateJob: async (incident: FixtureIncident) => {
     enqueueCalls.push(incident)
   },
@@ -82,6 +91,7 @@ let modelCalls: Array<{ system?: string; messages: unknown }> = []
 let modelOutput = ''
 
 mock.module('ai', () => ({
+  ...aiMockBase(),
   streamText: ({ system, messages }: { system?: string; messages: unknown }) => {
     modelCalls.push({ system, messages })
     return {
@@ -93,10 +103,12 @@ mock.module('ai', () => ({
 }))
 
 mock.module('../src/agent/llm', () => ({
+  ...llmMockBase(),
   createModel: () => ({}),
 }))
 
 mock.module('../src/queries/incidents', () => ({
+  ...incidentsQueriesMockBase(),
   findIncident: async (id: string, orgId: string) => {
     const row = incidentsById.get(id)
     if (!row || row.orgId !== orgId) return undefined
@@ -113,7 +125,12 @@ mock.module('../src/queries/incidents', () => ({
 }))
 
 mock.module('../src/events', () => ({
-  incidentEvents: triageBus,
+  incidentEvents: Object.assign(triageBus, {
+    emitIncidentEvent: (event: { type: string }) => {
+      triageBus.emit(event.type, event)
+      triageBus.emit('*', event)
+    },
+  }),
 }))
 
 const { commandsRouter } = await import('../src/routes/commands')

@@ -1,4 +1,9 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
+import { dbClientMockBase } from './helpers/db-client-mock'
+import { triageWritebackMockBase } from './helpers/triage-writeback-mock'
+import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
+import { incidentQueueMockBase } from './helpers/incident-queue-mock'
 import { createHmac } from 'crypto'
 
 const TEST_SECRET = 'test-webhook-secret-123'
@@ -23,6 +28,7 @@ mock.module('../src/config', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (_col: unknown, _val: unknown) => ({}),
   and: (...clauses: unknown[]) => clauses,
   or: (...clauses: unknown[]) => clauses,
@@ -41,6 +47,7 @@ mock.module('drizzle-orm', () => ({
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: (val: Record<string, unknown>) => ({
@@ -87,6 +94,27 @@ mock.module('../src/db/client', () => ({
   incidentJobs: {},
 }))
 
+mock.module('../src/queries/incidents', () => ({
+  ...incidentsQueriesMockBase(),
+  createIncident: async (values: Record<string, unknown>) => {
+    if (simulateDuplicate) return undefined
+    insertedIncidents.push(values)
+    return { id: (values.id as string) ?? 'inc-mock', ...values }
+  },
+  findIncidentByRunId: async () => null,
+  findIncidentByPrUrl: async () => null,
+  findFixingIncidentForRepoBranch: async () => null,
+}))
+
+mock.module('../src/queries/repos', () => ({
+  findMonitoredReposByRepo: async () => [{ orgId: 'org-1', repo: 'my-org/api' }],
+}))
+
+mock.module('../src/actions/handlers', () => ({
+  handleFixPRMerged: async () => {},
+  autoResolveAfterCIPass: async () => {},
+}))
+
 mock.module('../src/lib/repo-cache', () => ({
   isRepoMonitored: async () => true,
   getMonitoredRepos: async () => new Set(['my-org/api']),
@@ -94,12 +122,14 @@ mock.module('../src/lib/repo-cache', () => ({
 }))
 
 mock.module('../src/lib/incident-queue', () => ({
+  ...incidentQueueMockBase(),
   enqueueInvestigateJob: async (incident: { id: string }) => {
     queueCalls.push(incident.id)
   },
 }))
 
 mock.module('../src/github/triage-writeback', () => ({
+  ...triageWritebackMockBase(),
   publishInitialGithubTriage: async (incident: { id: string }) => {
     githubInitialWrites.push(incident.id)
   },
