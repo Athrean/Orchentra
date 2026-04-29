@@ -16,28 +16,29 @@ import { ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, MASCOT_EYE, RESET, bg, fg } from 
 // '+' marks the central vein on each leaf; the stem itself is rendered in
 // the dim brand green so it reads as a stalk, not a body.
 const LEAF_PIXELS: readonly string[] = [
-  '          ####          ',
+  '           ##           ',
   '         ######         ',
-  '         ##++##         ',
-  '         ##++##         ',
-  '         ##++##         ',
-  '         ##++##         ',
-  '          ####          ',
-  '           ++           ',
-  '           ++           ',
-  '   ####    ++    ####   ',
-  '  ######   ++   ######  ',
-  ' ##++++##  ++  ##++++## ',
-  ' ##++++##  ++  ##++++## ',
-  '  ######   ++   ######  ',
-  '   ####    ++    ####   ',
-  '           ++           ',
-  '           ++           ',
-  '           ++           ',
-  '           ++           ',
-  '           ++           ',
-  '           ++           ',
-  '           ++           ',
+  '       ##########       ',
+  '      ####++++####      ',
+  '     ###++++++++###     ',
+  '    ###++++++++++###    ',
+  '   ###+++++##+++++###   ',
+  '   ###+++++##+++++###   ',
+  '    ###++++++++++###    ',
+  '     ###++++++++###     ',
+  '      ####++++####      ',
+  '       ##########       ',
+  '         ######         ',
+  '           ##           ',
+  '           ##           ',
+  '           ##           ',
+  '      ###  ##  ###      ',
+  '    #####  ##  #####    ',
+  '   ###+++### ###+++###  ',
+  '    #####  ##  #####    ',
+  '      ###  ##  ###      ',
+  '           ##           ',
+  '           ##           ',
 ]
 
 // Existing mascot, 16 cols × 11 rows.
@@ -55,9 +56,13 @@ const MASCOT_PIXELS: readonly string[] = [
   '     ##  ##     ',
 ]
 
-// Scene composition.
-const SCENE_HEIGHT_PIXELS = 22
+// Scene composition. Height auto-fits the tallest shape (rounded up to an
+// even number so half-block packing pairs every pixel row cleanly).
 const SCENE_WIDTH_PIXELS = 56
+const SCENE_HEIGHT_PIXELS = (() => {
+  const tallest = Math.max(LEAF_PIXELS.length, MASCOT_PIXELS.length)
+  return tallest % 2 === 0 ? tallest : tallest + 1
+})()
 const MASCOT_LEFT_OFFSET = 0
 const MASCOT_TOP_OFFSET = SCENE_HEIGHT_PIXELS - MASCOT_PIXELS.length // anchored to bottom
 const LEAF_LEFT_OFFSET = SCENE_WIDTH_PIXELS - LEAF_PIXELS[0].length - 6 // padded 6 cols right
@@ -96,11 +101,17 @@ function composeGrid(): Pixel[][] {
 }
 
 function paint(grid: Pixel[][], pixels: readonly string[], topOffset: number, leftOffset: number): void {
+  const height = grid.length
+  const width = grid[0]?.length ?? 0
   for (let y = 0; y < pixels.length; y++) {
+    const gy = topOffset + y
+    if (gy < 0 || gy >= height) continue
     const row = pixels[y]
     for (let x = 0; x < row.length; x++) {
+      const gx = leftOffset + x
+      if (gx < 0 || gx >= width) continue
       const px = pixelFor(row[x])
-      if (px.filled) grid[topOffset + y][leftOffset + x] = px
+      if (px.filled) grid[gy][gx] = px
     }
   }
 }
