@@ -1,0 +1,27 @@
+apps/server/src/lib/job-queue.ts
+  b1d5c5b8db40de23 1-35
+apps/server/src/lib/in-memory-job-queue.ts
+  b1d5c5b8db40de23 1-39
+apps/server/src/lib/pg-job-queue.ts
+  b1d5c5b8db40de23 1-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cb12297d26ce36ea2435b0601fa3ad02addcc9f6",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 273,
+      "total_deletions": 208,
+      "accepted_lines": 273,
+      "overriden_lines": 0
+    }
+  }
+}
