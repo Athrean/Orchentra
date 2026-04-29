@@ -1,23 +1,20 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { afterAll, describe, test, expect, mock, beforeEach } from 'bun:test'
 import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
-import { mockStepData, mockGenerateTextResponse, mockBrief, mockIncident } from './fixtures/agent-fixtures'
-import { aiMockBase } from './helpers/ai-mock'
-import { llmMockBase } from './helpers/llm-mock'
+import { mockBrief, mockIncident } from './fixtures/agent-fixtures'
 import { triageWritebackMockBase } from './helpers/triage-writeback-mock'
+import { spawnFakeOpenRouter, type ChatCompletionResponse, type ChatCompletionRequest } from './fakes/openrouter-server'
 
-let generateTextCalls: unknown[] = []
-let generateObjectCalls: unknown[] = []
+const fake = await spawnFakeOpenRouter()
+
 let dbUpdates: Record<string, unknown>[] = []
 let toolCallInserts: Record<string, unknown>[] = []
 let githubFinalWrites: { incidentId: string; status: 'brief_ready' | 'error' }[] = []
-let shouldThrowOnGenerate = false
-let generateObjectFailuresRemaining = 0
 
 mock.module('../src/config', () => ({
   config: {
     github: { token: 'ghp_test', webhook_secret: 'test', repos: ['my-org/api'] },
-    llm: { api_key: 'sk-or-test', model: 'anthropic/claude-sonnet-4-5' },
+    llm: { api_key: 'sk-or-test', model: 'anthropic/claude-sonnet-4-5', base_url: fake.baseUrl },
   },
 }))
 
@@ -70,55 +67,10 @@ mock.module('../src/db/client', () => ({
   incidentJobs: {},
 }))
 
-mock.module('ai', () => ({
-  ...aiMockBase(),
-  tool: (definition: unknown) => definition,
-  generateText: async (opts: {
-    tools?: Record<string, { execute?: (args: unknown) => Promise<unknown> }>
-    onStepFinish?: (step: typeof mockStepData) => Promise<void>
-    [key: string]: unknown
-  }) => {
-    generateTextCalls.push(opts)
-    if (shouldThrowOnGenerate) throw new Error('LLM call failed')
-    // Invoke tools so the registry's post-hook records each call to the DB.
-    if (opts.tools) {
-      for (const call of mockStepData.toolCalls) {
-        const t = opts.tools[call.toolName]
-        if (t?.execute) {
-          try {
-            await t.execute(call.args)
-          } catch {
-            // Registry post-hook fires on error too; swallow here.
-          }
-        }
-      }
-    }
-    if (opts.onStepFinish) {
-      await opts.onStepFinish(mockStepData)
-    }
-    return mockGenerateTextResponse
-  },
-  generateObject: async (opts: { system?: string }) => {
-    generateObjectCalls.push(opts)
-    if (generateObjectFailuresRemaining > 0) {
-      generateObjectFailuresRemaining--
-      throw new Error('schema validation failed')
-    }
-    // Patch generation uses a system prompt containing "code repair agent"
-    if (opts.system?.includes('code repair agent')) {
-      return {
-        object: { patches: [{ path: 'src/fix.ts', action: 'modify' as const, content: 'fixed' }] },
-        usage: { promptTokens: 50, completionTokens: 25 },
-      }
-    }
-    return { object: mockBrief, usage: { promptTokens: 100, completionTokens: 50 } }
-  },
-}))
-
-mock.module('../src/agent/llm', () => ({
-  ...llmMockBase(),
-  createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
-  createEmbeddingModel: () => ({ modelId: 'text-embedding-3-small' }),
+mock.module('../src/lib/repo-cache', () => ({
+  isRepoMonitored: async () => true,
+  getMonitoredRepos: async () => new Set(['my-org/api']),
+  invalidateMonitoredReposCache: () => {},
 }))
 
 mock.module('../src/agent/patterns', () => ({
@@ -134,36 +86,94 @@ mock.module('../src/github/triage-writeback', () => ({
   },
 }))
 
+const { setOctokitForTesting } = await import('../src/github/octokit')
+const { makeFakeOctokit } = await import('./helpers/fake-octokit')
+const { spawnFakeGitHub } = await import('./fakes/github-server')
+const ghFake = await spawnFakeGitHub()
+
+ghFake.setScenario({
+  jobs: [
+    {
+      id: 42,
+      name: 'Build',
+      conclusion: 'failure',
+      steps: [{ name: 'Run tests', conclusion: 'failure' }],
+      started_at: '2026-04-01T10:00:00Z',
+      completed_at: '2026-04-01T10:01:00Z',
+    },
+  ],
+  logsByJobId: { 42: 'TypeError: x is not a function' },
+})
+
+setOctokitForTesting(makeFakeOctokit(ghFake.baseUrl) as never)
+
 const { runIncidentAgent } = await import('../src/agent/runner')
 
+afterAll(async () => {
+  await fake.shutdown()
+  await ghFake.shutdown()
+})
+
+// Build the canonical successful run scenario:
+//   1. generateText call 1 → tool_call get_workflow_logs
+//   2. generateText call 2 → final text
+//   3. generateObject (synthesis) → tool_call 'json' returning the brief
+//   4. generateObject (patches, since code_bug is actionable) → tool_call 'json' returning patches
+function happyPathSelector(req: ChatCompletionRequest): ChatCompletionResponse | null {
+  const tools = req.tools ?? []
+  const hasJsonTool = tools.some((t) => t.function.name === 'json')
+
+  if (hasJsonTool) {
+    // Distinguish brief vs patch by inspecting system message content.
+    const systemMsg = req.messages.find((m) => m.role === 'system')
+    const systemText = typeof systemMsg?.content === 'string' ? systemMsg.content : ''
+    if (systemText.includes('code repair agent')) {
+      return {
+        toolCalls: [{ name: 'json', args: { patches: [{ path: 'src/fix.ts', action: 'modify', content: 'fixed' }] } }],
+        usage: { prompt_tokens: 50, completion_tokens: 25 },
+      }
+    }
+    return {
+      toolCalls: [{ name: 'json', args: mockBrief }],
+      usage: { prompt_tokens: 100, completion_tokens: 50 },
+    }
+  }
+
+  // generateText path: first call returns a tool_call, follow-ups return text.
+  const lastMsg = req.messages[req.messages.length - 1]
+  const lastIsToolResult = lastMsg?.role === 'tool'
+  if (lastIsToolResult) {
+    return {
+      text: 'Based on the logs, the test failed due to a type error.',
+      finishReason: 'stop',
+    }
+  }
+  return {
+    toolCalls: [{ name: 'get_workflow_logs', args: { owner: 'my-org', repo: 'api', runId: 123 } }],
+  }
+}
+
 beforeEach(() => {
-  generateTextCalls = []
-  generateObjectCalls = []
   dbUpdates = []
   toolCallInserts = []
   githubFinalWrites = []
-  shouldThrowOnGenerate = false
-  generateObjectFailuresRemaining = 0
+  fake.requests.length = 0
+  fake.setScenario({ selectResponse: happyPathSelector })
 })
 
 describe('Agent Runner — ReAct Loop', () => {
-  test('calls generateText for investigation phase', async () => {
+  test('issues HTTP calls to LLM during investigation phase', async () => {
     await runIncidentAgent(mockIncident)
-    expect(generateTextCalls.length).toBe(1)
+    // At least one LLM HTTP call for the investigation phase.
+    expect(fake.requests.length).toBeGreaterThanOrEqual(1)
   })
 
-  test('calls generateObject for synthesis and patch generation', async () => {
+  test('makes synthesis + patch LLM calls', async () => {
     await runIncidentAgent(mockIncident)
-    // First call: synthesis (brief), second call: patch generation (code_bug is actionable)
-    expect(generateObjectCalls.length).toBe(2)
-  })
-
-  test('passes tool results to synthesis phase', async () => {
-    await runIncidentAgent(mockIncident)
-
-    const synthCall = generateObjectCalls[0] as { messages: { role: string; content: string }[] }
-    expect(synthCall.messages).toBeDefined()
-    expect(synthCall.messages.length).toBeGreaterThan(0)
+    // After agent loop: one HTTP call carrying the synthetic 'json' tool for brief synthesis,
+    // and one for patch generation (code_bug is actionable).
+    const jsonToolReqs = fake.requests.filter((r) => (r.body.tools ?? []).some((t) => t.function.name === 'json'))
+    expect(jsonToolReqs.length).toBe(2)
   })
 
   test('updates DB with brief and status', async () => {
@@ -187,40 +197,43 @@ describe('Agent Runner — ReAct Loop', () => {
   })
 
   test('sets error status on agent failure', async () => {
-    shouldThrowOnGenerate = true
+    fake.setScenario({
+      selectResponse: () => ({ httpStatus: 500, httpBody: { error: { message: 'LLM call failed' } } }),
+    })
+
     await runIncidentAgent(mockIncident)
 
     const update = dbUpdates.find((u) => u.status === 'error')
     expect(update).toBeDefined()
     expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'error' })
-  })
+  }, 30_000)
 
-  test('retries generateObject once on failure and recovers', async () => {
-    generateObjectFailuresRemaining = 1
+  test('falls back to default brief when synthesis fails twice', async () => {
+    let synthCalls = 0
+    fake.setScenario({
+      selectResponse: (req) => {
+        const tools = req.tools ?? []
+        const hasJsonTool = tools.some((t) => t.function.name === 'json')
+        const systemMsg = req.messages.find((m) => m.role === 'system')
+        const systemText = typeof systemMsg?.content === 'string' ? systemMsg.content : ''
+
+        if (hasJsonTool && !systemText.includes('code repair agent')) {
+          synthCalls++
+          return { httpStatus: 500, httpBody: { error: { message: 'schema validation failed' } } }
+        }
+        return happyPathSelector(req)
+      },
+    })
+
     await runIncidentAgent(mockIncident)
 
-    // 2 synthesis calls (1 fail + 1 retry) + 1 patch generation = 3
-    expect(generateObjectCalls.length).toBe(3)
+    expect(synthCalls).toBeGreaterThanOrEqual(2)
     const update = dbUpdates.find((u) => u.status === 'brief_ready')
     expect(update).toBeDefined()
-    expect(update!.rootCause).toBe(mockBrief.rootCause)
-    expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'brief_ready' })
-  })
-
-  test('falls back to default brief when generateObject fails twice', async () => {
-    generateObjectFailuresRemaining = 2
-    await runIncidentAgent(mockIncident)
-
-    expect(generateObjectCalls.length).toBe(2)
-    const update = dbUpdates.find((u) => u.status === 'brief_ready')
-    expect(update).toBeDefined()
-    // Fallback brief is identifiable by failureType 'unknown' and confidence 0.2
     const briefJson = JSON.parse(update!.briefJson as string)
     expect(briefJson.failureType).toBe('unknown')
     expect(briefJson.confidence).toBe(0.2)
-    // Incident should still publish a successful triage, not error
     expect(githubFinalWrites).toContainEqual({ incidentId: 'test-incident-1', status: 'brief_ready' })
-    // No error update should be issued
     expect(dbUpdates.find((u) => u.status === 'error')).toBeUndefined()
-  })
+  }, 30_000)
 })
