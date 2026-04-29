@@ -1,19 +1,20 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { afterAll, describe, test, expect, mock, beforeEach } from 'bun:test'
 import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { EventEmitter } from 'events'
-import { aiMockBase } from './helpers/ai-mock'
-import { llmMockBase } from './helpers/llm-mock'
 import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
 import { InMemoryJobQueue } from '../src/lib/in-memory-job-queue'
 import { setJobQueue } from '../src/lib/job-queue'
+import { spawnFakeOpenRouter } from './fakes/openrouter-server'
+
+const llmFake = await spawnFakeOpenRouter()
 
 let chatInserts: Record<string, unknown>[] = []
 
 mock.module('../src/config', () => ({
   config: {
     github: { token: 'ghp_test', webhook_secret: 'test', repos: [] },
-    llm: { api_key: 'sk-or-test', model: 'anthropic/claude-sonnet-4-5' },
+    llm: { api_key: 'sk-or-test', model: 'anthropic/claude-sonnet-4-5', base_url: llmFake.baseUrl },
   },
 }))
 
@@ -87,25 +88,28 @@ cmdQueue.enqueueInvestigateJob = async (incident) => {
 setJobQueue(cmdQueue)
 
 const incidentResets: Array<{ id: string; orgId: string }> = []
-let modelCalls: Array<{ system?: string; messages: unknown }> = []
 let modelOutput = ''
 
-mock.module('ai', () => ({
-  ...aiMockBase(),
-  streamText: ({ system, messages }: { system?: string; messages: unknown }) => {
-    modelCalls.push({ system, messages })
-    return {
-      textStream: (async function* () {
-        for (const chunk of modelOutput.match(/.{1,8}/g) ?? []) yield chunk
-      })(),
-    }
-  },
-}))
+afterAll(async () => {
+  await llmFake.shutdown()
+})
 
-mock.module('../src/agent/llm', () => ({
-  ...llmMockBase(),
-  createModel: () => ({}),
-}))
+// Bridge legacy modelOutput → fake LLM response. Tests set modelOutput, the
+// fake server streams it back via SSE on the next /v1/chat/completions call.
+function configureFakeFromModelOutput(): void {
+  llmFake.setScenario({
+    selectResponse: () => ({ text: modelOutput }),
+  })
+}
+
+const modelCalls = (): Array<{ system: string | undefined; messages: unknown }> =>
+  llmFake.requests.map((r) => {
+    const sys = r.body.messages.find((m) => m.role === 'system')
+    return {
+      system: typeof sys?.content === 'string' ? sys.content : undefined,
+      messages: r.body.messages,
+    }
+  })
 
 mock.module('../src/queries/incidents', () => ({
   ...incidentsQueriesMockBase(),
@@ -155,8 +159,9 @@ beforeEach(() => {
   incidentsById.clear()
   incidentsByRunId.clear()
   incidentResets.length = 0
-  modelCalls = []
   modelOutput = ''
+  llmFake.requests.length = 0
+  configureFakeFromModelOutput()
   triageBus.removeAllListeners()
 })
 
@@ -625,8 +630,8 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(res.status).toBe(200)
     const body = await readSseBody(res)
 
-    expect(modelCalls).toHaveLength(1)
-    const call = modelCalls[0]
+    expect(modelCalls()).toHaveLength(1)
+    const call = modelCalls()[0]
     expect(call.system).toMatch(/plain.*english|prose|sentences|incident/i)
     expect(JSON.stringify(call.messages)).toContain('npm install')
 
@@ -660,7 +665,7 @@ describe('POST /api/orgs/:orgId/commands', () => {
     const body = await readSseBody(res)
     expect(body.toLowerCase()).toMatch(/still running|no brief|investigation/i)
     expect(body).toContain('/status')
-    expect(modelCalls).toHaveLength(0)
+    expect(modelCalls()).toHaveLength(0)
   })
 
   test('/explain with unknown UUID returns not found, no model call', async () => {
@@ -678,7 +683,7 @@ describe('POST /api/orgs/:orgId/commands', () => {
     expect(res.status).toBe(200)
     const body = await readSseBody(res)
     expect(body.toLowerCase()).toContain('not found')
-    expect(modelCalls).toHaveLength(0)
+    expect(modelCalls()).toHaveLength(0)
   })
 
   test('/triage cross-org incident lookup returns not-found', async () => {
