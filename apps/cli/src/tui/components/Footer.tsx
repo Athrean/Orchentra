@@ -1,5 +1,4 @@
 import React from 'react'
-import { homedir } from 'node:os'
 import { Box, Text } from 'ink'
 import type { PermissionMode, UsageTotals } from '@orchentra/cli-core'
 import { formatUsd, pricingForModel } from '@orchentra/cli-core'
@@ -18,46 +17,36 @@ export interface FooterProps {
 }
 
 export function Footer(props: FooterProps): React.ReactElement {
+  // While a turn is running, the only thing the footer needs to say is what
+  // the agent is doing — the rest is noise. When idle, show a single
+  // compact line (model | branch | cost-if-any). The shortcut strip lives
+  // behind '?' so it doesn't compete for visual weight every frame.
+  if (props.turn.state !== 'idle') {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Box>
+          <StatusGlyph turn={props.turn} spinnerFrame={props.spinnerFrame} />
+          <Text>{'  '}</Text>
+          <StatusLabel turn={props.turn} spinnerFrame={props.spinnerFrame} />
+        </Box>
+      </Box>
+    )
+  }
+
   const cost = renderCost(props.turn.tokens, props.model)
-  const left = [prettyCwd(props.cwd), props.branch].filter(Boolean).join(`  ${THEME.bullet}  `)
+  const branchSegment = props.branch ? ` ${THEME.separator} git:(${props.branch})` : ''
+  const costSegment = cost ? ` ${THEME.separator} ${cost}` : ''
+  const modeSegment = props.mode === 'workspace-write' ? '' : ` ${THEME.separator} ${formatMode(props.mode)}`
 
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box>
-        <StatusGlyph turn={props.turn} spinnerFrame={props.spinnerFrame} />
-        <Text>{'  '}</Text>
-        <StatusLabel turn={props.turn} spinnerFrame={props.spinnerFrame} />
-        <Text>{'  '}</Text>
-        <Text dimColor>{left}</Text>
-        <Box flexGrow={1} />
         <Text dimColor>{props.model}</Text>
-        <Text color={modeAccent(props.mode)}>{`  ${THEME.bullet}  ${formatMode(props.mode)}`}</Text>
-        {cost ? <Text dimColor>{`  ${THEME.bullet}  ${cost}`}</Text> : null}
+        <Text dimColor>{branchSegment}</Text>
+        {modeSegment ? <Text color={modeAccent(props.mode)}>{modeSegment}</Text> : null}
+        {costSegment ? <Text dimColor>{costSegment}</Text> : null}
       </Box>
-      {props.turn.state === 'idle' ? <HintLine /> : null}
       {props.exitHintActive ? <Text color={THEME.warn}>press Ctrl+C again to exit</Text> : null}
-    </Box>
-  )
-}
-
-const HINTS: ReadonlyArray<readonly [string, string]> = [
-  ['?', 'shortcuts'],
-  ['ctrl+r', 'reasoning'],
-  ['shift+tab', 'mode'],
-  ['ctrl+l', 'clear'],
-  ['ctrl+c', 'quit'],
-]
-
-function HintLine(): React.ReactElement {
-  return (
-    <Box flexDirection="row">
-      {HINTS.map(([key, label], i) => (
-        <Text key={key} dimColor>
-          {i > 0 ? `  ${THEME.bullet}  ` : ''}
-          <Text bold>{key}</Text>
-          {` ${label}`}
-        </Text>
-      ))}
     </Box>
   )
 }
@@ -134,11 +123,4 @@ function formatMode(mode: PermissionMode): string {
     default:
       return mode
   }
-}
-
-function prettyCwd(cwd: string): string {
-  const home = homedir()
-  if (home && cwd === home) return '~'
-  if (home && cwd.startsWith(`${home}/`)) return `~${cwd.slice(home.length)}`
-  return cwd
 }
