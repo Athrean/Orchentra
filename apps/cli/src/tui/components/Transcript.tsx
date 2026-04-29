@@ -6,6 +6,7 @@ import { THEME } from '../theme'
 import { CardSections } from './CardSections'
 import { DiffView, looksLikeDiff } from './DiffView'
 import { ReasoningBlock } from './ReasoningBlock'
+import { MarkdownView } from './MarkdownView'
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -57,7 +58,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
     case 'assistant':
       return (
         <Box paddingX={1} flexDirection="column">
-          <Text>{row.text}</Text>
+          <MarkdownView text={row.text} />
         </Box>
       )
     case 'tool_call':
