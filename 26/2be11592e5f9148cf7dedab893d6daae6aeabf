@@ -1,0 +1,29 @@
+apps/server/tests/helpers/db-client-mock.ts
+  b1d5c5b8db40de23 43
+apps/server/src/db/client.ts
+  b1d5c5b8db40de23 20
+apps/server/src/llm-config/crypto.ts
+  b1d5c5b8db40de23 1-44
+apps/server/src/llm-config/queries.ts
+  b1d5c5b8db40de23 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "262be11592e5f9148cf7dedab893d6daae6aeabf",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 7,
+      "accepted_lines": 917,
+      "overriden_lines": 0
+    }
+  }
+}
