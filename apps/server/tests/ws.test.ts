@@ -1,4 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
+import { dbClientMockBase } from './helpers/db-client-mock'
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,7 @@ let membershipExists = true
 
 // Mock db/client at absolute path level — intercepted by both ws.ts and auth/session.ts
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     select: () => ({
       from: () => ({
@@ -63,6 +66,7 @@ mock.module('../src/db/client', () => ({
 }))
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: () => ({}),
   and: () => ({}),
   gt: () => ({}),
