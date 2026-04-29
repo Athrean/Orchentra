@@ -11,32 +11,33 @@ import { ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, MASCOT_EYE, RESET, bg, fg } from 
 //   'K' = mascot eye
 //   ' ' = transparent
 
-// Symmetric lanceolate leaf, 14 cols × 22 rows, with a vertical vein and a
-// short stem at the bottom. Designed so each row mirrors left/right around
-// the center.
+// Three-leaf sprig: one vertical top leaf with two horizontal side leaves
+// flaring out around a central stem that trails down. 24 cols × 22 rows.
+// '+' marks the central vein on each leaf; the stem itself is rendered in
+// the dim brand green so it reads as a stalk, not a body.
 const LEAF_PIXELS: readonly string[] = [
-  '      ##      ',
-  '     ####     ',
-  '    ######    ',
-  '   ########   ',
-  '  ##########  ',
-  ' ############ ',
-  '##############',
-  '#####++#######',
-  '####++++######',
-  '####++++++####',
-  '###++++++++###',
-  '###++++++++###',
-  '####++++++####',
-  '####++++######',
-  '#####++#######',
-  '##############',
-  ' ############ ',
-  '  ##########  ',
-  '   ########   ',
-  '    ######    ',
-  '     ####     ',
-  '      ++      ',
+  '          ####          ',
+  '         ######         ',
+  '         ##++##         ',
+  '         ##++##         ',
+  '         ##++##         ',
+  '         ##++##         ',
+  '          ####          ',
+  '           ++           ',
+  '           ++           ',
+  '   ####    ++    ####   ',
+  '  ######   ++   ######  ',
+  ' ##++++##  ++  ##++++## ',
+  ' ##++++##  ++  ##++++## ',
+  '  ######   ++   ######  ',
+  '   ####    ++    ####   ',
+  '           ++           ',
+  '           ++           ',
+  '           ++           ',
+  '           ++           ',
+  '           ++           ',
+  '           ++           ',
+  '           ++           ',
 ]
 
 // Existing mascot, 16 cols × 11 rows.
