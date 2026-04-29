@@ -21,7 +21,10 @@ import { workflowsRouter } from './routes/workflows'
 import { analyticsRouter } from './routes/analytics'
 import { usageRouter } from './routes/usage'
 import { webhookEventsRouter } from './routes/webhook-events'
-import { startQueueWorker } from './lib/incident-queue'
+import { setJobQueue, startQueueWorker } from './lib/job-queue'
+import { PgJobQueue } from './lib/pg-job-queue'
+
+setJobQueue(new PgJobQueue())
 import {
   registerWsClient,
   unregisterWsClient,

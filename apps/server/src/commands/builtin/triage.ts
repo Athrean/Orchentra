@@ -1,6 +1,6 @@
 import type { CommandContext, CommandHandler, SlashCommandSpec } from '../registry'
 import { findIncident, findIncidentByRunId } from '../../queries/incidents'
-import { enqueueInvestigateJob } from '../../lib/incident-queue'
+import { enqueueInvestigateJob } from '../../lib/job-queue'
 import { streamIncidentEvents } from '../lib/incident-stream'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
