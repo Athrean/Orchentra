@@ -307,3 +307,25 @@ export const chatMessages = pgTable(
   },
   (table) => [index('chat_messages_org_session_created_idx').on(table.orgId, table.sessionId, table.createdAt)],
 )
+
+/**
+ * Per-org LLM configuration overrides the global env-based default.
+ * `apiKeyCiphertext` stores the customer's API key encrypted with AES-256-GCM
+ * (key = LLM_CONFIG_SECRET env var). `apiKeyIv` + `apiKeyTag` are the matching
+ * IV and auth tag.
+ */
+export const orgLlmConfigs = pgTable('org_llm_configs', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id')
+    .notNull()
+    .unique()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull().default('openrouter'),
+  modelId: text('model_id').notNull(),
+  apiKeyCiphertext: text('api_key_ciphertext'),
+  apiKeyIv: text('api_key_iv'),
+  apiKeyTag: text('api_key_tag'),
+  baseUrl: text('base_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
