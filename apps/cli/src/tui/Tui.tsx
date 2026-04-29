@@ -361,6 +361,20 @@ export function Tui(props: TuiProps): React.ReactElement {
       return dispatch({ type: 'reasoning/toggle-last' })
     }
 
+    if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
+      dispatch({
+        type: 'card/open',
+        card: {
+          id: randomUUID(),
+          title: 'Keyboard shortcuts',
+          subtitle: 'Press ↓ or Esc to dismiss',
+          activeTab: 0,
+          sectionsByTab: [SHORTCUT_SECTIONS],
+        },
+      })
+      return
+    }
+
     if (key.ctrl && input === 'u') {
       const next = cur.buffer.slice(cur.cursor)
       return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
@@ -481,6 +495,40 @@ export function Tui(props: TuiProps): React.ReactElement {
     </Box>
   )
 }
+
+const SHORTCUT_SECTIONS = [
+  {
+    title: 'Editing',
+    rows: [
+      { key: 'enter', value: 'submit' },
+      { key: 'shift+enter', value: 'newline' },
+      { key: 'ctrl+u', value: 'delete to start of line' },
+      { key: 'ctrl+k', value: 'delete to end of line' },
+      { key: 'ctrl+w', value: 'delete previous word' },
+      { key: '↑ / ↓', value: 'history (or move cursor in multi-line)' },
+    ],
+  },
+  {
+    title: 'Session',
+    rows: [
+      { key: 'ctrl+l', value: 'clear transcript' },
+      { key: 'ctrl+r', value: 'expand / collapse last reasoning block' },
+      { key: 'shift+tab', value: 'cycle permission mode' },
+      { key: 'esc', value: 'cancel running turn / clear buffer' },
+      { key: 'ctrl+c', value: 'cancel turn / quit' },
+      { key: 'ctrl+d', value: 'forward delete / quit on empty line' },
+    ],
+  },
+  {
+    title: 'Discovery',
+    rows: [
+      { key: '/', value: 'slash command picker' },
+      { key: '@', value: 'file path picker' },
+      { key: '!', value: 'shell shortcut' },
+      { key: '?', value: 'this help (when buffer is empty)' },
+    ],
+  },
+] as const
 
 // ---- handlers / helpers ----
 

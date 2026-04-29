@@ -34,7 +34,30 @@ export function Footer(props: FooterProps): React.ReactElement {
         <Text color={modeAccent(props.mode)}>{`  ${THEME.bullet}  ${formatMode(props.mode)}`}</Text>
         {cost ? <Text dimColor>{`  ${THEME.bullet}  ${cost}`}</Text> : null}
       </Box>
+      {props.turn.state === 'idle' ? <HintLine /> : null}
       {props.exitHintActive ? <Text color={THEME.warn}>press Ctrl+C again to exit</Text> : null}
+    </Box>
+  )
+}
+
+const HINTS: ReadonlyArray<readonly [string, string]> = [
+  ['?', 'shortcuts'],
+  ['ctrl+r', 'reasoning'],
+  ['shift+tab', 'mode'],
+  ['ctrl+l', 'clear'],
+  ['ctrl+c', 'quit'],
+]
+
+function HintLine(): React.ReactElement {
+  return (
+    <Box flexDirection="row">
+      {HINTS.map(([key, label], i) => (
+        <Text key={key} dimColor>
+          {i > 0 ? `  ${THEME.bullet}  ` : ''}
+          <Text bold>{key}</Text>
+          {` ${label}`}
+        </Text>
+      ))}
     </Box>
   )
 }
