@@ -2,13 +2,35 @@ import { z } from 'zod'
 import type { Permission, ToolRegistry } from './tool-registry'
 
 // ── Cacheable static head ────────────────────────────────────────────────
-// Bytes here must be stable across incidents so Anthropic ephemeral caching hits.
-const AGENT_PERSONA_HEAD = `You are an incident triage agent for engineering teams.
+// Bytes here must be stable across incidents (per kind) so Anthropic
+// ephemeral caching hits within each execution kind. The heads diverge by
+// kind so cache slots are kept independent — that's the desired behavior.
+const PERSONA_HEADS: Record<ExecutionKindForPrompt, string> = {
+  ci_failure: `You are an incident triage agent for engineering teams.
 
 When a CI/CD failure is reported, your job is to:
 1. Call tools to gather evidence — logs, commit changes, config files
 2. Reason across the evidence to identify root cause
-3. Stop when you have enough information for a confident assessment`
+3. Stop when you have enough information for a confident assessment`,
+
+  alert: `You are an on-call triage agent for production alert investigations.
+
+When a production alert is reported (e.g. an exception caught by Sentry or a
+threshold tripped by Datadog), your job is to:
+1. Pull the alert payload, recent commits on the affected service, and any
+   logs the tools expose
+2. Decide whether the alert is a real regression, a known pattern, or noise
+3. Stop with a confident classification — do not page a human unless the
+   evidence is incomplete`,
+
+  cron: `You are a scheduled task agent.
+
+When a scheduled task fires (e.g. a nightly skill run, a periodic health
+check), your job is to:
+1. Execute the task as specified
+2. Report any anomalies the tools surface
+3. Stop with a brief summary — escalate only if the run failed`,
+}
 
 // ── Cacheable static tail ────────────────────────────────────────────────
 const AGENT_STRATEGY_TAIL = `Tool calling strategy:
@@ -82,23 +104,30 @@ export function renderToolCatalog(registry: ToolRegistry, allowed: Set<Permissio
 
 // ── Public builder ───────────────────────────────────────────────────────
 
+export type ExecutionKindForPrompt = 'ci_failure' | 'alert' | 'cron'
+
 export interface BuildAgentSystemPromptArgs {
   registry: ToolRegistry
   /** Permission scope used to filter the rendered catalog. Defaults to read+write+admin. */
   permissions?: Set<Permission>
+  /** Discriminator for which execution kind is being investigated. Defaults to `ci_failure`. */
+  kind?: ExecutionKindForPrompt
 }
 
 /**
- * Compose the full agent system prompt: cacheable persona head + tool catalog
- * rendered from the registry + cacheable strategy/rules tail.
+ * Compose the full agent system prompt: cacheable per-kind persona head +
+ * tool catalog rendered from the registry + cacheable strategy/rules tail.
  *
- * Head and tail bytes are stable across incidents; the catalog only changes
- * when registry membership changes, which is the desired cache invalidation.
+ * Head bytes are stable per kind so Anthropic ephemeral caching hits within
+ * a kind; the catalog and tail are stable across all kinds. The catalog
+ * changes only when registry membership changes, which is the desired
+ * cache invalidation.
  */
 export function buildAgentSystemPrompt(args: BuildAgentSystemPromptArgs): string {
   const allowed = args.permissions ?? new Set<Permission>(['read', 'write', 'admin'])
   const catalog = renderToolCatalog(args.registry, allowed)
-  return [AGENT_PERSONA_HEAD, '', catalog, '', AGENT_STRATEGY_TAIL].join('\n')
+  const head = PERSONA_HEADS[args.kind ?? 'ci_failure']
+  return [head, '', catalog, '', AGENT_STRATEGY_TAIL].join('\n')
 }
 
 export const SYNTHESIS_PROMPT = `You are synthesizing an incident investigation into a structured brief.
