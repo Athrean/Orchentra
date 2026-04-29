@@ -260,6 +260,33 @@ export const webhookEvents = pgTable(
 )
 
 /**
+ * Cron specs — orgs schedule recurring skill runs by inserting one row per
+ * (org, skill, expression). A scheduler tick reads due rows, spawns an
+ * execution with kind='cron' for each, and updates `last_ticked_at`.
+ *
+ * Phase 2 lands storage + a pure tick selector. The scheduler runtime that
+ * actually emits executions lands in a follow-up.
+ */
+export const cronSpecs = pgTable(
+  'cron_specs',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    skillName: text('skill_name').notNull(),
+    cronExpr: text('cron_expr').notNull(),
+    lastTickedAt: timestamp('last_ticked_at', { withTimezone: true }),
+    enabled: integer('enabled').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('cron_specs_org_skill_idx').on(table.orgId, table.skillName),
+    index('cron_specs_enabled_idx').on(table.enabled),
+  ],
+)
+
+/**
  * Persistent chat message history per org+session.
  * Each row is one turn (user or assistant). Tool call deltas are not stored
  * individually — the final assistant text after tool execution is the only
