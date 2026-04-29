@@ -1,8 +1,10 @@
-import { describe, test, expect, mock } from 'bun:test'
-
-// ── Mocks ─────────────────────────────────────────────────────────────────────
+import { afterAll, describe, test, expect, mock } from 'bun:test'
+import { spawnFakeGitHub } from './fakes/github-server'
+import { makeFakeOctokit } from './helpers/fake-octokit'
 
 const MONITORED_REPO = 'owner/repo'
+
+const fake = await spawnFakeGitHub()
 
 const mockWorkflows = [
   { id: 1, name: 'CI', path: '.github/workflows/ci.yml', state: 'active' },
@@ -26,30 +28,31 @@ const mockRuns = [
   },
 ]
 
-// Mock Octokit at the github-workflows level
-mock.module('@octokit/rest', () => ({
-  Octokit: class {
-    actions = {
-      listRepoWorkflows: () => Promise.resolve({ data: { workflows: mockWorkflows } }),
-      listWorkflowRunsForRepo: () => Promise.resolve({ data: { workflow_runs: mockRuns } }),
-      listWorkflowRuns: () => Promise.resolve({ data: { workflow_runs: mockRuns } }),
-      createWorkflowDispatch: () => Promise.resolve({}),
-      cancelWorkflowRun: () => Promise.resolve({}),
-    }
+fake.setScenario({
+  routes: {
+    'GET /repos/:owner/:repo/actions/workflows': (c) => c.json({ workflows: mockWorkflows }),
+    'GET /repos/:owner/:repo/actions/runs': (c) => c.json({ workflow_runs: mockRuns }),
+    'POST /repos/:owner/:repo/actions/workflows/:workflowId/dispatches': (c) => c.json({}, 204),
+    'POST /repos/:owner/:repo/actions/runs/:runId/cancel': (c) => c.json({}, 202),
   },
-}))
+})
 
 mock.module('../src/config', () => ({
   config: {
-    github: { token: 'test-token' },
+    github: { token: 'test-token', api_base_url: fake.baseUrl },
     llm: { api_key: 'k', model: 'm', embedding_model: 'e' },
   },
 }))
 
+const { setOctokitForTesting } = await import('../src/github/octokit')
 const { listWorkflows, listWorkflowRuns, dispatchWorkflow, cancelWorkflowRun } =
   await import('../src/lib/github-workflows')
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+setOctokitForTesting(makeFakeOctokit(fake.baseUrl) as never)
+
+afterAll(async () => {
+  await fake.shutdown()
+})
 
 describe('listWorkflows', () => {
   test('returns workflow array for a valid repo', async () => {
@@ -92,7 +95,7 @@ describe('listWorkflowRuns', () => {
   test('calculates durationSeconds from created/updated timestamps', async () => {
     const result = await listWorkflowRuns(MONITORED_REPO, 1)
     if (!('error' in result)) {
-      expect(result[0].durationSeconds).toBe(300) // 5 minutes
+      expect(result[0].durationSeconds).toBe(300)
     }
   })
 })

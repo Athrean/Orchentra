@@ -1,13 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { Octokit as OctokitType } from '@octokit/rest'
-import { config } from '../../config'
+import { getOctokit } from '../../github/octokit'
 import { isRepoMonitored } from '../../lib/repo-cache'
-
-async function octokitClient(): Promise<OctokitType> {
-  const { Octokit } = await import('@octokit/rest')
-  return new Octokit({ auth: config.github.token })
-}
 
 const MAX_COMMENTS = 10
 const MAX_BODY_CHARS = 3000
@@ -28,9 +22,9 @@ export const getPullRequestTool = tool({
     }
     try {
       const [prResult, filesResult, commentsResult] = await Promise.all([
-        (await octokitClient()).pulls.get({ owner, repo, pull_number: prNumber }),
-        (await octokitClient()).pulls.listFiles({ owner, repo, pull_number: prNumber, per_page: 20 }),
-        (await octokitClient()).pulls.listReviewComments({
+        getOctokit().pulls.get({ owner, repo, pull_number: prNumber }),
+        getOctokit().pulls.listFiles({ owner, repo, pull_number: prNumber, per_page: 20 }),
+        getOctokit().pulls.listReviewComments({
           owner,
           repo,
           pull_number: prNumber,
@@ -87,8 +81,8 @@ export const getIssueTool = tool({
     }
     try {
       const [issueResult, commentsResult] = await Promise.all([
-        (await octokitClient()).issues.get({ owner, repo, issue_number: issueNumber }),
-        (await octokitClient()).issues.listComments({ owner, repo, issue_number: issueNumber, per_page: MAX_COMMENTS }),
+        getOctokit().issues.get({ owner, repo, issue_number: issueNumber }),
+        getOctokit().issues.listComments({ owner, repo, issue_number: issueNumber, per_page: MAX_COMMENTS }),
       ])
 
       const issue = issueResult.data
@@ -131,9 +125,7 @@ export const searchCodeTool = tool({
     try {
       // Strip scope qualifiers to prevent cross-repo query injection
       const sanitized = query.replace(/\b(repo|org|user):[^\s]+/g, '').trim()
-      const { data } = await (
-        await octokitClient()
-      ).search.code({
+      const { data } = await getOctokit().search.code({
         q: `${sanitized} repo:${owner}/${repo}`,
         per_page: 10,
       })

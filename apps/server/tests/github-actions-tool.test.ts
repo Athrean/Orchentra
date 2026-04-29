@@ -66,7 +66,8 @@ mock.module('../src/lib/repo-cache', () => ({
   invalidateMonitoredReposCache: () => {},
 }))
 
-const { githubActionsTool, setOctokitForTesting } = await import('../src/agent/tools/github-actions')
+const { setOctokitForTesting } = await import('../src/github/octokit')
+const { githubActionsTool } = await import('../src/agent/tools/github-actions')
 
 // Inject the fake-Octokit pointing at the local fake server.
 setOctokitForTesting(makeFakeOctokit(fake.baseUrl) as never)

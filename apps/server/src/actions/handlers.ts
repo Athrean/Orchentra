@@ -1,13 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { Octokit } from '@octokit/rest'
 import { db, incidents, incidentActions } from '../db/client'
-import { config } from '../config'
 import { incidentEvents } from '../events'
 import { saveResolvedPattern } from '../agent/patterns'
 import { findIncidentByPrUrl, findFixingIncidentForRepoBranch } from '../queries/incidents'
 import { PatchSetSchema, type FilePatch } from '@orchentra/core'
-
-const octokit = new Octokit({ auth: config.github.token })
+import { getOctokit } from '../github/octokit'
 
 export interface ActionResult {
   success: boolean
@@ -55,7 +52,7 @@ export async function rerunWorkflow(incidentId: string, performedBy: string | nu
   const { owner, name } = parseRepo(incident.repo)
 
   try {
-    await octokit.actions.reRunWorkflowFailedJobs({
+    await getOctokit().actions.reRunWorkflowFailedJobs({
       owner,
       repo: name,
       run_id: incident.workflowRunId,
@@ -132,7 +129,7 @@ export async function createGithubIssue(incidentId: string, performedBy: string 
   ].join('\n')
 
   try {
-    const { data: issue } = await octokit.issues.create({
+    const { data: issue } = await getOctokit().issues.create({
       owner,
       repo: name,
       title: `[CI Failure] ${incident.workflowName} — ${(brief.rootCause ?? 'Unknown').slice(0, 80)}`,
@@ -208,7 +205,7 @@ export async function createFixPR(incidentId: string, performedBy: string | null
 
   try {
     // Get the base branch ref
-    const { data: ref } = await octokit.git.getRef({
+    const { data: ref } = await getOctokit().git.getRef({
       owner,
       repo: name,
       ref: `heads/${incident.branch}`,
@@ -216,7 +213,7 @@ export async function createFixPR(incidentId: string, performedBy: string | null
     const baseSha = ref.object.sha
 
     // Create the fix branch
-    await octokit.git.createRef({
+    await getOctokit().git.createRef({
       owner,
       repo: name,
       ref: `refs/heads/${branchName}`,
@@ -237,7 +234,7 @@ export async function createFixPR(incidentId: string, performedBy: string | null
 
     if (patches.length > 0) {
       // Apply real file patches via Git tree API
-      const { data: baseCommit } = await octokit.git.getCommit({ owner, repo: name, commit_sha: baseSha })
+      const { data: baseCommit } = await getOctokit().git.getCommit({ owner, repo: name, commit_sha: baseSha })
 
       const treeEntries = []
       for (const patch of patches) {
@@ -251,7 +248,7 @@ export async function createFixPR(incidentId: string, performedBy: string | null
               httpStatus: 400,
             }
           }
-          const { data: blob } = await octokit.git.createBlob({
+          const { data: blob } = await getOctokit().git.createBlob({
             owner,
             repo: name,
             content: patch.content,
@@ -261,14 +258,14 @@ export async function createFixPR(incidentId: string, performedBy: string | null
         }
       }
 
-      const { data: newTree } = await octokit.git.createTree({
+      const { data: newTree } = await getOctokit().git.createTree({
         owner,
         repo: name,
         base_tree: baseCommit.tree.sha,
         tree: treeEntries,
       })
 
-      const { data: newCommit } = await octokit.git.createCommit({
+      const { data: newCommit } = await getOctokit().git.createCommit({
         owner,
         repo: name,
         message: commitMessage,
@@ -278,8 +275,8 @@ export async function createFixPR(incidentId: string, performedBy: string | null
       newCommitSha = newCommit.sha
     } else {
       // Fallback: metadata-only commit (no file changes)
-      const { data: baseCommit } = await octokit.git.getCommit({ owner, repo: name, commit_sha: baseSha })
-      const { data: newCommit } = await octokit.git.createCommit({
+      const { data: baseCommit } = await getOctokit().git.getCommit({ owner, repo: name, commit_sha: baseSha })
+      const { data: newCommit } = await getOctokit().git.createCommit({
         owner,
         repo: name,
         message: commitMessage,
@@ -289,7 +286,7 @@ export async function createFixPR(incidentId: string, performedBy: string | null
       newCommitSha = newCommit.sha
     }
 
-    await octokit.git.updateRef({
+    await getOctokit().git.updateRef({
       owner,
       repo: name,
       ref: `heads/${branchName}`,
@@ -315,7 +312,7 @@ export async function createFixPR(incidentId: string, performedBy: string | null
     ].join('\n')
 
     // Open the PR
-    const { data: pr } = await octokit.pulls.create({
+    const { data: pr } = await getOctokit().pulls.create({
       owner,
       repo: name,
       title: `fix: ${(brief.rootCause ?? 'CI failure').slice(0, 72)}`,

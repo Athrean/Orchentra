@@ -1,13 +1,22 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
+import { spawnFakeGitHub } from './fakes/github-server'
+import { makeFakeOctokit } from './helpers/fake-octokit'
+
+interface CapturedGhCall {
+  method: string
+  args: Record<string, unknown>
+}
+
+const fake = await spawnFakeGitHub()
 
 let dbUpdates: Record<string, unknown>[] = []
-let githubCalls: { method: string; args: Record<string, unknown> }[] = []
+let githubCalls: CapturedGhCall[] = []
 
 mock.module('../src/config', () => ({
   config: {
-    github: { token: 'ghp_test', webhook_secret: 'secret', repos: [] },
+    github: { token: 'ghp_test', webhook_secret: 'secret', api_base_url: fake.baseUrl, repos: [] },
   },
 }))
 
@@ -40,9 +49,7 @@ mock.module('../src/db/client', () => ({
       },
     }),
   },
-  incidents: {
-    id: 'id',
-  },
+  incidents: { id: 'id' },
   toolCalls: {},
   resolvedPatterns: {},
   incidentActions: {},
@@ -57,47 +64,78 @@ mock.module('../src/db/client', () => ({
   incidentJobs: {},
 }))
 
-mock.module('@octokit/rest', () => ({
-  Octokit: class MockOctokit {
-    checks = {
-      create: async (args: Record<string, unknown>) => {
-        githubCalls.push({ method: 'checks.create', args })
-        return { data: { id: 9001 } }
-      },
-      update: async (args: Record<string, unknown>) => {
-        githubCalls.push({ method: 'checks.update', args })
-        return { data: { id: args.check_run_id } }
-      },
-    }
-    repos = {
-      createCommitStatus: async (args: Record<string, unknown>) => {
-        githubCalls.push({ method: 'repos.createCommitStatus', args })
-        return { data: { id: 1 } }
-      },
-      listPullRequestsAssociatedWithCommit: async () => {
-        return { data: [{ number: 17, state: 'open' }] }
-      },
-    }
-    issues = {
-      listComments: async () => ({ data: [] }),
-      createComment: async (args: Record<string, unknown>) => {
-        githubCalls.push({ method: 'issues.createComment', args })
-        return { data: { id: 7001 } }
-      },
-      updateComment: async (args: Record<string, unknown>) => {
-        githubCalls.push({ method: 'issues.updateComment', args })
-        return { data: { id: args.comment_id } }
-      },
-    }
-    paginate = {
-      iterator: (_fn: unknown, _opts: Record<string, unknown>) => {
-        return (async function* () {
-          yield { data: [] }
-        })()
-      },
-    }
+const { setOctokitForTesting } = await import('../src/github/octokit')
+
+// Build a fake-octokit that records calls + delegates to the fake server.
+const realFake = makeFakeOctokit(fake.baseUrl)
+const recordedFake = {
+  ...realFake,
+  checks: {
+    create: async (args: Parameters<typeof realFake.checks.create>[0]) => {
+      githubCalls.push({ method: 'checks.create', args: args as unknown as Record<string, unknown> })
+      return realFake.checks.create(args)
+    },
+    update: async (args: Parameters<typeof realFake.checks.update>[0]) => {
+      githubCalls.push({ method: 'checks.update', args: args as unknown as Record<string, unknown> })
+      return realFake.checks.update(args)
+    },
   },
-}))
+  repos: {
+    ...realFake.repos,
+    createCommitStatus: async (args: Parameters<typeof realFake.repos.createCommitStatus>[0]) => {
+      githubCalls.push({ method: 'repos.createCommitStatus', args: args as unknown as Record<string, unknown> })
+      return realFake.repos.createCommitStatus(args)
+    },
+    listPullRequestsAssociatedWithCommit: async (
+      args: Parameters<typeof realFake.repos.listPullRequestsAssociatedWithCommit>[0],
+    ) => {
+      githubCalls.push({
+        method: 'repos.listPullRequestsAssociatedWithCommit',
+        args: args as unknown as Record<string, unknown>,
+      })
+      return realFake.repos.listPullRequestsAssociatedWithCommit(args)
+    },
+  },
+  issues: {
+    ...realFake.issues,
+    createComment: async (args: Parameters<typeof realFake.issues.createComment>[0]) => {
+      githubCalls.push({ method: 'issues.createComment', args: args as unknown as Record<string, unknown> })
+      return realFake.issues.createComment(args)
+    },
+    updateComment: async (args: Parameters<typeof realFake.issues.updateComment>[0]) => {
+      githubCalls.push({ method: 'issues.updateComment', args: args as unknown as Record<string, unknown> })
+      return realFake.issues.updateComment(args)
+    },
+    listComments: async (args: Parameters<typeof realFake.issues.listComments>[0]) => {
+      githubCalls.push({ method: 'issues.listComments', args: args as unknown as Record<string, unknown> })
+      return realFake.issues.listComments(args)
+    },
+  },
+}
+
+setOctokitForTesting(recordedFake as never)
+
+fake.setScenario({
+  routes: {
+    'POST /repos/:owner/:repo/check-runs': (c) => c.json({ id: 9001 }),
+    'PATCH /repos/:owner/:repo/check-runs/:check_run_id': (c) => {
+      const id = Number(c.req.param('check_run_id'))
+      return c.json({ id })
+    },
+    'POST /repos/:owner/:repo/statuses/:sha': (c) => c.json({ id: 1 }),
+    'GET /repos/:owner/:repo/commits/:sha/pulls': (c) => c.json([{ number: 17, state: 'open' }]),
+    'GET /repos/:owner/:repo/issues/:issue_number/comments': (c) => c.json([]),
+    'POST /repos/:owner/:repo/issues/:issue_number/comments': (c) => c.json({ id: 7001 }),
+    'PATCH /repos/:owner/:repo/issues/comments/:comment_id': (c) => {
+      const id = Number(c.req.param('comment_id'))
+      return c.json({ id })
+    },
+  },
+})
+
+afterAll(async () => {
+  await fake.shutdown()
+})
 
 const { publishInitialGithubTriage, publishFinalGithubTriage } = await import('../src/github/triage-writeback')
 
@@ -137,7 +175,7 @@ describe('triage writeback', () => {
 
     expect(checkCall).toBeDefined()
     expect(statusCall?.args.state).toBe('success')
-    expect(commentCall?.args.body).toContain('Orchentra Triage Results')
+    expect((commentCall?.args.body as string) ?? '').toContain('Orchentra Triage Results')
     expect(dbUpdates.some((update) => typeof update.githubTriageCommentIds === 'object')).toBe(true)
   })
 
