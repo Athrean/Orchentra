@@ -24,6 +24,7 @@ const CATEGORY: Record<string, TabName> = {
   triage: 'Server',
   retry: 'Server',
   explain: 'Server',
+  graph: 'Server',
   login: 'Auth',
   logout: 'Auth',
   'auth-status': 'Auth',
