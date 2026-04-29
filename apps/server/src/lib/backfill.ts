@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest'
+import { buildOctokit } from '../github/octokit'
 import { eq, max, inArray } from 'drizzle-orm'
 import { config } from '../config'
 import { db, incidents, monitoredRepos, orgMembers, users } from '../db/client'
@@ -78,7 +79,7 @@ async function listCompletedWorkflowRuns(
   since: string,
   authToken: string,
 ): Promise<WorkflowRuns> {
-  const octokit = new Octokit({ auth: authToken, log: silentOctokitLogger })
+  const octokit = buildOctokit({ auth: authToken, log: silentOctokitLogger })
   let runs: WorkflowRuns = []
 
   // Paginate up to 5 pages (500 runs) to get meaningful history

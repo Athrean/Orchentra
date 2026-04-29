@@ -1,20 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { Octokit } from '@octokit/rest'
-import { config } from '../../config'
+import { getOctokit } from '../../github/octokit'
 import { isRepoMonitored } from '../../lib/repo-cache'
-
-type OctokitLike = Pick<Octokit, 'actions'>
-
-let octokit: OctokitLike = new Octokit({
-  auth: config.github.token,
-  baseUrl: config.github.api_base_url ?? 'https://api.github.com',
-})
-
-/** Test-only seam: swap the Octokit instance used by this tool. */
-export function setOctokitForTesting(client: OctokitLike): void {
-  octokit = client
-}
 
 const MAX_LOG_LINES = 300
 
@@ -48,7 +35,7 @@ export async function fetchFailedJobLogs(
       return { error: `Repository ${fullName.toLowerCase()} is not in the monitored repos list` }
     }
 
-    const { data } = await octokit.actions.listJobsForWorkflowRun({
+    const { data } = await getOctokit().actions.listJobsForWorkflowRun({
       owner,
       repo,
       run_id: runId,
@@ -59,7 +46,7 @@ export async function fetchFailedJobLogs(
       return { error: 'No failed job found in this workflow run' }
     }
 
-    const { data: logsData } = await octokit.actions.downloadJobLogsForWorkflowRun({
+    const { data: logsData } = await getOctokit().actions.downloadJobLogsForWorkflowRun({
       owner,
       repo,
       job_id: failedJob.id,
