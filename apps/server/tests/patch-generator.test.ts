@@ -1,4 +1,6 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { aiMockBase } from './helpers/ai-mock'
+import { llmMockBase } from './helpers/llm-mock'
 
 let generateObjectResult: { object: unknown; usage: unknown } | null = null
 let generateObjectShouldFail = false
@@ -11,6 +13,7 @@ mock.module('../src/config', () => ({
 }))
 
 mock.module('ai', () => ({
+  ...aiMockBase(),
   generateObject: async (_opts: { system?: string }) => {
     if (generateObjectShouldFail) throw new Error('LLM error')
     return generateObjectResult ?? { object: { patches: [] }, usage: null }
@@ -18,6 +21,7 @@ mock.module('ai', () => ({
 }))
 
 mock.module('../src/agent/llm', () => ({
+  ...llmMockBase(),
   createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
 }))
 

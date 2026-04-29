@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { broadcastToOrg } from './ws'
+import { broadcastToOrg as defaultBroadcast } from './ws'
 
 export type IncidentEventType = 'incident:created' | 'incident:updated' | 'incident:status_changed' | 'incident:action'
 
@@ -9,6 +9,15 @@ export interface IncidentEvent {
   orgId: string
   repo: string
   data?: Record<string, unknown>
+}
+
+type Broadcaster = (orgId: string, payload: unknown, repo?: string) => void
+
+let broadcaster: Broadcaster = defaultBroadcast
+
+/** Test-only seam: swap the WS broadcaster so events tests don't have to mock '../src/ws'. */
+export function setBroadcasterForTesting(fn: Broadcaster | null): void {
+  broadcaster = fn ?? defaultBroadcast
 }
 
 class IncidentEventBus extends EventEmitter {
@@ -21,7 +30,7 @@ class IncidentEventBus extends EventEmitter {
     this.emit(event.type, event)
     this.emit('*', event) // wildcard for SSE streaming all events
     // Fan-out to all WebSocket clients in the same org
-    broadcastToOrg(event.orgId, event, event.repo)
+    broadcaster(event.orgId, event, event.repo)
   }
 }
 

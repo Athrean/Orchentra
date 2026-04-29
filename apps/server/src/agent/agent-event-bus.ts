@@ -1,5 +1,14 @@
 import type { AgentEvent } from './agent-events'
-import { broadcastToOrg } from '../ws'
+import { broadcastToOrg as defaultBroadcast } from '../ws'
+
+type Broadcaster = (orgId: string, payload: unknown, repo?: string) => void
+
+let broadcaster: Broadcaster = defaultBroadcast
+
+/** Test-only seam: swap the WS broadcaster so tests don't have to mock '../ws'. */
+export function setBroadcasterForTesting(fn: Broadcaster | null): void {
+  broadcaster = fn ?? defaultBroadcast
+}
 
 export const REPLAY_MAX_EVENTS = 20
 export const REPLAY_MAX_BYTES = 32 * 1024
@@ -60,7 +69,7 @@ export function emitAgentEvent({ incidentId, orgId, repo, event }: EmitArgs): vo
   }
   pushBounded(buf, envelope)
 
-  broadcastToOrg(orgId, { type: 'agent:event', incidentId, timestamp: envelope.timestamp, event }, repo)
+  broadcaster(orgId, { type: 'agent:event', incidentId, timestamp: envelope.timestamp, event }, repo)
 }
 
 export function getReplay(incidentId: string): AgentEventEnvelope[] {

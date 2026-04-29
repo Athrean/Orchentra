@@ -1,10 +1,13 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { Octokit } from '@octokit/rest'
+import type { Octokit as OctokitType } from '@octokit/rest'
 import { config } from '../../config'
 import { isRepoMonitored } from '../../lib/repo-cache'
 
-const octokit = new Octokit({ auth: config.github.token })
+async function octokitClient(): Promise<OctokitType> {
+  const { Octokit } = await import('@octokit/rest')
+  return new Octokit({ auth: config.github.token })
+}
 
 const MAX_PATCH_CHARS = 2000
 const MAX_FILE_CHARS = 4000
@@ -25,7 +28,7 @@ export const getCommitChangesTool = tool({
       return { error: `Repository ${fullName} is not monitored` }
     }
     try {
-      const { data } = await octokit.repos.getCommit({ owner, repo, ref: sha })
+      const { data } = await (await octokitClient()).repos.getCommit({ owner, repo, ref: sha })
       const files = (data.files ?? []).slice(0, 20).map((f) => ({
         filename: f.filename,
         status: f.status,
@@ -63,7 +66,7 @@ export const getFileContentTool = tool({
       return { error: `Repository ${fullName} is not monitored` }
     }
     try {
-      const { data } = await octokit.repos.getContent({ owner, repo, path, ref })
+      const { data } = await (await octokitClient()).repos.getContent({ owner, repo, path, ref })
       if (Array.isArray(data)) {
         return { error: 'Path is a directory — specify a file path' }
       }
