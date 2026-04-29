@@ -17,4 +17,5 @@ export {
   chatMessages,
   webhookEvents,
   incidentJobs,
+  orgLlmConfigs,
 } from '@orchentra/db'
