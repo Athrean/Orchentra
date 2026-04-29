@@ -40,5 +40,6 @@ export function dbClientMockBase(): Record<string, unknown> {
     chatMessages: {},
     webhookEvents: {},
     incidentJobs: {},
+    orgLlmConfigs: {},
   }
 }
