@@ -48,13 +48,14 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   const wireEvents = useCallback(() => {
     const sink = (event: RuntimeEvent): void => {
-      handleRuntimeEvent(event, dispatch, streamingIdRef)
+      handleRuntimeEvent(event, dispatch, streamingIdRef, reasoningIdRef)
     }
     cli.setEventSink(sink)
     return () => cli.setEventSink(null)
   }, [cli])
 
   const streamingIdRef = useRef<string | null>(null)
+  const reasoningIdRef = useRef<string | null>(null)
 
   // Mount/unmount: load history, wire event sink, hide terminal cursor.
   useEffect(() => {
@@ -356,6 +357,10 @@ export function Tui(props: TuiProps): React.ReactElement {
       return dispatch({ type: 'transcript/clear' })
     }
 
+    if (key.ctrl && input === 'r') {
+      return dispatch({ type: 'reasoning/toggle-last' })
+    }
+
     if (key.ctrl && input === 'u') {
       const next = cur.buffer.slice(cur.cursor)
       return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
@@ -483,9 +488,14 @@ function handleRuntimeEvent(
   event: RuntimeEvent,
   dispatch: React.Dispatch<TuiAction>,
   streamingIdRef: React.MutableRefObject<string | null>,
+  reasoningIdRef: React.MutableRefObject<string | null>,
 ): void {
   switch (event.kind) {
     case 'text': {
+      if (reasoningIdRef.current !== null) {
+        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
+        reasoningIdRef.current = null
+      }
       let id = streamingIdRef.current
       if (id === null) {
         id = randomUUID()
@@ -495,7 +505,21 @@ function handleRuntimeEvent(
       dispatch({ type: 'transcript/stream-append', rowId: id, delta: event.delta })
       break
     }
+    case 'reasoning': {
+      let id = reasoningIdRef.current
+      if (id === null) {
+        id = randomUUID()
+        reasoningIdRef.current = id
+        dispatch({ type: 'transcript/reasoning-begin', rowId: id, startedAt: Date.now() })
+      }
+      dispatch({ type: 'transcript/reasoning-append', rowId: id, delta: event.delta })
+      break
+    }
     case 'tool_use':
+      if (reasoningIdRef.current !== null) {
+        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
+        reasoningIdRef.current = null
+      }
       streamingIdRef.current = null
       dispatch({ type: 'transcript/stream-end' })
       dispatch({
@@ -529,6 +553,10 @@ function handleRuntimeEvent(
       }
       break
     case 'done':
+      if (reasoningIdRef.current !== null) {
+        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
+        reasoningIdRef.current = null
+      }
       streamingIdRef.current = null
       dispatch({ type: 'transcript/stream-end' })
       break

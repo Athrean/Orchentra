@@ -5,6 +5,7 @@ import { BRAND_GREEN, type TranscriptRow } from '../types'
 import { THEME } from '../theme'
 import { CardSections } from './CardSections'
 import { DiffView, looksLikeDiff } from './DiffView'
+import { ReasoningBlock } from './ReasoningBlock'
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -120,6 +121,8 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
           </Text>
         </Box>
       )
+    case 'reasoning':
+      return <ReasoningBlock row={row} />
     case 'stream':
       return (
         <Box paddingX={1} flexDirection="column">
