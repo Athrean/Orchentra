@@ -20,10 +20,10 @@ describe('WelcomeBanner', () => {
     expect(out).toContain('v0.1.0')
   })
 
-  test('includes model and permission mode on the info block', () => {
-    const out = runWith({ NO_COLOR: '1' }, () => renderFrame(baseOpts))
+  test('shows the model and provider on the meta line', () => {
+    const out = runWith({ NO_COLOR: '1' }, () => renderFrame({ ...baseOpts, providerName: 'anthropic' }))
     expect(out).toContain('claude-sonnet-4-6')
-    expect(out).toContain('workspace-write')
+    expect(out).toContain('anthropic')
   })
 
   test('shortens the home directory to ~ in the cwd line', () => {
@@ -31,12 +31,6 @@ describe('WelcomeBanner', () => {
     const out = runWith({ NO_COLOR: '1', HOME: home }, () => renderFrame({ ...baseOpts, cwd: `${home}/projects/foo` }))
     expect(out).toContain('~/projects/foo')
     expect(out).not.toContain(home)
-  })
-
-  test('renders the tip strip with /help and /login affordances', () => {
-    const out = runWith({ NO_COLOR: '1' }, () => renderFrame(baseOpts))
-    expect(out).toContain('/help')
-    expect(out).toContain('/login')
   })
 })
 

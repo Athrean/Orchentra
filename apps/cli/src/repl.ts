@@ -11,6 +11,8 @@ import {
   getLoadedSkills,
 } from './commands/builtin/skills-adapter'
 import { printWelcomeBanner } from './render/banner'
+import { printWelcomeTips } from './render/welcome-tips'
+import { isFirstRun, markWelcomed } from './render/first-run'
 import { runTui } from './tui'
 
 export interface ReplOptions {
@@ -78,6 +80,12 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     providerName,
   })
   process.stdout.write('\n')
+
+  if (isFirstRun()) {
+    await printWelcomeTips({ cliName: CLI_NAME, username: process.env.USER })
+    process.stdout.write('\n')
+    markWelcomed()
+  }
 
   await runTui({
     cli,
