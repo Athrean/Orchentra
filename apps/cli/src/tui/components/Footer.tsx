@@ -5,6 +5,7 @@ import type { PermissionMode, UsageTotals } from '@orchentra/cli-core'
 import { formatUsd, pricingForModel } from '@orchentra/cli-core'
 import { THEME, modeAccent } from '../theme'
 import type { TurnStatus } from '../types'
+import { ShimmerText } from './ShimmerText'
 
 export interface FooterProps {
   readonly model: string
@@ -17,17 +18,15 @@ export interface FooterProps {
 }
 
 export function Footer(props: FooterProps): React.ReactElement {
-  const status = renderStatus(props.turn, props.spinnerFrame)
   const cost = renderCost(props.turn.tokens, props.model)
   const left = [prettyCwd(props.cwd), props.branch].filter(Boolean).join(`  ${THEME.bullet}  `)
 
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box>
-        <Text color={status.color} bold>
-          {status.glyph}
-        </Text>
-        <Text dimColor>{`  ${status.label}`}</Text>
+        <StatusGlyph turn={props.turn} spinnerFrame={props.spinnerFrame} />
+        <Text>{'  '}</Text>
+        <StatusLabel turn={props.turn} spinnerFrame={props.spinnerFrame} />
         <Text>{'  '}</Text>
         <Text dimColor>{left}</Text>
         <Box flexGrow={1} />
@@ -40,22 +39,47 @@ export function Footer(props: FooterProps): React.ReactElement {
   )
 }
 
-interface StatusRender {
-  readonly glyph: string
-  readonly color: string
-  readonly label: string
+interface StatusInnerProps {
+  readonly turn: TurnStatus
+  readonly spinnerFrame: number
 }
 
-function renderStatus(turn: TurnStatus, spinnerFrame: number): StatusRender {
+function StatusGlyph({ turn, spinnerFrame }: StatusInnerProps): React.ReactElement {
   if (turn.state === 'idle') {
-    return { glyph: THEME.dot, color: THEME.brand, label: 'ready' }
+    return (
+      <Text color={THEME.brand} bold>
+        {THEME.dot}
+      </Text>
+    )
+  }
+  const frame = THEME.spinner[spinnerFrame % THEME.spinner.length]
+  const color = turn.state === 'cancelling' ? THEME.warn : THEME.brand
+  return (
+    <Text color={color} bold>
+      {frame}
+    </Text>
+  )
+}
+
+function StatusLabel({ turn, spinnerFrame }: StatusInnerProps): React.ReactElement {
+  if (turn.state === 'idle') {
+    return <Text dimColor>ready</Text>
   }
   const elapsed = formatElapsed(turn.elapsedMs)
-  const frame = THEME.spinner[spinnerFrame % THEME.spinner.length]
   if (turn.state === 'cancelling') {
-    return { glyph: frame, color: THEME.warn, label: `cancelling… ${elapsed}` }
+    return (
+      <Text>
+        <ShimmerText text="cancelling…" frame={spinnerFrame} />
+        <Text dimColor>{`  ${elapsed}`}</Text>
+      </Text>
+    )
   }
-  return { glyph: frame, color: THEME.brand, label: `thinking… ${elapsed}  (esc to interrupt)` }
+  return (
+    <Text>
+      <ShimmerText text="thinking…" frame={spinnerFrame} bold />
+      <Text dimColor>{`  ${elapsed}  (esc to interrupt)`}</Text>
+    </Text>
+  )
 }
 
 function formatElapsed(ms: number): string {
