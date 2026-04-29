@@ -1,45 +1,45 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
-import { aiMockBase } from './helpers/ai-mock'
-import { llmMockBase } from './helpers/llm-mock'
+import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { spawnFakeOpenRouter } from './fakes/openrouter-server'
 
-let generateObjectResult: { object: unknown; usage: unknown } | null = null
-let generateObjectShouldFail = false
+const fake = await spawnFakeOpenRouter()
 
 mock.module('../src/config', () => ({
   config: {
     github: { token: 'ghp_test', webhook_secret: 'test', repos: [] },
-    llm: { api_key: 'sk-or-test', model: 'anthropic/claude-sonnet-4-5' },
+    llm: {
+      api_key: 'sk-or-test',
+      model: 'anthropic/claude-sonnet-4-5',
+      base_url: fake.baseUrl,
+    },
   },
-}))
-
-mock.module('ai', () => ({
-  ...aiMockBase(),
-  generateObject: async (_opts: { system?: string }) => {
-    if (generateObjectShouldFail) throw new Error('LLM error')
-    return generateObjectResult ?? { object: { patches: [] }, usage: null }
-  },
-}))
-
-mock.module('../src/agent/llm', () => ({
-  ...llmMockBase(),
-  createModel: () => ({ modelId: 'anthropic/claude-sonnet-4-5' }),
 }))
 
 const { generatePatches } = await import('../src/agent/patch-generator')
 
+afterAll(async () => {
+  await fake.shutdown()
+})
+
 beforeEach(() => {
-  generateObjectResult = null
-  generateObjectShouldFail = false
+  fake.requests.length = 0
+  fake.setScenario({})
 })
 
 describe('generatePatches', () => {
   test('generates patches for actionable failure type', async () => {
-    generateObjectResult = {
-      object: {
-        patches: [{ path: 'src/auth.ts', action: 'modify', content: 'fixed code' }],
-      },
-      usage: { promptTokens: 50, completionTokens: 25 },
-    }
+    fake.setScenario({
+      responses: [
+        {
+          toolCalls: [
+            {
+              name: 'json',
+              args: { patches: [{ path: 'src/auth.ts', action: 'modify', content: 'fixed code' }] },
+            },
+          ],
+          usage: { prompt_tokens: 50, completion_tokens: 25 },
+        },
+      ],
+    })
 
     const result = await generatePatches(
       {
@@ -75,14 +75,10 @@ describe('generatePatches', () => {
 
     expect(result.generated).toBe(false)
     expect(result.patchJson).toBeNull()
+    expect(fake.requests).toHaveLength(0)
   })
 
   test('skips for low-confidence brief', async () => {
-    generateObjectResult = {
-      object: { patches: [{ path: 'src/auth.ts', action: 'modify', content: 'fixed' }] },
-      usage: { promptTokens: 50, completionTokens: 25 },
-    }
-
     const result = await generatePatches(
       {
         failureType: 'code_bug',
@@ -97,10 +93,13 @@ describe('generatePatches', () => {
 
     expect(result.generated).toBe(false)
     expect(result.patchJson).toBeNull()
+    expect(fake.requests).toHaveLength(0)
   })
 
   test('returns no patches when LLM returns empty array', async () => {
-    generateObjectResult = { object: { patches: [] }, usage: null }
+    fake.setScenario({
+      responses: [{ toolCalls: [{ name: 'json', args: { patches: [] } }] }],
+    })
 
     const result = await generatePatches(
       {
@@ -119,7 +118,9 @@ describe('generatePatches', () => {
   })
 
   test('returns no patches when LLM call fails', async () => {
-    generateObjectShouldFail = true
+    fake.setScenario({
+      responses: [{ httpStatus: 500, httpBody: { error: { message: 'LLM error' } } }],
+    })
 
     const result = await generatePatches(
       {
