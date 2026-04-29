@@ -10,6 +10,7 @@ import {
   updateOrgMemberRole,
   deleteOrgMember,
 } from '../queries/orgs'
+import { getOrgLlmConfig, upsertOrgLlmConfig, deleteOrgLlmConfig, type ResolvedLlmConfig } from '../llm-config/queries'
 import type { AppVariables } from '../types'
 
 export const orgsRouter = new Hono<{ Variables: AppVariables }>()
@@ -113,5 +114,70 @@ orgsRouter.delete('/members/:userId', requireOrgAdmin, async (c) => {
 
   await deleteOrgMember(orgId, targetUserId)
 
+  return c.body(null, 204)
+})
+
+// ── Per-org LLM config ──────────────────────────────────────────────────────
+
+const LlmConfigSchema = z.object({
+  provider: z.enum(['openrouter', 'anthropic', 'openai', 'custom'] as const),
+  modelId: z.string().min(1, 'modelId is required'),
+  apiKey: z.string().min(1).optional(),
+  baseUrl: z.string().url().optional().nullable(),
+})
+
+function redactConfig(cfg: ResolvedLlmConfig): {
+  provider: string
+  modelId: string
+  baseUrl: string | null
+  apiKeySet: boolean
+} {
+  return {
+    provider: cfg.provider,
+    modelId: cfg.modelId,
+    baseUrl: cfg.baseUrl,
+    apiKeySet: cfg.apiKey !== null && cfg.apiKey.length > 0,
+  }
+}
+
+// GET /api/orgs/:orgId/llm-config — current per-org config (api key never returned)
+orgsRouter.get('/llm-config', requireOrgAdmin, async (c) => {
+  const orgId = c.get('orgId')!
+  const cfg = await getOrgLlmConfig(orgId)
+  if (!cfg) return c.json({ config: null })
+  return c.json({ config: redactConfig(cfg) })
+})
+
+// PUT /api/orgs/:orgId/llm-config — upsert. Omitting `apiKey` retains the existing one.
+orgsRouter.put('/llm-config', requireOrgAdmin, async (c) => {
+  const orgId = c.get('orgId')!
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  const parsed = LlmConfigSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid config', issues: parsed.error.flatten() }, 400)
+  }
+
+  await upsertOrgLlmConfig(orgId, {
+    provider: parsed.data.provider,
+    modelId: parsed.data.modelId,
+    apiKey: parsed.data.apiKey ?? null,
+    baseUrl: parsed.data.baseUrl ?? null,
+  })
+
+  const fresh = await getOrgLlmConfig(orgId)
+  return c.json({ config: fresh ? redactConfig(fresh) : null })
+})
+
+// DELETE /api/orgs/:orgId/llm-config — revert to global default
+orgsRouter.delete('/llm-config', requireOrgAdmin, async (c) => {
+  const orgId = c.get('orgId')!
+  await deleteOrgLlmConfig(orgId)
   return c.body(null, 204)
 })
