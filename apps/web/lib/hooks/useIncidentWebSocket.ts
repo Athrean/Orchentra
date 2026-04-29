@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { queryKeys, type Incident, type IncidentFull } from '../hooks'
+import { queryKeys, type Incident, type IncidentFull, type AgentEventPayload, type AgentEventEnvelope } from '../hooks'
 
 export type WsIncidentEventType =
   | 'incident:created'
@@ -93,6 +93,29 @@ export function useIncidentWebSocket(orgId: string | undefined, repo: string): W
           // Respond to server ping immediately to keep the connection alive
           if (data.type === 'ping') {
             ws.send(JSON.stringify({ type: 'pong' }))
+            return
+          }
+
+          // Agent investigation events — append to per-incident query cache.
+          if ((data as { type: string }).type === 'agent:event') {
+            const agent = data as unknown as {
+              type: 'agent:event'
+              incidentId: string
+              timestamp: number
+              event: AgentEventPayload
+            }
+            const envelope: AgentEventEnvelope = {
+              incidentId: agent.incidentId,
+              orgId: currentOrgId,
+              repo: currentRepo,
+              timestamp: agent.timestamp,
+              event: agent.event,
+            }
+            qc.setQueryData(
+              queryKeys.agentEvents(currentOrgId, agent.incidentId),
+              (old: { events: AgentEventEnvelope[] } | undefined) =>
+                old ? { events: [...old.events, envelope] } : { events: [envelope] },
+            )
             return
           }
 
