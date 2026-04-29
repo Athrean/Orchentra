@@ -5,7 +5,7 @@ import { Box, render, Text, useApp, useStdout } from 'ink'
 import type { PermissionMode } from '@orchentra/cli-core'
 import { THEME, modeAccent } from '../tui/theme'
 import { detectColorMode } from './ansi'
-import { renderScene } from './scene'
+import { renderMascot } from './mascot'
 
 export interface BannerOptions {
   readonly cliName: string
@@ -21,12 +21,12 @@ export interface BannerOptions {
 }
 
 const TIP_LINE = `${THEME.bullet} /help  ${THEME.bullet} /login  ${THEME.bullet} /incidents  ${THEME.bullet} /triage <id>`
-const SCENE_MIN_COLS = 60
+const MASCOT_MIN_COLS = 60
 
 export function WelcomeBanner(props: BannerOptions): React.ReactElement {
   const { stdout } = useStdout()
   const cols = stdout?.columns ?? 80
-  const showScene = cols >= SCENE_MIN_COLS
+  const showMascot = cols >= MASCOT_MIN_COLS
 
   const title = `Welcome to ${capitalize(props.cliName)} v${props.cliVersion}`
   const provider = props.providerName ?? 'anthropic'
@@ -37,7 +37,7 @@ export function WelcomeBanner(props: BannerOptions): React.ReactElement {
     .filter(Boolean)
     .join(`  ${THEME.bullet}  `)
 
-  const sceneLines = showScene ? renderScene(detectColorMode()) : []
+  const mascotLines = showMascot ? renderMascot(detectColorMode()) : []
 
   return (
     <Box flexDirection="column">
@@ -46,9 +46,9 @@ export function WelcomeBanner(props: BannerOptions): React.ReactElement {
         <Box flexGrow={1} />
         <Text color={modeAccent(props.permissionMode)}>{props.permissionMode}</Text>
       </Box>
-      {showScene ? (
+      {showMascot ? (
         <Box flexDirection="column" paddingX={1}>
-          {sceneLines.map((line, i) => (
+          {mascotLines.map((line, i) => (
             <Text key={i}>{line}</Text>
           ))}
         </Box>
