@@ -34,8 +34,14 @@ export class LoginCommand implements CommandHandler {
     argumentHint: '[<provider>] [--api-key <key>]',
   }
 
-  async execute(args: string[], _ctx: CommandContext): Promise<boolean> {
+  async execute(args: string[], ctx: CommandContext): Promise<boolean> {
+    const inTui = ctx.ui !== undefined
+
     if (args.length === 0) {
+      if (inTui) {
+        emitTuiLoginInstructions(ctx)
+        return true
+      }
       const provider = await pickProvider()
       if (!provider) return true
       return await runProvider(provider)
@@ -48,10 +54,55 @@ export class LoginCommand implements CommandHandler {
     }
 
     const apiKey = extractFlag(args, '--api-key')
-    if (apiKey) return saveApiKey(provider as ProviderKey, apiKey)
+    if (apiKey) {
+      if (inTui) {
+        const path = saveCredential(provider as ProviderKey, { apiKey })
+        ctx.ui?.({ kind: 'note', tone: 'info', text: `✓ saved ${provider} API key → ${path}` })
+        return true
+      }
+      return saveApiKey(provider as ProviderKey, apiKey)
+    }
 
+    if (inTui) {
+      emitTuiLoginInstructions(ctx, provider as ProviderKey)
+      return true
+    }
     return await runProvider(provider as ProviderKey)
   }
+}
+
+// In-TUI OAuth flows can't share stdout with Ink (cursor-redraw frames get
+// captured into the transcript) and can't share stdin with Ink (raw mode
+// conflicts). Until we port the flow into a proper interactive card, we
+// route users to run the login in a fresh terminal — credentials are
+// re-loaded automatically on the next CLI launch (and the API client now
+// refreshes expired access tokens per-request).
+function emitTuiLoginInstructions(ctx: CommandContext, provider?: ProviderKey): void {
+  const target = provider ? `orchentra login ${provider}` : 'orchentra login'
+  const apiKeyHint = provider && API_KEY_PROVIDERS.includes(provider) ? ` --api-key <key>` : ''
+  ctx.ui?.({
+    kind: 'card',
+    title: 'Sign in',
+    subtitle: 'OAuth flows need a clean terminal — run from your shell',
+    sections: [
+      {
+        title: 'Run in a fresh terminal',
+        rows: [{ key: '$', value: `${target}${apiKeyHint}` }],
+      },
+      {
+        title: 'After login',
+        rows: [
+          { key: '1', value: 'credentials saved to ~/.config/orchentra/credentials.json' },
+          { key: '2', value: 'restart orchentra — TUI will pick up the new token' },
+          { key: '3', value: 'expired tokens refresh automatically' },
+        ],
+      },
+      {
+        title: 'Or pass an API key inline',
+        rows: [{ key: '/login', value: '<provider> --api-key <key>' }],
+      },
+    ],
+  })
 }
 
 async function pickProvider(): Promise<ProviderKey | null> {
