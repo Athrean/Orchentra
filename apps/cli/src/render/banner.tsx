@@ -3,7 +3,7 @@ import { homedir } from 'node:os'
 import React from 'react'
 import { Box, render, Text, useApp, useStdout } from 'ink'
 import type { PermissionMode } from '@orchentra/cli-core'
-import { THEME, modeAccent } from '../tui/theme'
+import { THEME } from '../tui/theme'
 import { detectColorMode } from './ansi'
 import { renderMascot } from './mascot'
 
@@ -20,7 +20,6 @@ export interface BannerOptions {
   readonly providerName?: string
 }
 
-const TIP_LINE = `${THEME.bullet} /help  ${THEME.bullet} /login  ${THEME.bullet} /incidents  ${THEME.bullet} /triage <id>`
 const MASCOT_MIN_COLS = 60
 
 export function WelcomeBanner(props: BannerOptions): React.ReactElement {
@@ -28,39 +27,25 @@ export function WelcomeBanner(props: BannerOptions): React.ReactElement {
   const cols = stdout?.columns ?? 80
   const showMascot = cols >= MASCOT_MIN_COLS
 
-  const title = `${capitalize(props.cliName)} v${props.cliVersion}`
   const provider = props.providerName ?? 'anthropic'
   const cwd = prettyCwd(props.cwd)
-  const where = [cwd, props.branch, props.workspaceStatus].filter(Boolean).join(`  ${THEME.bullet}  `)
-  const session = props.sessionId ? `session ${props.sessionId.slice(0, 12)}` : null
-  const meta = [session, props.model, `${provider} · ${props.permissionMode}`]
-    .filter(Boolean)
-    .join(`  ${THEME.bullet}  `)
-
   const mascotLines = showMascot ? renderMascot(detectColorMode()) : []
 
   return (
-    <Box flexDirection="column">
-      <Box borderStyle="round" borderColor={THEME.brand} paddingX={1} flexDirection="row">
-        {showMascot ? (
-          <Box flexDirection="column" marginRight={2}>
-            {mascotLines.map((line, i) => (
-              <Text key={i}>{line}</Text>
-            ))}
-          </Box>
-        ) : null}
-        <Box flexDirection="column" flexGrow={1}>
-          <Box flexDirection="row">
-            <Text color={THEME.brand} bold>
-              ✦ {title}
-            </Text>
-            <Box flexGrow={1} />
-            <Text color={modeAccent(props.permissionMode)}>{props.permissionMode}</Text>
-          </Box>
-          <Text dimColor>{TIP_LINE}</Text>
-          <Text dimColor>{where}</Text>
-          {meta.length > 0 ? <Text dimColor>{meta}</Text> : null}
+    <Box flexDirection="row" paddingX={1}>
+      {showMascot ? (
+        <Box flexDirection="column" marginRight={2}>
+          {mascotLines.map((line, i) => (
+            <Text key={i}>{line}</Text>
+          ))}
         </Box>
+      ) : null}
+      <Box flexDirection="column" flexGrow={1}>
+        <Text bold>
+          {capitalize(props.cliName)} <Text dimColor>{`v${props.cliVersion}`}</Text>
+        </Text>
+        <Text dimColor>{`${props.model}  ${THEME.bullet}  ${provider}`}</Text>
+        <Text dimColor>{cwd}</Text>
       </Box>
     </Box>
   )

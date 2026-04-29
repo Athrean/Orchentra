@@ -36,7 +36,8 @@
     "ORCHENTRA_SEARCH_URL",
     "ORCHENTRA_SEARCH_API_KEY",
     "LLM_CONFIG_SECRET",
-    "PORT"
+    "PORT",
+    "USER"
   ],
   "tasks": {
     "build": {
