@@ -5,7 +5,8 @@ import { EventEmitter } from 'events'
 import { aiMockBase } from './helpers/ai-mock'
 import { llmMockBase } from './helpers/llm-mock'
 import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
-import { incidentQueueMockBase } from './helpers/incident-queue-mock'
+import { InMemoryJobQueue } from '../src/lib/in-memory-job-queue'
+import { setJobQueue } from '../src/lib/job-queue'
 
 let chatInserts: Record<string, unknown>[] = []
 
@@ -79,12 +80,11 @@ const incidentsByRunId = new Map<string, FixtureIncident>()
 const triageBus = new EventEmitter()
 triageBus.setMaxListeners(0)
 
-mock.module('../src/lib/incident-queue', () => ({
-  ...incidentQueueMockBase(),
-  enqueueInvestigateJob: async (incident: FixtureIncident) => {
-    enqueueCalls.push(incident)
-  },
-}))
+const cmdQueue = new InMemoryJobQueue()
+cmdQueue.enqueueInvestigateJob = async (incident) => {
+  enqueueCalls.push(incident as FixtureIncident)
+}
+setJobQueue(cmdQueue)
 
 const incidentResets: Array<{ id: string; orgId: string }> = []
 let modelCalls: Array<{ system?: string; messages: unknown }> = []
