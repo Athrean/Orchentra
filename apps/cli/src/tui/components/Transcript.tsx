@@ -61,20 +61,29 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
     case 'tool_call':
       return (
         <Box paddingX={1} flexDirection="row">
-          <Text color="cyan">{'  → '}</Text>
-          <Text color="cyan">{row.name}</Text>
-          <Text dimColor> {truncate(row.input, 120)}</Text>
-        </Box>
-      )
-    case 'tool_result':
-      return (
-        <Box paddingX={1} flexDirection="row">
-          <Text color={row.isError ? 'yellow' : undefined} dimColor>
-            {'  ← '}
-            {truncate(row.preview, 200)}
+          <Text color={THEME.brand} bold>
+            ⏺{' '}
           </Text>
+          <Text bold>{row.name}</Text>
+          <Text dimColor>{`(${summarizeToolArgs(row.input)})`}</Text>
         </Box>
       )
+    case 'tool_result': {
+      const lines = splitPreviewLines(row.preview, 6)
+      const errColor = row.isError ? 'yellow' : undefined
+      return (
+        <Box paddingX={1} flexDirection="column">
+          {lines.map((line, i) => (
+            <Box key={i} flexDirection="row">
+              <Text color={THEME.muted}>{i === 0 ? '  ⎿  ' : '     '}</Text>
+              <Text color={errColor} dimColor={!row.isError}>
+                {line}
+              </Text>
+            </Box>
+          ))}
+        </Box>
+      )
+    }
     case 'system':
       return (
         <Box paddingX={1}>
@@ -140,6 +149,41 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text
   return text.slice(0, max) + '…'
+}
+
+// Tool calls store `input` as either a JSON-encoded args object or a raw
+// string. For display, condense JSON args to a comma-joined `k=v` line so
+// the call header reads like a function signature.
+export function summarizeToolArgs(raw: string): string {
+  const trimmed = raw.trim()
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const obj = JSON.parse(trimmed) as Record<string, unknown>
+      const pairs: string[] = []
+      for (const [k, v] of Object.entries(obj)) {
+        const sv = typeof v === 'string' ? v : JSON.stringify(v)
+        const short = sv.length > 40 ? sv.slice(0, 39) + '…' : sv
+        pairs.push(`${k}=${short}`)
+      }
+      const joined = pairs.join(', ')
+      return joined.length > 100 ? joined.slice(0, 99) + '…' : joined
+    } catch {
+      // fall through to raw truncation
+    }
+  }
+  return truncate(trimmed, 100)
+}
+
+// Show the first few non-empty lines of a tool result; longer output gets
+// elided with a ` …(N more)` tail so the transcript stays readable.
+export function splitPreviewLines(text: string, maxLines: number): string[] {
+  const all = text.split('\n').map((l) => l.replace(/\s+$/, ''))
+  // Drop trailing blanks but keep internal ones.
+  while (all.length > 0 && all[all.length - 1] === '') all.pop()
+  if (all.length <= maxLines) return all.length === 0 ? [''] : all
+  const head = all.slice(0, maxLines)
+  head.push(`…(${all.length - maxLines} more line${all.length - maxLines === 1 ? '' : 's'})`)
+  return head
 }
 
 function renderCost(usage: UsageTotals, model: string): string {
