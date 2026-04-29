@@ -5,7 +5,7 @@ import { Box, render, Text, useApp, useStdout } from 'ink'
 import type { PermissionMode } from '@orchentra/cli-core'
 import { THEME, modeAccent } from '../tui/theme'
 import { detectColorMode } from './ansi'
-import { renderMascot } from './mascot'
+import { renderScene } from './scene'
 
 export interface BannerOptions {
   readonly cliName: string
@@ -21,14 +21,14 @@ export interface BannerOptions {
 }
 
 const TIP_LINE = `${THEME.bullet} /help  ${THEME.bullet} /login  ${THEME.bullet} /incidents  ${THEME.bullet} /triage <id>`
-const MASCOT_MIN_COLS = 60
+const SCENE_MIN_COLS = 60
 
 export function WelcomeBanner(props: BannerOptions): React.ReactElement {
   const { stdout } = useStdout()
   const cols = stdout?.columns ?? 80
-  const showMascot = cols >= MASCOT_MIN_COLS
+  const showScene = cols >= SCENE_MIN_COLS
 
-  const title = `${capitalize(props.cliName)} v${props.cliVersion}`
+  const title = `Welcome to ${capitalize(props.cliName)} v${props.cliVersion}`
   const provider = props.providerName ?? 'anthropic'
   const cwd = prettyCwd(props.cwd)
   const where = [cwd, props.branch, props.workspaceStatus].filter(Boolean).join(`  ${THEME.bullet}  `)
@@ -37,30 +37,27 @@ export function WelcomeBanner(props: BannerOptions): React.ReactElement {
     .filter(Boolean)
     .join(`  ${THEME.bullet}  `)
 
-  const mascotLines = showMascot ? renderMascot(detectColorMode()) : []
+  const sceneLines = showScene ? renderScene(detectColorMode()) : []
 
   return (
     <Box flexDirection="column">
-      <Box borderStyle="round" borderColor={THEME.brand} paddingX={1} flexDirection="row">
-        {showMascot ? (
-          <Box flexDirection="column" marginRight={2}>
-            {mascotLines.map((line, i) => (
-              <Text key={i}>{line}</Text>
-            ))}
-          </Box>
-        ) : null}
-        <Box flexDirection="column" flexGrow={1}>
-          <Box flexDirection="row">
-            <Text color={THEME.brand} bold>
-              ✦ {title}
-            </Text>
-            <Box flexGrow={1} />
-            <Text color={modeAccent(props.permissionMode)}>{props.permissionMode}</Text>
-          </Box>
-          <Text dimColor>{TIP_LINE}</Text>
-          <Text dimColor>{where}</Text>
-          {meta.length > 0 ? <Text dimColor>{meta}</Text> : null}
+      <Box flexDirection="row" paddingX={1} marginBottom={1}>
+        <Text bold>{title}</Text>
+        <Box flexGrow={1} />
+        <Text color={modeAccent(props.permissionMode)}>{props.permissionMode}</Text>
+      </Box>
+      {showScene ? (
+        <Box flexDirection="column" paddingX={1}>
+          {sceneLines.map((line, i) => (
+            <Text key={i}>{line}</Text>
+          ))}
         </Box>
+      ) : null}
+      <Box flexDirection="column" paddingX={1} marginTop={1}>
+        <Text>Let&apos;s get started.</Text>
+        <Text dimColor>{TIP_LINE}</Text>
+        <Text dimColor>{where}</Text>
+        {meta.length > 0 ? <Text dimColor>{meta}</Text> : null}
       </Box>
     </Box>
   )
