@@ -3,7 +3,8 @@ import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
 import { triageWritebackMockBase } from './helpers/triage-writeback-mock'
 import { incidentsQueriesMockBase } from './helpers/incidents-queries-mock'
-import { incidentQueueMockBase } from './helpers/incident-queue-mock'
+import { InMemoryJobQueue } from '../src/lib/in-memory-job-queue'
+import { setJobQueue } from '../src/lib/job-queue'
 import { createHmac } from 'crypto'
 
 const TEST_SECRET = 'test-webhook-secret-123'
@@ -121,12 +122,14 @@ mock.module('../src/lib/repo-cache', () => ({
   invalidateMonitoredReposCache: () => {},
 }))
 
-mock.module('../src/lib/incident-queue', () => ({
-  ...incidentQueueMockBase(),
-  enqueueInvestigateJob: async (incident: { id: string }) => {
-    queueCalls.push(incident.id)
-  },
-}))
+// JobQueue is wired via the composition-root seam — no module-level mock.
+const inMemoryQueue = new InMemoryJobQueue()
+const originalEnqueue = inMemoryQueue.enqueueInvestigateJob.bind(inMemoryQueue)
+inMemoryQueue.enqueueInvestigateJob = async (incident) => {
+  queueCalls.push(incident.id)
+  return originalEnqueue(incident)
+}
+setJobQueue(inMemoryQueue)
 
 mock.module('../src/github/triage-writeback', () => ({
   ...triageWritebackMockBase(),
