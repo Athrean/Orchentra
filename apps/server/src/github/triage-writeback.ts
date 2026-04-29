@@ -1,7 +1,6 @@
-import { Octokit } from '@octokit/rest'
 import { eq } from 'drizzle-orm'
 import { db, incidents } from '../db/client'
-import { config } from '../config'
+import { getOctokit } from './octokit'
 
 const TRIAGE_CHECK_NAME = 'Orchentra Triage'
 const TRIAGE_STATUS_CONTEXT = 'orchentra/triage'
@@ -26,8 +25,6 @@ interface PullRequestSummary {
 interface TriageCommentIds {
   [prNumber: string]: number
 }
-
-const octokit = new Octokit({ auth: config.github.token })
 
 function parseRepo(repo: string): { owner: string; name: string } | null {
   const [owner, name] = repo.split('/')
@@ -97,7 +94,7 @@ async function upsertCheckRun(
   }
 
   if (incident.githubCheckRunId) {
-    await octokit.checks.update({
+    await getOctokit().checks.update({
       owner: parsedRepo.owner,
       repo: parsedRepo.name,
       check_run_id: incident.githubCheckRunId,
@@ -111,7 +108,7 @@ async function upsertCheckRun(
     return incident.githubCheckRunId
   }
 
-  const { data } = await octokit.checks.create({
+  const { data } = await getOctokit().checks.create({
     owner: parsedRepo.owner,
     repo: parsedRepo.name,
     head_sha: incident.commit,
@@ -133,7 +130,7 @@ async function createCommitStatus(
   const parsedRepo = parseRepo(incident.repo)
   if (!parsedRepo) return
 
-  await octokit.repos.createCommitStatus({
+  await getOctokit().repos.createCommitStatus({
     owner: parsedRepo.owner,
     repo: parsedRepo.name,
     sha: incident.commit,
@@ -148,7 +145,7 @@ async function listOpenPullRequestsForCommit(incident: IncidentWritebackRecord):
   const parsedRepo = parseRepo(incident.repo)
   if (!parsedRepo) return []
 
-  const { data } = await octokit.repos.listPullRequestsAssociatedWithCommit({
+  const { data } = await getOctokit().repos.listPullRequestsAssociatedWithCommit({
     owner: parsedRepo.owner,
     repo: parsedRepo.name,
     commit_sha: incident.commit,
@@ -215,7 +212,7 @@ async function upsertPullRequestComments(
     const knownCommentId = existingIds[prKey]
 
     if (knownCommentId) {
-      await octokit.issues.updateComment({
+      await getOctokit().issues.updateComment({
         owner: parsedRepo.owner,
         repo: parsedRepo.name,
         comment_id: knownCommentId,
@@ -224,7 +221,7 @@ async function upsertPullRequestComments(
       continue
     }
 
-    const { data: comments } = await octokit.issues.listComments({
+    const { data: comments } = await getOctokit().issues.listComments({
       owner: parsedRepo.owner,
       repo: parsedRepo.name,
       issue_number: pullRequest.number,
@@ -233,7 +230,7 @@ async function upsertPullRequestComments(
 
     const existingComment = comments.find((comment) => (comment.body ?? '').includes(marker))
     if (existingComment) {
-      await octokit.issues.updateComment({
+      await getOctokit().issues.updateComment({
         owner: parsedRepo.owner,
         repo: parsedRepo.name,
         comment_id: existingComment.id,
@@ -243,7 +240,7 @@ async function upsertPullRequestComments(
       continue
     }
 
-    const { data: createdComment } = await octokit.issues.createComment({
+    const { data: createdComment } = await getOctokit().issues.createComment({
       owner: parsedRepo.owner,
       repo: parsedRepo.name,
       issue_number: pullRequest.number,

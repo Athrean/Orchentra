@@ -1,7 +1,4 @@
-import { Octokit } from '@octokit/rest'
-import { config } from '../config'
-
-const octokit = new Octokit({ auth: config.github.token })
+import { getOctokit } from '../github/octokit'
 
 export interface WorkflowSummary {
   id: number
@@ -48,8 +45,8 @@ export async function listWorkflows(repoFullName: string): Promise<WorkflowSumma
 
   try {
     const [{ data: wfData }, { data: runsData }] = await Promise.all([
-      octokit.actions.listRepoWorkflows({ owner, repo, per_page: 100 }),
-      octokit.actions.listWorkflowRunsForRepo({ owner, repo, per_page: 30 }),
+      getOctokit().actions.listRepoWorkflows({ owner, repo, per_page: 100 }),
+      getOctokit().actions.listWorkflowRunsForRepo({ owner, repo, per_page: 30 }),
     ])
 
     // Index latest run per workflow id
@@ -65,7 +62,7 @@ export async function listWorkflows(repoFullName: string): Promise<WorkflowSumma
       }
     }
 
-    return wfData.workflows.map((wf) => {
+    return wfData.workflows.map((wf: { id: number; name: string; path: string; state: string }) => {
       const latest = latestRun.get(wf.id)
       return {
         id: wf.id,
@@ -93,7 +90,7 @@ export async function listWorkflowRuns(
   const { owner, repo } = parsed
 
   try {
-    const { data } = await octokit.actions.listWorkflowRuns({
+    const { data } = await getOctokit().actions.listWorkflowRuns({
       owner,
       repo,
       workflow_id: workflowId,
@@ -138,7 +135,7 @@ export async function dispatchWorkflow(
   const { owner, repo } = parsed
 
   try {
-    await octokit.actions.createWorkflowDispatch({
+    await getOctokit().actions.createWorkflowDispatch({
       owner,
       repo,
       workflow_id: workflowId,
@@ -159,7 +156,7 @@ export async function cancelWorkflowRun(repoFullName: string, runId: number): Pr
   const { owner, repo } = parsed
 
   try {
-    await octokit.actions.cancelWorkflowRun({ owner, repo, run_id: runId })
+    await getOctokit().actions.cancelWorkflowRun({ owner, repo, run_id: runId })
     return { ok: true }
   } catch (err) {
     const status = (err as { status?: number }).status
