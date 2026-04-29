@@ -18,6 +18,8 @@ export type {
   AnalyticsSummary,
   Analytics,
   ValidatedRepo,
+  AgentEventPayload,
+  AgentEventEnvelope,
 } from './types'
 
 export { queryKeys } from './queryKeys'
@@ -41,3 +43,5 @@ export {
 export { useWorkflows, useWorkflowRuns, useTriggerWorkflow, useCancelRun } from './hooks/useWorkflows'
 
 export { useAnalytics } from './hooks/useAnalytics'
+
+export { useAgentEvents } from './hooks/useAgentEvents'
