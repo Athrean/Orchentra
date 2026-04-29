@@ -1,10 +1,13 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { Octokit } from '@octokit/rest'
+import type { Octokit as OctokitType } from '@octokit/rest'
 import { config } from '../../config'
 import { isRepoMonitored } from '../../lib/repo-cache'
 
-const octokit = new Octokit({ auth: config.github.token })
+async function octokitClient(): Promise<OctokitType> {
+  const { Octokit } = await import('@octokit/rest')
+  return new Octokit({ auth: config.github.token })
+}
 
 const MAX_BODY_CHARS = 6000
 
@@ -47,7 +50,9 @@ export const postCommentTool = tool({
     const composed = [KIND_HEADERS[kind], '', body.slice(0, MAX_BODY_CHARS)].join('\n')
 
     try {
-      const { data } = await octokit.issues.createComment({
+      const { data } = await (
+        await octokitClient()
+      ).issues.createComment({
         owner,
         repo,
         issue_number: prNumber,

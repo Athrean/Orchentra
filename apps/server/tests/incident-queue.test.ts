@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { drizzleMockBase } from './helpers/drizzle-mock'
+import { dbClientMockBase } from './helpers/db-client-mock'
 
 let insertedJobs: Record<string, unknown>[] = []
 let insertConflictTargets: unknown[] = []
@@ -9,11 +11,13 @@ let nextIncidentStatusAfterRun: 'brief_ready' | 'error' = 'brief_ready'
 const incidentsById: Record<string, { id: string; status: string }> = {}
 
 mock.module('drizzle-orm', () => ({
+  ...drizzleMockBase(),
   eq: (_col: unknown, val: unknown) => ({ val }),
   sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
 }))
 
 mock.module('../src/db/client', () => ({
+  ...dbClientMockBase(),
   db: {
     insert: () => ({
       values: (values: Record<string, unknown>) => {
@@ -77,7 +81,7 @@ mock.module('../src/agent/runner', () => ({
   },
 }))
 
-const { enqueueInvestigateJob, processIncidentJob } = await import('../src/lib/incident-queue')
+const { enqueueInvestigateJob, processIncidentJob } = await import('../src/lib/incident-queue-impl')
 
 beforeEach(() => {
   insertedJobs = []
