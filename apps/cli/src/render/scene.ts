@@ -1,52 +1,73 @@
 import type { ColorMode, Rgb } from './ansi'
-import { ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, MASCOT_EYE, MASCOT_WHITE, RESET, bg, fg } from './ansi'
+import { ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, MASCOT_EYE, RESET, bg, fg } from './ansi'
 
-// Welcome scene = pixel-art tableau rendered with half-block packing (▀/▄/█).
+// Welcome scene: pixel-art leaf (right) and mascot (bottom-left), rendered
+// with half-block packing (▀/▄/█) so two pixel rows collapse into one
+// terminal row.
 //
-// Layout:
-//   - Big leaf (top-right, brand green with darker vein)
-//   - Scatter of tiny leaf accents across the upper area
-//   - Mascot (bottom-left)
-//
-// Pixel encoding (single char per pixel, two stacked rows -> one text row):
-//   '#' = primary green leaf body / mascot body
-//   '+' = darker green (vein, leaf edges, mascot shadow)
-//   'W' = white highlight (mascot)
+// Pixel encoding:
+//   '#' = primary brand green (leaf body, mascot body)
+//   '+' = darker brand green (central vein, stem, mascot shadow)
 //   'K' = mascot eye
-//   '.' = accent dot (tiny scattered leaf tick)
 //   ' ' = transparent
-//
-// Width is fixed at 56 cols; height 22 pixel rows -> 11 text rows.
 
-const SCENE_PIXEL_ROWS: readonly string[] = [
-  '                                                        ',
-  '              .                                #        ',
-  '                                              ###       ',
-  '                                  .         #####       ',
-  '                                            ######+     ',
-  '                                           ##+####++    ',
-  '                                          ###+++#####   ',
-  '                                         ###++++#####   ',
-  '             .                          ####+++######   ',
-  '                                       #####+++#####    ',
-  '                                       #####+++####     ',
-  '      ####                            ######+++###      ',
-  '    ########                .        #######++##        ',
-  '   ##########                       ########+##         ',
-  '   ##KK##KK##                       #########          .',
-  ' ####KK##KK####                      ########           ',
-  ' ####KK##KK####           .           ######            ',
-  '   ##########                          ####+            ',
-  '    ########                            +++             ',
-  '      ####                              ++              ',
-  '     ##  ##                             +               ',
-  '     ##  ##                                             ',
+// Symmetric lanceolate leaf, 14 cols × 22 rows, with a vertical vein and a
+// short stem at the bottom. Designed so each row mirrors left/right around
+// the center.
+const LEAF_PIXELS: readonly string[] = [
+  '      ##      ',
+  '     ####     ',
+  '    ######    ',
+  '   ########   ',
+  '  ##########  ',
+  ' ############ ',
+  '##############',
+  '#####++#######',
+  '####++++######',
+  '####++++++####',
+  '###++++++++###',
+  '###++++++++###',
+  '####++++++####',
+  '####++++######',
+  '#####++#######',
+  '##############',
+  ' ############ ',
+  '  ##########  ',
+  '   ########   ',
+  '    ######    ',
+  '     ####     ',
+  '      ++      ',
 ]
+
+// Existing mascot, 16 cols × 11 rows.
+const MASCOT_PIXELS: readonly string[] = [
+  '      ####      ',
+  '    ########    ',
+  '   ##########   ',
+  '   ##KK##KK##   ',
+  ' ####KK##KK#### ',
+  ' ####KK##KK#### ',
+  '   ##########   ',
+  '    ########    ',
+  '      ####      ',
+  '     ##  ##     ',
+  '     ##  ##     ',
+]
+
+// Scene composition.
+const SCENE_HEIGHT_PIXELS = 22
+const SCENE_WIDTH_PIXELS = 56
+const MASCOT_LEFT_OFFSET = 0
+const MASCOT_TOP_OFFSET = SCENE_HEIGHT_PIXELS - MASCOT_PIXELS.length // anchored to bottom
+const LEAF_LEFT_OFFSET = SCENE_WIDTH_PIXELS - LEAF_PIXELS[0].length - 6 // padded 6 cols right
+const LEAF_TOP_OFFSET = 0
 
 interface Pixel {
   readonly filled: boolean
   readonly color: Rgb | null
 }
+
+const TRANSPARENT: Pixel = { filled: false, color: null }
 
 function pixelFor(ch: string): Pixel {
   switch (ch) {
@@ -54,32 +75,44 @@ function pixelFor(ch: string): Pixel {
       return { filled: true, color: ORCHENTRA_GREEN }
     case '+':
       return { filled: true, color: ORCHENTRA_GREEN_DIM }
-    case 'W':
-      return { filled: true, color: MASCOT_WHITE }
     case 'K':
       return { filled: true, color: MASCOT_EYE }
-    case '.':
-      return { filled: true, color: ORCHENTRA_GREEN }
     default:
-      return { filled: false, color: null }
+      return TRANSPARENT
   }
 }
 
-function decodeRow(row: string): Pixel[] {
-  const cells: Pixel[] = []
-  for (const ch of row) cells.push(pixelFor(ch))
-  return cells
+// Pre-compose the scene grid so the renderer just walks a 2-D array.
+function composeGrid(): Pixel[][] {
+  const grid: Pixel[][] = []
+  for (let y = 0; y < SCENE_HEIGHT_PIXELS; y++) {
+    const row: Pixel[] = new Array<Pixel>(SCENE_WIDTH_PIXELS).fill(TRANSPARENT)
+    grid.push(row)
+  }
+  paint(grid, MASCOT_PIXELS, MASCOT_TOP_OFFSET, MASCOT_LEFT_OFFSET)
+  paint(grid, LEAF_PIXELS, LEAF_TOP_OFFSET, LEAF_LEFT_OFFSET)
+  return grid
 }
 
+function paint(grid: Pixel[][], pixels: readonly string[], topOffset: number, leftOffset: number): void {
+  for (let y = 0; y < pixels.length; y++) {
+    const row = pixels[y]
+    for (let x = 0; x < row.length; x++) {
+      const px = pixelFor(row[x])
+      if (px.filled) grid[topOffset + y][leftOffset + x] = px
+    }
+  }
+}
+
+const SCENE_GRID = composeGrid()
+
 export function renderScene(mode: ColorMode): string[] {
-  const grid = SCENE_PIXEL_ROWS.map(decodeRow)
-  const cols = grid[0].length
   const lines: string[] = []
-  for (let y = 0; y < grid.length; y += 2) {
+  for (let y = 0; y < SCENE_GRID.length; y += 2) {
     let line = ''
-    for (let x = 0; x < cols; x++) {
-      const top = grid[y][x]
-      const bot = y + 1 < grid.length ? grid[y + 1][x] : { filled: false, color: null }
+    for (let x = 0; x < SCENE_WIDTH_PIXELS; x++) {
+      const top = SCENE_GRID[y][x]
+      const bot = y + 1 < SCENE_GRID.length ? SCENE_GRID[y + 1][x] : TRANSPARENT
       line += renderCell(top, bot, mode)
     }
     lines.push(line)
@@ -109,9 +142,9 @@ function colorsEqual(a: Rgb, b: Rgb): boolean {
 }
 
 export function sceneWidthCols(): number {
-  return SCENE_PIXEL_ROWS[0].length
+  return SCENE_WIDTH_PIXELS
 }
 
 export function sceneHeightRows(): number {
-  return Math.ceil(SCENE_PIXEL_ROWS.length / 2)
+  return Math.ceil(SCENE_HEIGHT_PIXELS / 2)
 }
