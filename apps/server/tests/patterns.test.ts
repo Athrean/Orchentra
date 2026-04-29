@@ -1,11 +1,11 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { afterAll, describe, test, expect, mock, beforeEach } from 'bun:test'
 import { drizzleMockBase } from './helpers/drizzle-mock'
 import { dbClientMockBase } from './helpers/db-client-mock'
-import { aiMockBase } from './helpers/ai-mock'
-import { llmMockBase } from './helpers/llm-mock'
+import { spawnFakeOpenRouter } from './fakes/openrouter-server'
+
+const llmFake = await spawnFakeOpenRouter()
 
 // --- State trackers ---
-let embedCalls: { value: string }[] = []
 let dbInserts: Record<string, unknown>[] = []
 let dbUpdates: { values: Record<string, unknown>; id: string }[] = []
 let storedPatterns: Record<string, unknown>[] = []
@@ -19,7 +19,12 @@ const fakeEmbeddingDifferent = new Array(1536).fill(0).map((_, i) => Math.cos(i 
 mock.module('../src/config', () => ({
   config: {
     github: { token: 'ghp_test', webhook_secret: 'test', repos: ['my-org/api'] },
-    llm: { api_key: 'sk-test', model: 'anthropic/claude-sonnet-4-5', embedding_model: 'text-embedding-3-small' },
+    llm: {
+      api_key: 'sk-test',
+      model: 'anthropic/claude-sonnet-4-5',
+      embedding_model: 'text-embedding-3-small',
+      base_url: llmFake.baseUrl,
+    },
   },
 }))
 
@@ -69,43 +74,28 @@ mock.module('../src/db/client', () => ({
   resolvedPatterns: { id: 'id', incidentId: 'incident_id', orgId: 'org_id' },
 }))
 
-mock.module('../src/agent/llm', () => ({
-  ...llmMockBase(),
-  createEmbeddingModel: () => ({ modelId: 'text-embedding-3-small' }),
-}))
+// Track embed calls by capturing the request body sent to /v1/embeddings.
+function getEmbedCalls(): Array<{ value: string }> {
+  return llmFake.requests
+    .filter((r) => (r.body as unknown as { input?: string }).input !== undefined)
+    .map((r) => ({ value: String((r.body as unknown as { input: string }).input) }))
+}
 
-mock.module('ai', () => ({
-  ...aiMockBase(),
-  embed: async (opts: { value: string }) => {
-    embedCalls.push({ value: opts.value })
-    // Return similar embedding for similar text, different for different text
-    if (opts.value.includes('different-workflow')) {
-      return { embedding: fakeEmbeddingDifferent }
-    }
-    return { embedding: fakeEmbedding1 }
-  },
-  cosineSimilarity: (a: number[], b: number[]) => {
-    // Actual cosine similarity computation
-    let dot = 0
-    let magA = 0
-    let magB = 0
-    for (let i = 0; i < a.length; i++) {
-      dot += a[i] * b[i]
-      magA += a[i] * a[i]
-      magB += b[i] * b[i]
-    }
-    return dot / (Math.sqrt(magA) * Math.sqrt(magB))
-  },
-}))
+afterAll(async () => {
+  await llmFake.shutdown()
+})
 
 const { saveResolvedPattern, findSimilarPatterns, formatPatternContext } = await import('../src/agent/patterns')
 
 beforeEach(() => {
-  embedCalls = []
+  llmFake.requests.length = 0
   dbInserts = []
   dbUpdates = []
   storedPatterns = []
   incidentRows = []
+  llmFake.setScenario({
+    embeddingFor: (input) => (input.includes('different-workflow') ? fakeEmbeddingDifferent : fakeEmbedding1),
+  })
 })
 
 // ---- saveResolvedPattern tests ----
@@ -133,10 +123,10 @@ describe('saveResolvedPattern', () => {
 
     await saveResolvedPattern('inc-1')
 
-    expect(embedCalls.length).toBe(1)
-    expect(embedCalls[0].value).toContain('workflow: CI / Build')
-    expect(embedCalls[0].value).toContain('root_cause: TypeError in login.ts')
-    expect(embedCalls[0].value).toContain('failure_type: code_bug')
+    expect(getEmbedCalls().length).toBe(1)
+    expect(getEmbedCalls()[0].value).toContain('workflow: CI / Build')
+    expect(getEmbedCalls()[0].value).toContain('root_cause: TypeError in login.ts')
+    expect(getEmbedCalls()[0].value).toContain('failure_type: code_bug')
 
     expect(dbInserts.length).toBe(1)
     expect(dbInserts[0].incidentId).toBe('inc-1')
@@ -148,7 +138,7 @@ describe('saveResolvedPattern', () => {
 
   test('skips if incident not found', async () => {
     await saveResolvedPattern('nonexistent')
-    expect(embedCalls.length).toBe(0)
+    expect(getEmbedCalls().length).toBe(0)
     expect(dbInserts.length).toBe(0)
   })
 
@@ -164,7 +154,7 @@ describe('saveResolvedPattern', () => {
     })
 
     await saveResolvedPattern('inc-2')
-    expect(embedCalls.length).toBe(0)
+    expect(getEmbedCalls().length).toBe(0)
     expect(dbInserts.length).toBe(0)
   })
 
@@ -182,7 +172,7 @@ describe('saveResolvedPattern', () => {
     storedPatterns.push({ id: 'pat-existing', incidentId: 'inc-3' })
 
     await saveResolvedPattern('inc-3')
-    expect(embedCalls.length).toBe(0)
+    expect(getEmbedCalls().length).toBe(0)
     expect(dbInserts.length).toBe(0)
   })
 
@@ -212,7 +202,7 @@ describe('findSimilarPatterns', () => {
   test('returns empty array when no patterns exist', async () => {
     const matches = await findSimilarPatterns('some incident text', 'org-1')
     expect(matches).toEqual([])
-    expect(embedCalls.length).toBe(0)
+    expect(getEmbedCalls().length).toBe(0)
   })
 
   test('returns matching patterns above similarity threshold', async () => {
@@ -229,7 +219,7 @@ describe('findSimilarPatterns', () => {
 
     const matches = await findSimilarPatterns('workflow: CI, TypeError in build', 'org-1')
 
-    expect(embedCalls.length).toBe(1)
+    expect(getEmbedCalls().length).toBe(1)
     expect(matches.length).toBe(1)
     expect(matches[0].id).toBe('pat-1')
     expect(matches[0].similarity).toBeGreaterThan(0.78)
