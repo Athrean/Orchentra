@@ -8,7 +8,7 @@ import { createIncident } from '../queries/incidents'
 import { handleFixPRMerged, autoResolveAfterCIPass } from '../actions/handlers'
 import { incidentEvents } from '../events'
 import { isDuplicateInFlight, registerInFlight, isDebounced, registerDebounce } from '../lib/webhook-dedup'
-import { enqueueInvestigateJob } from '../lib/incident-queue'
+import { enqueueInvestigateJob } from '../lib/job-queue'
 import { publishInitialGithubTriage } from '../github/triage-writeback'
 import {
   insertWebhookEvent,
