@@ -7,4 +7,5 @@ export const queryKeys = {
   workflowRuns: (orgId: string, repo: string, workflowId: number) =>
     ['workflow-runs', orgId, repo, workflowId] as const,
   analytics: (orgId: string, repo: string, from: string, to: string) => ['analytics', orgId, repo, from, to] as const,
+  agentEvents: (orgId: string, incidentId: string) => ['agent-events', orgId, incidentId] as const,
 }
