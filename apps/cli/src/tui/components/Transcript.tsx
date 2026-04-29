@@ -4,6 +4,7 @@ import { formatUsd, pricingForModel, type UsageTotals } from '@orchentra/cli-cor
 import { BRAND_GREEN, type TranscriptRow } from '../types'
 import { THEME } from '../theme'
 import { CardSections } from './CardSections'
+import { DiffView, looksLikeDiff } from './DiffView'
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -69,6 +70,19 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
         </Box>
       )
     case 'tool_result': {
+      if (!row.isError && looksLikeDiff(row.preview)) {
+        return (
+          <Box paddingX={1} flexDirection="column">
+            <Box flexDirection="row">
+              <Text color={THEME.muted}>{'  ⎿  '}</Text>
+              <Text dimColor>diff</Text>
+            </Box>
+            <Box marginLeft={5}>
+              <DiffView text={row.preview} maxLines={40} />
+            </Box>
+          </Box>
+        )
+      }
       const lines = splitPreviewLines(row.preview, 6)
       const errColor = row.isError ? 'yellow' : undefined
       return (
