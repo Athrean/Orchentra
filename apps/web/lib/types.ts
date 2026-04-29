@@ -132,3 +132,21 @@ export interface ValidatedRepo {
   description: string | null
   private: boolean
 }
+
+// ── Agent investigation events (issue #110) ─────────────────────────────────
+
+export type AgentEventPayload =
+  | { kind: 'agent:started'; repo: string; workflow: string }
+  | { kind: 'agent:tool_call'; tool: string; args: Record<string, unknown> }
+  | { kind: 'agent:tool_result'; tool: string; durationMs: number; isError?: boolean }
+  | { kind: 'agent:synthesis' }
+  | { kind: 'agent:completed'; failureType: string; confidence: number; rootCause: string }
+  | { kind: 'agent:error'; message: string }
+
+export interface AgentEventEnvelope {
+  incidentId: string
+  orgId: string
+  repo: string
+  timestamp: number
+  event: AgentEventPayload
+}
