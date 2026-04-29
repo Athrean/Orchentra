@@ -3,6 +3,7 @@
 import type { IncidentFull, ToolCall } from '../../lib/hooks'
 import { fmtDuration } from './incidents.utils'
 import { Section, MetaCard } from './IncidentDetailPrimitives'
+import { AgentEventTimeline } from './AgentEventTimeline'
 
 interface IncidentDetailBodyProps {
   inc: IncidentFull
@@ -12,6 +13,8 @@ interface IncidentDetailBodyProps {
 export function IncidentDetailBody({ inc, toolCalls }: IncidentDetailBodyProps) {
   return (
     <>
+      <AgentEventTimeline incidentId={inc.id} status={inc.status} />
+
       {inc.rootCause && (
         <Section title="Root Cause">
           <p className="text-xs leading-relaxed" style={{ color: 'var(--color-app-text-secondary)' }}>
