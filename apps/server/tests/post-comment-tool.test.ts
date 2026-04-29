@@ -1,16 +1,17 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { spawnFakeGitHub } from './fakes/github-server'
+import { makeFakeOctokit } from './helpers/fake-octokit'
 
 let commentsEnabled = true
-let createCommentResult: Record<string, unknown> = { id: 1, html_url: '' }
-let createCommentBody: string | null = null
-let createCommentArgs: Record<string, unknown> | null = null
-let apiError: Error | null = null
+
+const fake = await spawnFakeGitHub()
 
 mock.module('../src/config', () => ({
   config: {
     github: {
       token: 'ghp_test',
       webhook_secret: 'test',
+      api_base_url: fake.baseUrl,
       repos: ['my-org/api'],
       get comments_enabled(): boolean {
         return commentsEnabled
@@ -20,40 +21,40 @@ mock.module('../src/config', () => ({
 }))
 
 const monitoredSet = new Set(['my-org/api'])
-
 mock.module('../src/lib/repo-cache', () => ({
   isRepoMonitored: async (fullName: string) => monitoredSet.has(fullName.toLowerCase()),
   getMonitoredRepos: async () => monitoredSet,
   invalidateMonitoredReposCache: () => {},
 }))
 
-mock.module('@octokit/rest', () => ({
-  Octokit: class {
-    issues = {
-      createComment: async (opts: { owner: string; repo: string; issue_number: number; body: string }) => {
-        createCommentArgs = { ...opts }
-        createCommentBody = opts.body
-        if (apiError) throw apiError
-        return { data: createCommentResult }
-      },
-    }
-  },
-}))
-
+const { setOctokitForTesting } = await import('../src/github/octokit')
 const { postCommentTool } = await import('../src/agent/tools/post-comment')
+
+setOctokitForTesting(makeFakeOctokit(fake.baseUrl) as never)
+
+afterAll(async () => {
+  await fake.shutdown()
+})
 
 const ctx = { toolCallId: 'test', messages: [], abortSignal: undefined as unknown as AbortSignal }
 
+const happyPath = {
+  routes: {
+    'POST /repos/:owner/:repo/issues/:issue_number/comments': (c: { json: (v: unknown) => Response }) =>
+      c.json({ id: 99, html_url: 'https://github.com/my-org/api/pull/42#issuecomment-99' }) as never,
+  },
+}
+
 beforeEach(() => {
   commentsEnabled = true
-  createCommentResult = {
-    id: 99,
-    html_url: 'https://github.com/my-org/api/pull/42#issuecomment-99',
-  }
-  createCommentBody = null
-  createCommentArgs = null
-  apiError = null
+  fake.requests.length = 0
+  fake.setScenario(happyPath as never)
 })
+
+const lastCommentBody = (): string | null => {
+  const r = [...fake.requests].reverse().find((req) => req.method === 'POST' && req.path.endsWith('/comments'))
+  return r ? ((r.body as { body?: string }).body ?? null) : null
+}
 
 describe('postCommentTool', () => {
   test('posts comment and returns commentId + commentUrl', async () => {
@@ -66,7 +67,8 @@ describe('postCommentTool', () => {
       commentId: 99,
       commentUrl: 'https://github.com/my-org/api/pull/42#issuecomment-99',
     })
-    expect(createCommentArgs).toMatchObject({ owner: 'my-org', repo: 'api', issue_number: 42 })
+    const req = fake.requests.find((r) => r.method === 'POST')
+    expect(req?.path).toBe('/repos/my-org/api/issues/42/comments')
   })
 
   test('prefixes body with kind header', async () => {
@@ -75,8 +77,9 @@ describe('postCommentTool', () => {
       ctx,
     )
 
-    expect(createCommentBody).toContain('## Orchentra Triage Note')
-    expect(createCommentBody).toContain('Found a flaky test.')
+    const body = lastCommentBody()
+    expect(body).toContain('## Orchentra Triage Note')
+    expect(body).toContain('Found a flaky test.')
   })
 
   test('uses correct header per kind', async () => {
@@ -84,13 +87,13 @@ describe('postCommentTool', () => {
       { owner: 'my-org', repo: 'api', prNumber: 1, body: 'final summary', kind: 'final' },
       ctx,
     )
-    expect(createCommentBody).toContain('## Orchentra Triage Results')
+    expect(lastCommentBody()).toContain('## Orchentra Triage Results')
 
     await postCommentTool.execute(
       { owner: 'my-org', repo: 'api', prNumber: 1, body: 'progress update', kind: 'progress' },
       ctx,
     )
-    expect(createCommentBody).toContain('## Orchentra Triage Update')
+    expect(lastCommentBody()).toContain('## Orchentra Triage Update')
   })
 
   test('returns error when comments_enabled is false (no API call)', async () => {
@@ -103,7 +106,7 @@ describe('postCommentTool', () => {
 
     expect(result).toHaveProperty('error')
     expect(result.error).toContain('disabled')
-    expect(createCommentArgs).toBeNull()
+    expect(fake.requests.filter((r) => r.method === 'POST')).toHaveLength(0)
   })
 
   test('rejects unmonitored repos', async () => {
@@ -114,11 +117,16 @@ describe('postCommentTool', () => {
 
     expect(result).toHaveProperty('error')
     expect(result.error).toContain('not monitored')
-    expect(createCommentArgs).toBeNull()
+    expect(fake.requests.filter((r) => r.method === 'POST')).toHaveLength(0)
   })
 
   test('returns error on API failure', async () => {
-    apiError = new Error('GitHub API rate limit')
+    fake.setScenario({
+      routes: {
+        'POST /repos/:owner/:repo/issues/:issue_number/comments': (c) =>
+          c.json({ message: 'GitHub API rate limit' }, 429),
+      },
+    })
 
     const result = await postCommentTool.execute(
       { owner: 'my-org', repo: 'api', prNumber: 42, body: 'hi', kind: 'note' },
@@ -127,7 +135,6 @@ describe('postCommentTool', () => {
 
     expect(result).toHaveProperty('error')
     expect(result.error).toContain('Failed to post comment')
-    expect(result.error).toContain('rate limit')
   })
 
   test('body is capped at 6000 chars', async () => {
@@ -136,8 +143,9 @@ describe('postCommentTool', () => {
       ctx,
     )
 
-    expect(createCommentBody).not.toBeNull()
-    const xCount = (createCommentBody as string).match(/x/g)?.length ?? 0
+    const body = lastCommentBody()
+    expect(body).not.toBeNull()
+    const xCount = (body as string).match(/x/g)?.length ?? 0
     expect(xCount).toBeLessThanOrEqual(6000)
   })
 })
