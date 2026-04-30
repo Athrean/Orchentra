@@ -3,6 +3,7 @@ import { streamText } from 'ai'
 import { UpdateIncidentStatusSchema } from '@orchentra/core'
 import { updateIncidentStatus } from '../actions/handlers'
 import { listIncidents, findIncident, findIncidentForOrg, getIncidentRelations } from '../queries/incidents'
+import { getExecutionGraph, getNodeLineage } from '../queries/nodes'
 import { createModel } from '../agent/llm'
 import { getReplay } from '../agent/agent-event-bus'
 import type { AppVariables } from '../types'
@@ -74,6 +75,26 @@ incidentsRouter.patch('/incidents/:id/status', async (c) => {
     return c.json({ error: result.error }, (result.httpStatus ?? 400) as ContentfulStatusCode)
   }
   return c.json({ id, ...result.data })
+})
+
+incidentsRouter.get('/executions/:id/graph', async (c) => {
+  const id = c.req.param('id')
+  const orgId = c.get('orgId')!
+
+  const nodes = await getExecutionGraph(id, orgId)
+  if (nodes === null) return c.json({ error: 'Execution not found' }, 404)
+
+  return c.json({ executionId: id, nodes })
+})
+
+incidentsRouter.get('/nodes/:id/lineage', async (c) => {
+  const id = c.req.param('id')
+  const orgId = c.get('orgId')!
+
+  const lineage = await getNodeLineage(id, orgId)
+  if (lineage === null) return c.json({ error: 'Node not found' }, 404)
+
+  return c.json(lineage)
 })
 
 /**

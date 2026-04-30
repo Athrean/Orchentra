@@ -23,6 +23,8 @@ import { AuthStatusCommand } from './auth-status'
 import { createServerCommand } from './server-bridge'
 import { SkillsCommand } from './skills-adapter'
 import { RestartCommand } from './restart'
+import { createGraphCommand } from './graph'
+import { createWhyCommand } from './why'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -57,6 +59,10 @@ export function createBuiltinRegistry(): CommandRegistry {
 
   // Re-exec the CLI to pick up code/config changes (dev workflow)
   registry.register(new RestartCommand())
+
+  // Phase 3: graph + lineage browsers
+  registry.register(createGraphCommand())
+  registry.register(createWhyCommand())
 
   // Server-bridge: route to POST /api/orgs/:orgId/commands
   registry.register(
