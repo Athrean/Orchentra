@@ -108,6 +108,12 @@ export async function resolveAnthropicAuthToken(): Promise<string | null> {
   const envToken = process.env['ANTHROPIC_AUTH_TOKEN']
   if (envToken && envToken.trim().length > 0) return envToken.trim()
 
+  // Long-lived OAuth token from `claude setup-token` (1-year lifetime). Same
+  // shape as a runtime ANTHROPIC_AUTH_TOKEN — no refresh needed, just inject
+  // as the bearer. Matches Claude Code's own resolution precedence.
+  const longLivedToken = process.env['CLAUDE_CODE_OAUTH_TOKEN']
+  if (longLivedToken && longLivedToken.trim().length > 0) return longLivedToken.trim()
+
   const stored = getCredential('anthropic')
   if (!stored) return null
 
