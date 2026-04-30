@@ -1,6 +1,9 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { AnthropicProvider } from '../src/anthropic/client'
-import type { ProviderRequest, ProviderStreamEvent } from '@orchentra/cli-core'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { AnthropicProvider, toAnthropicMessages } from '../src/anthropic/client'
+import type { ChatMessage, ProviderRequest, ProviderStreamEvent } from '@orchentra/cli-core'
 
 function buildRequest(overrides?: Partial<ProviderRequest>): ProviderRequest {
   return {
@@ -29,16 +32,28 @@ async function collectEvents(provider: AnthropicProvider, request: ProviderReque
 describe('AnthropicProvider', () => {
   const originalFetch = globalThis.fetch
   let mockFetch: typeof globalThis.fetch
+  let capturedRequests: { headers: Record<string, string>; body: unknown }[] = []
 
   function mockServer(responses: { status?: number; body: string; headers?: Record<string, string> }[]): void {
     let callIndex = 0
-    mockFetch = (async (_url: string | URL | Request, _init?: RequestInit) => {
+    capturedRequests = []
+    mockFetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+      const headers = init?.headers as Record<string, string> | undefined
+      const bodyStr = typeof init?.body === 'string' ? init.body : ''
+      let parsedBody: unknown = null
+      try {
+        parsedBody = JSON.parse(bodyStr)
+      } catch {
+        /* not JSON */
+      }
+      capturedRequests.push({ headers: { ...(headers ?? {}) }, body: parsedBody })
+
       const response = responses[callIndex++] ?? responses[responses.length - 1]
-      const headers = new Headers(response.headers)
+      const respHeaders = new Headers(response.headers)
       return {
         ok: (response.status ?? 200) >= 200 && (response.status ?? 200) < 300,
         status: response.status ?? 200,
-        headers,
+        headers: respHeaders,
         text: async () => response.body,
         body: new ReadableStream({
           start(controller) {
@@ -51,13 +66,60 @@ describe('AnthropicProvider', () => {
     globalThis.fetch = mockFetch
   }
 
+  function lastRequest(): {
+    headers: Record<string, string>
+    body: { system?: { text: string }[]; [k: string]: unknown }
+  } {
+    const req = capturedRequests[capturedRequests.length - 1]
+    if (!req) throw new Error('no request captured')
+    return req as never
+  }
+
+  function successSseFrame(): string {
+    return [
+      sseFrame('message_start', { type: 'message_start', message: { usage: { input_tokens: 1, output_tokens: 0 } } }),
+      sseFrame('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text' } }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'ok' },
+      }),
+      sseFrame('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      sseFrame('message_delta', {
+        type: 'message_delta',
+        delta: { stop_reason: 'end_turn' },
+        usage: { output_tokens: 1 },
+      }),
+      sseFrame('message_stop', { type: 'message_stop' }),
+    ].join('')
+  }
+
+  // Isolate from a developer's real ~/.config/orchentra/credentials.json
+  // and from any leftover state in /tmp by using a fresh tmpdir per test.
+  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalNoImport = process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']
+  const originalNoBanner = process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
+  let configHome: string
   beforeEach(() => {
+    configHome = mkdtempSync(join(tmpdir(), 'orchentra-client-test-'))
+    process.env['ORCHENTRA_CONFIG_HOME'] = configHome
     process.env['ANTHROPIC_API_KEY'] = 'test-key-123'
+    // Block Keychain auto-import so the host's real Claude Code login can't
+    // mask the missing-credentials path.
+    process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = '1'
+    process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = '1'
   })
 
   afterEach(() => {
     globalThis.fetch = originalFetch
     delete process.env['ANTHROPIC_API_KEY']
+    if (existsSync(configHome)) rmSync(configHome, { recursive: true, force: true })
+    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
+    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalNoImport === undefined) delete process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']
+    else process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = originalNoImport
+    if (originalNoBanner === undefined) delete process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
+    else process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = originalNoBanner
   })
 
   test('streams text-delta events', async () => {
@@ -327,7 +389,7 @@ describe('AnthropicProvider', () => {
     }
   })
 
-  test('enriches auth error when sk-ant- key used as bearer token', async () => {
+  test('enriches auth error when sk-ant-api03- API key used as bearer token', async () => {
     delete process.env['ANTHROPIC_API_KEY']
     process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-api03-wrong-placement'
 
@@ -338,9 +400,243 @@ describe('AnthropicProvider', () => {
       await collectEvents(provider, buildRequest())
       expect.unreachable('Should have thrown')
     } catch (err: unknown) {
-      expect((err as { message: string }).message).toContain('sk-ant-* keys go in ANTHROPIC_API_KEY')
+      expect((err as { message: string }).message).toContain('sk-ant-api03-* keys go in ANTHROPIC_API_KEY')
     } finally {
       delete process.env['ANTHROPIC_AUTH_TOKEN']
     }
+  })
+
+  test('does NOT enrich auth error when sk-ant-oat01- OAuth token is used as bearer', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-correct-oauth-token'
+
+    mockServer([{ status: 401, body: '{"error":{"message":"OAuth not supported","type":"authentication_error"}}' }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    try {
+      await collectEvents(provider, buildRequest())
+      expect.unreachable('Should have thrown')
+    } catch (err: unknown) {
+      const msg = (err as { message: string }).message
+      expect(msg).not.toContain('ANTHROPIC_API_KEY')
+      expect(msg).toContain('OAuth not supported')
+    } finally {
+      delete process.env['ANTHROPIC_AUTH_TOKEN']
+    }
+  })
+
+  test('OAuth bearer requests include oauth-2025-04-20 + claude-code agentic beta headers', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const beta = lastRequest().headers['anthropic-beta'] ?? ''
+    expect(beta).toContain('oauth-2025-04-20')
+    expect(beta).toContain('claude-code-20250219')
+    expect(beta).toContain('interleaved-thinking-2025-05-14')
+    expect(beta).toContain('fine-grained-tool-streaming-2025-05-14')
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('API key requests do NOT include OAuth-only beta headers', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const beta = lastRequest().headers['anthropic-beta'] ?? ''
+    expect(beta).not.toContain('oauth-2025-04-20')
+    expect(beta).not.toContain('claude-code-20250219')
+  })
+
+  test('OAuth bearer requests include anthropic-dangerous-direct-browser-access header', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    expect(lastRequest().headers['anthropic-dangerous-direct-browser-access']).toBe('true')
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('API key requests do NOT send anthropic-dangerous-direct-browser-access header', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    expect(lastRequest().headers['anthropic-dangerous-direct-browser-access']).toBeUndefined()
+  })
+
+  test('OAuth bearer requests prefix system prompt with Claude Code identity', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const system = lastRequest().body.system as { text: string }[]
+    expect(system).toBeDefined()
+    expect(system[0]?.text ?? '').toContain("You are Claude Code, Anthropic's official CLI for Claude.")
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  // Anthropic returns 429 ("This credential is only authorized for use with
+  // Claude Code") when the prefix is concatenated into the user's system
+  // prompt. The prefix MUST be its OWN first block. Validated against live
+  // /v1/messages on 2026-04-30 — single-block returned 429, two-block returned
+  // 200. Without this check we silently regress and hang on retry.
+  test('OAuth: Claude Code prefix is its OWN first system block (not concatenated)', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(
+      provider,
+      buildRequest({ systemStatic: 'CUSTOM_STATIC_RULES', systemDynamic: 'CUSTOM_DYNAMIC_NOTES' }),
+    )
+
+    const system = lastRequest().body.system as { text: string; cache_control?: unknown }[]
+    expect(Array.isArray(system)).toBe(true)
+    expect(system).toHaveLength(3)
+    expect(system[0]?.text).toBe("You are Claude Code, Anthropic's official CLI for Claude.")
+    expect(system[0]?.cache_control).toBeUndefined()
+    expect(system[1]?.text).toBe('CUSTOM_STATIC_RULES')
+    expect(system[1]?.cache_control).toEqual({ type: 'ephemeral' })
+    expect(system[2]?.text).toBe('CUSTOM_DYNAMIC_NOTES')
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('OAuth + empty systemStatic: still emits prefix block', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ systemStatic: '', systemDynamic: '' }))
+
+    const system = lastRequest().body.system as { text: string }[]
+    expect(system).toHaveLength(1)
+    expect(system[0]?.text).toBe("You are Claude Code, Anthropic's official CLI for Claude.")
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('API key requests do NOT prepend Claude Code identity to system prompt', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const system = lastRequest().body.system as { text: string }[]
+    expect(system[0]?.text ?? '').not.toContain('You are Claude Code')
+  })
+})
+
+// Anthropic only accepts `user` and `assistant` roles. The internal
+// ChatMessage shape uses `tool` for results and a parallel `toolCalls` array
+// on assistants — both must be rewritten for the wire. Symptom of a
+// regression: the API returns 400 with `messages: Unexpected role "tool"`
+// after the very first tool call, breaking any agent loop.
+describe('toAnthropicMessages', () => {
+  test('plain user/assistant text passes through', () => {
+    const msgs: ChatMessage[] = [
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'hello' },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'hello' },
+    ])
+  })
+
+  test('rewrites role:"tool" message to user with tool_result block', () => {
+    const msgs: ChatMessage[] = [{ role: 'tool', content: 'fetched ok', toolCallId: 'call-1' }]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'call-1', content: 'fetched ok' }],
+      },
+    ])
+  })
+
+  test('rewrites assistant + toolCalls into content blocks (text + tool_use)', () => {
+    const msgs: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content: 'fetching now',
+        toolCalls: [
+          { id: 'call-1', name: 'web_fetch', input: { url: 'https://example.com' } },
+          { id: 'call-2', name: 'read_file', input: { path: '/tmp/a' } },
+        ],
+      },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'fetching now' },
+          { type: 'tool_use', id: 'call-1', name: 'web_fetch', input: { url: 'https://example.com' } },
+          { type: 'tool_use', id: 'call-2', name: 'read_file', input: { path: '/tmp/a' } },
+        ],
+      },
+    ])
+  })
+
+  test('omits text block when assistant has only tool calls', () => {
+    const msgs: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 'call-1', name: 'read_file', input: { path: '/tmp/a' } }],
+      },
+    ]
+    const result = toAnthropicMessages(msgs)
+    const blocks = result[0]?.content as { type: string }[]
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]?.type).toBe('tool_use')
+  })
+
+  test('coalesces consecutive tool messages into one user message', () => {
+    const msgs: ChatMessage[] = [
+      { role: 'tool', content: 'A result', toolCallId: 'call-1' },
+      { role: 'tool', content: 'B result', toolCallId: 'call-2' },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'call-1', content: 'A result' },
+          { type: 'tool_result', tool_use_id: 'call-2', content: 'B result' },
+        ],
+      },
+    ])
+  })
+
+  test('full agent turn round-trip — user, assistant w/ tool_use, tool_result, assistant text', () => {
+    const msgs: ChatMessage[] = [
+      { role: 'user', content: 'fetch https://x' },
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 'call-1', name: 'web_fetch', input: { url: 'https://x' } }],
+      },
+      { role: 'tool', content: '404', toolCallId: 'call-1' },
+      { role: 'assistant', content: 'got 404' },
+    ]
+    const result = toAnthropicMessages(msgs)
+    expect(result.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant'])
+    expect(result[2]).toEqual({
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'call-1', content: '404' }],
+    })
   })
 })
