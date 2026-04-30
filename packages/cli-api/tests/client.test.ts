@@ -98,6 +98,7 @@ describe('AnthropicProvider', () => {
   // and from any leftover state in /tmp by using a fresh tmpdir per test.
   const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
   const originalNoImport = process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']
+  const originalNoBanner = process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
   let configHome: string
   beforeEach(() => {
     configHome = mkdtempSync(join(tmpdir(), 'orchentra-client-test-'))
@@ -106,6 +107,7 @@ describe('AnthropicProvider', () => {
     // Block Keychain auto-import so the host's real Claude Code login can't
     // mask the missing-credentials path.
     process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = '1'
+    process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = '1'
   })
 
   afterEach(() => {
@@ -116,6 +118,8 @@ describe('AnthropicProvider', () => {
     else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
     if (originalNoImport === undefined) delete process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']
     else process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = originalNoImport
+    if (originalNoBanner === undefined) delete process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
+    else process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = originalNoBanner
   })
 
   test('streams text-delta events', async () => {

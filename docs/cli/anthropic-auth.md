@@ -40,14 +40,15 @@ Resolution precedence (first match wins):
 4. Stored credential at `~/.config/orchentra/credentials.json`
 5. **macOS only:** Claude Code Keychain auto-import (see above)
 
-| Variable                          | Purpose                                                    |
-| --------------------------------- | ---------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`               | Pay-per-token API key (`sk-ant-api03-…`)                   |
-| `ANTHROPIC_AUTH_TOKEN`            | OAuth bearer (`sk-ant-oat01-…`); short-lived runtime token |
-| `CLAUDE_CODE_OAUTH_TOKEN`         | Long-lived OAuth bearer minted by `claude setup-token`     |
-| `ANTHROPIC_OAUTH_CLIENT_ID`       | Override the OAuth client id (rarely needed)               |
-| `ORCHENTRA_NO_CLAUDE_CODE_IMPORT` | Set to `1` to disable the macOS Keychain auto-import       |
-| `ORCHENTRA_CONFIG_HOME`           | Override `~/.config/orchentra` (used for test isolation)   |
+| Variable                          | Purpose                                                         |
+| --------------------------------- | --------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`               | Pay-per-token API key (`sk-ant-api03-…`)                        |
+| `ANTHROPIC_AUTH_TOKEN`            | OAuth bearer (`sk-ant-oat01-…`); short-lived runtime token      |
+| `CLAUDE_CODE_OAUTH_TOKEN`         | Long-lived OAuth bearer minted by `claude setup-token`          |
+| `ANTHROPIC_OAUTH_CLIENT_ID`       | Override the OAuth client id (rarely needed)                    |
+| `ORCHENTRA_NO_CLAUDE_CODE_IMPORT` | Set to `1` to disable the macOS Keychain auto-import            |
+| `ORCHENTRA_NO_KEYCHAIN_BANNER`    | Set to `1` to suppress the first-run Keychain affordance banner |
+| `ORCHENTRA_CONFIG_HOME`           | Override `~/.config/orchentra` (used for test isolation)        |
 
 ## Opt out of Keychain auto-import
 

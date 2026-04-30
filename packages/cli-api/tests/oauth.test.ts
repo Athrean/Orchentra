@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { readClaudeCodeFromKeychain, resolveAnthropicAuthToken } from '../src/anthropic/oauth'
+import {
+  __resetKeychainBannerForTesting,
+  readClaudeCodeFromKeychain,
+  resolveAnthropicAuthToken,
+} from '../src/anthropic/oauth'
 import { getCredential, saveCredential } from '../src/credential-store'
 import { MacKeychain, type KeychainExec } from '../src/keychain'
 import { CLAUDE_CODE_KEYCHAIN_SERVICE } from '../src/anthropic/claude-code-creds'
@@ -12,6 +16,7 @@ const ENV_KEYS = [
   'CLAUDE_CODE_OAUTH_TOKEN',
   'ANTHROPIC_OAUTH_CLIENT_ID',
   'ORCHENTRA_NO_CLAUDE_CODE_IMPORT',
+  'ORCHENTRA_NO_KEYCHAIN_BANNER',
 ] as const
 
 function fakeKeychainExec(canned: Map<string, { code: number; stdout?: string }>): KeychainExec {
@@ -36,6 +41,10 @@ beforeEach(() => {
     snapshot[k] = process.env[k]
     delete process.env[k]
   }
+  // Default-suppress banner so test output stays clean. Banner-specific
+  // tests opt in by deleting the env and resetting the once-flag.
+  process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = '1'
+  __resetKeychainBannerForTesting()
 })
 
 afterEach(() => {
@@ -255,5 +264,87 @@ describe('resolveAnthropicAuthToken — legacy keychain-source migration', () =>
     )
     expect(await resolveAnthropicAuthToken({ keychain: new MacKeychain(exec) })).toBe('sk-ant-oat01-from-login')
     expect(getCredential('anthropic', configHome)?.accessToken).toBe('sk-ant-oat01-from-login')
+  })
+})
+
+describe('readClaudeCodeFromKeychain — first-run banner', () => {
+  function newKeychainWithCred(): MacKeychain {
+    const exec = fakeKeychainExec(
+      new Map([
+        [
+          `find-generic-password -s ${CLAUDE_CODE_KEYCHAIN_SERVICE} -w`,
+          { code: 0, stdout: ccPayload('sk-ant-oat01-CC', 'r', Date.now() + 3_600_000) },
+        ],
+      ]),
+    )
+    return new MacKeychain(exec)
+  }
+
+  test('forwards banner to a custom print sink on every probe', async () => {
+    delete process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
+    __resetKeychainBannerForTesting()
+
+    const messages: string[] = []
+    const sink = (m: string): void => {
+      messages.push(m)
+    }
+
+    await readClaudeCodeFromKeychain(newKeychainWithCred(), { print: sink })
+    await readClaudeCodeFromKeychain(newKeychainWithCred(), { print: sink })
+
+    expect(messages.length).toBe(2)
+    expect(messages[0]).toContain('macOS Keychain')
+    expect(messages[0]).toContain('existing Claude Code login')
+    expect(messages[0]).toContain('Always Allow')
+  })
+
+  test('default sink writes to stderr exactly once per process', async () => {
+    delete process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
+    __resetKeychainBannerForTesting()
+
+    let captured = ''
+    const originalWrite = process.stderr.write.bind(process.stderr)
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      captured += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8')
+      return true
+    }) as typeof process.stderr.write
+
+    try {
+      await readClaudeCodeFromKeychain(newKeychainWithCred())
+      await readClaudeCodeFromKeychain(newKeychainWithCred())
+      await readClaudeCodeFromKeychain(newKeychainWithCred())
+    } finally {
+      process.stderr.write = originalWrite
+    }
+
+    const occurrences = (captured.match(/macOS Keychain/g) ?? []).length
+    expect(occurrences).toBe(1)
+  })
+
+  test('ORCHENTRA_NO_KEYCHAIN_BANNER suppresses output even with custom sink', async () => {
+    process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = '1'
+    __resetKeychainBannerForTesting()
+
+    const messages: string[] = []
+    await readClaudeCodeFromKeychain(newKeychainWithCred(), {
+      print: (m): void => {
+        messages.push(m)
+      },
+    })
+    expect(messages).toEqual([])
+  })
+
+  test('banner does not fire when no Keychain probe occurs (opt-out env set)', async () => {
+    delete process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
+    process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = '1'
+    __resetKeychainBannerForTesting()
+
+    const messages: string[] = []
+    await readClaudeCodeFromKeychain(newKeychainWithCred(), {
+      print: (m): void => {
+        messages.push(m)
+      },
+    })
+    expect(messages).toEqual([])
   })
 })
