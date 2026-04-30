@@ -106,7 +106,7 @@ export async function loginAnthropic(options: AnthropicLoginOptions): Promise<An
   })
 }
 
-export interface ResolveAnthropicAuthOptions {
+interface ResolveAnthropicAuthOptions {
   // Inject a MacKeychain (e.g. with a fake exec) for tests. Production code
   // should pass nothing — we default to a real keychain when on macOS.
   readonly keychain?: MacKeychain
@@ -169,7 +169,7 @@ export async function readClaudeCodeFromKeychain(
   return await loadClaudeCodeOauth(kc)
 }
 
-export interface ReadKeychainOptions {
+interface ReadKeychainOptions {
   // Override the banner sink. Defaults to a once-per-process stderr write.
   // Pass a noop in tests to silence the banner without touching env.
   readonly print?: (msg: string) => void
