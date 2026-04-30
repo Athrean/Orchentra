@@ -209,10 +209,13 @@ Each incident tracks: failure context, agent tool calls, structured brief, confi
 
 The interactive CLI ships in `apps/cli/`. It's an Ink-based REPL with slash commands, hook integrations, and a **skills system** for shipping reusable prompts.
 
+- **Anthropic auth:** [`docs/cli/anthropic-auth.md`](docs/cli/anthropic-auth.md) — Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting.
 - **Author guide:** [`docs/cli/skills.md`](docs/cli/skills.md) — frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload, troubleshooting.
 - **Examples:** [`examples/skills/`](examples/skills/) — drop-in `SKILL.md` samples for `/incident` and `/deploy`.
 
-Quick start: drop a `SKILL.md` at `<repo>/.orchentra/skills/<name>/SKILL.md`, restart the CLI (or `/skills reload`), and invoke `/<name>`.
+**macOS Pro/Max users:** if you already use Claude Code, just run `orchentra` — your subscription is picked up from the system keychain on first request, no extra login needed.
+
+Skills quick start: drop a `SKILL.md` at `<repo>/.orchentra/skills/<name>/SKILL.md`, restart the CLI (or `/skills reload`), and invoke `/<name>`.
 
 ## Development
 
