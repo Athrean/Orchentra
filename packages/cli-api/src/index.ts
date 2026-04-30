@@ -12,6 +12,12 @@ export {
   type AnthropicLoginResult,
   type AnthropicPendingLogin,
 } from './anthropic/oauth'
+export {
+  CLAUDE_CODE_KEYCHAIN_SERVICE,
+  loadClaudeCodeOauth,
+  loadAllClaudeCodeOauth,
+  type NamedClaudeCodeCredential,
+} from './anthropic/claude-code-creds'
 
 export { GeminiProvider, type GeminiConfig } from './gemini'
 export {
