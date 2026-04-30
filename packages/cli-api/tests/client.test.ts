@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test'
-import { AnthropicProvider } from '../src/anthropic/client'
-import type { ProviderRequest, ProviderStreamEvent } from '@orchentra/cli-core'
+import { AnthropicProvider, toAnthropicMessages } from '../src/anthropic/client'
+import type { ChatMessage, ProviderRequest, ProviderStreamEvent } from '@orchentra/cli-core'
 
 function buildRequest(overrides?: Partial<ProviderRequest>): ProviderRequest {
   return {
@@ -503,5 +503,105 @@ describe('AnthropicProvider', () => {
 
     const system = lastRequest().body.system as { text: string }[]
     expect(system[0]?.text ?? '').not.toContain('You are Claude Code')
+  })
+})
+
+// Anthropic only accepts `user` and `assistant` roles. The internal
+// ChatMessage shape uses `tool` for results and a parallel `toolCalls` array
+// on assistants — both must be rewritten for the wire. Symptom of a
+// regression: the API returns 400 with `messages: Unexpected role "tool"`
+// after the very first tool call, breaking any agent loop.
+describe('toAnthropicMessages', () => {
+  test('plain user/assistant text passes through', () => {
+    const msgs: ChatMessage[] = [
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'hello' },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'hello' },
+    ])
+  })
+
+  test('rewrites role:"tool" message to user with tool_result block', () => {
+    const msgs: ChatMessage[] = [{ role: 'tool', content: 'fetched ok', toolCallId: 'call-1' }]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      {
+        role: 'user',
+        content: [{ type: 'tool_result', tool_use_id: 'call-1', content: 'fetched ok' }],
+      },
+    ])
+  })
+
+  test('rewrites assistant + toolCalls into content blocks (text + tool_use)', () => {
+    const msgs: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content: 'fetching now',
+        toolCalls: [
+          { id: 'call-1', name: 'web_fetch', input: { url: 'https://example.com' } },
+          { id: 'call-2', name: 'read_file', input: { path: '/tmp/a' } },
+        ],
+      },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'fetching now' },
+          { type: 'tool_use', id: 'call-1', name: 'web_fetch', input: { url: 'https://example.com' } },
+          { type: 'tool_use', id: 'call-2', name: 'read_file', input: { path: '/tmp/a' } },
+        ],
+      },
+    ])
+  })
+
+  test('omits text block when assistant has only tool calls', () => {
+    const msgs: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 'call-1', name: 'read_file', input: { path: '/tmp/a' } }],
+      },
+    ]
+    const result = toAnthropicMessages(msgs)
+    const blocks = result[0]?.content as { type: string }[]
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]?.type).toBe('tool_use')
+  })
+
+  test('coalesces consecutive tool messages into one user message', () => {
+    const msgs: ChatMessage[] = [
+      { role: 'tool', content: 'A result', toolCallId: 'call-1' },
+      { role: 'tool', content: 'B result', toolCallId: 'call-2' },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'call-1', content: 'A result' },
+          { type: 'tool_result', tool_use_id: 'call-2', content: 'B result' },
+        ],
+      },
+    ])
+  })
+
+  test('full agent turn round-trip — user, assistant w/ tool_use, tool_result, assistant text', () => {
+    const msgs: ChatMessage[] = [
+      { role: 'user', content: 'fetch https://x' },
+      {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ id: 'call-1', name: 'web_fetch', input: { url: 'https://x' } }],
+      },
+      { role: 'tool', content: '404', toolCallId: 'call-1' },
+      { role: 'assistant', content: 'got 404' },
+    ]
+    const result = toAnthropicMessages(msgs)
+    expect(result.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant'])
+    expect(result[2]).toEqual({
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'call-1', content: '404' }],
+    })
   })
 })

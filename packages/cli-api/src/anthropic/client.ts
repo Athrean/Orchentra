@@ -1,9 +1,9 @@
-import type { Provider, ProviderRequest, ProviderStreamEvent, StopReason } from '@orchentra/cli-core'
+import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, StopReason } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { AnthropicApiError, classifyError, enrichAuthError, missingCredentialsError } from '../errors'
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
 import { injectCacheBoundary } from './cache'
-import type { MessageRequest, StreamEvent, Usage } from './types'
+import type { ContentBlock, MessageRequest, StreamEvent, Usage } from './types'
 import { resolveAnthropicAuthToken } from './oauth'
 import { parseToolArguments } from '../tool-arguments'
 
@@ -91,10 +91,7 @@ export class AnthropicProvider implements Provider {
     const body: MessageRequest = {
       model: request.model || this.model,
       max_tokens: request.maxOutputTokens || this.maxTokens,
-      messages: request.messages.map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+      messages: toAnthropicMessages(request.messages),
       system,
       stream: true,
     }
@@ -353,4 +350,54 @@ function mergeUsage(existing: Usage, incoming: Usage): Usage {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// Anthropic only accepts roles "user" and "assistant". Tool results live as
+// `tool_result` content blocks inside a `user` message, and assistant tool
+// calls live as `tool_use` blocks inside an `assistant` message. The
+// canonical ChatMessage uses role "tool" for results and a parallel
+// `toolCalls` array on the assistant message; this converter rewrites that
+// shape into the wire format Anthropic expects.
+//
+// Consecutive role-"tool" messages from a single multi-tool turn are
+// coalesced into ONE user message with multiple `tool_result` blocks —
+// Anthropic 400s on tool_result blocks split across messages.
+export function toAnthropicMessages(messages: readonly ChatMessage[]): MessageRequest['messages'] {
+  const out: MessageRequest['messages'] = []
+
+  for (const m of messages) {
+    if (m.role === 'tool') {
+      const block: ContentBlock = {
+        type: 'tool_result',
+        tool_use_id: m.toolCallId ?? '',
+        content: m.content,
+      }
+      const last = out[out.length - 1]
+      if (
+        last &&
+        last.role === 'user' &&
+        Array.isArray(last.content) &&
+        last.content.every((b) => b.type === 'tool_result')
+      ) {
+        last.content.push(block)
+      } else {
+        out.push({ role: 'user', content: [block] })
+      }
+      continue
+    }
+
+    if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+      const blocks: ContentBlock[] = []
+      if (m.content) blocks.push({ type: 'text', text: m.content })
+      for (const call of m.toolCalls) {
+        blocks.push({ type: 'tool_use', id: call.id, name: call.name, input: call.input })
+      }
+      out.push({ role: 'assistant', content: blocks })
+      continue
+    }
+
+    out.push({ role: m.role, content: m.content })
+  }
+
+  return out
 }
