@@ -3,7 +3,7 @@
 import { Loader2, AlertTriangle } from 'lucide-react'
 import { useExecutionGraph } from '../../lib/hooks'
 import { ExecutionHeader } from './ExecutionHeader'
-import { ExecutionNodeList } from './ExecutionNodeList'
+import { GraphView } from './GraphView'
 
 export function ExecutionPage({ executionId }: { executionId: string }) {
   const { data, isLoading, error } = useExecutionGraph(executionId)
@@ -26,7 +26,7 @@ export function ExecutionPage({ executionId }: { executionId: string }) {
         ) : (
           <>
             <ExecutionHeader execution={data.execution} />
-            <ExecutionNodeList nodes={data.nodes} />
+            <GraphView nodes={data.nodes} />
           </>
         )}
       </main>
