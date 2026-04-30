@@ -90,4 +90,14 @@ describe('diffExecutionGraphs', () => {
     expect(result.unchanged).toHaveLength(1)
     expect(result.unchanged[0]?.a.id).toBe('a-root')
   })
+
+  test('kind/integration mismatch is add+remove, never changed', () => {
+    // Same round, same parent shape, but different kind.
+    const a = [n({ id: 'a1', kind: 'tool_call', integration: 'github' })]
+    const b = [n({ id: 'b1', kind: 'synthesis', integration: 'github' })]
+    const result = diffExecutionGraphs(a, b)
+    expect(result.changed).toEqual([])
+    expect(result.removed.map((node) => node.id)).toEqual(['a1'])
+    expect(result.added.map((node) => node.id)).toEqual(['b1'])
+  })
 })
