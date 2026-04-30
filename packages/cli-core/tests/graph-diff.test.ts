@@ -72,4 +72,22 @@ describe('diffExecutionGraphs', () => {
     expect(result.changed[0]?.b.id).toBe('b1')
     expect(result.unchanged).toEqual([])
   })
+
+  test('structural reorder (same kinds, different parent chain) → add+remove', () => {
+    // a: root --child(round 2) where the child is parented under root
+    // b: same kinds but the "child" is now a root (no parent)
+    // Even though kind/integration/round line up, the parent-chain shape
+    // differs, so the moved node should be add+remove, not unchanged.
+    const a = [
+      n({ id: 'a-root' }),
+      n({ id: 'a-child', kind: 'synthesis', round: 2, parentNodeId: 'a-root' }),
+    ]
+    const b = [n({ id: 'b-root' }), n({ id: 'b-orphan', kind: 'synthesis', round: 2, parentNodeId: null })]
+    const result = diffExecutionGraphs(a, b)
+    // Roots match, but the moved synthesis node has different parent shape.
+    expect(result.removed.map((node) => node.id)).toContain('a-child')
+    expect(result.added.map((node) => node.id)).toContain('b-orphan')
+    expect(result.unchanged).toHaveLength(1)
+    expect(result.unchanged[0]?.a.id).toBe('a-root')
+  })
 })
