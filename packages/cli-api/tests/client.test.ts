@@ -29,16 +29,28 @@ async function collectEvents(provider: AnthropicProvider, request: ProviderReque
 describe('AnthropicProvider', () => {
   const originalFetch = globalThis.fetch
   let mockFetch: typeof globalThis.fetch
+  let capturedRequests: { headers: Record<string, string>; body: unknown }[] = []
 
   function mockServer(responses: { status?: number; body: string; headers?: Record<string, string> }[]): void {
     let callIndex = 0
-    mockFetch = (async (_url: string | URL | Request, _init?: RequestInit) => {
+    capturedRequests = []
+    mockFetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+      const headers = init?.headers as Record<string, string> | undefined
+      const bodyStr = typeof init?.body === 'string' ? init.body : ''
+      let parsedBody: unknown = null
+      try {
+        parsedBody = JSON.parse(bodyStr)
+      } catch {
+        /* not JSON */
+      }
+      capturedRequests.push({ headers: { ...(headers ?? {}) }, body: parsedBody })
+
       const response = responses[callIndex++] ?? responses[responses.length - 1]
-      const headers = new Headers(response.headers)
+      const respHeaders = new Headers(response.headers)
       return {
         ok: (response.status ?? 200) >= 200 && (response.status ?? 200) < 300,
         status: response.status ?? 200,
-        headers,
+        headers: respHeaders,
         text: async () => response.body,
         body: new ReadableStream({
           start(controller) {
@@ -51,13 +63,49 @@ describe('AnthropicProvider', () => {
     globalThis.fetch = mockFetch
   }
 
+  function lastRequest(): {
+    headers: Record<string, string>
+    body: { system?: { text: string }[]; [k: string]: unknown }
+  } {
+    const req = capturedRequests[capturedRequests.length - 1]
+    if (!req) throw new Error('no request captured')
+    return req as never
+  }
+
+  function successSseFrame(): string {
+    return [
+      sseFrame('message_start', { type: 'message_start', message: { usage: { input_tokens: 1, output_tokens: 0 } } }),
+      sseFrame('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text' } }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'ok' },
+      }),
+      sseFrame('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      sseFrame('message_delta', {
+        type: 'message_delta',
+        delta: { stop_reason: 'end_turn' },
+        usage: { output_tokens: 1 },
+      }),
+      sseFrame('message_stop', { type: 'message_stop' }),
+    ].join('')
+  }
+
+  // Isolate from a developer's real ~/.config/orchentra/credentials.json
+  // (Bun's homedir() ignores HOME, so we use ORCHENTRA_CONFIG_HOME which
+  // credentialsPath honors). Without isolation, "throws on missing API
+  // key" leaks the real OAuth bundle in.
+  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
   beforeEach(() => {
+    process.env['ORCHENTRA_CONFIG_HOME'] = '/tmp/orchentra-test-config-empty'
     process.env['ANTHROPIC_API_KEY'] = 'test-key-123'
   })
 
   afterEach(() => {
     globalThis.fetch = originalFetch
     delete process.env['ANTHROPIC_API_KEY']
+    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
+    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
   })
 
   test('streams text-delta events', async () => {
@@ -327,7 +375,7 @@ describe('AnthropicProvider', () => {
     }
   })
 
-  test('enriches auth error when sk-ant- key used as bearer token', async () => {
+  test('enriches auth error when sk-ant-api03- API key used as bearer token', async () => {
     delete process.env['ANTHROPIC_API_KEY']
     process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-api03-wrong-placement'
 
@@ -338,9 +386,79 @@ describe('AnthropicProvider', () => {
       await collectEvents(provider, buildRequest())
       expect.unreachable('Should have thrown')
     } catch (err: unknown) {
-      expect((err as { message: string }).message).toContain('sk-ant-* keys go in ANTHROPIC_API_KEY')
+      expect((err as { message: string }).message).toContain('sk-ant-api03-* keys go in ANTHROPIC_API_KEY')
     } finally {
       delete process.env['ANTHROPIC_AUTH_TOKEN']
     }
+  })
+
+  test('does NOT enrich auth error when sk-ant-oat01- OAuth token is used as bearer', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-correct-oauth-token'
+
+    mockServer([{ status: 401, body: '{"error":{"message":"OAuth not supported","type":"authentication_error"}}' }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    try {
+      await collectEvents(provider, buildRequest())
+      expect.unreachable('Should have thrown')
+    } catch (err: unknown) {
+      const msg = (err as { message: string }).message
+      expect(msg).not.toContain('ANTHROPIC_API_KEY')
+      expect(msg).toContain('OAuth not supported')
+    } finally {
+      delete process.env['ANTHROPIC_AUTH_TOKEN']
+    }
+  })
+
+  test('OAuth bearer requests include oauth-2025-04-20 + claude-code agentic beta headers', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const beta = lastRequest().headers['anthropic-beta'] ?? ''
+    expect(beta).toContain('oauth-2025-04-20')
+    expect(beta).toContain('claude-code-20250219')
+    expect(beta).toContain('interleaved-thinking-2025-05-14')
+    expect(beta).toContain('fine-grained-tool-streaming-2025-05-14')
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('API key requests do NOT include OAuth-only beta headers', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const beta = lastRequest().headers['anthropic-beta'] ?? ''
+    expect(beta).not.toContain('oauth-2025-04-20')
+    expect(beta).not.toContain('claude-code-20250219')
+  })
+
+  test('OAuth bearer requests prefix system prompt with Claude Code identity', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const system = lastRequest().body.system as { text: string }[]
+    expect(system).toBeDefined()
+    expect(system[0]?.text ?? '').toContain("You are Claude Code, Anthropic's official CLI for Claude.")
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('API key requests do NOT prepend Claude Code identity to system prompt', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    const system = lastRequest().body.system as { text: string }[]
+    expect(system[0]?.text ?? '').not.toContain('You are Claude Code')
   })
 })

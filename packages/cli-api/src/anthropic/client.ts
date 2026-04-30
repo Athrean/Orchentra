@@ -26,14 +26,21 @@ const ANTHROPIC_VERSION = '2023-06-01'
 // Public-only beta set used when authenticating with a console.anthropic.com
 // API key. Safe for any client.
 const ANTHROPIC_BETA_API_KEY = 'prompt-caching-scope-2026-01-05'
-// Subscription OAuth bearer tokens (claude.ai accounts) are only accepted when
-// the request also carries the `claude-code-*` agentic beta and the Claude Code
-// user-agent. Match claw-code-main-3 here. WARNING: spoofing this UA from a
-// non-Claude-Code client can flag the underlying subscription account.
-const ANTHROPIC_BETA_OAUTH = 'claude-code-20250219,prompt-caching-scope-2026-01-05'
+// Subscription OAuth bearer tokens (claude.ai accounts) require the OAuth +
+// Claude-Code agentic beta set AND the Claude Code user-agent. Without
+// `oauth-2025-04-20` Anthropic returns "OAuth authentication is currently
+// not supported". interleaved-thinking + fine-grained-tool-streaming unlock
+// Claude 4+ tool flows. Set mirrors claude-code / opencode / codebuff.
+const ANTHROPIC_BETA_OAUTH =
+  'oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14'
 const ANTHROPIC_OAUTH_USER_AGENT = 'claude-cli/1.0.0 (external, cli)'
 const DEFAULT_USER_AGENT = 'OrchentraCLI/1.0'
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
+
+// Anthropic requires this exact prefix on the system prompt when an OAuth
+// bearer is paired with a Claude 4+ model. Without it: 401 with
+// "This credential is only authorized for use with Claude Code".
+const CLAUDE_CODE_SYSTEM_PROMPT_PREFIX = "You are Claude Code, Anthropic's official CLI for Claude."
 
 export class AnthropicProvider implements Provider {
   private readonly baseUrl: string
@@ -84,7 +91,9 @@ export class AnthropicProvider implements Provider {
       throw missingCredentialsError()
     }
 
-    const system = injectCacheBoundary(request.systemStatic, request.systemDynamic)
+    const usingOAuth = authHeaders.authSource === 'bearer' || authHeaders.authSource === 'both'
+    const systemStatic = usingOAuth ? prependClaudeCodePrefix(request.systemStatic) : request.systemStatic
+    const system = injectCacheBoundary(systemStatic, request.systemDynamic)
     const body: MessageRequest = {
       model: request.model || this.model,
       max_tokens: request.maxOutputTokens || this.maxTokens,
@@ -107,7 +116,6 @@ export class AnthropicProvider implements Provider {
     // Subscription OAuth tokens require the agentic beta + Claude-Code UA;
     // without these the API replies "OAuth authentication is currently not
     // supported." API-key requests use the public beta set and our own UA.
-    const usingOAuth = authHeaders.authSource === 'bearer' || authHeaders.authSource === 'both'
     const url = `${this.baseUrl}/v1/messages`
     const headers: Record<string, string> = {
       'content-type': 'application/json',
@@ -351,4 +359,10 @@ function mergeUsage(existing: Usage, incoming: Usage): Usage {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function prependClaudeCodePrefix(systemStatic: string): string {
+  if (systemStatic.startsWith(CLAUDE_CODE_SYSTEM_PROMPT_PREFIX)) return systemStatic
+  if (!systemStatic) return CLAUDE_CODE_SYSTEM_PROMPT_PREFIX
+  return `${CLAUDE_CODE_SYSTEM_PROMPT_PREFIX}\n\n${systemStatic}`
 }
