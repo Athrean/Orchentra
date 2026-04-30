@@ -48,5 +48,24 @@ export type UiOutput =
       readonly delta: string
       readonly label?: string
     }
+  | {
+      /**
+       * Open a full-bleed interactive flow inside the TUI. The TUI takes
+       * over keyboard handling for the duration of the flow and surfaces
+       * a status card; non-TUI surfaces fall back to the legacy
+       * stdout-based prompt.
+       */
+      readonly kind: 'login-flow'
+      readonly provider: 'anthropic'
+    }
+  | {
+      /**
+       * Open the arrow-key model picker. The TUI takes over input until
+       * the user selects a model or escapes. Non-TUI surfaces ignore
+       * this and the command falls back to its text path.
+       */
+      readonly kind: 'model-picker'
+      readonly current: string
+    }
 
 export type UiSink = (output: UiOutput) => void

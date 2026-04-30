@@ -20,6 +20,7 @@ export function initialState(args: { model: string; mode: PermissionMode; histor
     exitHintUntil: null,
     streamingRowId: null,
     activeCard: null,
+    activeFlow: null,
   }
 }
 
@@ -238,6 +239,12 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       }
       return { ...state, activeCard: null, transcript: [...state.transcript, row] }
     }
+
+    case 'flow/start':
+      return { ...state, activeFlow: action.flow }
+
+    case 'flow/end':
+      return { ...state, activeFlow: null }
   }
 }
 
