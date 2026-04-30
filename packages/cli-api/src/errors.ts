@@ -7,7 +7,7 @@ export type FailureClass =
   | 'provider_error'
   | 'provider_retry_exhausted'
 
-export interface AnthropicApiErrorProps {
+interface AnthropicApiErrorProps {
   readonly status: number
   readonly errorType?: string
   readonly message: string
