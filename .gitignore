@@ -13,6 +13,9 @@ orchentra.yml
 # Turbo cache
 .turbo/
 
+# TS incremental build artifacts
+*.tsbuildinfo
+
 # IDE
 .vscode/
 .idea/
