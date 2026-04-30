@@ -1,0 +1,25 @@
+docs/cli/anthropic-auth.md
+  27be1972cf29b313 1-43,45-76
+README.md
+  27be1972cf29b313 212,216-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "78bf96af51b531d6e728dbc2f5f9068ec5846b00",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 80,
+      "total_deletions": 1,
+      "accepted_lines": 79,
+      "overriden_lines": 1
+    }
+  }
+}
