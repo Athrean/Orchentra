@@ -181,3 +181,8 @@ export interface ExecutionGraph {
   execution: ExecutionMeta
   nodes: GraphNode[]
 }
+
+export interface NodeLineage {
+  node: GraphNode
+  ancestors: GraphNode[]
+}
