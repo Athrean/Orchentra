@@ -71,13 +71,16 @@ export class LoginCommand implements CommandHandler {
   }
 }
 
-// In-TUI OAuth flows can't share stdout with Ink (cursor-redraw frames get
-// captured into the transcript) and can't share stdin with Ink (raw mode
-// conflicts). Until we port the flow into a proper interactive card, we
-// route users to run the login in a fresh terminal — credentials are
-// re-loaded automatically on the next CLI launch (and the API client now
-// refreshes expired access tokens per-request).
+// Anthropic login runs as a native Ink overlay inside the TUI — we emit a
+// `login-flow` UI event and the TUI takes over input until the OAuth code
+// has been exchanged. Other OAuth providers haven't been ported yet and
+// still need a fresh terminal, so we keep the legacy fallback for them.
 function emitTuiLoginInstructions(ctx: CommandContext, provider?: ProviderKey): void {
+  if (provider === 'anthropic') {
+    ctx.ui?.({ kind: 'login-flow', provider: 'anthropic' })
+    return
+  }
+
   const target = provider ? `orchentra login ${provider}` : 'orchentra login'
   const apiKeyHint = provider && API_KEY_PROVIDERS.includes(provider) ? ` --api-key <key>` : ''
   ctx.ui?.({

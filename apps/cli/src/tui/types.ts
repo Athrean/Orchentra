@@ -102,7 +102,17 @@ export interface TuiState {
    * committed into the transcript.
    */
   readonly activeCard: ActiveCardState | null
+  /**
+   * Active interactive flow (Anthropic OAuth login etc.). When set, the TUI
+   * renders the corresponding overlay component and disables the main
+   * input handler so the overlay owns keyboard input.
+   */
+  readonly activeFlow: ActiveFlowState | null
 }
+
+export type ActiveFlowState =
+  | { readonly kind: 'anthropic-login' }
+  | { readonly kind: 'model-picker'; readonly current: string }
 
 export type TuiAction =
   | { type: 'buffer/set'; buffer: string; cursor: number }
@@ -140,6 +150,8 @@ export type TuiAction =
   | { type: 'card/open'; card: ActiveCardState }
   | { type: 'card/set-tab'; index: number }
   | { type: 'card/dismiss' }
+  | { type: 'flow/start'; flow: ActiveFlowState }
+  | { type: 'flow/end' }
 
 export const PERMISSION_MODE_CYCLE: readonly PermissionMode[] = [
   'prompt',
