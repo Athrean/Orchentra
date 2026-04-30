@@ -73,6 +73,7 @@
       "name": "@orchentra/web",
       "version": "0.1.0",
       "dependencies": {
+        "@orchentra/cli-core": "workspace:*",
         "@orchentra/core": "workspace:*",
         "@orchentra/db": "workspace:*",
         "@tanstack/react-query": "^5.95.2",
