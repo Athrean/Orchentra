@@ -1,5 +1,7 @@
 import { buildAuthorizeUrl, generatePkce } from '../oauth-pkce'
 import { getCredential, saveCredential, clearCredential, type StoredCredential } from '../credential-store'
+import { MacKeychain } from '../keychain'
+import { loadClaudeCodeOauth } from './claude-code-creds'
 
 // Installed-app OAuth client shared with Claude Code, opencode, and codebuff.
 // The client is registered only with the paste-back redirect below — any loopback
@@ -104,7 +106,13 @@ export async function loginAnthropic(options: AnthropicLoginOptions): Promise<An
   })
 }
 
-export async function resolveAnthropicAuthToken(): Promise<string | null> {
+export interface ResolveAnthropicAuthOptions {
+  // Inject a MacKeychain (e.g. with a fake exec) for tests. Production code
+  // should pass nothing — we default to a real keychain when on macOS.
+  readonly keychain?: MacKeychain
+}
+
+export async function resolveAnthropicAuthToken(opts: ResolveAnthropicAuthOptions = {}): Promise<string | null> {
   const envToken = process.env['ANTHROPIC_AUTH_TOKEN']
   if (envToken && envToken.trim().length > 0) return envToken.trim()
 
@@ -114,7 +122,10 @@ export async function resolveAnthropicAuthToken(): Promise<string | null> {
   const longLivedToken = process.env['CLAUDE_CODE_OAUTH_TOKEN']
   if (longLivedToken && longLivedToken.trim().length > 0) return longLivedToken.trim()
 
-  const stored = getCredential('anthropic')
+  let stored = getCredential('anthropic')
+  if (!stored) {
+    stored = await importClaudeCodeIfAvailable(opts.keychain)
+  }
   if (!stored) return null
 
   if (stored.accessToken && stored.expiresAt && stored.expiresAt > Date.now() + 30_000) {
@@ -138,6 +149,20 @@ export async function resolveAnthropicAuthToken(): Promise<string | null> {
   }
 
   return stored.accessToken ?? null
+}
+
+// One-shot import: detect an existing Claude Code login on macOS and copy
+// it into Orchentra's credential store. Subsequent calls find the stored
+// copy and skip Keychain access entirely. Set ORCHENTRA_NO_CLAUDE_CODE_IMPORT
+// to opt out — useful for shared machines or test environments.
+export async function importClaudeCodeIfAvailable(keychain?: MacKeychain): Promise<StoredCredential | null> {
+  if (process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']) return null
+  const kc = keychain ?? (MacKeychain.available() ? new MacKeychain() : null)
+  if (!kc) return null
+  const cred = await loadClaudeCodeOauth(kc)
+  if (!cred) return null
+  saveCredential('anthropic', cred)
+  return cred
 }
 
 export function logoutAnthropic(): boolean {
