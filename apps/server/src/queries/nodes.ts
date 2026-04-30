@@ -18,6 +18,22 @@ export interface NodeLineage {
   ancestors: GraphNodeRow[]
 }
 
+export interface ExecutionMeta {
+  id: string
+  kind: string
+  status: string
+  repo: string
+  branch: string
+  triggeredAt: Date | null
+  mttrSeconds: number | null
+  createdAt: Date
+}
+
+export interface ExecutionGraph {
+  execution: ExecutionMeta
+  nodes: GraphNodeRow[]
+}
+
 const NODE_COLUMNS = {
   id: nodes.id,
   parentNodeId: nodes.parentNodeId,
@@ -30,19 +46,32 @@ const NODE_COLUMNS = {
   createdAt: nodes.createdAt,
 } as const
 
-export async function getExecutionGraph(executionId: string, orgId: string): Promise<GraphNodeRow[] | null> {
+const EXECUTION_META_COLUMNS = {
+  id: executions.id,
+  kind: executions.kind,
+  status: executions.status,
+  repo: executions.repo,
+  branch: executions.branch,
+  triggeredAt: executions.triggeredAt,
+  mttrSeconds: executions.mttrSeconds,
+  createdAt: executions.createdAt,
+} as const
+
+export async function getExecutionGraph(executionId: string, orgId: string): Promise<ExecutionGraph | null> {
   const exec = await db
-    .select({ id: executions.id })
+    .select(EXECUTION_META_COLUMNS)
     .from(executions)
     .where(and(eq(executions.id, executionId), eq(executions.orgId, orgId)))
     .limit(1)
   if (exec.length === 0) return null
 
-  return db
+  const nodeRows = await db
     .select(NODE_COLUMNS)
     .from(nodes)
     .where(eq(nodes.incidentId, executionId))
     .orderBy(asc(nodes.round), asc(nodes.createdAt))
+
+  return { execution: exec[0]!, nodes: nodeRows }
 }
 
 export async function getNodeLineage(nodeId: string, orgId: string): Promise<NodeLineage | null> {

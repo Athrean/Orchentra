@@ -20,6 +20,9 @@ export type {
   ValidatedRepo,
   AgentEventPayload,
   AgentEventEnvelope,
+  ExecutionMeta,
+  GraphNode,
+  ExecutionGraph,
 } from './types'
 
 export { queryKeys } from './queryKeys'
@@ -45,3 +48,5 @@ export { useWorkflows, useWorkflowRuns, useTriggerWorkflow, useCancelRun } from 
 export { useAnalytics } from './hooks/useAnalytics'
 
 export { useAgentEvents } from './hooks/useAgentEvents'
+
+export { useExecutionGraph } from './hooks/useExecutionGraph'

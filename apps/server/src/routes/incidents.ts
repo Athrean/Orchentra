@@ -81,10 +81,10 @@ incidentsRouter.get('/executions/:id/graph', async (c) => {
   const id = c.req.param('id')
   const orgId = c.get('orgId')!
 
-  const nodes = await getExecutionGraph(id, orgId)
-  if (nodes === null) return c.json({ error: 'Execution not found' }, 404)
+  const graph = await getExecutionGraph(id, orgId)
+  if (graph === null) return c.json({ error: 'Execution not found' }, 404)
 
-  return c.json({ executionId: id, nodes })
+  return c.json({ executionId: id, execution: graph.execution, nodes: graph.nodes })
 })
 
 incidentsRouter.get('/nodes/:id/lineage', async (c) => {
