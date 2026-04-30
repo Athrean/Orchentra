@@ -70,6 +70,20 @@ export { cronDeleteTool } from './tools/cron-delete-tool'
 export { cronListTool } from './tools/cron-list-tool'
 export { notebookEditTool } from './tools/notebook-edit-tool'
 export { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'
+export {
+  githubListIssuesTool,
+  githubGetIssueTool,
+  listGitHubIssues,
+  getGitHubIssue,
+  type GitHubDeps,
+  type ListIssuesInput,
+  type ListIssuesResult,
+  type GetIssueInput,
+  type GetIssueResult,
+  type IssueSummary,
+  type IssueDetail,
+} from './github/issues'
+export { parseGitHubUrl, type ParsedGitHubUrl } from './github/url'
 
 export {
   McpClient,
