@@ -1,7 +1,7 @@
 export const API_VERSION = '0.1.0'
 
 export { AnthropicProvider, type AnthropicConfig } from './anthropic/client'
-export { injectCacheBoundary } from './anthropic/cache'
+export { injectCacheBoundary, CLAUDE_CODE_SYSTEM_PROMPT_PREFIX } from './anthropic/cache'
 export {
   loginAnthropic,
   logoutAnthropic,
