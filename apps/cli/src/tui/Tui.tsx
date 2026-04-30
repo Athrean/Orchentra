@@ -14,6 +14,8 @@ import { Suggestions } from './components/Suggestions'
 import { Footer } from './components/Footer'
 import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
+import { AnthropicLoginCard } from './components/AnthropicLoginCard'
+import { ModelPickerCard } from './components/ModelPickerCard'
 import type { TuiAction, TuiState } from './types'
 
 export interface TuiProps {
@@ -206,6 +208,14 @@ export function Tui(props: TuiProps): React.ReactElement {
                   delta: output.delta,
                 })
                 return
+              case 'login-flow':
+                if (output.provider === 'anthropic') {
+                  dispatch({ type: 'flow/start', flow: { kind: 'anthropic-login' } })
+                }
+                return
+              case 'model-picker':
+                dispatch({ type: 'flow/start', flow: { kind: 'model-picker', current: output.current } })
+                return
             }
           }
           const ctx: CommandContext = { cwd, session: cli, ui }
@@ -270,200 +280,205 @@ export function Tui(props: TuiProps): React.ReactElement {
   )
 
   // Keyboard handler — single useInput owns all keys so we can branch on
-  // suggestion-open / turn-running state cleanly.
-  useInput((input, key) => {
-    const cur = stateRef.current
+  // suggestion-open / turn-running state cleanly. Disabled while an
+  // interactive flow (e.g. Anthropic login overlay) owns input.
+  useInput(
+    (input, key) => {
+      const cur = stateRef.current
 
-    // While a turn is running, only Esc/Ctrl+C can do anything useful.
-    if (cur.turn.state !== 'idle') {
+      // While a turn is running, only Esc/Ctrl+C can do anything useful.
+      if (cur.turn.state !== 'idle') {
+        if (key.ctrl && input === 'c') {
+          if (cur.turn.state === 'running') {
+            dispatch({ type: 'turn/cancelling' })
+            cli.abort()
+          }
+          return
+        }
+        if (key.escape) {
+          if (cur.turn.state === 'running') {
+            dispatch({ type: 'turn/cancelling' })
+            cli.abort()
+          }
+          return
+        }
+        return
+      }
+
+      if (key.shift && key.tab) {
+        dispatch({ type: 'mode/cycle' })
+        return
+      }
+
+      // Active card hijacks navigation keys while focused.
+      if (cur.activeCard) {
+        const tabsLen = cur.activeCard.tabs?.items.length ?? 0
+        if (tabsLen > 0 && key.leftArrow) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab - 1 })
+        if (tabsLen > 0 && key.rightArrow)
+          return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
+        if (tabsLen > 0 && key.tab) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
+        if (key.downArrow || key.escape) return dispatch({ type: 'card/dismiss' })
+        // Anything else falls through to normal handling.
+      }
+
+      if (cur.suggestions.open) {
+        if (key.upArrow) return dispatch({ type: 'suggestions/move', delta: -1 })
+        if (key.downArrow) return dispatch({ type: 'suggestions/move', delta: 1 })
+        if (key.escape) return dispatch({ type: 'suggestions/close' })
+        if (key.tab || key.return) {
+          const item = cur.suggestions.items[cur.suggestions.selected]
+          if (item) {
+            const before = cur.buffer.slice(0, cur.suggestions.anchorStart)
+            const after = cur.buffer.slice(cur.cursor)
+            const insert = `${item.value} `
+            const next = `${before}${insert}${after}`
+            dispatch({ type: 'buffer/set', buffer: next, cursor: before.length + insert.length })
+            dispatch({ type: 'suggestions/close' })
+          }
+          return
+        }
+      }
+
       if (key.ctrl && input === 'c') {
-        if (cur.turn.state === 'running') {
-          dispatch({ type: 'turn/cancelling' })
-          cli.abort()
+        if (cur.buffer.length > 0) {
+          dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
+          dispatch({ type: 'exit-hint/clear' })
+          return
+        }
+        if (cur.exitHintUntil !== null) {
+          exit()
+          return
+        }
+        dispatch({ type: 'exit-hint/show', until: Date.now() + 1500 })
+        return
+      }
+
+      if (key.ctrl && input === 'd') {
+        if (cur.buffer.length === 0) {
+          exit()
+          return
+        }
+        // forward-delete
+        if (cur.cursor < cur.buffer.length) {
+          const next = cur.buffer.slice(0, cur.cursor) + cur.buffer.slice(cur.cursor + 1)
+          dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
         }
         return
       }
-      if (key.escape) {
-        if (cur.turn.state === 'running') {
-          dispatch({ type: 'turn/cancelling' })
-          cli.abort()
-        }
-        return
+
+      if (key.ctrl && input === 'l') {
+        return dispatch({ type: 'transcript/clear' })
       }
-      return
-    }
 
-    if (key.shift && key.tab) {
-      dispatch({ type: 'mode/cycle' })
-      return
-    }
-
-    // Active card hijacks navigation keys while focused.
-    if (cur.activeCard) {
-      const tabsLen = cur.activeCard.tabs?.items.length ?? 0
-      if (tabsLen > 0 && key.leftArrow) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab - 1 })
-      if (tabsLen > 0 && key.rightArrow) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
-      if (tabsLen > 0 && key.tab) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
-      if (key.downArrow || key.escape) return dispatch({ type: 'card/dismiss' })
-      // Anything else falls through to normal handling.
-    }
-
-    if (cur.suggestions.open) {
-      if (key.upArrow) return dispatch({ type: 'suggestions/move', delta: -1 })
-      if (key.downArrow) return dispatch({ type: 'suggestions/move', delta: 1 })
-      if (key.escape) return dispatch({ type: 'suggestions/close' })
-      if (key.tab || key.return) {
-        const item = cur.suggestions.items[cur.suggestions.selected]
-        if (item) {
-          const before = cur.buffer.slice(0, cur.suggestions.anchorStart)
-          const after = cur.buffer.slice(cur.cursor)
-          const insert = `${item.value} `
-          const next = `${before}${insert}${after}`
-          dispatch({ type: 'buffer/set', buffer: next, cursor: before.length + insert.length })
-          dispatch({ type: 'suggestions/close' })
-        }
-        return
+      if (key.ctrl && input === 'r') {
+        return dispatch({ type: 'reasoning/toggle-last' })
       }
-    }
 
-    if (key.ctrl && input === 'c') {
-      if (cur.buffer.length > 0) {
-        dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
-        dispatch({ type: 'exit-hint/clear' })
-        return
-      }
-      if (cur.exitHintUntil !== null) {
-        exit()
-        return
-      }
-      dispatch({ type: 'exit-hint/show', until: Date.now() + 1500 })
-      return
-    }
-
-    if (key.ctrl && input === 'd') {
-      if (cur.buffer.length === 0) {
-        exit()
-        return
-      }
-      // forward-delete
-      if (cur.cursor < cur.buffer.length) {
-        const next = cur.buffer.slice(0, cur.cursor) + cur.buffer.slice(cur.cursor + 1)
-        dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
-      }
-      return
-    }
-
-    if (key.ctrl && input === 'l') {
-      return dispatch({ type: 'transcript/clear' })
-    }
-
-    if (key.ctrl && input === 'r') {
-      return dispatch({ type: 'reasoning/toggle-last' })
-    }
-
-    if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
-      dispatch({
-        type: 'card/open',
-        card: {
-          id: randomUUID(),
-          title: 'Keyboard shortcuts',
-          subtitle: 'Press ↓ or Esc to dismiss',
-          activeTab: 0,
-          sectionsByTab: [SHORTCUT_SECTIONS],
-        },
-      })
-      return
-    }
-
-    if (key.ctrl && input === 'u') {
-      const next = cur.buffer.slice(cur.cursor)
-      return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
-    }
-
-    if (key.ctrl && input === 'k') {
-      const next = cur.buffer.slice(0, cur.cursor)
-      return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
-    }
-
-    if (key.ctrl && input === 'w') {
-      const trimmed = trimWordBack(cur.buffer, cur.cursor)
-      return dispatch({ type: 'buffer/set', buffer: trimmed.next, cursor: trimmed.cursor })
-    }
-
-    if (key.upArrow) {
-      const onFirstLine = cur.buffer.indexOf('\n') === -1 || cur.cursor <= cur.buffer.indexOf('\n')
-      if (onFirstLine) return dispatch({ type: 'history/prev' })
-      return moveLine(cur, -1, dispatch)
-    }
-    if (key.downArrow) {
-      const lastNl = cur.buffer.lastIndexOf('\n')
-      const onLastLine = lastNl === -1 || cur.cursor > lastNl
-      if (onLastLine) return dispatch({ type: 'history/next' })
-      return moveLine(cur, 1, dispatch)
-    }
-    if (key.leftArrow) {
-      return dispatch({ type: 'buffer/set', buffer: cur.buffer, cursor: Math.max(0, cur.cursor - 1) })
-    }
-    if (key.rightArrow) {
-      return dispatch({
-        type: 'buffer/set',
-        buffer: cur.buffer,
-        cursor: Math.min(cur.buffer.length, cur.cursor + 1),
-      })
-    }
-
-    if (key.return) {
-      if (key.shift || endsWithBackslashLine(cur.buffer, cur.cursor)) {
-        // Insert newline; if backslash-EOL, replace the backslash with newline.
-        if (endsWithBackslashLine(cur.buffer, cur.cursor)) {
-          const next = cur.buffer.slice(0, cur.cursor - 1) + '\n' + cur.buffer.slice(cur.cursor)
-          return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
-        }
-        const next = cur.buffer.slice(0, cur.cursor) + '\n' + cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 1 })
-      }
-      if (hasUnclosedFence(cur.buffer)) {
-        const next = cur.buffer.slice(0, cur.cursor) + '\n' + cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 1 })
-      }
-      void submitTurn(cur.buffer)
-      return
-    }
-
-    if (key.tab) {
-      const next = cur.buffer.slice(0, cur.cursor) + '  ' + cur.buffer.slice(cur.cursor)
-      return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 2 })
-    }
-
-    if (key.backspace || key.delete) {
-      if (cur.cursor === 0) return
-      const next = cur.buffer.slice(0, cur.cursor - 1) + cur.buffer.slice(cur.cursor)
-      return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor - 1 })
-    }
-
-    if (key.escape) {
-      if (cur.buffer.length > 0) {
-        return dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
-      }
-      return
-    }
-
-    if (input && input.length > 0 && !key.ctrl && !key.meta) {
-      // Paste detection: large multi-line input arriving in one keystroke.
-      const paste = evaluatePaste(input)
-      if (paste) {
+      if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
         dispatch({
-          type: 'paste/add',
-          chip: { id: paste.chipId, content: paste.content, lines: paste.lines },
+          type: 'card/open',
+          card: {
+            id: randomUUID(),
+            title: 'Keyboard shortcuts',
+            subtitle: 'Press ↓ or Esc to dismiss',
+            activeTab: 0,
+            sectionsByTab: [SHORTCUT_SECTIONS],
+          },
         })
-        const insert = paste.chipMarker
-        const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
+        return
       }
-      const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
-      return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
-    }
-  })
+
+      if (key.ctrl && input === 'u') {
+        const next = cur.buffer.slice(cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
+      }
+
+      if (key.ctrl && input === 'k') {
+        const next = cur.buffer.slice(0, cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
+      }
+
+      if (key.ctrl && input === 'w') {
+        const trimmed = trimWordBack(cur.buffer, cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: trimmed.next, cursor: trimmed.cursor })
+      }
+
+      if (key.upArrow) {
+        const onFirstLine = cur.buffer.indexOf('\n') === -1 || cur.cursor <= cur.buffer.indexOf('\n')
+        if (onFirstLine) return dispatch({ type: 'history/prev' })
+        return moveLine(cur, -1, dispatch)
+      }
+      if (key.downArrow) {
+        const lastNl = cur.buffer.lastIndexOf('\n')
+        const onLastLine = lastNl === -1 || cur.cursor > lastNl
+        if (onLastLine) return dispatch({ type: 'history/next' })
+        return moveLine(cur, 1, dispatch)
+      }
+      if (key.leftArrow) {
+        return dispatch({ type: 'buffer/set', buffer: cur.buffer, cursor: Math.max(0, cur.cursor - 1) })
+      }
+      if (key.rightArrow) {
+        return dispatch({
+          type: 'buffer/set',
+          buffer: cur.buffer,
+          cursor: Math.min(cur.buffer.length, cur.cursor + 1),
+        })
+      }
+
+      if (key.return) {
+        if (key.shift || endsWithBackslashLine(cur.buffer, cur.cursor)) {
+          // Insert newline; if backslash-EOL, replace the backslash with newline.
+          if (endsWithBackslashLine(cur.buffer, cur.cursor)) {
+            const next = cur.buffer.slice(0, cur.cursor - 1) + '\n' + cur.buffer.slice(cur.cursor)
+            return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
+          }
+          const next = cur.buffer.slice(0, cur.cursor) + '\n' + cur.buffer.slice(cur.cursor)
+          return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 1 })
+        }
+        if (hasUnclosedFence(cur.buffer)) {
+          const next = cur.buffer.slice(0, cur.cursor) + '\n' + cur.buffer.slice(cur.cursor)
+          return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 1 })
+        }
+        void submitTurn(cur.buffer)
+        return
+      }
+
+      if (key.tab) {
+        const next = cur.buffer.slice(0, cur.cursor) + '  ' + cur.buffer.slice(cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 2 })
+      }
+
+      if (key.backspace || key.delete) {
+        if (cur.cursor === 0) return
+        const next = cur.buffer.slice(0, cur.cursor - 1) + cur.buffer.slice(cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor - 1 })
+      }
+
+      if (key.escape) {
+        if (cur.buffer.length > 0) {
+          return dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
+        }
+        return
+      }
+
+      if (input && input.length > 0 && !key.ctrl && !key.meta) {
+        // Paste detection: large multi-line input arriving in one keystroke.
+        const paste = evaluatePaste(input)
+        if (paste) {
+          dispatch({
+            type: 'paste/add',
+            chip: { id: paste.chipId, content: paste.content, lines: paste.lines },
+          })
+          const insert = paste.chipMarker
+          const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
+          return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
+        }
+        const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
+      }
+    },
+    { isActive: state.activeFlow === null },
+  )
 
   const showSuggestions = state.suggestions.open && state.turn.state === 'idle'
   const inputDisabled = state.turn.state !== 'idle'
@@ -473,6 +488,36 @@ export function Tui(props: TuiProps): React.ReactElement {
     <Box flexDirection="column">
       <Transcript rows={state.transcript} streamingRowId={state.streamingRowId} />
       <Box flexDirection="column">
+        {state.activeFlow?.kind === 'anthropic-login' ? (
+          <AnthropicLoginCard
+            onComplete={(result) => {
+              dispatch({ type: 'flow/end' })
+              dispatch({
+                type: 'transcript/push',
+                row: result.ok
+                  ? { kind: 'system', id: randomUUID(), text: `✓ ${result.message}`, tone: 'info' }
+                  : { kind: 'error', id: randomUUID(), message: `Anthropic login: ${result.message}` },
+              })
+            }}
+          />
+        ) : null}
+        {state.activeFlow?.kind === 'model-picker' ? (
+          <ModelPickerCard
+            current={state.activeFlow.current}
+            onPick={(modelId) => {
+              const resolved = cli.setModel(modelId)
+              dispatch({ type: 'model/set', model: resolved })
+              dispatch({ type: 'flow/end' })
+              dispatch({
+                type: 'transcript/push',
+                row: { kind: 'system', id: randomUUID(), text: `✓ model → ${resolved}`, tone: 'info' },
+              })
+            }}
+            onCancel={() => {
+              dispatch({ type: 'flow/end' })
+            }}
+          />
+        ) : null}
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
         {showSuggestions ? <Suggestions state={state.suggestions} width={suggestionsWidth} /> : null}
         <InputBox

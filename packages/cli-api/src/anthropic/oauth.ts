@@ -1,5 +1,7 @@
 import { buildAuthorizeUrl, generatePkce } from '../oauth-pkce'
 import { getCredential, saveCredential, clearCredential, type StoredCredential } from '../credential-store'
+import { MacKeychain } from '../keychain'
+import { loadClaudeCodeOauth } from './claude-code-creds'
 
 // Installed-app OAuth client shared with Claude Code, opencode, and codebuff.
 // The client is registered only with the paste-back redirect below — any loopback
@@ -104,13 +106,101 @@ export async function loginAnthropic(options: AnthropicLoginOptions): Promise<An
   })
 }
 
-export async function resolveAnthropicAuthToken(): Promise<string | null> {
+export interface ResolveAnthropicAuthOptions {
+  // Inject a MacKeychain (e.g. with a fake exec) for tests. Production code
+  // should pass nothing — we default to a real keychain when on macOS.
+  readonly keychain?: MacKeychain
+  // Override the Keychain affordance banner sink (mainly for tests).
+  readonly print?: (msg: string) => void
+}
+
+const KEYCHAIN_SOURCE = 'claude-code-keychain'
+
+export async function resolveAnthropicAuthToken(opts: ResolveAnthropicAuthOptions = {}): Promise<string | null> {
   const envToken = process.env['ANTHROPIC_AUTH_TOKEN']
   if (envToken && envToken.trim().length > 0) return envToken.trim()
 
-  const stored = getCredential('anthropic')
-  if (!stored) return null
+  // Long-lived OAuth token from `claude setup-token` (1-year lifetime). Same
+  // shape as a runtime ANTHROPIC_AUTH_TOKEN — no refresh needed, just inject
+  // as the bearer. Matches Claude Code's own resolution precedence.
+  const longLivedToken = process.env['CLAUDE_CODE_OAUTH_TOKEN']
+  if (longLivedToken && longLivedToken.trim().length > 0) return longLivedToken.trim()
 
+  // Migration: an earlier release imported the Claude Code Keychain entry
+  // into our credential store. Refreshing those tokens against Anthropic
+  // would rotate Claude Code's refresh_token and break its own session.
+  // Scrub legacy entries so the fresh Keychain read below becomes the source
+  // of truth.
+  let stored = getCredential('anthropic')
+  if (stored?.extra?.['source'] === KEYCHAIN_SOURCE) {
+    clearCredential('anthropic')
+    stored = null
+  }
+
+  if (stored) {
+    return await useStoredCredential(stored)
+  }
+
+  // Read-through fallback to the macOS Keychain. We never persist what we
+  // read here — Claude Code owns rotation, and disk-copying would diverge.
+  const fromKeychain = await readClaudeCodeFromKeychain(opts.keychain, { print: opts.print })
+  if (fromKeychain) {
+    return useKeychainCredential(fromKeychain)
+  }
+
+  return null
+}
+
+// Read the Claude Code Keychain entry without persisting it. Returns null
+// when the host isn't macOS, the user has opted out via
+// ORCHENTRA_NO_CLAUDE_CODE_IMPORT, or no Claude Code login exists.
+//
+// Prints a one-line stderr banner before the first probe so the user knows
+// what the macOS Keychain prompt is for. Tests can inject a custom `print`
+// callback (or set ORCHENTRA_NO_KEYCHAIN_BANNER=1) to suppress.
+export async function readClaudeCodeFromKeychain(
+  keychain?: MacKeychain,
+  opts: ReadKeychainOptions = {},
+): Promise<StoredCredential | null> {
+  if (process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']) return null
+  const kc = keychain ?? (MacKeychain.available() ? new MacKeychain() : null)
+  if (!kc) return null
+  emitKeychainBanner(opts.print)
+  return await loadClaudeCodeOauth(kc)
+}
+
+export interface ReadKeychainOptions {
+  // Override the banner sink. Defaults to a once-per-process stderr write.
+  // Pass a noop in tests to silence the banner without touching env.
+  readonly print?: (msg: string) => void
+}
+
+const KEYCHAIN_BANNER =
+  'orchentra: probing macOS Keychain for an existing Claude Code login. ' +
+  "macOS may prompt once for permission — choose 'Always Allow' to skip future prompts."
+
+let bannerEmitted = false
+
+function emitKeychainBanner(custom?: (msg: string) => void): void {
+  if (process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']) return
+  if (custom) {
+    custom(KEYCHAIN_BANNER)
+    return
+  }
+  if (bannerEmitted) return
+  bannerEmitted = true
+  process.stderr.write(KEYCHAIN_BANNER + '\n')
+}
+
+// Test-only: reset the once-per-process guard so a fresh test can assert
+// the banner fires. Not exported from the package index — tests import
+// directly from this module.
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export function __resetKeychainBannerForTesting(): void {
+  bannerEmitted = false
+}
+
+async function useStoredCredential(stored: StoredCredential): Promise<string | null> {
   if (stored.accessToken && stored.expiresAt && stored.expiresAt > Date.now() + 30_000) {
     return stored.accessToken
   }
@@ -132,6 +222,17 @@ export async function resolveAnthropicAuthToken(): Promise<string | null> {
   }
 
   return stored.accessToken ?? null
+}
+
+// Use the Keychain access token if it has runway. Never refresh — invoking
+// the OAuth refresh endpoint with Claude Code's refresh_token would rotate
+// it, invalidating Claude Code's own session. If the access token is stale,
+// surface null so the caller can prompt the user to launch Claude Code (or
+// run /login) instead of silently breaking the parent app.
+function useKeychainCredential(cred: StoredCredential): string | null {
+  if (!cred.accessToken) return null
+  if (cred.expiresAt && cred.expiresAt <= Date.now() + 30_000) return null
+  return cred.accessToken
 }
 
 export function logoutAnthropic(): boolean {

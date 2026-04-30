@@ -33,15 +33,22 @@ describe('errors', () => {
     expect(isRetryableStatus(400)).toBe(false)
   })
 
-  test('enrichAuthError hints for sk-ant- in bearer mode', () => {
+  test('enrichAuthError hints when sk-ant-api03- API key wedged into bearer slot', () => {
     const original = classifyError(401, 'bad token')
     const enriched = enrichAuthError(original, 'bearer', 'sk-ant-api03-test123')
-    expect(enriched.message).toContain('ANTHROPIC_API_KEY')
+    expect(enriched.message).toContain('sk-ant-api03-* keys go in ANTHROPIC_API_KEY')
+  })
+
+  test('enrichAuthError does NOT hint when sk-ant-oat01- OAuth bearer is in correct slot', () => {
+    const original = classifyError(401, 'OAuth not supported')
+    const enriched = enrichAuthError(original, 'bearer', 'sk-ant-oat01-correct-token')
+    expect(enriched.message).toBe(original.message)
+    expect(enriched.message).not.toContain('ANTHROPIC_API_KEY')
   })
 
   test('enrichAuthError does not modify non-bearer auth', () => {
     const original = classifyError(401, 'bad token')
-    const enriched = enrichAuthError(original, 'api_key', 'sk-ant-test')
+    const enriched = enrichAuthError(original, 'api_key', 'sk-ant-api03-test')
     expect(enriched.message).toBe(original.message)
   })
 
