@@ -453,6 +453,49 @@ describe('AnthropicProvider', () => {
     delete process.env['ANTHROPIC_AUTH_TOKEN']
   })
 
+  // Anthropic returns 429 ("This credential is only authorized for use with
+  // Claude Code") when the prefix is concatenated into the user's system
+  // prompt. The prefix MUST be its OWN first block. Validated against live
+  // /v1/messages on 2026-04-30 — single-block returned 429, two-block returned
+  // 200. Without this check we silently regress and hang on retry.
+  test('OAuth: Claude Code prefix is its OWN first system block (not concatenated)', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(
+      provider,
+      buildRequest({ systemStatic: 'CUSTOM_STATIC_RULES', systemDynamic: 'CUSTOM_DYNAMIC_NOTES' }),
+    )
+
+    const system = lastRequest().body.system as { text: string; cache_control?: unknown }[]
+    expect(Array.isArray(system)).toBe(true)
+    expect(system).toHaveLength(3)
+    expect(system[0]?.text).toBe("You are Claude Code, Anthropic's official CLI for Claude.")
+    expect(system[0]?.cache_control).toBeUndefined()
+    expect(system[1]?.text).toBe('CUSTOM_STATIC_RULES')
+    expect(system[1]?.cache_control).toEqual({ type: 'ephemeral' })
+    expect(system[2]?.text).toBe('CUSTOM_DYNAMIC_NOTES')
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('OAuth + empty systemStatic: still emits prefix block', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ systemStatic: '', systemDynamic: '' }))
+
+    const system = lastRequest().body.system as { text: string }[]
+    expect(system).toHaveLength(1)
+    expect(system[0]?.text).toBe("You are Claude Code, Anthropic's official CLI for Claude.")
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
   test('API key requests do NOT prepend Claude Code identity to system prompt', async () => {
     mockServer([{ body: successSseFrame() }])
     const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })

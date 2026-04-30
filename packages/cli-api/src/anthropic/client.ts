@@ -37,11 +37,6 @@ const ANTHROPIC_OAUTH_USER_AGENT = 'claude-cli/1.0.0 (external, cli)'
 const DEFAULT_USER_AGENT = 'OrchentraCLI/1.0'
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
-// Anthropic requires this exact prefix on the system prompt when an OAuth
-// bearer is paired with a Claude 4+ model. Without it: 401 with
-// "This credential is only authorized for use with Claude Code".
-const CLAUDE_CODE_SYSTEM_PROMPT_PREFIX = "You are Claude Code, Anthropic's official CLI for Claude."
-
 export class AnthropicProvider implements Provider {
   private readonly baseUrl: string
   private readonly model: string
@@ -92,8 +87,7 @@ export class AnthropicProvider implements Provider {
     }
 
     const usingOAuth = authHeaders.authSource === 'bearer' || authHeaders.authSource === 'both'
-    const systemStatic = usingOAuth ? prependClaudeCodePrefix(request.systemStatic) : request.systemStatic
-    const system = injectCacheBoundary(systemStatic, request.systemDynamic)
+    const system = injectCacheBoundary(request.systemStatic, request.systemDynamic, { usingOAuth })
     const body: MessageRequest = {
       model: request.model || this.model,
       max_tokens: request.maxOutputTokens || this.maxTokens,
@@ -359,10 +353,4 @@ function mergeUsage(existing: Usage, incoming: Usage): Usage {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function prependClaudeCodePrefix(systemStatic: string): string {
-  if (systemStatic.startsWith(CLAUDE_CODE_SYSTEM_PROMPT_PREFIX)) return systemStatic
-  if (!systemStatic) return CLAUDE_CODE_SYSTEM_PROMPT_PREFIX
-  return `${CLAUDE_CODE_SYSTEM_PROMPT_PREFIX}\n\n${systemStatic}`
 }
