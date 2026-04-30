@@ -1,4 +1,4 @@
-export interface PreflightResult {
+interface PreflightResult {
   valid: boolean
   error?: string
 }

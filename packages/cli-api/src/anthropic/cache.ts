@@ -10,7 +10,7 @@ import type { SystemContentBlock } from './types'
 // 429 (single-block) or "OAuth not supported" (truncated).
 export const CLAUDE_CODE_SYSTEM_PROMPT_PREFIX = "You are Claude Code, Anthropic's official CLI for Claude."
 
-export interface InjectCacheBoundaryOptions {
+interface InjectCacheBoundaryOptions {
   readonly usingOAuth?: boolean
 }
 
