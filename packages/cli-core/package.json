@@ -7,7 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./runtime": "./src/runtime/index.ts",
-    "./render": "./src/render/graph-tree.ts"
+    "./render": "./src/render/index.ts"
   },
   "scripts": {
     "lint": "eslint .",
