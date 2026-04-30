@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { importClaudeCodeIfAvailable, resolveAnthropicAuthToken } from '../src/anthropic/oauth'
+import { readClaudeCodeFromKeychain, resolveAnthropicAuthToken } from '../src/anthropic/oauth'
 import { getCredential, saveCredential } from '../src/credential-store'
 import { MacKeychain, type KeychainExec } from '../src/keychain'
 import { CLAUDE_CODE_KEYCHAIN_SERVICE } from '../src/anthropic/claude-code-creds'
@@ -91,8 +91,8 @@ describe('resolveAnthropicAuthToken — precedence', () => {
   })
 })
 
-describe('importClaudeCodeIfAvailable', () => {
-  test('imports the Claude Code credential and persists it to Orchentra creds', async () => {
+describe('readClaudeCodeFromKeychain', () => {
+  test('reads the Claude Code credential without persisting it to disk', async () => {
     const expires = Date.now() + 3_600_000
     const exec = fakeKeychainExec(
       new Map([
@@ -102,9 +102,12 @@ describe('importClaudeCodeIfAvailable', () => {
         ],
       ]),
     )
-    const imported = await importClaudeCodeIfAvailable(new MacKeychain(exec))
-    expect(imported?.accessToken).toBe('sk-ant-oat01-CC')
-    expect(getCredential('anthropic', configHome)?.accessToken).toBe('sk-ant-oat01-CC')
+    const cred = await readClaudeCodeFromKeychain(new MacKeychain(exec))
+    expect(cred?.accessToken).toBe('sk-ant-oat01-CC')
+    // Crucial: do NOT touch the Orchentra credential store. Persisting would
+    // diverge our copy from Claude Code's, and refreshing later would rotate
+    // Claude Code's refresh_token out from under it.
+    expect(getCredential('anthropic', configHome)).toBeNull()
   })
 
   test('returns null when Keychain holds no Claude Code entry', async () => {
@@ -114,8 +117,7 @@ describe('importClaudeCodeIfAvailable', () => {
         ['dump-keychain', { code: 0, stdout: '' }],
       ]),
     )
-    expect(await importClaudeCodeIfAvailable(new MacKeychain(exec))).toBeNull()
-    expect(getCredential('anthropic', configHome)).toBeNull()
+    expect(await readClaudeCodeFromKeychain(new MacKeychain(exec))).toBeNull()
   })
 
   test('honours ORCHENTRA_NO_CLAUDE_CODE_IMPORT opt-out', async () => {
@@ -128,12 +130,12 @@ describe('importClaudeCodeIfAvailable', () => {
         ],
       ]),
     )
-    expect(await importClaudeCodeIfAvailable(new MacKeychain(exec))).toBeNull()
+    expect(await readClaudeCodeFromKeychain(new MacKeychain(exec))).toBeNull()
   })
 })
 
-describe('resolveAnthropicAuthToken — Keychain fallback', () => {
-  test('reads Claude Code Keychain when no env or stored creds', async () => {
+describe('resolveAnthropicAuthToken — Keychain fallback (read-through)', () => {
+  test('reads Claude Code Keychain when no env or stored creds and does not persist', async () => {
     const expires = Date.now() + 3_600_000
     const exec = fakeKeychainExec(
       new Map([
@@ -145,6 +147,7 @@ describe('resolveAnthropicAuthToken — Keychain fallback', () => {
     )
     const token = await resolveAnthropicAuthToken({ keychain: new MacKeychain(exec) })
     expect(token).toBe('sk-ant-oat01-from-keychain')
+    expect(getCredential('anthropic', configHome)).toBeNull()
   })
 
   test('skips Keychain when an Orchentra credential already exists', async () => {
@@ -171,5 +174,86 @@ describe('resolveAnthropicAuthToken — Keychain fallback', () => {
       ]),
     )
     expect(await resolveAnthropicAuthToken({ keychain: new MacKeychain(exec) })).toBeNull()
+  })
+
+  test('Keychain-sourced tokens are never refreshed (would invalidate Claude Code session)', async () => {
+    // Refresh endpoint stub that would fail loud if called — proves we never
+    // hit it on the Keychain path.
+    const originalFetch = globalThis.fetch
+    let refreshCalls = 0
+    globalThis.fetch = (async () => {
+      refreshCalls++
+      return new Response('{}', { status: 200 })
+    }) as typeof globalThis.fetch
+    try {
+      const exec = fakeKeychainExec(
+        new Map([
+          [
+            `find-generic-password -s ${CLAUDE_CODE_KEYCHAIN_SERVICE} -w`,
+            { code: 0, stdout: ccPayload('sk-ant-oat01-CC', 'sk-ant-ort01-CC', Date.now() + 3_600_000) },
+          ],
+        ]),
+      )
+      await resolveAnthropicAuthToken({ keychain: new MacKeychain(exec) })
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+    expect(refreshCalls).toBe(0)
+  })
+
+  test('expired Keychain access token returns null instead of refreshing', async () => {
+    const exec = fakeKeychainExec(
+      new Map([
+        [
+          `find-generic-password -s ${CLAUDE_CODE_KEYCHAIN_SERVICE} -w`,
+          { code: 0, stdout: ccPayload('sk-ant-oat01-CC', 'sk-ant-ort01-CC', Date.now() - 1000) },
+        ],
+      ]),
+    )
+    expect(await resolveAnthropicAuthToken({ keychain: new MacKeychain(exec) })).toBeNull()
+  })
+})
+
+describe('resolveAnthropicAuthToken — legacy keychain-source migration', () => {
+  test('scrubs legacy claude-code-keychain stored creds and re-reads from Keychain', async () => {
+    // Legacy state: a previous Orchentra release imported Keychain creds to
+    // disk via saveCredential. Resolving against that copy would refresh
+    // Anthropic's refresh_token and break Claude Code's session — so we
+    // delete the stale copy and read the current Keychain entry instead.
+    saveCredential(
+      'anthropic',
+      {
+        accessToken: 'sk-ant-oat01-stale-import',
+        refreshToken: 'sk-ant-ort01-stale',
+        expiresAt: Date.now() + 60_000,
+        extra: { source: 'claude-code-keychain', service: CLAUDE_CODE_KEYCHAIN_SERVICE },
+      },
+      configHome,
+    )
+    const exec = fakeKeychainExec(
+      new Map([
+        [
+          `find-generic-password -s ${CLAUDE_CODE_KEYCHAIN_SERVICE} -w`,
+          { code: 0, stdout: ccPayload('sk-ant-oat01-fresh-from-keychain', 'r', Date.now() + 3_600_000) },
+        ],
+      ]),
+    )
+    const token = await resolveAnthropicAuthToken({ keychain: new MacKeychain(exec) })
+    expect(token).toBe('sk-ant-oat01-fresh-from-keychain')
+    expect(getCredential('anthropic', configHome)).toBeNull()
+  })
+
+  test('non-keychain stored creds are kept and used (own /login persists normally)', async () => {
+    saveCredential('anthropic', { accessToken: 'sk-ant-oat01-from-login', expiresAt: Date.now() + 60_000 }, configHome)
+    const exec = fakeKeychainExec(
+      new Map([
+        [
+          `find-generic-password -s ${CLAUDE_CODE_KEYCHAIN_SERVICE} -w`,
+          { code: 0, stdout: ccPayload('sk-ant-oat01-keychain', 'r', Date.now() + 60_000) },
+        ],
+      ]),
+    )
+    expect(await resolveAnthropicAuthToken({ keychain: new MacKeychain(exec) })).toBe('sk-ant-oat01-from-login')
+    expect(getCredential('anthropic', configHome)?.accessToken).toBe('sk-ant-oat01-from-login')
   })
 })

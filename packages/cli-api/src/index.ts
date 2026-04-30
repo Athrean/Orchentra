@@ -6,7 +6,7 @@ export {
   loginAnthropic,
   logoutAnthropic,
   resolveAnthropicAuthToken,
-  importClaudeCodeIfAvailable,
+  readClaudeCodeFromKeychain,
   startAnthropicLogin,
   completeAnthropicLogin,
   type AnthropicLoginOptions,

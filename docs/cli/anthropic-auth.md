@@ -18,7 +18,7 @@ orchentra
 # → "Always Allow" (or "Allow") → Orchentra has access to your subscription
 ```
 
-What happens under the hood: on the first request without an Orchentra-stored credential, the CLI reads the `Claude Code-credentials` generic-password entry from your login keychain, parses the bundled OAuth tokens, and copies them into `~/.config/orchentra/credentials.json`. The standard refresh path takes over from there. Your Claude Code session is not modified.
+What happens under the hood: on every request without an Orchentra-stored credential, the CLI reads the `Claude Code-credentials` generic-password entry from your login keychain and uses the access token directly. **Nothing is copied to disk** — Claude Code remains the sole owner of the refresh cycle, so refreshing in Orchentra cannot rotate Claude Code's tokens or break its session. If the Keychain access token is stale, run Claude Code once (it will refresh) or `/login` Orchentra to mint a separate session.
 
 If you have multiple Claude Code accounts, the canonical entry is preferred; the first matching variant wins otherwise. Use `/login` to override the choice.
 

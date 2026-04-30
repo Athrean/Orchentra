@@ -112,6 +112,8 @@ export interface ResolveAnthropicAuthOptions {
   readonly keychain?: MacKeychain
 }
 
+const KEYCHAIN_SOURCE = 'claude-code-keychain'
+
 export async function resolveAnthropicAuthToken(opts: ResolveAnthropicAuthOptions = {}): Promise<string | null> {
   const envToken = process.env['ANTHROPIC_AUTH_TOKEN']
   if (envToken && envToken.trim().length > 0) return envToken.trim()
@@ -122,12 +124,42 @@ export async function resolveAnthropicAuthToken(opts: ResolveAnthropicAuthOption
   const longLivedToken = process.env['CLAUDE_CODE_OAUTH_TOKEN']
   if (longLivedToken && longLivedToken.trim().length > 0) return longLivedToken.trim()
 
+  // Migration: an earlier release imported the Claude Code Keychain entry
+  // into our credential store. Refreshing those tokens against Anthropic
+  // would rotate Claude Code's refresh_token and break its own session.
+  // Scrub legacy entries so the fresh Keychain read below becomes the source
+  // of truth.
   let stored = getCredential('anthropic')
-  if (!stored) {
-    stored = await importClaudeCodeIfAvailable(opts.keychain)
+  if (stored?.extra?.['source'] === KEYCHAIN_SOURCE) {
+    clearCredential('anthropic')
+    stored = null
   }
-  if (!stored) return null
 
+  if (stored) {
+    return await useStoredCredential(stored)
+  }
+
+  // Read-through fallback to the macOS Keychain. We never persist what we
+  // read here — Claude Code owns rotation, and disk-copying would diverge.
+  const fromKeychain = await readClaudeCodeFromKeychain(opts.keychain)
+  if (fromKeychain) {
+    return useKeychainCredential(fromKeychain)
+  }
+
+  return null
+}
+
+// Read the Claude Code Keychain entry without persisting it. Returns null
+// when the host isn't macOS, the user has opted out via
+// ORCHENTRA_NO_CLAUDE_CODE_IMPORT, or no Claude Code login exists.
+export async function readClaudeCodeFromKeychain(keychain?: MacKeychain): Promise<StoredCredential | null> {
+  if (process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']) return null
+  const kc = keychain ?? (MacKeychain.available() ? new MacKeychain() : null)
+  if (!kc) return null
+  return await loadClaudeCodeOauth(kc)
+}
+
+async function useStoredCredential(stored: StoredCredential): Promise<string | null> {
   if (stored.accessToken && stored.expiresAt && stored.expiresAt > Date.now() + 30_000) {
     return stored.accessToken
   }
@@ -151,18 +183,15 @@ export async function resolveAnthropicAuthToken(opts: ResolveAnthropicAuthOption
   return stored.accessToken ?? null
 }
 
-// One-shot import: detect an existing Claude Code login on macOS and copy
-// it into Orchentra's credential store. Subsequent calls find the stored
-// copy and skip Keychain access entirely. Set ORCHENTRA_NO_CLAUDE_CODE_IMPORT
-// to opt out — useful for shared machines or test environments.
-export async function importClaudeCodeIfAvailable(keychain?: MacKeychain): Promise<StoredCredential | null> {
-  if (process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']) return null
-  const kc = keychain ?? (MacKeychain.available() ? new MacKeychain() : null)
-  if (!kc) return null
-  const cred = await loadClaudeCodeOauth(kc)
-  if (!cred) return null
-  saveCredential('anthropic', cred)
-  return cred
+// Use the Keychain access token if it has runway. Never refresh — invoking
+// the OAuth refresh endpoint with Claude Code's refresh_token would rotate
+// it, invalidating Claude Code's own session. If the access token is stale,
+// surface null so the caller can prompt the user to launch Claude Code (or
+// run /login) instead of silently breaking the parent app.
+function useKeychainCredential(cred: StoredCredential): string | null {
+  if (!cred.accessToken) return null
+  if (cred.expiresAt && cred.expiresAt <= Date.now() + 30_000) return null
+  return cred.accessToken
 }
 
 export function logoutAnthropic(): boolean {
