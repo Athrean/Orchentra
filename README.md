@@ -2,119 +2,100 @@
 
 <img src="apps/web/public/green-logo.png" alt="Orchentra" width="480">
 
-### Stop configuring dashboards. Start shipping.
+### The DevOps engineer's daily co-pilot.
 
-You're a startup. You don't have an SRE team. You sure as hell don't have time to configure Prometheus alerts, build Grafana dashboards, and wire up PagerDuty — just to find out your CI broke because someone forgot a semicolon.
+Open-source, terminal-native. CI failures, on-call alerts, and scheduled ops all flow through the same primitive — an **Execution Graph** of typed nodes you can query, replay, and explain.
 
-**Orchentra is AI-native observability.** No dashboards. No alert rules. When something breaks, an AI agent investigates, explains what happened, and opens a fix PR. You review and approve. That's it.
-
-[**Getting Started**](#getting-started) · [**How It Works**](#how-it-works) · [**What It Replaces**](#what-it-replaces) · [**Features**](#features) · [**Self-Hosting**](#self-hosting)
+[**What it is**](#what-it-is) · [**Status**](#status) · [**How it works**](#how-it-works) · [**Getting started**](#getting-started) · [**CLI**](#cli) · [**Self-hosting**](#self-hosting)
 
 </div>
 
 ---
 
-## The Problem
+## What it is
 
-Your CI breaks at 2 AM. Here's what "industry standard" observability looks like:
+Orchentra runs the work a DevOps engineer does between Slack pings:
+
+- **Triages a CI failure** when a `workflow_run` webhook arrives — pulls logs, diffs the change, names a root cause, optionally opens a fix PR.
+- **Investigates an alert** when Sentry fires — same loop, different entry point.
+- **Runs scheduled ops** off a cron spec — health checks, queue drains, weekly sweeps.
+
+Every run becomes an **execution** with a tree of **nodes** (tool calls, decisions, writebacks). The same graph powers the CLI (`orchentra graph <id>` / `orchentra why <node>`) and the web dashboard (read-only projection). One primitive, three surfaces.
+
+This is **not** a Datadog/Grafana replacement, a "PR fixer" SaaS, or yet another alerting product. The wedge is the graph and the terminal.
+
+## Status
+
+| Phase | Description                                                        | Status                  |
+| ----- | ------------------------------------------------------------------ | ----------------------- |
+| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped                 |
+| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped                 |
+| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#228, #235)    |
+| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#225, #236–40) |
+| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future                  |
+
+Side-shipped: per-org LLM config (multi-provider), live agent investigation timeline, CLI Pro/Max OAuth on macOS (Keychain auto-detect), in-TUI login + model picker.
+
+## How it works
 
 ```
-Prometheus  →  "CPU above 80%"       (cool, which service? why?)
-Grafana     →  stare at graphs       (is that spike normal?)
-PagerDuty   →  WAKE UP               (you're already awake now)
-You         →  ssh in, read logs     (for 45 minutes)
+Trigger arrives
+  ├── GitHub workflow_run webhook   → execution.kind = 'ci_failure'
+  ├── Sentry alert webhook           → execution.kind = 'alert'
+  └── Cron tick                       → execution.kind = 'cron'
+        │
+        ▼
+  Agent loop spawns nodes
+   ├── tool_call:  fetch logs, read files, list commits, search code
+   ├── tool_call:  pattern memory lookup
+   ├── decision:   root-cause hypothesis + confidence
+   └── writeback:  PR comment, check run, fix patch
+        │
+        ▼
+  Same graph rendered in both surfaces
+   ├── CLI:  orchentra graph <id>   →  ASCII tree
+   ├── CLI:  orchentra why <nodeId> →  inputs + rationale
+   └── Web:  /dashboard/exec/[id]   →  live timeline + node detail
 ```
 
-Three tools, zero answers, one tired engineer. Startups don't have time for this.
+Cross-execution diff (`/dashboard/diff`) lines up two executions for postmortems and A/B comparisons.
 
-**Orchentra does what a senior on-call engineer would do** — read the logs, check the diff, find the root cause, write the fix — except it takes 60 seconds instead of 45 minutes.
+## Surfaces
 
-## How It Works
+**CLI (primary).** Interactive Ink TUI — REPL, slash commands (`/login`, `/doctor`, `/graph`, `/why`, `/issue`, `/pr`, `/model`, `/skills`, …), arrow-key model picker, in-TUI Anthropic OAuth login, native `--output-format json` for diagnostic verbs, resume model.
 
-```
-Something breaks
-       │
-       ▼
-  Orchentra catches it          (webhook, alert, whatever you plug in)
-       │
-       ▼
-  AI agent investigates
-   ├── Pulls the failed job logs
-   ├── Checks what changed (commits, configs, deps)
-   ├── Reads the relevant source files
-   ├── Correlates with past incidents & known patterns
-   ├── Searches the codebase for related issues
-   │
-   ▼
-  You get a brief — not an alert
-   ├── What broke (with evidence)
-   ├── Why it broke (root cause, confidence score)
-   ├── How to fix it (suggested patch)
-   │
-   ▼
-  One-click fix PR              (for high-confidence failures)
-       │
-       ▼
-  Auto-resolves when CI passes  (you didn't even have to think)
-```
+**Server.** Hono backend — webhooks (`workflow_run`, Sentry), cron tick, agent loop with multi-provider LLM (per-org config), Postgres-backed job queue with retry + dead-letter, idempotent two-tier dedup.
 
-## What It Replaces
+**Web (read-only).** Next.js dashboard — live agent timeline (WebSocket), execution graph view (kind-agnostic tree), node detail, cross-execution diff. No write paths.
 
-| Instead of this                         | Orchentra does this                                  |
-| --------------------------------------- | ---------------------------------------------------- |
-| Prometheus alert rules you never get to | AI detects failures from webhooks automatically      |
-| Grafana dashboards nobody reads         | Root-cause briefs that tell you _what broke and why_ |
-| PagerDuty pages at 3 AM                 | A root-cause brief delivered with the failure        |
-| Manual log diving for 45 minutes        | Agent investigates in 60 seconds                     |
-| Copy-pasting stack traces into Google   | Pattern memory from past incidents across your org   |
-| Writing a fix PR yourself               | Auto-generated patch PRs you just review and approve |
+## Investigation tools
 
-## Features
+The agent has typed tools for: workflow logs, commit + diff inspection, file reads, PR/issue listing, code search, pattern memory across past executions. Skills (`SKILL.md` files) ship reusable prompts as first-class slash commands.
 
-**Investigation**
+## Tech stack
 
-- 6 AI investigation tools — workflow logs, commit diffs, file contents, PR/issues, code search, pattern memory
-- Pattern learning — remembers resolved incidents and applies past solutions to similar failures
-- Structured briefs — failure type, root cause, confidence score, suggested fix
+| Layer    | Technology                                                                     |
+| -------- | ------------------------------------------------------------------------------ |
+| Runtime  | [Bun](https://bun.sh) 1.3                                                      |
+| Backend  | [Hono](https://hono.dev)                                                       |
+| Frontend | [Next.js](https://nextjs.org) 15 (App Router)                                  |
+| Database | PostgreSQL 17 + [Drizzle ORM](https://orm.drizzle.team)                        |
+| AI       | [Vercel AI SDK](https://sdk.vercel.ai) — OpenRouter / Anthropic OAuth / OpenAI |
+| GitHub   | [Octokit](https://octokit.github.io/rest.js)                                   |
+| TUI      | [Ink](https://github.com/vadimdemedes/ink) + React                             |
+| Styling  | [Tailwind CSS](https://tailwindcss.com) 4 + Framer Motion                      |
+| Monorepo | Bun workspaces + [Turborepo](https://turbo.build)                              |
 
-**Remediation**
-
-- Code patch generation — creates real fix PRs with file diffs, not metadata-only commits
-- Auto-resolve loop — watches CI after a fix PR and closes the incident when tests pass
-- GitHub-native output — check runs, commit statuses, and PR comments
-
-**Platform**
-
-- Real-time dashboard — WebSocket-powered incident view with live agent steps
-- Multi-tenant — org-scoped access, role-based permissions, per-org configuration
-- MTTR tracking — measures mean time to resolution per org
-- Token cost estimation — per-incident LLM spend tracking
-- Idempotent webhooks — two-tier dedup (in-memory + DB unique index) with replay support
-- Async job queue — Postgres-backed with retry, exponential backoff, and dead-letter handling
-
-## Tech Stack
-
-| Layer    | Technology                                                                   |
-| -------- | ---------------------------------------------------------------------------- |
-| Runtime  | [Bun](https://bun.sh) 1.3                                                    |
-| Backend  | [Hono](https://hono.dev)                                                     |
-| Frontend | [Next.js](https://nextjs.org) 15 (App Router)                                |
-| Database | PostgreSQL 17 + [Drizzle ORM](https://orm.drizzle.team)                      |
-| AI       | [Vercel AI SDK](https://sdk.vercel.ai) + [OpenRouter](https://openrouter.ai) |
-| GitHub   | [Octokit](https://octokit.github.io/rest.js)                                 |
-| Styling  | [Tailwind CSS](https://tailwindcss.com) 4 + Framer Motion                    |
-| Monorepo | Bun workspaces + [Turborepo](https://turbo.build)                            |
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
 - [Bun](https://bun.sh) >= 1.3
 - PostgreSQL >= 17 (or Docker)
 - GitHub OAuth app credentials
-- OpenRouter API key (or any OpenAI-compatible endpoint)
+- An LLM credential — OpenRouter key, Anthropic API key, or Claude Pro/Max subscription (CLI only, macOS auto-detect)
 
-### 1. Clone & Install
+### Install
 
 ```bash
 git clone https://github.com/Athrean/Orchentra.git
@@ -122,13 +103,13 @@ cd Orchentra
 bun install
 ```
 
-### 2. Configure
+### Configure
 
 ```bash
 cp orchentra.yml.example orchentra.yml
 ```
 
-Edit `orchentra.yml` with your credentials:
+Edit with your credentials:
 
 ```yaml
 github:
@@ -147,91 +128,80 @@ llm:
   model: 'anthropic/claude-sonnet-4-5'
 ```
 
-### 3. Set up the Database
+### Database + run
 
 ```bash
 bun run db:generate
 bun run db:migrate
-```
-
-### 4. Run
-
-```bash
 bun run dev
 ```
 
-The server starts at `http://localhost:3001` and the web app at `http://localhost:3000`.
+Server: `http://localhost:3001` · Web: `http://localhost:3000`.
 
-## Self-Hosting with Docker
+## CLI
+
+```bash
+orchentra              # interactive TUI
+orchentra doctor       # environment preflight (auth, DB, repo)
+orchentra graph <id>   # ASCII tree of nodes for an execution
+orchentra why <node>   # walk parent chain, print inputs + rationale
+```
+
+- **Anthropic auth:** [`docs/cli/anthropic-auth.md`](docs/cli/anthropic-auth.md) — Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting.
+- **Skills:** [`docs/cli/skills.md`](docs/cli/skills.md) — frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload.
+- **Examples:** [`examples/skills/`](examples/skills/) — drop-in `SKILL.md` samples (`/incident`, `/deploy`).
+
+**macOS Pro/Max users:** if you already use Claude Code, just run `orchentra` — your subscription is picked up from the system Keychain on first request, no extra login needed.
+
+Skills quick start: drop a `SKILL.md` at `<repo>/.orchentra/skills/<name>/SKILL.md`, restart the CLI (or `/skills reload`), invoke `/<name>`.
+
+## Self-hosting
 
 ```bash
 docker compose up -d
 ```
 
-This starts PostgreSQL and the Orchentra server. Mount your `orchentra.yml` — the compose file handles the rest.
+Starts PostgreSQL and the Orchentra server. Mount your `orchentra.yml` — compose handles the rest.
 
-## Project Structure
+## Project structure
 
 ```
 Orchentra/
 ├── apps/
-│   ├── cli/                 # Interactive Ink TUI — REPL, slash commands, skills
-│   ├── server/              # Hono backend — webhooks, agent, queue, GitHub integrations
-│   └── web/                 # Next.js frontend — dashboard, landing, onboarding
+│   ├── cli/                 # Ink TUI — REPL, slash commands, skills, OAuth flows
+│   ├── server/              # Hono backend — webhooks, cron, agent, queue, integrations
+│   └── web/                 # Next.js — dashboard, exec graph view, cross-exec diff
 ├── packages/
 │   ├── cli-core/            # Skill loader, permissions, runtime primitives
-│   ├── cli-api/             # Tool argument parsing + API helpers
-│   ├── cli-tools/           # Built-in tool registry
-│   ├── core/                # Shared types, schemas, utilities
+│   ├── cli-api/             # Provider clients (Anthropic OAuth, GitHub, Gemini), keychain
+│   ├── cli-tools/           # Built-in tool registry + MCP transport
+│   ├── core/                # Shared schemas, types (executions/nodes), utilities
 │   ├── db/                  # Drizzle schema, migrations, client
 │   ├── config-eslint/       # Shared ESLint config
 │   └── config-typescript/   # Shared TypeScript config
-├── docs/
-│   └── cli/                 # CLI guides (skills authoring, etc.)
-├── examples/
-│   └── skills/              # Sample SKILL.md files (incident, deploy)
+├── docs/cli/                # CLI guides (Anthropic auth, skills authoring)
+├── examples/skills/         # Sample SKILL.md files
 ├── docker-compose.yml
-├── orchentra.yml.example    # Configuration template
-└── CLAUDE.md                # AI agent instructions
+├── orchentra.yml.example
+└── CLAUDE.md                # Vision, roadmap, principles (canonical)
 ```
-
-## Incident Lifecycle
-
-```
-investigating → brief_ready → fixing → resolved
-                  │
-                  └── error (retryable via dead-letter queue)
-```
-
-Each incident tracks: failure context, agent tool calls, structured brief, confidence score, token usage, MTTR, and all actions taken.
-
-## CLI
-
-The interactive CLI ships in `apps/cli/`. It's an Ink-based REPL with slash commands, hook integrations, and a **skills system** for shipping reusable prompts.
-
-- **Anthropic auth:** [`docs/cli/anthropic-auth.md`](docs/cli/anthropic-auth.md) — Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting.
-- **Author guide:** [`docs/cli/skills.md`](docs/cli/skills.md) — frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload, troubleshooting.
-- **Examples:** [`examples/skills/`](examples/skills/) — drop-in `SKILL.md` samples for `/incident` and `/deploy`.
-
-**macOS Pro/Max users:** if you already use Claude Code, just run `orchentra` — your subscription is picked up from the system keychain on first request, no extra login needed.
-
-Skills quick start: drop a `SKILL.md` at `<repo>/.orchentra/skills/<name>/SKILL.md`, restart the CLI (or `/skills reload`), and invoke `/<name>`.
 
 ## Development
 
 ```bash
-bun run dev          # Start all apps in dev mode
+bun run dev          # All apps in dev mode
 bun run build        # Production build
 bun run typecheck    # Type checking across all packages
 bun run lint         # Lint all packages
-bun run test         # Run server tests
-bun run format       # Format with Prettier
+bun run test         # Server tests
+bun run test:precommit  # CLI stack tests (cli-core, cli-api, cli-tools, cli)
+bun run format       # Prettier
 ```
 
 ---
 
 <div align="center">
 
-Built by [Athrean](https://github.com/Athrean)
+Built by [Athrean](https://github.com/Athrean) · Vision + roadmap in [`CLAUDE.md`](CLAUDE.md)
 
 </div>
