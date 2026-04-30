@@ -44,6 +44,13 @@ export {
   type LoopbackResult,
   type LoopbackOptions,
 } from './oauth-pkce'
+export {
+  MacKeychain,
+  defaultKeychainExec,
+  type KeychainEntry,
+  type KeychainExec,
+  type KeychainExecResult,
+} from './keychain'
 export type {
   StreamEvent,
   Usage,
