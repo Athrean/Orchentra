@@ -40,4 +40,14 @@ describe('diffExecutionGraphs', () => {
     // b-only-2 is unmatched
     expect(result.added[0]?.id).toBe('b-only-2')
   })
+
+  test('pure removal → a has node not in b', () => {
+    const a = [n({ id: 'a1' }), n({ id: 'a2', kind: 'synthesis', round: 2 })]
+    const b = [n({ id: 'b1' })]
+    const result = diffExecutionGraphs(a, b)
+    expect(result.removed).toHaveLength(1)
+    expect(result.removed[0]?.id).toBe('a2')
+    expect(result.unchanged).toHaveLength(1)
+    expect(result.added).toEqual([])
+  })
 })
