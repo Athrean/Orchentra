@@ -9,4 +9,5 @@ export const queryKeys = {
   analytics: (orgId: string, repo: string, from: string, to: string) => ['analytics', orgId, repo, from, to] as const,
   agentEvents: (orgId: string, incidentId: string) => ['agent-events', orgId, incidentId] as const,
   executionGraph: (orgId: string, executionId: string) => ['execution-graph', orgId, executionId] as const,
+  nodeLineage: (orgId: string, nodeId: string) => ['node-lineage', orgId, nodeId] as const,
 }

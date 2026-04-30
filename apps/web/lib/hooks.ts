@@ -23,6 +23,7 @@ export type {
   ExecutionMeta,
   GraphNode,
   ExecutionGraph,
+  NodeLineage,
 } from './types'
 
 export { queryKeys } from './queryKeys'
@@ -50,3 +51,5 @@ export { useAnalytics } from './hooks/useAnalytics'
 export { useAgentEvents } from './hooks/useAgentEvents'
 
 export { useExecutionGraph } from './hooks/useExecutionGraph'
+
+export { useNodeLineage } from './hooks/useNodeLineage'
