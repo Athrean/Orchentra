@@ -100,4 +100,28 @@ describe('diffExecutionGraphs', () => {
     expect(result.removed.map((node) => node.id)).toEqual(['a1'])
     expect(result.added.map((node) => node.id)).toEqual(['b1'])
   })
+
+  test('empty a, non-empty b → all added', () => {
+    const result = diffExecutionGraphs([], [n({ id: 'b1' }), n({ id: 'b2', round: 2 })])
+    expect(result.added).toHaveLength(2)
+    expect(result.removed).toEqual([])
+    expect(result.changed).toEqual([])
+    expect(result.unchanged).toEqual([])
+  })
+
+  test('non-empty a, empty b → all removed', () => {
+    const result = diffExecutionGraphs([n({ id: 'a1' }), n({ id: 'a2', round: 2 })], [])
+    expect(result.removed).toHaveLength(2)
+    expect(result.added).toEqual([])
+    expect(result.changed).toEqual([])
+    expect(result.unchanged).toEqual([])
+  })
+
+  test('empty a, empty b → all four buckets empty', () => {
+    const result = diffExecutionGraphs([], [])
+    expect(result.added).toEqual([])
+    expect(result.removed).toEqual([])
+    expect(result.changed).toEqual([])
+    expect(result.unchanged).toEqual([])
+  })
 })
