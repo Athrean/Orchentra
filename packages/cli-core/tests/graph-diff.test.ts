@@ -62,4 +62,14 @@ describe('diffExecutionGraphs', () => {
     expect(result.added).toEqual([])
     expect(result.removed).toEqual([])
   })
+
+  test('matched alignment but resultJson differs → changed', () => {
+    const a = [n({ id: 'a1', resultJson: '{"status":"ok"}' })]
+    const b = [n({ id: 'b1', resultJson: '{"status":"err"}' })]
+    const result = diffExecutionGraphs(a, b)
+    expect(result.changed).toHaveLength(1)
+    expect(result.changed[0]?.a.id).toBe('a1')
+    expect(result.changed[0]?.b.id).toBe('b1')
+    expect(result.unchanged).toEqual([])
+  })
 })
