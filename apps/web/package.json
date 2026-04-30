@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@orchentra/cli-core": "workspace:*",
     "@orchentra/core": "workspace:*",
     "@orchentra/db": "workspace:*",
     "@tanstack/react-query": "^5.95.2",

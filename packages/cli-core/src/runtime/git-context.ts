@@ -13,8 +13,17 @@ const MAX_RECENT_COMMITS = 5
 
 function runGit(cwd: string, args: string[]): string | null {
   try {
+    // Strip ambient GIT_* env so the explicit `cwd` is the only source of
+    // discovery. Without this, running inside a `git commit` hook (which
+    // exports GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE for child processes)
+    // makes `git -C /some/other/dir` ignore `cwd` and report the parent repo.
+    const env: Record<string, string> = {}
+    for (const [k, v] of Object.entries(process.env)) {
+      if (v !== undefined && !k.startsWith('GIT_')) env[k] = v
+    }
     const proc = Bun.spawnSync(['git', ...args], {
       cwd,
+      env,
       stdout: 'pipe',
       stderr: 'pipe',
     })
