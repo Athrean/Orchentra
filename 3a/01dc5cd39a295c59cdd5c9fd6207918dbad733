@@ -1,0 +1,31 @@
+packages/cli-tools/src/index.ts
+  27be1972cf29b313 73-86
+packages/cli-tools/tests/github-issues.test.ts
+  27be1972cf29b313 1-28,30-38,40-44,46-124
+packages/cli-tools/src/tool-registry.ts
+  27be1972cf29b313 23,48-49
+packages/cli-tools/src/github/issues.ts
+  27be1972cf29b313 1-176
+packages/cli-tools/package.json
+  27be1972cf29b313 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3a01dc5cd39a295c59cdd5c9fd6207918dbad733",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 327,
+      "total_deletions": 0,
+      "accepted_lines": 611,
+      "overriden_lines": 3
+    }
+  }
+}
