@@ -33,6 +33,14 @@ const FILE_MODE = 0o600
 const DIR_MODE = 0o700
 
 export function credentialsPath(home: string = homedir()): string {
+  // ORCHENTRA_CONFIG_HOME overrides the default $HOME/.config root —
+  // matches the convention used elsewhere (cli-core runtime config) and
+  // gives tests an isolated path so they don't read or mutate a
+  // developer's real OAuth bundle.
+  const override = process.env['ORCHENTRA_CONFIG_HOME']
+  if (override && override.length > 0) {
+    return join(override, 'credentials.json')
+  }
   return join(home, '.config', 'orchentra', 'credentials.json')
 }
 

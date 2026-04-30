@@ -100,7 +100,13 @@ export function classifyError(status: number, body: string, errorType?: string):
 }
 
 export function enrichAuthError(error: AnthropicApiError, authSource: string, rawToken?: string): AnthropicApiError {
-  if (error.status === 401 && authSource === 'bearer' && rawToken && rawToken.startsWith('sk-ant-')) {
+  // Anthropic uses distinct prefixes:
+  //   sk-ant-api03-*  → console API key  → x-api-key header
+  //   sk-ant-oat01-*  → OAuth bearer     → Authorization: Bearer header
+  // Only warn when an api03 key is wedged into the bearer slot — oat01
+  // tokens belong there, so a 401 is an OAuth/beta-header issue, not slot
+  // misplacement, and the old "put it in ANTHROPIC_API_KEY" hint was wrong.
+  if (error.status === 401 && authSource === 'bearer' && rawToken && rawToken.startsWith('sk-ant-api03-')) {
     return new AnthropicApiError({
       status: error.status,
       errorType: error.errorType,
@@ -109,7 +115,7 @@ export function enrichAuthError(error: AnthropicApiError, authSource: string, ra
       failureClass: error.failureClass,
       message:
         error.message +
-        ' sk-ant-* keys go in ANTHROPIC_API_KEY (x-api-key header), not ANTHROPIC_AUTH_TOKEN (Bearer header).',
+        ' sk-ant-api03-* keys go in ANTHROPIC_API_KEY (x-api-key header), not ANTHROPIC_AUTH_TOKEN (Bearer header).',
     })
   }
   return error
