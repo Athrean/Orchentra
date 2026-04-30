@@ -15,27 +15,70 @@ export interface FormatNodeLineageOptions {
   readonly resultJson?: string | null
 }
 
-export function formatGraphTree(nodes: readonly GraphNode[]): string {
-  if (nodes.length === 0) return ''
+export interface GraphLayout {
+  readonly roots: readonly GraphNode[]
+  readonly childrenByParent: ReadonlyMap<string, readonly GraphNode[]>
+  readonly nodeById: ReadonlyMap<string, GraphNode>
+  readonly depthByNode: ReadonlyMap<string, number>
+}
 
-  const idSet = new Set(nodes.map((n) => n.id))
-  const childIndex = new Map<string, GraphNode[]>()
+export function buildGraphLayout(nodes: readonly GraphNode[]): GraphLayout {
+  const nodeById = new Map<string, GraphNode>()
+  const depthByNode = new Map<string, number>()
+  const childrenByParent = new Map<string, GraphNode[]>()
   const roots: GraphNode[] = []
+
+  for (const node of nodes) nodeById.set(node.id, node)
+
   for (const node of nodes) {
-    const isRoot = node.parentNodeId === null || !idSet.has(node.parentNodeId)
+    const isRoot = node.parentNodeId === null || !nodeById.has(node.parentNodeId)
     if (isRoot) {
       roots.push(node)
-      continue
+    } else {
+      const arr = childrenByParent.get(node.parentNodeId!) ?? []
+      arr.push(node)
+      childrenByParent.set(node.parentNodeId!, arr)
     }
-    const arr = childIndex.get(node.parentNodeId!) ?? []
-    arr.push(node)
-    childIndex.set(node.parentNodeId!, arr)
   }
-  Array.from(childIndex.values()).forEach((arr) => arr.sort((a, b) => a.round - b.round))
-  roots.sort((a, b) => a.round - b.round)
 
+  roots.sort((a, b) => a.round - b.round)
+  Array.from(childrenByParent.values()).forEach((arr) => arr.sort((a, b) => a.round - b.round))
+
+  const seen = new Set<string>()
+  for (const root of roots) assignDepth(root, 0, childrenByParent, depthByNode, seen)
+
+  // Cyclic components (nodes whose parent is in the set but the cycle has no
+  // real root) are not reachable from `roots`. Promote any unseen node — in
+  // round order — to a pseudo-root and walk; the seen-set guards termination.
+  const unseen = nodes.filter((node) => !seen.has(node.id)).sort((a, b) => a.round - b.round)
+  for (const node of unseen) {
+    if (seen.has(node.id)) continue
+    roots.push(node)
+    assignDepth(node, 0, childrenByParent, depthByNode, seen)
+  }
+
+  return { roots, childrenByParent, nodeById, depthByNode }
+}
+
+function assignDepth(
+  node: GraphNode,
+  depth: number,
+  childrenByParent: Map<string, GraphNode[]>,
+  depthByNode: Map<string, number>,
+  seen: Set<string>,
+): void {
+  if (seen.has(node.id)) return
+  seen.add(node.id)
+  depthByNode.set(node.id, depth)
+  const children = childrenByParent.get(node.id) ?? []
+  for (const child of children) assignDepth(child, depth + 1, childrenByParent, depthByNode, seen)
+}
+
+export function formatGraphTree(nodes: readonly GraphNode[]): string {
+  if (nodes.length === 0) return ''
+  const layout = buildGraphLayout(nodes)
   const lines: string[] = []
-  for (const root of roots) emit(root, '', true, true, lines, childIndex)
+  for (const root of layout.roots) emit(root, '', true, true, lines, layout.childrenByParent)
   return lines.join('\n')
 }
 
@@ -45,14 +88,14 @@ function emit(
   isLast: boolean,
   isRoot: boolean,
   out: string[],
-  childIndex: Map<string, GraphNode[]>,
+  childrenByParent: ReadonlyMap<string, readonly GraphNode[]>,
 ): void {
   const branch = isRoot ? '' : isLast ? '└─ ' : '├─ '
   out.push(`${prefix}${branch}${renderRow(node)}`)
-  const children = childIndex.get(node.id) ?? []
+  const children = childrenByParent.get(node.id) ?? []
   const nextPrefix = isRoot ? '' : prefix + (isLast ? '   ' : '│  ')
   children.forEach((child, i) => {
-    emit(child, nextPrefix, i === children.length - 1, false, out, childIndex)
+    emit(child, nextPrefix, i === children.length - 1, false, out, childrenByParent)
   })
 }
 
