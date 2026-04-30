@@ -97,6 +97,13 @@ export {
   type PullDetail,
   type PullFileChange,
 } from './github/pulls'
+export {
+  githubSearchIssuesTool,
+  searchGitHubIssues,
+  type SearchIssuesInput,
+  type SearchIssuesResult,
+  type SearchIssueItem,
+} from './github/search'
 
 export {
   McpClient,
