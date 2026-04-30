@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@orchentra/cli-core": "workspace:*",
-    "@orchentra/core": "workspace:*",
-    "@orchentra/db": "workspace:*",
     "@tanstack/react-query": "^5.95.2",
     "ai": "^4.3.0",
     "clsx": "^2.1.1",
