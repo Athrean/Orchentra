@@ -113,6 +113,9 @@ export class AnthropicProvider implements Provider {
       'anthropic-version': ANTHROPIC_VERSION,
       'anthropic-beta': usingOAuth ? ANTHROPIC_BETA_OAUTH : ANTHROPIC_BETA_API_KEY,
       'user-agent': usingOAuth ? ANTHROPIC_OAUTH_USER_AGENT : DEFAULT_USER_AGENT,
+      // Required when sending a Pro/Max OAuth bearer from a non-Claude-Code
+      // binary; matches what the official CLI sends. Omit on api-key calls.
+      ...(usingOAuth ? { 'anthropic-dangerous-direct-browser-access': 'true' } : {}),
       ...(authHeaders['x-api-key'] ? { 'x-api-key': authHeaders['x-api-key'] } : {}),
       ...(authHeaders.Authorization ? { Authorization: authHeaders.Authorization } : {}),
     }

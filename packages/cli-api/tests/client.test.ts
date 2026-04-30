@@ -448,6 +448,27 @@ describe('AnthropicProvider', () => {
     expect(beta).not.toContain('claude-code-20250219')
   })
 
+  test('OAuth bearer requests include anthropic-dangerous-direct-browser-access header', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    expect(lastRequest().headers['anthropic-dangerous-direct-browser-access']).toBe('true')
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
+
+  test('API key requests do NOT send anthropic-dangerous-direct-browser-access header', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest())
+
+    expect(lastRequest().headers['anthropic-dangerous-direct-browser-access']).toBeUndefined()
+  })
+
   test('OAuth bearer requests prefix system prompt with Claude Code identity', async () => {
     delete process.env['ANTHROPIC_API_KEY']
     process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
