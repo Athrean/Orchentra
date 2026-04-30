@@ -150,3 +150,34 @@ export interface AgentEventEnvelope {
   timestamp: number
   event: AgentEventPayload
 }
+
+// ── Execution graph (Phase 4) ────────────────────────────────────────────────
+
+export interface ExecutionMeta {
+  id: string
+  kind: string
+  status: string
+  repo: string
+  branch: string
+  triggeredAt: string | null
+  mttrSeconds: number | null
+  createdAt: string
+}
+
+export interface GraphNode {
+  id: string
+  parentNodeId: string | null
+  kind: string
+  integration: string
+  round: number
+  durationMs: number | null
+  argsJson: string | null
+  resultJson: string | null
+  createdAt: string
+}
+
+export interface ExecutionGraph {
+  executionId: string
+  execution: ExecutionMeta
+  nodes: GraphNode[]
+}
