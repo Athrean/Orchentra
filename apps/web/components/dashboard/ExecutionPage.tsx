@@ -1,35 +1,56 @@
 'use client'
 
+import { useState } from 'react'
 import { Loader2, AlertTriangle } from 'lucide-react'
 import { useExecutionGraph } from '../../lib/hooks'
 import { ExecutionHeader } from './ExecutionHeader'
 import { GraphView } from './GraphView'
+import { NodeDetail } from './NodeDetail'
+import type { GraphNode } from '../../lib/types'
 
 export function ExecutionPage({ executionId }: { executionId: string }) {
   const { data, isLoading, error } = useExecutionGraph(executionId)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  const handleSelectNode = (node: GraphNode) => setSelectedNodeId(node.id)
+  const handleClearSelection = () => setSelectedNodeId(null)
 
   return (
     <div
       className="min-h-screen text-white"
       style={{ background: 'var(--color-app-bg)', fontFamily: 'var(--font-body)' }}
     >
-      <main
-        className="max-w-3xl mx-auto my-4 rounded-2xl border overflow-hidden"
-        style={{ background: 'var(--color-app-panel)', borderColor: 'var(--color-app-border)' }}
-      >
-        {isLoading ? (
-          <LoadingState />
-        ) : error ? (
-          <ErrorState error={error} />
-        ) : !data ? (
-          <ErrorState error={new Error('Execution not found')} />
-        ) : (
-          <>
-            <ExecutionHeader execution={data.execution} />
-            <GraphView nodes={data.nodes} />
-          </>
+      <div className="max-w-6xl mx-auto my-4 flex gap-4 px-2">
+        <main
+          className="flex-1 min-w-0 rounded-2xl border overflow-hidden"
+          style={{ background: 'var(--color-app-panel)', borderColor: 'var(--color-app-border)' }}
+        >
+          {isLoading ? (
+            <LoadingState />
+          ) : error ? (
+            <ErrorState error={error} />
+          ) : !data ? (
+            <ErrorState error={new Error('Execution not found')} />
+          ) : (
+            <>
+              <ExecutionHeader execution={data.execution} />
+              <GraphView
+                nodes={data.nodes}
+                selectedNodeId={selectedNodeId ?? undefined}
+                onSelectNode={handleSelectNode}
+              />
+            </>
+          )}
+        </main>
+        {selectedNodeId && (
+          <div
+            className="rounded-2xl border overflow-hidden"
+            style={{ background: 'var(--color-app-panel)', borderColor: 'var(--color-app-border)' }}
+          >
+            <NodeDetail key={selectedNodeId} nodeId={selectedNodeId} onClose={handleClearSelection} />
+          </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }

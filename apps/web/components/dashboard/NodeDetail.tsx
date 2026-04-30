@@ -23,8 +23,8 @@ export function NodeDetail({ nodeId, onClose }: NodeDetailProps) {
   return (
     <aside
       aria-label="Node detail"
-      className="w-80 shrink-0 border-l overflow-y-auto"
-      style={{ borderColor: 'var(--color-app-border)', background: 'var(--color-app-deep)' }}
+      className="w-80 shrink-0 overflow-y-auto"
+      style={{ background: 'var(--color-app-deep)' }}
     >
       <div
         className="px-4 py-3 border-b flex items-center justify-between sticky top-0"
