@@ -84,6 +84,19 @@ export {
   type IssueDetail,
 } from './github/issues'
 export { parseGitHubUrl, type ParsedGitHubUrl } from './github/url'
+export {
+  githubListPullsTool,
+  githubGetPullTool,
+  listGitHubPulls,
+  getGitHubPull,
+  type ListPullsInput,
+  type ListPullsResult,
+  type GetPullInput,
+  type GetPullResult,
+  type PullSummary,
+  type PullDetail,
+  type PullFileChange,
+} from './github/pulls'
 
 export {
   McpClient,
