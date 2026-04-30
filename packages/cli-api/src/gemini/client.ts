@@ -8,14 +8,7 @@ import type {
 } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
-import type {
-  GeminiContent,
-  GeminiFunctionDeclaration,
-  GeminiPart,
-  GeminiRequest,
-  GeminiStreamChunk,
-  GeminiTool,
-} from './types'
+import type { GeminiContent, GeminiFunctionDeclaration, GeminiPart, GeminiRequest, GeminiStreamChunk } from './types'
 import { getCredential } from '../credential-store'
 
 export interface GeminiConfig {
@@ -41,16 +34,8 @@ export class GeminiProvider implements Provider {
   constructor(config: GeminiConfig = {}) {
     const stored = getCredential('gemini')
     this.apiKey =
-      config.apiKey ??
-      process.env['GEMINI_API_KEY'] ??
-      process.env['GOOGLE_API_KEY'] ??
-      stored?.apiKey ??
-      ''
-    this.oauthToken =
-      config.oauthToken ??
-      process.env['GEMINI_OAUTH_TOKEN'] ??
-      stored?.accessToken ??
-      ''
+      config.apiKey ?? process.env['GEMINI_API_KEY'] ?? process.env['GOOGLE_API_KEY'] ?? stored?.apiKey ?? ''
+    this.oauthToken = config.oauthToken ?? process.env['GEMINI_OAUTH_TOKEN'] ?? stored?.accessToken ?? ''
     this.baseUrl = (config.baseUrl ?? process.env['GEMINI_BASE_URL'] ?? DEFAULT_BASE_URL).replace(/\/$/, '')
     this.model = config.model ?? DEFAULT_MODEL
     this.maxTokens = config.maxTokens ?? 8192
@@ -60,9 +45,7 @@ export class GeminiProvider implements Provider {
   async *stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
     if (!this.apiKey && !this.oauthToken) {
       yield { kind: 'finish', stopReason: 'error' as StopReason }
-      throw new Error(
-        'Gemini credentials missing: set GEMINI_API_KEY, GOOGLE_API_KEY, or GEMINI_OAUTH_TOKEN',
-      )
+      throw new Error('Gemini credentials missing: set GEMINI_API_KEY, GOOGLE_API_KEY, or GEMINI_OAUTH_TOKEN')
     }
 
     const model = request.model || this.model
@@ -261,9 +244,7 @@ function sanitizeSchema(schema: Record<string, unknown>): Record<string, unknown
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       copy[key] = sanitizeSchema(value as Record<string, unknown>)
     } else if (Array.isArray(value)) {
-      copy[key] = value.map((v) =>
-        v && typeof v === 'object' ? sanitizeSchema(v as Record<string, unknown>) : v,
-      )
+      copy[key] = value.map((v) => (v && typeof v === 'object' ? sanitizeSchema(v as Record<string, unknown>) : v))
     } else {
       copy[key] = value
     }
