@@ -7,6 +7,7 @@ import { CardSections } from './CardSections'
 import { DiffView, looksLikeDiff } from './DiffView'
 import { ReasoningBlock } from './ReasoningBlock'
 import { MarkdownView } from './MarkdownView'
+import { previewToolResult } from './tool-preview'
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -57,8 +58,13 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
       )
     case 'assistant':
       return (
-        <Box paddingX={1} flexDirection="column">
-          <MarkdownView text={row.text} />
+        <Box paddingX={1} flexDirection="row">
+          <Text color={THEME.brand} bold>
+            ●{' '}
+          </Text>
+          <Box flexDirection="column" flexGrow={1}>
+            <MarkdownView text={row.text} />
+          </Box>
         </Box>
       )
     case 'tool_call':
@@ -80,16 +86,20 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
               <Text dimColor>diff</Text>
             </Box>
             <Box marginLeft={5}>
-              <DiffView text={row.preview} maxLines={40} />
+              <DiffView text={row.preview} maxLines={row.expanded ? 1000 : 40} />
             </Box>
           </Box>
         )
       }
-      const lines = splitPreviewLines(row.preview, 6)
+      const result = previewToolResult(row.preview, {
+        maxLines: 3,
+        maxChars: 240,
+        full: row.expanded,
+      })
       const errColor = row.isError ? 'yellow' : undefined
       return (
         <Box paddingX={1} flexDirection="column">
-          {lines.map((line, i) => (
+          {result.lines.map((line, i) => (
             <Box key={i} flexDirection="row">
               <Text color={THEME.muted}>{i === 0 ? '  ⎿  ' : '     '}</Text>
               <Text color={errColor} dimColor={!row.isError}>
@@ -97,6 +107,20 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
               </Text>
             </Box>
           ))}
+          {result.truncated ? (
+            <Box flexDirection="row">
+              <Text color={THEME.muted}>{'     '}</Text>
+              <Text
+                dimColor
+              >{`… +${result.hiddenLines} line${result.hiddenLines === 1 ? '' : 's'} (ctrl+o to expand)`}</Text>
+            </Box>
+          ) : null}
+          {row.expanded && !result.truncated ? (
+            <Box flexDirection="row">
+              <Text color={THEME.muted}>{'     '}</Text>
+              <Text dimColor>(ctrl+o to collapse)</Text>
+            </Box>
+          ) : null}
         </Box>
       )
     }
