@@ -13,6 +13,12 @@ export interface PromptRequest {
   readonly context?: string
   /** Glob pattern offered for option 2 ("Yes, and allow this pattern"). */
   readonly allowPattern: string
+  /**
+   * When set, the overlay renders a red deny banner with the reason and
+   * dismisses on any key — no numbered options. Used for destructive
+   * patterns that the enforcer hard-denied before reaching askUser.
+   */
+  readonly denyBanner?: string
 }
 
 export interface ConfirmationPromptProps {
@@ -28,8 +34,13 @@ const OPTIONS: readonly { readonly label: string; readonly choice: PromptChoice 
 
 export function ConfirmationPrompt(props: ConfirmationPromptProps): React.ReactElement {
   const [selected, setSelected] = useState(0)
+  const denyBanner = props.request.denyBanner
 
   useInput((input, key) => {
+    if (denyBanner) {
+      props.onChoose('deny')
+      return
+    }
     if (key.escape) return props.onChoose('cancel')
     if (key.upArrow) return setSelected((i) => (i - 1 + OPTIONS.length) % OPTIONS.length)
     if (key.downArrow) return setSelected((i) => (i + 1) % OPTIONS.length)
@@ -38,6 +49,21 @@ export function ConfirmationPrompt(props: ConfirmationPromptProps): React.ReactE
     if (input === '3') return props.onChoose('deny')
     if (key.return) return props.onChoose(OPTIONS[selected]!.choice)
   })
+
+  if (denyBanner) {
+    return (
+      <Box flexDirection="column" borderStyle="round" borderColor="red" paddingX={1}>
+        <Text color="red" bold>
+          Blocked: {props.request.toolLabel}
+        </Text>
+        <Text>{props.request.commandLine}</Text>
+        <Box height={1} />
+        <Text color="red">{denyBanner}</Text>
+        <Box height={1} />
+        <Text dimColor>Press any key to continue.</Text>
+      </Box>
+    )
+  }
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={THEME.brand} paddingX={1}>
