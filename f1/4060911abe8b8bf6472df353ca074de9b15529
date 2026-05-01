@@ -1,0 +1,31 @@
+packages/cli-core/src/permissions/enforcer.ts
+  27be1972cf29b313 5,25-36,76-87
+packages/cli-core/tests/enforcer.test.ts
+  27be1972cf29b313 67-135
+apps/cli/src/tui/Tui.tsx
+  27be1972cf29b313 120
+packages/cli-core/src/runtime/conversation.ts
+  27be1972cf29b313 50-51,324-325
+apps/cli/src/live-cli.ts
+  27be1972cf29b313 29-37,56,80-81,113-116,156-159,340-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f14060911abe8b8bf6472df353ca074de9b15529",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 125,
+      "total_deletions": 1,
+      "accepted_lines": 933,
+      "overriden_lines": 0
+    }
+  }
+}
