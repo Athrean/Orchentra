@@ -115,6 +115,11 @@ export interface TuiState {
 export type ActiveFlowState =
   | { readonly kind: 'anthropic-login' }
   | { readonly kind: 'model-picker'; readonly current: string }
+  | {
+      readonly kind: 'confirmation-prompt'
+      readonly request: import('./components/ConfirmationPrompt').PromptRequest
+      readonly resolve: (choice: import('./components/ConfirmationPrompt').PromptChoice) => void
+    }
 
 export type TuiAction =
   | { type: 'buffer/set'; buffer: string; cursor: number }

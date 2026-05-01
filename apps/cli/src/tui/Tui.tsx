@@ -15,6 +15,7 @@ import { Footer } from './components/Footer'
 import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
 import { AnthropicLoginCard } from './components/AnthropicLoginCard'
+import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
 import type { TuiAction, TuiState } from './types'
 
@@ -503,6 +504,16 @@ export function Tui(props: TuiProps): React.ReactElement {
                   ? { kind: 'system', id: randomUUID(), text: `✓ ${result.message}`, tone: 'info' }
                   : { kind: 'error', id: randomUUID(), message: `Anthropic login: ${result.message}` },
               })
+            }}
+          />
+        ) : null}
+        {state.activeFlow?.kind === 'confirmation-prompt' ? (
+          <ConfirmationPrompt
+            request={state.activeFlow.request}
+            onChoose={(choice) => {
+              const flow = state.activeFlow
+              dispatch({ type: 'flow/end' })
+              if (flow?.kind === 'confirmation-prompt') flow.resolve(choice)
             }}
           />
         ) : null}
