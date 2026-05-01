@@ -1,0 +1,37 @@
+packages/cli-core/src/permissions/enforcer.ts
+  27be1972cf29b313 3,23-29,32-33,45-60
+packages/cli-core/src/permissions/destructive.ts
+  27be1972cf29b313 1-42
+packages/cli-core/src/runtime/conversation.ts
+  27be1972cf29b313 49,321
+packages/cli-core/tests/enforcer.test.ts
+  27be1972cf29b313 67-130
+apps/cli/src/tui/components/ConfirmationPrompt.tsx
+  27be1972cf29b313 16-21,37,40-43,53-66
+apps/cli/src/live-cli.ts
+  27be1972cf29b313 46,69,132-135,297-300
+apps/cli/src/tui/Tui.tsx
+  27be1972cf29b313 89-106,113
+apps/cli/tests/confirmation-prompt.test.tsx
+  27be1972cf29b313 95-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8f58163302e0caf261854c1de61d0485af9d6992",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 208,
+      "total_deletions": 1,
+      "accepted_lines": 1035,
+      "overriden_lines": 2
+    }
+  }
+}
