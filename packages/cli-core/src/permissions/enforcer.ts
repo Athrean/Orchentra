@@ -1,5 +1,5 @@
 import type { ToolCall } from '../runtime/events'
-import type { PermissionMode } from '../runtime/permissions'
+import { permissionModeRank, type PermissionMode } from '../runtime/permissions'
 import { detectDestructive } from './destructive'
 import { isBashReadOnly } from './bash-read-only'
 import type { PolicyRule, PolicyVerdict } from './policy'
@@ -49,6 +49,14 @@ export interface EnforcerContext {
     readonly inputJson: string
     readonly reason: string
   }) => Promise<void>
+  /**
+   * Optional per-tool minimum mode. When the active mode rank is lower than
+   * the required mode, "allow" verdicts (policy / store) are downgraded to a
+   * user prompt — escalation must be confirmed every time. Mirrors claw's
+   * WorkspaceWrite → DangerFullAccess prompt. Tools not present default to
+   * the active mode (no escalation).
+   */
+  readonly toolRequirements?: Readonly<Record<string, PermissionMode>>
 }
 
 export interface Enforcer {
@@ -83,27 +91,36 @@ export function createEnforcer(): Enforcer {
           await ctx.notifyPolicy?.({ kind: 'deny', rule: v.rule })
           return { kind: 'deny', reason: `policy deny: ${v.rule.pattern}` }
         }
-        if (v.kind === 'allow') {
-          await ctx.notifyPolicy?.({ kind: 'allow', rule: v.rule })
-          return { kind: 'allow' }
-        }
         if (v.kind === 'ask') {
           await ctx.notifyPolicy?.({ kind: 'ask', rule: v.rule })
           return promptUser(toolCall, ctx)
         }
+        if (v.kind === 'allow' && !needsEscalation(ctx, toolCall)) {
+          await ctx.notifyPolicy?.({ kind: 'allow', rule: v.rule })
+          return { kind: 'allow' }
+        }
+        // policy allow with escalation: fall through to prompt
       }
 
       if (READ_TOOLS.has(toolCall.name.toLowerCase())) return { kind: 'allow' }
 
       if (ctx.store) {
         const verdict = ctx.store.decide(toolCall.name, toolCall.input)
-        if (verdict === 'allow') return { kind: 'allow' }
         if (verdict === 'deny') return { kind: 'deny', reason: 'denied by stored rule' }
+        if (verdict === 'allow' && !needsEscalation(ctx, toolCall)) return { kind: 'allow' }
+        // store allow with escalation: fall through to prompt
       }
 
       return promptUser(toolCall, ctx)
     },
   }
+}
+
+function needsEscalation(ctx: EnforcerContext, toolCall: ToolCall): boolean {
+  if (!ctx.toolRequirements) return false
+  const required = ctx.toolRequirements[toolCall.name]
+  if (!required) return false
+  return permissionModeRank(ctx.mode) < permissionModeRank(required)
 }
 
 async function promptUser(toolCall: ToolCall, ctx: EnforcerContext): Promise<Decision> {
