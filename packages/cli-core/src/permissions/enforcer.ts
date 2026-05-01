@@ -56,6 +56,17 @@ export interface EnforcerContext {
    * default to the active mode (no escalation).
    */
   readonly toolRequirements?: Readonly<Record<string, PermissionMode>>
+  /**
+   * Optional override emitted by a pre-tool hook (HookRunResult.permissionOverride).
+   * Threaded into the decision: "deny" short-circuits with the hook's reason;
+   * "ask" forces a user prompt; "allow" skips the policy.allow/store/mode-allow
+   * paths but still defers to a matching policy.ask rule (so a user-defined ask
+   * rule cannot be silently bypassed by a hook). Destructive patterns still win.
+   */
+  readonly hookOverride?: {
+    readonly decision: 'allow' | 'deny' | 'ask'
+    readonly reason?: string
+  }
 }
 
 export interface Enforcer {
@@ -80,8 +91,20 @@ export function createEnforcer(): Enforcer {
             })
             return { kind: 'deny', reason }
           }
-          if (isBashReadOnly(cmd)) return { kind: 'allow' }
         }
+      }
+
+      const hook = ctx.hookOverride
+      if (hook?.decision === 'deny') {
+        return { kind: 'deny', reason: hook.reason ?? `denied by pre-tool hook for ${toolCall.name}` }
+      }
+      if (hook?.decision === 'ask') {
+        return promptUser(toolCall, ctx)
+      }
+
+      if (toolCall.name.toLowerCase() === 'bash' && !hook) {
+        const cmd = extractBashCommand(toolCall.input)
+        if (cmd && isBashReadOnly(cmd)) return { kind: 'allow' }
       }
 
       if (ctx.policy) {
@@ -99,6 +122,10 @@ export function createEnforcer(): Enforcer {
           return { kind: 'allow' }
         }
         // policy allow with escalation: fall through to prompt
+      }
+
+      if (hook?.decision === 'allow') {
+        return { kind: 'allow' }
       }
 
       if (READ_TOOLS.has(toolCall.name.toLowerCase())) return { kind: 'allow' }
