@@ -37,6 +37,7 @@ import {
   renderCompactNotice,
 } from './renderer'
 import { readLine } from './input'
+import { createHeadlessAskToolUser } from './headless-tool-prompt'
 
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
 
@@ -70,6 +71,7 @@ export class LiveCli implements SessionControl {
   private currentAbort: AbortController | null = null
   private readonly enforcer = createEnforcer()
   private readonly permissionStore: PermissionStore
+  private startupNotices: string[] = []
 
   constructor(deps: {
     model: string
@@ -93,7 +95,10 @@ export class LiveCli implements SessionControl {
     this.memoryConfig = deps.memoryConfig ?? null
     this.tracker = new UsageTracker()
     this.spinner = new Spinner()
-    this.permissionStore = createPermissionStore({ cwd: this.cwd })
+    this.permissionStore = createPermissionStore({
+      cwd: this.cwd,
+      onWarn: (m) => this.startupNotices.push(m),
+    })
   }
 
   // SessionControl implementation
@@ -131,6 +136,18 @@ export class LiveCli implements SessionControl {
 
   setNotifyDeny(notify: NotifyDenyOverride | null): void {
     this.notifyDenyOverride = notify
+  }
+
+  /**
+   * Drain notices accumulated at construction time (e.g. malformed
+   * permissions.json). Returns the notices and clears the buffer. Call
+   * once at TUI mount or before the first headless turn so they surface
+   * exactly once.
+   */
+  consumeStartupNotices(): readonly string[] {
+    const out = this.startupNotices
+    this.startupNotices = []
+    return out
   }
 
   abort(): void {
@@ -269,19 +286,22 @@ export class LiveCli implements SessionControl {
       return outcome.type === 'submit' ? outcome.text : ''
     }
 
+    const headlessAsk = createHeadlessAskToolUser({
+      isTty: () => Boolean(process.stdin.isTTY),
+      writePrompt: (text) => process.stdout.write(text),
+      writeNotice: (text) => process.stderr.write(`\n${text}\n`),
+      readLineRaw: async () => {
+        const outcome = await readLine('')
+        return outcome.type === 'submit' ? outcome.text : null
+      },
+    })
+
     const askToolUser: ToolAskUser = async (request) => {
       if (this.askToolUserOverride) return this.askToolUserOverride(request)
       this.spinner.stop()
-      process.stdout.write(
-        `\nAllow ${request.toolName}? input=${request.inputJson}\n` + '  1) Yes  2) Yes, allow this pattern  3) No\n',
-      )
-      const outcome = await readLine('> ')
+      const choice = await headlessAsk(request)
       if (!sink) this.spinner.start('Thinking...')
-      const text = outcome.type === 'submit' ? outcome.text.trim() : ''
-      if (text === '1') return 'allow-once'
-      if (text === '2') return 'allow-pattern'
-      if (text === '3') return 'deny'
-      return 'cancel'
+      return choice
     }
 
     this.currentAbort = new AbortController()
