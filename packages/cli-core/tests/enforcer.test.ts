@@ -453,4 +453,76 @@ describe('enforce — mode escalation prompt', () => {
   })
 })
 
+describe('enforce — hook context override', () => {
+  test('hookOverride.decision="deny" → deny short-circuits with hook reason', async () => {
+    const askUser: AskUser = async () => 'allow-once'
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'danger-full-access',
+      askUser,
+      hookOverride: { decision: 'deny', reason: 'blocked by lint hook' },
+    })
+    expect(decision.kind).toBe('deny')
+    if (decision.kind === 'deny') expect(decision.reason).toContain('blocked by lint hook')
+  })
+
+  test('hookOverride.decision="ask" → forces prompt even when mode would auto-allow', async () => {
+    let prompted = false
+    const askUser: AskUser = async () => {
+      prompted = true
+      return 'allow-once'
+    }
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'danger-full-access',
+      askUser,
+      hookOverride: { decision: 'ask', reason: 'requires confirmation' },
+    })
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('hookOverride.decision="allow" + matching policy.ask rule → still prompts (ask wins)', async () => {
+    let prompted = false
+    const askUser: AskUser = async () => {
+      prompted = true
+      return 'allow-once'
+    }
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser,
+      hookOverride: { decision: 'allow', reason: 'hook approved' },
+      policy: () => ({ kind: 'ask', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'ask' } }),
+    })
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('hookOverride.decision="allow" + no ask rule → allow without prompt (skips store)', async () => {
+    let prompted = false
+    const askUser: AskUser = async () => {
+      prompted = true
+      return 'deny'
+    }
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: 'npm publish *', decision: 'deny' })
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser,
+      hookOverride: { decision: 'allow', reason: 'hook approved' },
+      store,
+    })
+    expect(prompted).toBe(false)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('destructive deny still wins over hookOverride="allow"', async () => {
+    const destructiveCall: ToolCall = { id: 't', name: 'bash', input: { command: 'rm -rf /' } }
+    const decision = await createEnforcer().enforce(destructiveCall, {
+      mode: 'danger-full-access',
+      askUser: async () => 'allow-once',
+      hookOverride: { decision: 'allow', reason: 'hook approved' },
+    })
+    expect(decision.kind).toBe('deny')
+  })
+})
+
 void ((): PromptChoice => 'allow-once')
