@@ -1,5 +1,6 @@
 import type { PermissionMode } from '@orchentra/cli-core'
 import { emptyUsage } from '@orchentra/cli-core'
+import { pickVerb } from './components/loading-verbs'
 import { PERMISSION_MODE_CYCLE, type SuggestionState, type TranscriptRow, type TuiAction, type TuiState } from './types'
 
 export const HISTORY_CAP = 5000
@@ -13,7 +14,7 @@ export function initialState(args: { model: string; mode: PermissionMode; histor
     history: args.history ?? [],
     suggestions: emptySuggestions(),
     transcript: [],
-    turn: { state: 'idle', startedAt: null, elapsedMs: 0, tokens: emptyUsage() },
+    turn: { state: 'idle', startedAt: null, elapsedMs: 0, tokens: emptyUsage(), verb: null },
     mode: args.mode,
     model: args.model,
     pastes: {},
@@ -168,10 +169,40 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, transcript: next }
     }
 
+    case 'tool_result/toggle': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.rowId || row.kind !== 'tool_result') return row
+        return { ...row, expanded: !row.expanded }
+      })
+      return { ...state, transcript: next }
+    }
+
+    case 'tool_result/toggle-last': {
+      let lastIdx = -1
+      for (let i = state.transcript.length - 1; i >= 0; i--) {
+        if (state.transcript[i].kind === 'tool_result') {
+          lastIdx = i
+          break
+        }
+      }
+      if (lastIdx === -1) return state
+      const next = state.transcript.map((row, i) => {
+        if (i !== lastIdx || row.kind !== 'tool_result') return row
+        return { ...row, expanded: !row.expanded }
+      })
+      return { ...state, transcript: next }
+    }
+
     case 'turn/start':
       return {
         ...state,
-        turn: { state: 'running', startedAt: Date.now(), elapsedMs: 0, tokens: state.turn.tokens },
+        turn: {
+          state: 'running',
+          startedAt: Date.now(),
+          elapsedMs: 0,
+          tokens: state.turn.tokens,
+          verb: pickVerb(),
+        },
       }
 
     case 'turn/cancelling':
@@ -181,7 +212,7 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return {
         ...state,
         streamingRowId: null,
-        turn: { state: 'idle', startedAt: null, elapsedMs: 0, tokens: state.turn.tokens },
+        turn: { state: 'idle', startedAt: null, elapsedMs: 0, tokens: state.turn.tokens, verb: null },
       }
 
     case 'turn/tick':
