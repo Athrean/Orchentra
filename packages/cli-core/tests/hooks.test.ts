@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { HookRunner } from '../src/runtime/hooks'
+import { HookAbortSignal, HookRunner } from '../src/runtime/hooks'
 
 describe('HookRunner', () => {
   test('returns allow when no commands configured', async () => {
@@ -130,5 +130,38 @@ describe('non-JSON stdout', () => {
     const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
     expect(result.messages.length).toBeGreaterThan(0)
     expect(result.messages[0]).toContain('plain text output')
+  })
+})
+
+describe('HookAbortSignal', () => {
+  test('aborted before run → cancelled, no commands executed', async () => {
+    const runner = new HookRunner({ preToolUse: ['touch /tmp/orchentra-hook-abort-marker.$$'] })
+    const signal = new HookAbortSignal()
+    signal.abort()
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}', { signal })
+    expect(result.cancelled).toBe(true)
+    expect(result.denied).toBe(false)
+    expect(result.failed).toBe(false)
+    expect(result.messages.some((m) => m.includes('cancelled'))).toBe(true)
+  })
+
+  test('aborted between commands → remaining commands skipped, cancelled', async () => {
+    const signal = new HookAbortSignal()
+    const runner = new HookRunner({
+      preToolUse: ['echo FIRSTOK', 'sleep 0.05 && printf SHOULDNOTRUN'],
+    })
+    setTimeout(() => signal.abort(), 5)
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}', { signal })
+    expect(result.cancelled).toBe(true)
+    const stdouts = result.messages.filter((m) => !m.includes('cancelled while'))
+    expect(stdouts.some((m) => m.includes('SHOULDNOTRUN'))).toBe(false)
+  })
+
+  test('signal not aborted → runs normally', async () => {
+    const signal = new HookAbortSignal()
+    const runner = new HookRunner({ preToolUse: ['echo ok'] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}', { signal })
+    expect(result.cancelled).toBe(false)
+    expect(result.denied).toBe(false)
   })
 })
