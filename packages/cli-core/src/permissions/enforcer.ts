@@ -1,5 +1,6 @@
 import type { ToolCall } from '../runtime/events'
 import type { PermissionMode } from '../runtime/permissions'
+import { detectDestructive } from './destructive'
 import type { PermissionStore } from './store'
 
 export type PromptChoice = 'allow-once' | 'allow-pattern' | 'deny' | 'cancel'
@@ -19,6 +20,17 @@ export interface EnforcerContext {
   readonly mode: PermissionMode
   readonly askUser: AskUser
   readonly store?: PermissionStore
+  /**
+   * Optional sink for destructive-pattern denials. The enforcer does not
+   * await it for the decision — the call is denied either way — but UIs can
+   * use it to surface a red banner so the user knows what was blocked and
+   * why. Awaited so callers can sequence the banner ahead of the next turn.
+   */
+  readonly notifyDeny?: (info: {
+    readonly toolName: string
+    readonly inputJson: string
+    readonly reason: string
+  }) => Promise<void>
 }
 
 export interface Enforcer {
@@ -30,6 +42,22 @@ const READ_TOOLS = new Set(['read', 'glob', 'grep', 'web_search'])
 export function createEnforcer(): Enforcer {
   return {
     async enforce(toolCall, ctx) {
+      if (toolCall.name.toLowerCase() === 'bash') {
+        const cmd = extractBashCommand(toolCall.input)
+        if (cmd) {
+          const destructive = detectDestructive(cmd)
+          if (destructive) {
+            const reason = `destructive pattern: ${destructive.name}`
+            await ctx.notifyDeny?.({
+              toolName: toolCall.name,
+              inputJson: JSON.stringify(toolCall.input),
+              reason,
+            })
+            return { kind: 'deny', reason }
+          }
+        }
+      }
+
       if (READ_TOOLS.has(toolCall.name.toLowerCase())) return { kind: 'allow' }
 
       if (ctx.store) {
