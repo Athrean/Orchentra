@@ -74,8 +74,7 @@ const SUBJECT_KEYS = [
 /**
  * Non-bash subject extraction. Tries the SUBJECT_KEYS in order — first
  * string-typed value wins. Returns empty string when none match, so pattern
- * "*" still matches and specific patterns do not. Mirrors reference-cli's
- * subject-extraction order so policy files port across.
+ * "*" still matches and specific patterns do not.
  */
 function extractSubject(input: unknown): string {
   if (!input || typeof input !== 'object') return ''

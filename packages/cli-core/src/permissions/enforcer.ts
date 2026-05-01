@@ -52,9 +52,8 @@ export interface EnforcerContext {
   /**
    * Optional per-tool minimum mode. When the active mode rank is lower than
    * the required mode, "allow" verdicts (policy / store) are downgraded to a
-   * user prompt — escalation must be confirmed every time. Mirrors claw's
-   * WorkspaceWrite → DangerFullAccess prompt. Tools not present default to
-   * the active mode (no escalation).
+   * user prompt — escalation must be confirmed every time. Tools not present
+   * default to the active mode (no escalation).
    */
   readonly toolRequirements?: Readonly<Record<string, PermissionMode>>
 }

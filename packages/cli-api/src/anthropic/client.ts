@@ -30,7 +30,7 @@ const ANTHROPIC_BETA_API_KEY = 'prompt-caching-scope-2026-01-05'
 // Claude-Code agentic beta set AND the Claude Code user-agent. Without
 // `oauth-2025-04-20` Anthropic returns "OAuth authentication is currently
 // not supported". interleaved-thinking + fine-grained-tool-streaming unlock
-// Claude 4+ tool flows. Set mirrors claude-code / opencode / codebuff.
+// Claude 4+ tool flows.
 const ANTHROPIC_BETA_OAUTH =
   'oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14'
 const ANTHROPIC_OAUTH_USER_AGENT = 'claude-cli/1.0.0 (external, cli)'
