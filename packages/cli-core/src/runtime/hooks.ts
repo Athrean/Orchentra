@@ -240,7 +240,7 @@ async function runCommand(
     env.HOOK_TOOL_OUTPUT = toolOutput
   }
 
-  const proc = Bun.spawn(['sh', '-c', command], {
+  const proc = Bun.spawn(['sh', '-lc', command], {
     stdout: 'pipe',
     stderr: 'pipe',
     stdin: 'pipe',
