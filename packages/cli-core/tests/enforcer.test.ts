@@ -64,6 +64,75 @@ describe('enforce', () => {
   })
 })
 
+describe('enforce — policy hook', () => {
+  test('policy allow → allow and fires notifyPolicy with kind allow', async () => {
+    const calls: { kind: string; pattern: string }[] = []
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'deny',
+      policy: () => ({ kind: 'allow', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'allow' } }),
+      notifyPolicy: async (info) => {
+        calls.push({ kind: info.kind, pattern: info.rule.pattern })
+      },
+    })
+    expect(decision.kind).toBe('allow')
+    expect(calls).toEqual([{ kind: 'allow', pattern: 'npm publish *' }])
+  })
+
+  test('policy deny → deny with reason and fires notifyPolicy with kind deny', async () => {
+    const calls: { kind: string; pattern: string }[] = []
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      policy: () => ({ kind: 'deny', rule: { tool: 'bash', pattern: '*', decision: 'deny' } }),
+      notifyPolicy: async (info) => {
+        calls.push({ kind: info.kind, pattern: info.rule.pattern })
+      },
+    })
+    expect(decision.kind).toBe('deny')
+    if (decision.kind === 'deny') expect(decision.reason).toMatch(/policy deny/i)
+    expect(calls).toEqual([{ kind: 'deny', pattern: '*' }])
+  })
+
+  test('policy no-match → falls through to existing layers (store / askUser)', async () => {
+    let prompted = false
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'deny'
+      },
+      policy: () => ({ kind: 'no-match' }),
+    })
+    expect(prompted).toBe(true)
+  })
+
+  test('destructive hard-deny still wins over a policy allow', async () => {
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'rm -rf /' } },
+      {
+        mode: 'danger-full-access',
+        askUser: async () => 'allow-once',
+        policy: () => ({ kind: 'allow', rule: { tool: 'bash', pattern: '*', decision: 'allow' } }),
+      },
+    )
+    expect(decision.kind).toBe('deny')
+    if (decision.kind === 'deny') expect(decision.reason).toMatch(/destructive/i)
+  })
+
+  test('policy allow short-circuits before consulting the store', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: '*', decision: 'deny' })
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'deny',
+      policy: () => ({ kind: 'allow', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'allow' } }),
+      store,
+    })
+    expect(decision.kind).toBe('allow')
+  })
+})
+
 describe('enforce — bash read-only auto-allow', () => {
   test('common read-only bash commands skip the prompt', async () => {
     const cmds = ['cat README.md', 'ls -la', 'git status', 'git log --oneline -5', 'grep foo bar.txt', 'rg pattern src']
