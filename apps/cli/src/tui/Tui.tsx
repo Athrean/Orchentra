@@ -68,6 +68,12 @@ export function Tui(props: TuiProps): React.ReactElement {
       if (mounted) dispatch({ type: 'history/load', entries })
     })
     const unwire = wireEvents()
+    for (const notice of cli.consumeStartupNotices()) {
+      dispatch({
+        type: 'transcript/push',
+        row: { kind: 'system', id: randomUUID(), text: notice, tone: 'warn' },
+      })
+    }
     cli.setAskUser(async () => '')
     cli.setAskToolUser(
       (request) =>
