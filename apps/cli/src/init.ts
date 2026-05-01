@@ -28,7 +28,7 @@ const STARTER_SETTINGS =
     2,
   ) + '\n'
 
-const GITIGNORE_ENTRIES = ['.orchentra/settings.local.json', '.orchentra/sessions/']
+const GITIGNORE_ENTRIES = ['.orchentra/settings.local.json', '.orchentra/sessions/', '.orchentra/permissions.json']
 
 function fileExists(path: string): boolean {
   return existsSync(path)
