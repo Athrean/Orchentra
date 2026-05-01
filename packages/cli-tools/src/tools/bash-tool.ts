@@ -30,6 +30,18 @@ interface ResolvedBashSpawn {
   sandboxStatus?: SandboxStatus
 }
 
+export function formatSandboxStatusLine(status: SandboxStatus): string {
+  if (!status.enabled && !status.filesystem_active) return ''
+  const parts: string[] = ['sandbox', `mode=${status.filesystem_mode}`]
+  parts.push(status.filesystem_active ? 'filesystem=active' : 'filesystem=inactive')
+  if (status.requested.network_isolation) {
+    parts.push(status.network_active ? 'network=isolated' : 'network=requested-not-active')
+  }
+  if (status.in_container) parts.push(`container=${status.container_markers[0] ?? 'detected'}`)
+  if (status.fallback_reason) parts.push(`fallback=${status.fallback_reason}`)
+  return `[${parts.join(' ')}]`
+}
+
 export function resolveBashSpawn(input: BashInput, ctx: BashSpawnContext): ResolvedBashSpawn {
   if (
     input.dangerously_disable_sandbox ||
@@ -110,8 +122,10 @@ export const bashTool: ToolDefinition = {
       const stderr = await new Response(proc.stderr).text()
 
       const output = stdout + (stderr ? `\n${stderr}` : '')
+      const statusLine = spawn.sandboxStatus ? formatSandboxStatusLine(spawn.sandboxStatus) : ''
+      const body = exitCode === 0 ? output : `exit code ${exitCode}\n${output}`
       return {
-        content: exitCode === 0 ? output : `exit code ${exitCode}\n${output}`,
+        content: statusLine.length > 0 ? `${body}\n${statusLine}` : body,
         isError: exitCode !== 0,
       }
     } catch (e) {
