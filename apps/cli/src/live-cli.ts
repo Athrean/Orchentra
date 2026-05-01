@@ -26,8 +26,16 @@ import {
   embedText,
   createEnforcer,
   createPermissionStore,
+  loadPolicy,
+  evaluate as evaluatePolicy,
 } from '@orchentra/cli-core'
-import type { AskUser as ToolAskUser, PermissionStore, PromptChoice as ToolPromptChoice } from '@orchentra/cli-core'
+import type {
+  AskUser as ToolAskUser,
+  PermissionStore,
+  PolicyHandle,
+  PolicyRule,
+  PromptChoice as ToolPromptChoice,
+} from '@orchentra/cli-core'
 import {
   Spinner,
   renderToolCall,
@@ -45,6 +53,7 @@ export type RuntimeEventSink = (event: RuntimeEvent) => void
 export type AskUserOverride = (prompt: string) => Promise<string>
 export type AskToolUserOverride = ToolAskUser
 export type NotifyDenyOverride = (info: { toolName: string; inputJson: string; reason: string }) => Promise<void>
+export type NotifyPolicyOverride = (info: { kind: 'allow' | 'deny'; rule: PolicyRule }) => Promise<void>
 export type { ToolPromptChoice }
 
 export class LiveCli implements SessionControl {
@@ -68,6 +77,8 @@ export class LiveCli implements SessionControl {
   private askUserOverride: AskUserOverride | null = null
   private askToolUserOverride: AskToolUserOverride | null = null
   private notifyDenyOverride: NotifyDenyOverride | null = null
+  private notifyPolicyOverride: NotifyPolicyOverride | null = null
+  private readonly policyHandle: PolicyHandle
   private currentAbort: AbortController | null = null
   private readonly enforcer = createEnforcer()
   private readonly permissionStore: PermissionStore
@@ -97,6 +108,10 @@ export class LiveCli implements SessionControl {
     this.spinner = new Spinner()
     this.permissionStore = createPermissionStore({
       cwd: this.cwd,
+      onWarn: (m) => this.startupNotices.push(m),
+    })
+    this.policyHandle = loadPolicy(this.cwd, {
+      watch: true,
       onWarn: (m) => this.startupNotices.push(m),
     })
   }
@@ -136,6 +151,10 @@ export class LiveCli implements SessionControl {
 
   setNotifyDeny(notify: NotifyDenyOverride | null): void {
     this.notifyDenyOverride = notify
+  }
+
+  setNotifyPolicy(notify: NotifyPolicyOverride | null): void {
+    this.notifyPolicyOverride = notify
   }
 
   /**
@@ -317,6 +336,12 @@ export class LiveCli implements SessionControl {
       enforcerNotifyDeny: async (info) => {
         if (this.notifyDenyOverride) return this.notifyDenyOverride(info)
         process.stderr.write(`\nBlocked ${info.toolName}: ${info.reason}\n`)
+      },
+      enforcerPolicy: (call) => evaluatePolicy(call, this.policyHandle.ruleset),
+      enforcerNotifyPolicy: async (info) => {
+        if (this.notifyPolicyOverride) return this.notifyPolicyOverride(info)
+        const verb = info.kind === 'allow' ? 'auto-allowed' : 'denied'
+        process.stderr.write(`\n${verb} by policy: ${info.rule.tool} ${info.rule.pattern}\n`)
       },
       permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,

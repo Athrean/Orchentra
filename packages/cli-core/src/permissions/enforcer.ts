@@ -2,6 +2,7 @@ import type { ToolCall } from '../runtime/events'
 import type { PermissionMode } from '../runtime/permissions'
 import { detectDestructive } from './destructive'
 import { isBashReadOnly } from './bash-read-only'
+import type { PolicyRule, PolicyVerdict } from './policy'
 import type { PermissionStore } from './store'
 
 export type PromptChoice = 'allow-once' | 'allow-pattern' | 'deny' | 'cancel'
@@ -21,6 +22,18 @@ export interface EnforcerContext {
   readonly mode: PermissionMode
   readonly askUser: AskUser
   readonly store?: PermissionStore
+  /**
+   * Optional declarative-policy hook. Called with the tool call; returns the
+   * verdict from the policy engine. When present, consulted between the
+   * destructive-pattern check and the in-memory store.
+   */
+  readonly policy?: (toolCall: ToolCall) => PolicyVerdict
+  /**
+   * Optional sink invoked when a policy rule fires (allow or deny). UIs use
+   * it to surface "auto-allowed by policy: <pattern>" / "denied by policy:
+   * <pattern>" notices so users see what is silently approving or blocking.
+   */
+  readonly notifyPolicy?: (info: { readonly kind: 'allow' | 'deny'; readonly rule: PolicyRule }) => Promise<void>
   /**
    * Optional sink for destructive-pattern denials. The enforcer does not
    * await it for the decision — the call is denied either way — but UIs can
@@ -57,6 +70,18 @@ export function createEnforcer(): Enforcer {
             return { kind: 'deny', reason }
           }
           if (isBashReadOnly(cmd)) return { kind: 'allow' }
+        }
+      }
+
+      if (ctx.policy) {
+        const v = ctx.policy(toolCall)
+        if (v.kind === 'deny') {
+          await ctx.notifyPolicy?.({ kind: 'deny', rule: v.rule })
+          return { kind: 'deny', reason: `policy deny: ${v.rule.pattern}` }
+        }
+        if (v.kind === 'allow') {
+          await ctx.notifyPolicy?.({ kind: 'allow', rule: v.rule })
+          return { kind: 'allow' }
         }
       }
 
