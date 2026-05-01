@@ -55,8 +55,35 @@ function canonicalize(toolCall: ToolCall): string {
     if (!cmd) return ''
     return commandTail(cmd)
   }
-  // Non-bash tools match on tool name only — canonical is empty string,
-  // so pattern "*" / "" matches and any other pattern does not.
+  return extractSubject(toolCall.input)
+}
+
+const SUBJECT_KEYS = [
+  'command',
+  'path',
+  'file_path',
+  'filePath',
+  'notebook_path',
+  'notebookPath',
+  'url',
+  'pattern',
+  'code',
+  'message',
+] as const
+
+/**
+ * Non-bash subject extraction. Tries the SUBJECT_KEYS in order — first
+ * string-typed value wins. Returns empty string when none match, so pattern
+ * "*" still matches and specific patterns do not. Mirrors reference-cli's
+ * subject-extraction order so policy files port across.
+ */
+function extractSubject(input: unknown): string {
+  if (!input || typeof input !== 'object') return ''
+  const obj = input as Record<string, unknown>
+  for (const key of SUBJECT_KEYS) {
+    const v = obj[key]
+    if (typeof v === 'string') return v
+  }
   return ''
 }
 
