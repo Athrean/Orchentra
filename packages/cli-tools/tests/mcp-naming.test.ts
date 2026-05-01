@@ -31,7 +31,7 @@ describe('mcpToolName', () => {
     expect(mcpToolName('github.com', 'create issue')).toBe('mcp__github_com__create_issue')
   })
 
-  test('matches claw-code claude.ai convention', () => {
+  test('preserves claude.ai server prefix verbatim', () => {
     expect(mcpToolName('claude.ai Example Server', 'weather tool')).toBe('mcp__claude_ai_Example_Server__weather_tool')
   })
 })
