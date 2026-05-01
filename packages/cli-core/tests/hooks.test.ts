@@ -138,6 +138,25 @@ describe('non-JSON stdout', () => {
     expect(result.messages.length).toBeGreaterThan(0)
     expect(result.messages[0]).toContain('plain text output')
   })
+
+  test('stdout starting with { but invalid JSON → emits invalid-json diagnostic', async () => {
+    const runner = new HookRunner({ preToolUse: [`printf '%s' '{not valid json'`] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
+    expect(result.messages[0]).toMatch(/^hook_invalid_json:/)
+    expect(result.messages[0]).not.toBe('{not valid json')
+  })
+
+  test('stdout starting with [ but invalid JSON → emits invalid-json diagnostic', async () => {
+    const runner = new HookRunner({ preToolUse: [`printf '%s' '[broken'`] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
+    expect(result.messages[0]).toMatch(/^hook_invalid_json:/)
+  })
+
+  test('stdout that does not look like JSON is preserved verbatim', async () => {
+    const runner = new HookRunner({ preToolUse: [`printf '%s' 'no leading bracket'`] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
+    expect(result.messages[0]).toBe('no leading bracket')
+  })
 })
 
 describe('HookAbortSignal', () => {
