@@ -121,6 +121,11 @@ function allowResult(messages: string[] = []): HookRunResult {
   }
 }
 
+function looksLikeJsonAttempt(value: string): boolean {
+  const ch = value.trimStart().charAt(0)
+  return ch === '{' || ch === '['
+}
+
 function formatHookFailure(command: string, exitCode: number | null, stderr: string): string {
   const codeStr = exitCode === null ? 'signal' : String(exitCode)
   const base = `Hook \`${command}\` exited with status ${codeStr}`
@@ -162,7 +167,13 @@ function parseHookOutput(
       }
     }
     root = parsed as Record<string, unknown>
-  } catch {
+  } catch (err) {
+    if (looksLikeJsonAttempt(stdout)) {
+      return {
+        messages: [formatInvalidOutput(event, toolName, command, (err as Error).message, stdout, stderr)],
+        deny: false,
+      }
+    }
     return { messages: [stdout], deny: false }
   }
 
