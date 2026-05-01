@@ -1,5 +1,17 @@
 import { describe, expect, test } from 'bun:test'
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createPermissionStore } from '../src/permissions/store'
+
+function withTempDir(fn: (dir: string) => void): void {
+  const dir = mkdtempSync(join(tmpdir(), 'perm-store-'))
+  try {
+    fn(dir)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
 
 describe('PermissionStore — empty', () => {
   test('returns "unknown" before any rules are remembered', () => {
@@ -61,5 +73,51 @@ describe('PermissionStore — bookkeeping', () => {
     store.remember({ tool: 'bash', pattern: 'b', decision: 'deny' })
     store.remember({ tool: 'bash', pattern: 'c', decision: 'allow' })
     expect(store.list().map((r) => r.pattern)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('PermissionStore — workspace persistence', () => {
+  test('round-trip: remember then re-instantiate with same cwd → rule still present', () => {
+    withTempDir((cwd) => {
+      const a = createPermissionStore({ cwd })
+      a.remember({ tool: 'bash', pattern: 'gh issue *', decision: 'allow' })
+      const b = createPermissionStore({ cwd })
+      expect(b.list().map((r) => ({ tool: r.tool, pattern: r.pattern, decision: r.decision }))).toEqual([
+        { tool: 'bash', pattern: 'gh issue *', decision: 'allow' },
+      ])
+      expect(b.decide('bash', { command: 'gh issue list' })).toBe('allow')
+    })
+  })
+
+  test('persisted rules carry an addedAt ISO timestamp', () => {
+    withTempDir((cwd) => {
+      const store = createPermissionStore({ cwd })
+      store.remember({ tool: 'bash', pattern: 'ls *', decision: 'allow' })
+      const raw = readFileSync(join(cwd, '.orchentra', 'permissions.json'), 'utf8')
+      const parsed = JSON.parse(raw) as { version: number; rules: { addedAt?: string }[] }
+      expect(parsed.version).toBe(1)
+      expect(parsed.rules[0]?.addedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    })
+  })
+
+  test('malformed JSON file → empty store, no crash', () => {
+    withTempDir((cwd) => {
+      mkdirSync(join(cwd, '.orchentra'), { recursive: true })
+      writeFileSync(join(cwd, '.orchentra', 'permissions.json'), '{not json')
+      const store = createPermissionStore({ cwd })
+      expect(store.list()).toEqual([])
+    })
+  })
+
+  test('schema-version mismatch → empty store, no crash', () => {
+    withTempDir((cwd) => {
+      mkdirSync(join(cwd, '.orchentra'), { recursive: true })
+      writeFileSync(
+        join(cwd, '.orchentra', 'permissions.json'),
+        JSON.stringify({ version: 99, rules: [{ tool: 'bash', pattern: 'x', decision: 'allow' }] }),
+      )
+      const store = createPermissionStore({ cwd })
+      expect(store.list()).toEqual([])
+    })
   })
 })
