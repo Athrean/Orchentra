@@ -79,6 +79,25 @@ describe('loadPolicy — initial load', () => {
     expect(ruleset.rules.map((r) => r.pattern)).toEqual(['ok'])
     close()
   })
+
+  test('accepts decision: "ask" alongside allow and deny', () => {
+    const cwd = workspace()
+    writeFileSync(
+      join(cwd, '.orchentra', 'permissions.json'),
+      JSON.stringify({
+        version: 1,
+        rules: [
+          { tool: 'bash', pattern: 'gh *', decision: 'allow' },
+          { tool: 'bash', pattern: 'git push *', decision: 'ask' },
+          { tool: 'bash', pattern: 'rm *', decision: 'deny' },
+        ],
+      }),
+    )
+    const { ruleset, close } = loadPolicy(cwd)
+    expect(ruleset.rules).toHaveLength(3)
+    expect(ruleset.rules[1]?.decision).toBe('ask')
+    close()
+  })
 })
 
 describe('loadPolicy — hot reload', () => {
