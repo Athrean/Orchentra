@@ -86,10 +86,12 @@ function StatusLabel({ turn, spinnerFrame }: StatusInnerProps): React.ReactEleme
       </Text>
     )
   }
+  const label = `${turn.verb ?? 'Thinking'}…`
+  const tokenSegment = turn.tokens.outputTokens > 0 ? `  ↓${turn.tokens.outputTokens}` : ''
   return (
     <Text>
-      <ShimmerText text="thinking…" frame={spinnerFrame} bold />
-      <Text dimColor>{`  ${elapsed}  (esc to interrupt)`}</Text>
+      <ShimmerText text={label} frame={spinnerFrame} bold />
+      <Text dimColor>{`  ${elapsed}${tokenSegment}  (esc to interrupt)`}</Text>
     </Text>
   )
 }

@@ -66,6 +66,8 @@ export interface TurnStatus {
   readonly startedAt: number | null
   readonly elapsedMs: number
   readonly tokens: UsageTotals
+  /** Whimsical present-continuous verb shown in the footer for this turn. */
+  readonly verb: string | null
 }
 
 export interface ActiveCardState {
