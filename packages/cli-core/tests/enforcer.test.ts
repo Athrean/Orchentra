@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { createEnforcer, type AskUser, type PromptChoice, type PromptRequest } from '../src/permissions/enforcer'
+import { createPermissionStore } from '../src/permissions/store'
 import type { ToolCall } from '../src/runtime/events'
 
 const bashCall: ToolCall = { id: 't1', name: 'bash', input: { command: 'gh issue list --state open' } }
@@ -60,6 +61,57 @@ describe('enforce', () => {
     }
     await createEnforcer().enforce(bashCall, ctx(askUser))
     expect(captured?.inputJson).toBe(JSON.stringify({ command: 'gh issue list --state open' }))
+  })
+})
+
+describe('enforce — with PermissionStore', () => {
+  test('store "allow" verdict short-circuits before askUser', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: 'gh issue *', decision: 'allow' })
+    let prompted = false
+    const askUser: AskUser = async () => {
+      prompted = true
+      return 'deny'
+    }
+    const decision = await createEnforcer().enforce(bashCall, { mode: 'workspace-write', askUser, store })
+    expect(decision.kind).toBe('allow')
+    expect(prompted).toBe(false)
+  })
+
+  test('store "deny" verdict short-circuits with a reason', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: '*', decision: 'deny' })
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      store,
+    })
+    expect(decision.kind).toBe('deny')
+    if (decision.kind === 'deny') expect(decision.reason).toMatch(/store/i)
+  })
+
+  test('"allow-pattern" choice writes the suggested pattern to the store', async () => {
+    const store = createPermissionStore()
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-pattern',
+      store,
+    })
+    const rules = store.list()
+    expect(rules).toHaveLength(1)
+    expect(rules[0]?.tool).toBe('bash')
+    expect(rules[0]?.pattern).toContain('gh issue')
+    expect(rules[0]?.decision).toBe('allow')
+  })
+
+  test('"allow-once" choice does NOT write to the store', async () => {
+    const store = createPermissionStore()
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      store,
+    })
+    expect(store.list()).toHaveLength(0)
   })
 })
 
