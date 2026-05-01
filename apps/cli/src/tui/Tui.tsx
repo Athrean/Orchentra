@@ -117,6 +117,7 @@ export function Tui(props: TuiProps): React.ReactElement {
       cli.setAskUser(null)
       cli.setAskToolUser(null)
       cli.setNotifyDeny(null)
+      cli.setNotifyPolicy(null)
       process.stdout.write('[?25h')
     }
   }, [wireEvents, cli])
