@@ -1,0 +1,25 @@
+packages/cli-core/tests/sandbox-linux.test.ts
+  27be1972cf29b313 1-90
+packages/cli-core/src/sandbox/linux.ts
+  27be1972cf29b313 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d681d8d283b0604185d2c30d3e9fbb69cd4235b1",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 169,
+      "total_deletions": 16,
+      "accepted_lines": 153,
+      "overriden_lines": 0
+    }
+  }
+}
