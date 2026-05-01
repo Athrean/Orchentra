@@ -73,6 +73,14 @@ export interface EnforcerContext {
     readonly decision: 'allow' | 'deny' | 'ask'
     readonly reason?: string
   }
+  /**
+   * Workspace root for the boundary check on write/edit tools. When set, a
+   * write to a path outside this root in workspace-write mode is denied
+   * before the hook/policy/store/prompt chain runs. Read-only mode denies
+   * all writes; danger-full-access bypasses the check. Without it, the
+   * boundary is not enforced (caller has not opted into the check).
+   */
+  readonly workspaceRoot?: string
 }
 
 export interface Enforcer {
@@ -80,6 +88,7 @@ export interface Enforcer {
 }
 
 const READ_TOOLS = new Set(['read', 'glob', 'grep', 'web_search'])
+const WRITE_TOOLS = new Set(['write', 'edit', 'notebook_edit'])
 
 export function createEnforcer(): Enforcer {
   return {
@@ -98,6 +107,11 @@ export function createEnforcer(): Enforcer {
             return { kind: 'deny', reason }
           }
         }
+      }
+
+      if (WRITE_TOOLS.has(toolCall.name.toLowerCase())) {
+        const writeDeny = checkFileWrite(ctx, toolCall)
+        if (writeDeny) return writeDeny
       }
 
       const hook = ctx.hookOverride
@@ -154,6 +168,36 @@ export function createEnforcer(): Enforcer {
       return promptUser(toolCall, ctx)
     },
   }
+}
+
+function extractWritePath(input: unknown): string | null {
+  if (!input || typeof input !== 'object') return null
+  const obj = input as Record<string, unknown>
+  for (const key of ['file_path', 'filePath', 'path', 'notebook_path', 'notebookPath']) {
+    const v = obj[key]
+    if (typeof v === 'string') return v
+  }
+  return null
+}
+
+function isWithinWorkspace(path: string, workspaceRoot: string): boolean {
+  const normalized = path.startsWith('/') ? path : `${workspaceRoot.replace(/\/+$/, '')}/${path}`
+  const root = workspaceRoot.endsWith('/') ? workspaceRoot : `${workspaceRoot}/`
+  return normalized.startsWith(root) || normalized === workspaceRoot.replace(/\/+$/, '')
+}
+
+function checkFileWrite(ctx: EnforcerContext, toolCall: ToolCall): Decision | null {
+  if (ctx.mode === 'read-only') {
+    return { kind: 'deny', reason: `file writes are not allowed in 'read-only' mode` }
+  }
+  if (!ctx.workspaceRoot) return null
+  if (ctx.mode === 'danger-full-access') return null
+  const path = extractWritePath(toolCall.input)
+  if (path === null) return null
+  if (!isWithinWorkspace(path, ctx.workspaceRoot)) {
+    return { kind: 'deny', reason: `path '${path}' is outside workspace root '${ctx.workspaceRoot}'` }
+  }
+  return null
 }
 
 function needsEscalation(ctx: EnforcerContext, toolCall: ToolCall): boolean {
