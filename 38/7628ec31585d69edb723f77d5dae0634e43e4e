@@ -1,0 +1,27 @@
+packages/cli-core/tests/hooks.test.ts
+  27be1972cf29b313 2,135-167
+packages/cli-core/src/runtime/index.ts
+  27be1972cf29b313 167-168
+packages/cli-core/src/runtime/hooks.ts
+  27be1972cf29b313 23-36,114-125,219-220,243-253,255,259,273-274,282,284-292,295-309,319,323-326,330-334,336-349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "387628ec31585d69edb723f77d5dae0634e43e4e",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 130,
+      "total_deletions": 755,
+      "accepted_lines": 128,
+      "overriden_lines": 0
+    }
+  }
+}
