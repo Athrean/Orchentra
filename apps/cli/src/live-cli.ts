@@ -43,6 +43,7 @@ export type ModelResolver = (raw: string) => { model: string; provider: Provider
 export type RuntimeEventSink = (event: RuntimeEvent) => void
 export type AskUserOverride = (prompt: string) => Promise<string>
 export type AskToolUserOverride = ToolAskUser
+export type NotifyDenyOverride = (info: { toolName: string; inputJson: string; reason: string }) => Promise<void>
 export type { ToolPromptChoice }
 
 export class LiveCli implements SessionControl {
@@ -65,6 +66,7 @@ export class LiveCli implements SessionControl {
   private eventSink: RuntimeEventSink | null = null
   private askUserOverride: AskUserOverride | null = null
   private askToolUserOverride: AskToolUserOverride | null = null
+  private notifyDenyOverride: NotifyDenyOverride | null = null
   private currentAbort: AbortController | null = null
   private readonly enforcer = createEnforcer()
   private readonly permissionStore: PermissionStore
@@ -125,6 +127,10 @@ export class LiveCli implements SessionControl {
 
   setAskToolUser(askUser: AskToolUserOverride | null): void {
     this.askToolUserOverride = askUser
+  }
+
+  setNotifyDeny(notify: NotifyDenyOverride | null): void {
+    this.notifyDenyOverride = notify
   }
 
   abort(): void {
@@ -288,6 +294,10 @@ export class LiveCli implements SessionControl {
       enforcer: this.enforcer,
       enforcerAskUser: askToolUser,
       enforcerStore: this.permissionStore,
+      enforcerNotifyDeny: async (info) => {
+        if (this.notifyDenyOverride) return this.notifyDenyOverride(info)
+        process.stderr.write(`\nBlocked ${info.toolName}: ${info.reason}\n`)
+      },
       permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,
     }

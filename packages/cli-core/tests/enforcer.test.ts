@@ -64,6 +64,70 @@ describe('enforce', () => {
   })
 })
 
+describe('enforce — destructive hard-deny', () => {
+  test('matches a DESTRUCTIVE_PATTERN substring (rm -rf /)', async () => {
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'rm -rf /' } },
+      { mode: 'workspace-write', askUser: async () => 'allow-once' },
+    )
+    expect(decision.kind).toBe('deny')
+    if (decision.kind === 'deny') expect(decision.reason).toMatch(/destructive/i)
+  })
+
+  test('matches an ALWAYS_DESTRUCTIVE_COMMANDS first token (shred, wipefs)', async () => {
+    for (const cmd of ['shred -n 3 file', 'wipefs -a /dev/sda']) {
+      const decision = await createEnforcer().enforce(
+        { id: 't', name: 'bash', input: { command: cmd } },
+        { mode: 'workspace-write', askUser: async () => 'allow-once' },
+      )
+      expect(decision.kind).toBe('deny')
+    }
+  })
+
+  test('notifyDeny is invoked with the reason before the deny is returned', async () => {
+    const seen: string[] = []
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'shred file' } },
+      {
+        mode: 'workspace-write',
+        askUser: async () => 'allow-once',
+        notifyDeny: async (info) => {
+          seen.push(info.reason)
+        },
+      },
+    )
+    expect(decision.kind).toBe('deny')
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toMatch(/destructive/i)
+  })
+
+  test('mode: danger-full-access does NOT bypass destructive deny', async () => {
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'git push --force' } },
+      { mode: 'danger-full-access', askUser: async () => 'allow-once' },
+    )
+    expect(decision.kind).toBe('deny')
+  })
+
+  test('a stored "allow" rule does NOT bypass destructive deny', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: '*', decision: 'allow' })
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'git reset --hard HEAD~5' } },
+      { mode: 'workspace-write', askUser: async () => 'allow-once', store },
+    )
+    expect(decision.kind).toBe('deny')
+  })
+
+  test('non-bash tools are unaffected by the destructive blocklist', async () => {
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'write', input: { path: '/tmp/x', content: 'rm -rf /' } },
+      { mode: 'workspace-write', askUser: async () => 'allow-once' },
+    )
+    expect(decision.kind).toBe('allow')
+  })
+})
+
 describe('enforce — with PermissionStore', () => {
   test('store "allow" verdict short-circuits before askUser', async () => {
     const store = createPermissionStore()

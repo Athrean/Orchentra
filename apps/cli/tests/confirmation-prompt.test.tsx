@@ -92,6 +92,26 @@ describe('ConfirmationPrompt — keyboard', () => {
     expect(calls).toEqual(['allow-once', 'allow-pattern', 'deny'])
   })
 
+  test('deny-banner mode renders the reason and resolves with deny on any key', async () => {
+    let chosen: PromptChoice | null = null
+    const { stdin, lastFrame } = render(
+      <ConfirmationPrompt
+        request={{ ...baseReq, denyBanner: 'destructive pattern: rm -rf /' }}
+        onChoose={(c): void => {
+          chosen = c
+        }}
+      />,
+    )
+    const frame = lastFrame() ?? ''
+    expect(frame).toContain('Blocked')
+    expect(frame).toContain('destructive pattern: rm -rf /')
+    expect(frame).not.toContain('1. Yes')
+    expect(frame).toContain('Press any key')
+    stdin.write(' ')
+    await tick()
+    expect(chosen).toBe('deny')
+  })
+
   test('Esc resolves with cancel', async () => {
     let chosen: PromptChoice | null = null
     const { stdin } = renderPrompt({ onChoose: (c) => (chosen = c) })
