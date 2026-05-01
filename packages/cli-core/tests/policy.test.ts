@@ -141,7 +141,7 @@ describe('evaluate — non-bash subject extraction', () => {
     expect(evaluate(call, r).kind).toBe('allow')
   })
 
-  test('grep tool with both path and pattern: path wins (claw key order)', () => {
+  test('grep tool with both path and pattern: path wins (key order)', () => {
     const call: ToolCall = { id: 't', name: 'grep', input: { pattern: 'TODO', path: 'src' } }
     const r = rules({ tool: 'grep', pattern: 'src', decision: 'allow' })
     expect(evaluate(call, r).kind).toBe('allow')
