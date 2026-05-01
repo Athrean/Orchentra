@@ -20,6 +20,20 @@ export interface HookRunResult {
   updatedInput?: string
 }
 
+export class HookAbortSignal {
+  private aborted = false
+  abort(): void {
+    this.aborted = true
+  }
+  isAborted(): boolean {
+    return this.aborted
+  }
+}
+
+export interface RunHookOptions {
+  signal?: HookAbortSignal
+}
+
 interface ParsedHookOutput {
   messages: string[]
   deny: boolean
@@ -90,6 +104,18 @@ function allowResult(messages: string[] = []): HookRunResult {
     denied: false,
     failed: false,
     cancelled: false,
+    messages,
+    permissionOverride: undefined,
+    permissionReason: undefined,
+    updatedInput: undefined,
+  }
+}
+
+function cancelledResult(messages: string[]): HookRunResult {
+  return {
+    denied: false,
+    failed: false,
+    cancelled: true,
     messages,
     permissionOverride: undefined,
     permissionReason: undefined,
@@ -190,7 +216,8 @@ async function runCommand(
   toolInput: string,
   toolOutput: string | undefined,
   isError: boolean,
-): Promise<{ exitCode: number | null; stdout: string; stderr: string }> {
+  signal: HookAbortSignal | undefined,
+): Promise<{ exitCode: number | null; stdout: string; stderr: string; cancelled: boolean }> {
   const payload = JSON.stringify(hookPayload(event, toolName, toolInput, toolOutput, isError))
 
   const env: Record<string, string> = {
@@ -213,11 +240,23 @@ async function runCommand(
   proc.stdin.write(payload)
   proc.stdin.end()
 
+  let cancelled = false
+  let pollHandle: ReturnType<typeof setInterval> | null = null
+  if (signal) {
+    pollHandle = setInterval(() => {
+      if (signal.isAborted()) {
+        cancelled = true
+        proc.kill()
+      }
+    }, 20)
+  }
+
   const exitCode = await proc.exited
+  if (pollHandle) clearInterval(pollHandle)
   const stdout = await new Response(proc.stdout).text()
   const stderr = await new Response(proc.stderr).text()
 
-  return { exitCode, stdout: stdout.trim(), stderr: stderr.trim() }
+  return { exitCode, stdout: stdout.trim(), stderr: stderr.trim(), cancelled }
 }
 
 export class HookRunner {
@@ -231,8 +270,8 @@ export class HookRunner {
     }
   }
 
-  async runPreToolUse(toolName: string, toolInput: string): Promise<HookRunResult> {
-    return this.runCommands('PreToolUse', this.config.preToolUse, toolName, toolInput, undefined, false)
+  async runPreToolUse(toolName: string, toolInput: string, opts: RunHookOptions = {}): Promise<HookRunResult> {
+    return this.runCommands('PreToolUse', this.config.preToolUse, toolName, toolInput, undefined, false, opts.signal)
   }
 
   async runPostToolUse(
@@ -240,12 +279,34 @@ export class HookRunner {
     toolInput: string,
     toolOutput: string,
     isError: boolean,
+    opts: RunHookOptions = {},
   ): Promise<HookRunResult> {
-    return this.runCommands('PostToolUse', this.config.postToolUse, toolName, toolInput, toolOutput, isError)
+    return this.runCommands(
+      'PostToolUse',
+      this.config.postToolUse,
+      toolName,
+      toolInput,
+      toolOutput,
+      isError,
+      opts.signal,
+    )
   }
 
-  async runPostToolUseFailure(toolName: string, toolInput: string, toolError: string): Promise<HookRunResult> {
-    return this.runCommands('PostToolUseFailure', this.config.postToolUseFailure, toolName, toolInput, toolError, true)
+  async runPostToolUseFailure(
+    toolName: string,
+    toolInput: string,
+    toolError: string,
+    opts: RunHookOptions = {},
+  ): Promise<HookRunResult> {
+    return this.runCommands(
+      'PostToolUseFailure',
+      this.config.postToolUseFailure,
+      toolName,
+      toolInput,
+      toolError,
+      true,
+      opts.signal,
+    )
   }
 
   private async runCommands(
@@ -255,14 +316,37 @@ export class HookRunner {
     toolInput: string,
     toolOutput: string | undefined,
     isError: boolean,
+    signal: HookAbortSignal | undefined,
   ): Promise<HookRunResult> {
     if (commands.length === 0) return allowResult()
+
+    if (signal?.isAborted()) {
+      return cancelledResult([`${event} hook cancelled before execution`])
+    }
 
     const result = allowResult()
 
     for (const command of commands) {
+      if (signal?.isAborted()) {
+        result.cancelled = true
+        result.messages.push(`${event} hook \`${command}\` cancelled while handling \`${toolName}\``)
+        return result
+      }
       try {
-        const { exitCode, stdout, stderr } = await runCommand(command, event, toolName, toolInput, toolOutput, isError)
+        const { exitCode, stdout, stderr, cancelled } = await runCommand(
+          command,
+          event,
+          toolName,
+          toolInput,
+          toolOutput,
+          isError,
+          signal,
+        )
+        if (cancelled) {
+          result.cancelled = true
+          result.messages.push(`${event} hook \`${command}\` cancelled while handling \`${toolName}\``)
+          return result
+        }
         const parsed = parseHookOutput(event, toolName, command, stdout, stderr)
 
         if (exitCode === 0) {
