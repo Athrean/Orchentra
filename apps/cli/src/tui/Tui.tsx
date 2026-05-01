@@ -50,7 +50,7 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   const wireEvents = useCallback(() => {
     const sink = (event: RuntimeEvent): void => {
-      handleRuntimeEvent(event, dispatch, streamingIdRef, reasoningIdRef)
+      handleRuntimeEvent(event, dispatch, streamingIdRef, reasoningIdRef, toolCallNamesRef)
     }
     cli.setEventSink(sink)
     return () => cli.setEventSink(null)
@@ -58,6 +58,7 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   const streamingIdRef = useRef<string | null>(null)
   const reasoningIdRef = useRef<string | null>(null)
+  const toolCallNamesRef = useRef<Map<string, string>>(new Map())
 
   // Mount/unmount: load history, wire event sink, hide terminal cursor.
   useEffect(() => {
@@ -374,6 +375,10 @@ export function Tui(props: TuiProps): React.ReactElement {
         return dispatch({ type: 'reasoning/toggle-last' })
       }
 
+      if (key.ctrl && input === 'o') {
+        return dispatch({ type: 'tool_result/toggle-last' })
+      }
+
       if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
         dispatch({
           type: 'card/open',
@@ -558,6 +563,7 @@ const SHORTCUT_SECTIONS = [
     rows: [
       { key: 'ctrl+l', value: 'clear transcript' },
       { key: 'ctrl+r', value: 'expand / collapse last reasoning block' },
+      { key: 'ctrl+o', value: 'expand / collapse last tool result' },
       { key: 'shift+tab', value: 'cycle permission mode' },
       { key: 'esc', value: 'cancel running turn / clear buffer' },
       { key: 'ctrl+c', value: 'cancel turn / quit' },
@@ -582,6 +588,7 @@ function handleRuntimeEvent(
   dispatch: React.Dispatch<TuiAction>,
   streamingIdRef: React.MutableRefObject<string | null>,
   reasoningIdRef: React.MutableRefObject<string | null>,
+  toolCallNamesRef: React.MutableRefObject<Map<string, string>>,
 ): void {
   switch (event.kind) {
     case 'text': {
@@ -615,6 +622,7 @@ function handleRuntimeEvent(
       }
       streamingIdRef.current = null
       dispatch({ type: 'transcript/stream-end' })
+      toolCallNamesRef.current.set(event.call.id, event.call.name)
       dispatch({
         type: 'transcript/push',
         row: {
@@ -625,12 +633,22 @@ function handleRuntimeEvent(
         },
       })
       break
-    case 'tool_result':
+    case 'tool_result': {
+      const name = toolCallNamesRef.current.get(event.result.id)
+      toolCallNamesRef.current.delete(event.result.id)
       dispatch({
         type: 'transcript/push',
-        row: { kind: 'tool_result', id: randomUUID(), preview: event.result.content, isError: event.result.isError },
+        row: {
+          kind: 'tool_result',
+          id: randomUUID(),
+          name,
+          preview: event.result.content,
+          isError: event.result.isError,
+          expanded: false,
+        },
       })
       break
+    }
     case 'compacted':
       dispatch({
         type: 'transcript/push',
