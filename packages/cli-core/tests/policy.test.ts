@@ -110,6 +110,68 @@ describe('evaluate — last-rule-wins on same-decision conflicts', () => {
   })
 })
 
+describe('evaluate — non-bash subject extraction', () => {
+  test('read tool: pattern matches the path field', () => {
+    const call: ToolCall = { id: 't', name: 'read', input: { path: '/tmp/foo.txt' } }
+    const r = rules({ tool: 'read', pattern: '/tmp/*', decision: 'allow' })
+    expect(evaluate(call, r).kind).toBe('allow')
+  })
+
+  test('write tool: pattern matches the file_path field', () => {
+    const call: ToolCall = { id: 't', name: 'write', input: { file_path: '/etc/hosts', content: 'x' } }
+    const r = rules({ tool: 'write', pattern: '/etc/*', decision: 'deny' })
+    expect(evaluate(call, r).kind).toBe('deny')
+  })
+
+  test('write tool: camelCase filePath also matches', () => {
+    const call: ToolCall = { id: 't', name: 'write', input: { filePath: '/etc/hosts', content: 'x' } }
+    const r = rules({ tool: 'write', pattern: '/etc/*', decision: 'deny' })
+    expect(evaluate(call, r).kind).toBe('deny')
+  })
+
+  test('web_fetch tool: pattern matches the url field', () => {
+    const call: ToolCall = { id: 't', name: 'web_fetch', input: { url: 'https://internal.io/api/users' } }
+    const r = rules({ tool: 'web_fetch', pattern: 'https://internal.io/*', decision: 'deny' })
+    expect(evaluate(call, r).kind).toBe('deny')
+  })
+
+  test('grep tool: when only pattern is present, it is the subject', () => {
+    const call: ToolCall = { id: 't', name: 'grep', input: { pattern: 'TODO' } }
+    const r = rules({ tool: 'grep', pattern: 'TODO', decision: 'allow' })
+    expect(evaluate(call, r).kind).toBe('allow')
+  })
+
+  test('grep tool with both path and pattern: path wins (claw key order)', () => {
+    const call: ToolCall = { id: 't', name: 'grep', input: { pattern: 'TODO', path: 'src' } }
+    const r = rules({ tool: 'grep', pattern: 'src', decision: 'allow' })
+    expect(evaluate(call, r).kind).toBe('allow')
+  })
+
+  test('notebook_edit tool: notebook_path snake_case matches', () => {
+    const call: ToolCall = { id: 't', name: 'notebook_edit', input: { notebook_path: '/work/x.ipynb' } }
+    const r = rules({ tool: 'notebook_edit', pattern: '/work/*', decision: 'allow' })
+    expect(evaluate(call, r).kind).toBe('allow')
+  })
+
+  test('notebook_edit tool: notebookPath camelCase matches', () => {
+    const call: ToolCall = { id: 't', name: 'notebook_edit', input: { notebookPath: '/work/x.ipynb' } }
+    const r = rules({ tool: 'notebook_edit', pattern: '/work/*', decision: 'allow' })
+    expect(evaluate(call, r).kind).toBe('allow')
+  })
+
+  test('non-bash with no recognized subject keys: pattern "*" still matches', () => {
+    const call: ToolCall = { id: 't', name: 'mystery', input: { foo: 'bar' } }
+    const r = rules({ tool: 'mystery', pattern: '*', decision: 'allow' })
+    expect(evaluate(call, r).kind).toBe('allow')
+  })
+
+  test('non-bash with no recognized subject keys: specific pattern does NOT match', () => {
+    const call: ToolCall = { id: 't', name: 'mystery', input: { foo: 'bar' } }
+    const r = rules({ tool: 'mystery', pattern: 'specific', decision: 'allow' })
+    expect(evaluate(call, r).kind).toBe('no-match')
+  })
+})
+
 describe('evaluate — ask rules', () => {
   test('ask rule that matches → ask', () => {
     const r = rules({ tool: 'bash', pattern: 'git push *', decision: 'ask' })
