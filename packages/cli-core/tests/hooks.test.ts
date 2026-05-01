@@ -173,6 +173,29 @@ describe('HookAbortSignal', () => {
   })
 })
 
+describe('failure message format', () => {
+  test('exit 1 with no stdout: "Hook `cmd` exited with status 1"', async () => {
+    const runner = new HookRunner({ preToolUse: ['exit 1'] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
+    expect(result.failed).toBe(true)
+    expect(result.messages[0]).toBe('Hook `exit 1` exited with status 1')
+  })
+
+  test('exit code with stderr: "Hook `cmd` exited with status N: <stderr>"', async () => {
+    const runner = new HookRunner({ preToolUse: ['echo bad >&2; exit 3'] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
+    expect(result.failed).toBe(true)
+    expect(result.messages[0]).toMatch(/^Hook `echo bad >&2; exit 3` exited with status 3: bad$/)
+  })
+
+  test('exit code with stdout (non-JSON): stdout becomes the message', async () => {
+    const runner = new HookRunner({ preToolUse: ['echo plain stdout text; exit 1'] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
+    expect(result.failed).toBe(true)
+    expect(result.messages[0]).toBe('plain stdout text')
+  })
+})
+
 describe('HookProgressReporter', () => {
   test('emits started + completed for each command', async () => {
     const reporter = new RecordingReporter()
