@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@orchentra/cli-api": "workspace:*",
     "@orchentra/cli-core": "workspace:*"
   },
   "devDependencies": {

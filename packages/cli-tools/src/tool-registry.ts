@@ -20,6 +20,9 @@ import { cronDeleteTool } from './tools/cron-delete-tool'
 import { cronListTool } from './tools/cron-list-tool'
 import { notebookEditTool } from './tools/notebook-edit-tool'
 import { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'
+import { githubListIssuesTool, githubGetIssueTool } from './github/issues'
+import { githubListPullsTool, githubGetPullTool } from './github/pulls'
+import { githubSearchIssuesTool } from './github/search'
 
 const BUILTIN_TOOLS: ToolDefinition[] = [
   bashTool,
@@ -44,6 +47,11 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   notebookEditTool,
   enterPlanModeTool,
   exitPlanModeTool,
+  githubListIssuesTool,
+  githubGetIssueTool,
+  githubListPullsTool,
+  githubGetPullTool,
+  githubSearchIssuesTool,
 ]
 
 export class DefaultToolRegistry implements ToolRegistry {
