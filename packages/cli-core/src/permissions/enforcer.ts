@@ -1,6 +1,7 @@
 import type { ToolCall } from '../runtime/events'
 import type { PermissionMode } from '../runtime/permissions'
 import { detectDestructive } from './destructive'
+import { isBashReadOnly } from './bash-read-only'
 import type { PermissionStore } from './store'
 
 export type PromptChoice = 'allow-once' | 'allow-pattern' | 'deny' | 'cancel'
@@ -55,6 +56,7 @@ export function createEnforcer(): Enforcer {
             })
             return { kind: 'deny', reason }
           }
+          if (isBashReadOnly(cmd)) return { kind: 'allow' }
         }
       }
 
