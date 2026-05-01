@@ -1,5 +1,6 @@
 import type { UsageTotals } from '@orchentra/cli-core'
 import { formatUsd, pricingForModel } from '@orchentra/cli-core'
+import { previewToolResult } from './tui/components/tool-preview'
 
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const RESET = '\x1b[0m'
@@ -46,8 +47,10 @@ export function renderToolCall(name: string, input: unknown): string {
 
 export function renderToolResult(content: string, isError: boolean): string {
   const color = isError ? YELLOW : DIM
-  const preview = content.length > 200 ? content.slice(0, 200) + '…' : content
-  return `${color}  ← ${preview}${RESET}`
+  const result = previewToolResult(content, { maxLines: 3, maxChars: 240 })
+  const body = result.lines.map((line, i) => `${color}  ${i === 0 ? '←' : ' '} ${line}${RESET}`).join('\n')
+  if (!result.truncated) return body
+  return `${body}\n${DIM}     … +${result.hiddenLines} line${result.hiddenLines === 1 ? '' : 's'} (truncated)${RESET}`
 }
 
 export function renderUsageSummary(usage: UsageTotals, model?: string): string {
