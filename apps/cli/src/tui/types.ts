@@ -23,7 +23,7 @@ export type TranscriptRow =
   | { kind: 'user'; id: string; text: string }
   | { kind: 'assistant'; id: string; text: string }
   | { kind: 'tool_call'; id: string; name: string; input: string }
-  | { kind: 'tool_result'; id: string; preview: string; isError: boolean }
+  | { kind: 'tool_result'; id: string; name?: string; preview: string; isError: boolean; expanded: boolean }
   | { kind: 'system'; id: string; text: string; tone?: 'info' | 'warn' }
   | { kind: 'stream'; id: string; text: string; label?: string }
   | { kind: 'error'; id: string; message: string }
@@ -136,6 +136,8 @@ export type TuiAction =
   | { type: 'transcript/reasoning-end'; rowId: string; endedAt: number }
   | { type: 'reasoning/toggle-last' }
   | { type: 'reasoning/toggle'; rowId: string }
+  | { type: 'tool_result/toggle-last' }
+  | { type: 'tool_result/toggle'; rowId: string }
   | { type: 'turn/start' }
   | { type: 'turn/cancelling' }
   | { type: 'turn/end' }

@@ -168,6 +168,30 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, transcript: next }
     }
 
+    case 'tool_result/toggle': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.rowId || row.kind !== 'tool_result') return row
+        return { ...row, expanded: !row.expanded }
+      })
+      return { ...state, transcript: next }
+    }
+
+    case 'tool_result/toggle-last': {
+      let lastIdx = -1
+      for (let i = state.transcript.length - 1; i >= 0; i--) {
+        if (state.transcript[i].kind === 'tool_result') {
+          lastIdx = i
+          break
+        }
+      }
+      if (lastIdx === -1) return state
+      const next = state.transcript.map((row, i) => {
+        if (i !== lastIdx || row.kind !== 'tool_result') return row
+        return { ...row, expanded: !row.expanded }
+      })
+      return { ...state, transcript: next }
+    }
+
     case 'turn/start':
       return {
         ...state,
