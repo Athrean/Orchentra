@@ -1,0 +1,29 @@
+apps/cli/tests/confirmation-prompt.test.tsx
+  27be1972cf29b313 1-102
+apps/cli/src/tui/components/ConfirmationPrompt.tsx
+  27be1972cf29b313 1-61
+apps/cli/src/tui/Tui.tsx
+  27be1972cf29b313 18,510-519
+apps/cli/src/tui/types.ts
+  27be1972cf29b313 118-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d22b4742036aa686b80096e858950bcfc5acbc93",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1058,
+      "total_deletions": 1125,
+      "accepted_lines": 1005,
+      "overriden_lines": 0
+    }
+  }
+}
