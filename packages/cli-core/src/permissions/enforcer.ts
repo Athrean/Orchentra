@@ -1,5 +1,6 @@
 import type { ToolCall } from '../runtime/events'
 import type { PermissionMode } from '../runtime/permissions'
+import type { PermissionStore } from './store'
 
 export type PromptChoice = 'allow-once' | 'allow-pattern' | 'deny' | 'cancel'
 
@@ -17,6 +18,7 @@ export type Decision = { kind: 'allow' } | { kind: 'deny'; reason: string }
 export interface EnforcerContext {
   readonly mode: PermissionMode
   readonly askUser: AskUser
+  readonly store?: PermissionStore
 }
 
 export interface Enforcer {
@@ -30,14 +32,25 @@ export function createEnforcer(): Enforcer {
     async enforce(toolCall, ctx) {
       if (READ_TOOLS.has(toolCall.name.toLowerCase())) return { kind: 'allow' }
 
+      if (ctx.store) {
+        const verdict = ctx.store.decide(toolCall.name, toolCall.input)
+        if (verdict === 'allow') return { kind: 'allow' }
+        if (verdict === 'deny') return { kind: 'deny', reason: 'denied by stored rule' }
+      }
+
+      const suggestedPattern = deriveSuggestedPattern(toolCall)
       const request: PromptRequest = {
         toolName: toolCall.name,
         inputJson: JSON.stringify(toolCall.input),
-        suggestedPattern: deriveSuggestedPattern(toolCall),
+        suggestedPattern,
       }
       const choice = await ctx.askUser(request)
 
-      if (choice === 'allow-once' || choice === 'allow-pattern') return { kind: 'allow' }
+      if (choice === 'allow-pattern') {
+        ctx.store?.remember({ tool: toolCall.name, pattern: suggestedPattern, decision: 'allow' })
+        return { kind: 'allow' }
+      }
+      if (choice === 'allow-once') return { kind: 'allow' }
       if (choice === 'cancel') return { kind: 'deny', reason: 'user cancelled the prompt' }
       return { kind: 'deny', reason: 'user denied this command' }
     },
