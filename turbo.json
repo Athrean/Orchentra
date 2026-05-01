@@ -15,6 +15,7 @@
     "FORCE_COLOR",
     "COLORTERM",
     "TERM",
+    "PATH",
     "OPENAI_API_KEY",
     "ORCHENTRA_API_KEY",
     "ORCHENTRA_ALLOWED_ORGS",
