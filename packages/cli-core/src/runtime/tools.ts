@@ -40,6 +40,11 @@ export interface ToolContext {
    * calls (e.g. `agent`) should default to this when no override is supplied.
    */
   model?: string
+  /**
+   * Active permission mode for the session. Tools that gate behavior on the
+   * mode (e.g. bash sandbox bypass on danger-full-access) read it from here.
+   */
+  permissionMode?: import('./permissions').PermissionMode
   sharedState?: SharedToolState
   askUser?: (prompt: string) => Promise<string>
   provider?: Provider
