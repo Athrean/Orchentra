@@ -69,11 +69,29 @@ export function Tui(props: TuiProps): React.ReactElement {
     })
     const unwire = wireEvents()
     cli.setAskUser(async () => '')
+    cli.setAskToolUser(
+      (request) =>
+        new Promise((resolve) => {
+          dispatch({
+            type: 'flow/start',
+            flow: {
+              kind: 'confirmation-prompt',
+              request: {
+                toolLabel: `${request.toolName} call`,
+                commandLine: request.inputJson,
+                allowPattern: request.suggestedPattern,
+              },
+              resolve,
+            },
+          })
+        }),
+    )
     process.stdout.write('[?25l')
     return () => {
       mounted = false
       unwire()
       cli.setAskUser(null)
+      cli.setAskToolUser(null)
       process.stdout.write('[?25h')
     }
   }, [wireEvents, cli])
