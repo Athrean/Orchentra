@@ -30,8 +30,18 @@ export class HookAbortSignal {
   }
 }
 
+export type HookProgressEvent =
+  | { kind: 'started'; event: HookEvent; toolName: string; command: string }
+  | { kind: 'completed'; event: HookEvent; toolName: string; command: string }
+  | { kind: 'cancelled'; event: HookEvent; toolName: string; command: string }
+
+export interface HookProgressReporter {
+  onEvent(event: HookProgressEvent): void
+}
+
 export interface RunHookOptions {
   signal?: HookAbortSignal
+  reporter?: HookProgressReporter
 }
 
 interface ParsedHookOutput {
@@ -271,7 +281,7 @@ export class HookRunner {
   }
 
   async runPreToolUse(toolName: string, toolInput: string, opts: RunHookOptions = {}): Promise<HookRunResult> {
-    return this.runCommands('PreToolUse', this.config.preToolUse, toolName, toolInput, undefined, false, opts.signal)
+    return this.runCommands('PreToolUse', this.config.preToolUse, toolName, toolInput, undefined, false, opts)
   }
 
   async runPostToolUse(
@@ -281,15 +291,7 @@ export class HookRunner {
     isError: boolean,
     opts: RunHookOptions = {},
   ): Promise<HookRunResult> {
-    return this.runCommands(
-      'PostToolUse',
-      this.config.postToolUse,
-      toolName,
-      toolInput,
-      toolOutput,
-      isError,
-      opts.signal,
-    )
+    return this.runCommands('PostToolUse', this.config.postToolUse, toolName, toolInput, toolOutput, isError, opts)
   }
 
   async runPostToolUseFailure(
@@ -305,7 +307,7 @@ export class HookRunner {
       toolInput,
       toolError,
       true,
-      opts.signal,
+      opts,
     )
   }
 
@@ -316,9 +318,11 @@ export class HookRunner {
     toolInput: string,
     toolOutput: string | undefined,
     isError: boolean,
-    signal: HookAbortSignal | undefined,
+    opts: RunHookOptions,
   ): Promise<HookRunResult> {
     if (commands.length === 0) return allowResult()
+
+    const { signal, reporter } = opts
 
     if (signal?.isAborted()) {
       return cancelledResult([`${event} hook cancelled before execution`])
@@ -328,10 +332,12 @@ export class HookRunner {
 
     for (const command of commands) {
       if (signal?.isAborted()) {
+        reporter?.onEvent({ kind: 'cancelled', event, toolName, command })
         result.cancelled = true
         result.messages.push(`${event} hook \`${command}\` cancelled while handling \`${toolName}\``)
         return result
       }
+      reporter?.onEvent({ kind: 'started', event, toolName, command })
       try {
         const { exitCode, stdout, stderr, cancelled } = await runCommand(
           command,
@@ -343,10 +349,12 @@ export class HookRunner {
           signal,
         )
         if (cancelled) {
+          reporter?.onEvent({ kind: 'cancelled', event, toolName, command })
           result.cancelled = true
           result.messages.push(`${event} hook \`${command}\` cancelled while handling \`${toolName}\``)
           return result
         }
+        reporter?.onEvent({ kind: 'completed', event, toolName, command })
         const parsed = parseHookOutput(event, toolName, command, stdout, stderr)
 
         if (exitCode === 0) {
