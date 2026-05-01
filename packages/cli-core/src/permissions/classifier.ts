@@ -20,6 +20,20 @@ const SUBVERB_TOOLS = new Set(['git', 'gh', 'npm', 'pnpm', 'cargo', 'docker'])
  * so a policy can match on them; the legacy bash-validation layer is
  * responsible for blocking unsafe redirects.
  */
+/**
+ * Strip env-var assignments and the leading path on the verb, returning
+ * the remaining tokens joined by single spaces. Used by the policy engine
+ * for raw glob matching against the rendered command form.
+ */
+export function commandTail(input: string): string {
+  const tokens = tokenize(input)
+  let i = 0
+  while (i < tokens.length && isEnvAssignment(tokens[i]!)) i += 1
+  if (i >= tokens.length) return ''
+  const verb = tokens[i]!.split('/').pop() ?? ''
+  return [verb, ...tokens.slice(i + 1)].join(' ')
+}
+
 export function classify(input: string): ClassifiedCommand {
   const tokens = tokenize(input)
   let i = 0
