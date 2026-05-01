@@ -3,13 +3,13 @@ import { getCredential, saveCredential, clearCredential, type StoredCredential }
 import { MacKeychain } from '../keychain'
 import { loadClaudeCodeOauth } from './claude-code-creds'
 
-// Installed-app OAuth client shared with Claude Code, opencode, and codebuff.
-// The client is registered only with the paste-back redirect below — any loopback
-// URI is rejected with "Invalid request format". The `code=true` param tells
-// claude.ai to render the auth code on the callback page for copy-paste.
-// NOTE: `state` is intentionally set equal to the PKCE verifier (opencode/codebuff
-// convention) — the callback page returns "code#state", the user pastes the whole
-// string back, and we send both `state` and `code_verifier` in the token exchange.
+// Installed-app OAuth client registered against the claude.ai paste-back flow.
+// Only the paste-back redirect below is registered — any loopback URI is rejected
+// with "Invalid request format". The `code=true` param tells claude.ai to render
+// the auth code on the callback page for copy-paste. NOTE: `state` is intentionally
+// set equal to the PKCE verifier — the callback page returns "code#state", the user
+// pastes the whole string back, and we send both `state` and `code_verifier` in
+// the token exchange.
 const ANTHROPIC_AUTHORIZE_URL = 'https://claude.ai/oauth/authorize'
 const ANTHROPIC_TOKEN_URL = 'https://console.anthropic.com/v1/oauth/token'
 const ANTHROPIC_REDIRECT_URI = 'https://console.anthropic.com/oauth/code/callback'
