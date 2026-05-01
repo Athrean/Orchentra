@@ -86,12 +86,31 @@ export function Tui(props: TuiProps): React.ReactElement {
           })
         }),
     )
+    cli.setNotifyDeny(
+      (info) =>
+        new Promise((resolve) => {
+          dispatch({
+            type: 'flow/start',
+            flow: {
+              kind: 'confirmation-prompt',
+              request: {
+                toolLabel: `${info.toolName} call`,
+                commandLine: info.inputJson,
+                allowPattern: '',
+                denyBanner: info.reason,
+              },
+              resolve: () => resolve(),
+            },
+          })
+        }),
+    )
     process.stdout.write('[?25l')
     return () => {
       mounted = false
       unwire()
       cli.setAskUser(null)
       cli.setAskToolUser(null)
+      cli.setNotifyDeny(null)
       process.stdout.write('[?25h')
     }
   }, [wireEvents, cli])
