@@ -25,8 +25,9 @@ import {
   PatternStore,
   embedText,
   createEnforcer,
+  createPermissionStore,
 } from '@orchentra/cli-core'
-import type { AskUser as ToolAskUser, PromptChoice as ToolPromptChoice } from '@orchentra/cli-core'
+import type { AskUser as ToolAskUser, PermissionStore, PromptChoice as ToolPromptChoice } from '@orchentra/cli-core'
 import {
   Spinner,
   renderToolCall,
@@ -66,6 +67,7 @@ export class LiveCli implements SessionControl {
   private askToolUserOverride: AskToolUserOverride | null = null
   private currentAbort: AbortController | null = null
   private readonly enforcer = createEnforcer()
+  private readonly permissionStore: PermissionStore = createPermissionStore()
 
   constructor(deps: {
     model: string
@@ -284,6 +286,7 @@ export class LiveCli implements SessionControl {
       askUser,
       enforcer: this.enforcer,
       enforcerAskUser: askToolUser,
+      enforcerStore: this.permissionStore,
       permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,
     }
