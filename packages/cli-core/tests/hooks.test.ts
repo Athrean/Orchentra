@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { HookAbortSignal, HookRunner } from '../src/runtime/hooks'
+import { HookAbortSignal, HookRunner, type HookProgressEvent, type HookProgressReporter } from '../src/runtime/hooks'
+
+class RecordingReporter implements HookProgressReporter {
+  events: HookProgressEvent[] = []
+  onEvent(event: HookProgressEvent): void {
+    this.events.push(event)
+  }
+}
 
 describe('HookRunner', () => {
   test('returns allow when no commands configured', async () => {
@@ -163,5 +170,45 @@ describe('HookAbortSignal', () => {
     const result = await runner.runPreToolUse('bash', '{"command":"ls"}', { signal })
     expect(result.cancelled).toBe(false)
     expect(result.denied).toBe(false)
+  })
+})
+
+describe('HookProgressReporter', () => {
+  test('emits started + completed for each command', async () => {
+    const reporter = new RecordingReporter()
+    const runner = new HookRunner({ preToolUse: ['echo a', 'echo b'] })
+    await runner.runPreToolUse('bash', '{"command":"ls"}', { reporter })
+    expect(reporter.events).toEqual([
+      { kind: 'started', event: 'PreToolUse', toolName: 'bash', command: 'echo a' },
+      { kind: 'completed', event: 'PreToolUse', toolName: 'bash', command: 'echo a' },
+      { kind: 'started', event: 'PreToolUse', toolName: 'bash', command: 'echo b' },
+      { kind: 'completed', event: 'PreToolUse', toolName: 'bash', command: 'echo b' },
+    ])
+  })
+
+  test('emits cancelled when aborted mid-command', async () => {
+    const signal = new HookAbortSignal()
+    const reporter = new RecordingReporter()
+    const runner = new HookRunner({ preToolUse: ['sleep 0.1'] })
+    setTimeout(() => signal.abort(), 5)
+    await runner.runPreToolUse('bash', '{"command":"ls"}', { signal, reporter })
+    expect(reporter.events.some((e) => e.kind === 'started' && e.command === 'sleep 0.1')).toBe(true)
+    expect(reporter.events.some((e) => e.kind === 'cancelled' && e.command === 'sleep 0.1')).toBe(true)
+  })
+
+  test('emits completed for failed command (failure is still completion)', async () => {
+    const reporter = new RecordingReporter()
+    const runner = new HookRunner({ preToolUse: ['exit 1'] })
+    await runner.runPreToolUse('bash', '{"command":"ls"}', { reporter })
+    expect(reporter.events).toEqual([
+      { kind: 'started', event: 'PreToolUse', toolName: 'bash', command: 'exit 1' },
+      { kind: 'completed', event: 'PreToolUse', toolName: 'bash', command: 'exit 1' },
+    ])
+  })
+
+  test('no reporter → runs normally', async () => {
+    const runner = new HookRunner({ preToolUse: ['echo ok'] })
+    const result = await runner.runPreToolUse('bash', '{"command":"ls"}')
+    expect(result.failed).toBe(false)
   })
 })
