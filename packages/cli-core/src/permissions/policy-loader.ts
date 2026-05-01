@@ -100,7 +100,7 @@ function readRulesetOrEmpty(path: string, onWarn: (m: string) => void): Ruleset 
     const pattern = item.pattern
     const decision = item.decision
     if (typeof tool !== 'string' || typeof pattern !== 'string') continue
-    if (decision !== 'allow' && decision !== 'deny') continue
+    if (decision !== 'allow' && decision !== 'deny' && decision !== 'ask') continue
     rules.push({ tool, pattern, decision })
   }
   return { version: SCHEMA_VERSION, rules }
