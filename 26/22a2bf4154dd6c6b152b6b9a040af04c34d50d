@@ -1,0 +1,25 @@
+packages/cli-core/src/permissions/enforcer.ts
+  27be1972cf29b313 59-69,97-109,127-128
+packages/cli-core/tests/enforcer.test.ts
+  27be1972cf29b313 456-527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "2622a2bf4154dd6c6b152b6b9a040af04c34d50d",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 100,
+      "total_deletions": 1,
+      "accepted_lines": 100,
+      "overriden_lines": 0
+    }
+  }
+}
