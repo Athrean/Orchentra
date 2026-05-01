@@ -1,0 +1,31 @@
+apps/cli/src/live-cli.ts
+  27be1972cf29b313 40,74,98-101,141-152,289-298,302,304
+apps/cli/src/tui/Tui.tsx
+  27be1972cf29b313 71-76
+apps/cli/src/repl.ts
+  27be1972cf29b313 63-66
+apps/cli/src/headless-tool-prompt.ts
+  27be1972cf29b313 1-37
+apps/cli/tests/headless-tool-prompt.test.ts
+  27be1972cf29b313 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c5b4c48f8f3bf9b88140427232090f645ffda5fc",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1059,
+      "overriden_lines": 0
+    }
+  }
+}
