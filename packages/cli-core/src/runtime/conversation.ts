@@ -45,6 +45,7 @@ export interface ConversationDeps {
   permissionEnforcer?: PermissionEnforcer
   enforcer?: Enforcer
   enforcerAskUser?: import('../permissions/enforcer').AskUser
+  enforcerStore?: import('../permissions/store').PermissionStore
   permissionMode?: import('./permissions').PermissionMode
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
@@ -315,6 +316,7 @@ export class ConversationRuntime {
       const decision = await this.deps.enforcer.enforce(call, {
         mode: this.deps.permissionMode,
         askUser: this.deps.enforcerAskUser,
+        store: this.deps.enforcerStore,
       })
       if (decision.kind === 'deny') {
         return { id: call.id, content: `permission denied: ${decision.reason}`, isError: true }
