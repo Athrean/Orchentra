@@ -109,3 +109,42 @@ describe('evaluate — last-rule-wins on same-decision conflicts', () => {
     if (v.kind !== 'no-match') expect(v.rule.pattern).toBe('gh issue *')
   })
 })
+
+describe('evaluate — ask rules', () => {
+  test('ask rule that matches → ask', () => {
+    const r = rules({ tool: 'bash', pattern: 'git push *', decision: 'ask' })
+    const call: ToolCall = { id: 't', name: 'bash', input: { command: 'git push origin main' } }
+    const v = evaluate(call, r)
+    expect(v.kind).toBe('ask')
+    if (v.kind === 'ask') expect(v.rule.pattern).toBe('git push *')
+  })
+
+  test('ask wins over allow when both match', () => {
+    const r = rules(
+      { tool: 'bash', pattern: 'git *', decision: 'allow' },
+      { tool: 'bash', pattern: 'git push *', decision: 'ask' },
+    )
+    const call: ToolCall = { id: 't', name: 'bash', input: { command: 'git push origin main' } }
+    expect(evaluate(call, r).kind).toBe('ask')
+  })
+
+  test('deny still wins over ask', () => {
+    const r = rules(
+      { tool: 'bash', pattern: 'git push *', decision: 'ask' },
+      { tool: 'bash', pattern: 'git push --force*', decision: 'deny' },
+    )
+    const call: ToolCall = { id: 't', name: 'bash', input: { command: 'git push --force origin main' } }
+    expect(evaluate(call, r).kind).toBe('deny')
+  })
+
+  test('two ask rules both match → ask with the later rule cited', () => {
+    const r = rules(
+      { tool: 'bash', pattern: 'git *', decision: 'ask' },
+      { tool: 'bash', pattern: 'git push *', decision: 'ask' },
+    )
+    const call: ToolCall = { id: 't', name: 'bash', input: { command: 'git push origin main' } }
+    const v = evaluate(call, r)
+    expect(v.kind).toBe('ask')
+    if (v.kind === 'ask') expect(v.rule.pattern).toBe('git push *')
+  })
+})
