@@ -58,8 +58,13 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
       )
     case 'assistant':
       return (
-        <Box paddingX={1} flexDirection="column">
-          <MarkdownView text={row.text} />
+        <Box paddingX={1} flexDirection="row">
+          <Text color={THEME.brand} bold>
+            ●{' '}
+          </Text>
+          <Box flexDirection="column" flexGrow={1}>
+            <MarkdownView text={row.text} />
+          </Box>
         </Box>
       )
     case 'tool_call':
