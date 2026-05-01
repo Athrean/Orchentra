@@ -1,4 +1,12 @@
-import type { ToolDefinition, ToolResult, ToolContext } from '@orchentra/cli-core'
+import {
+  defaultSandboxConfig,
+  prepareSandboxDirs,
+  wrapBashCommand,
+  type SandboxStatus,
+  type ToolDefinition,
+  type ToolResult,
+  type ToolContext,
+} from '@orchentra/cli-core'
 import { validateCommand } from '../bash-validation'
 
 interface BashInput {
@@ -6,6 +14,37 @@ interface BashInput {
   timeout?: number
   description?: string
   run_in_background?: boolean
+  dangerously_disable_sandbox?: boolean
+}
+
+interface BashSpawnContext {
+  cwd: string
+}
+
+interface ResolvedBashSpawn {
+  program: string
+  args: string[]
+  env?: Array<readonly [string, string]>
+  sandboxStatus?: SandboxStatus
+}
+
+export function resolveBashSpawn(input: BashInput, ctx: BashSpawnContext): ResolvedBashSpawn {
+  if (input.dangerously_disable_sandbox || process.env.ORCHENTRA_SANDBOX_DISABLED === '1') {
+    return { program: 'sh', args: ['-c', input.command] }
+  }
+  const wrap = wrapBashCommand(input.command, ctx.cwd, {
+    config: defaultSandboxConfig(),
+    overrides: {},
+  })
+  if (!wrap || wrap.command === null) {
+    return { program: 'sh', args: ['-c', input.command], sandboxStatus: wrap?.status }
+  }
+  return {
+    program: wrap.command.program,
+    args: wrap.command.args,
+    env: wrap.command.env,
+    sandboxStatus: wrap.status,
+  }
 }
 
 export const bashTool: ToolDefinition = {
@@ -19,6 +58,7 @@ export const bashTool: ToolDefinition = {
       timeout: { type: 'integer', minimum: 1 },
       description: { type: 'string' },
       run_in_background: { type: 'boolean' },
+      dangerously_disable_sandbox: { type: 'boolean' },
     },
     required: ['command'],
     additionalProperties: false,
@@ -35,12 +75,25 @@ export const bashTool: ToolDefinition = {
     }
 
     const timeoutMs = input.timeout ? input.timeout * 1000 : 120_000
+    const spawn = resolveBashSpawn(input, ctx)
+
+    if (spawn.sandboxStatus?.enabled) {
+      try {
+        prepareSandboxDirs(ctx.cwd)
+      } catch {
+        // best-effort; sandbox-exec will surface the real failure
+      }
+    }
 
     try {
-      const proc = Bun.spawn(['sh', '-c', input.command], {
+      const env: Record<string, string> = { ...(process.env as Record<string, string>) }
+      for (const [k, v] of spawn.env ?? []) env[k] = v
+
+      const proc = Bun.spawn([spawn.program, ...spawn.args], {
         cwd: ctx.cwd,
         stdout: 'pipe',
         stderr: 'pipe',
+        env,
       })
 
       const timeout = setTimeout(() => proc.kill(), timeoutMs)
