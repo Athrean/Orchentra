@@ -2,6 +2,7 @@ import {
   defaultSandboxConfig,
   prepareSandboxDirs,
   wrapBashCommand,
+  type PermissionMode,
   type SandboxStatus,
   type ToolDefinition,
   type ToolResult,
@@ -19,6 +20,7 @@ interface BashInput {
 
 interface BashSpawnContext {
   cwd: string
+  permissionMode?: PermissionMode
 }
 
 interface ResolvedBashSpawn {
@@ -29,7 +31,11 @@ interface ResolvedBashSpawn {
 }
 
 export function resolveBashSpawn(input: BashInput, ctx: BashSpawnContext): ResolvedBashSpawn {
-  if (input.dangerously_disable_sandbox || process.env.ORCHENTRA_SANDBOX_DISABLED === '1') {
+  if (
+    input.dangerously_disable_sandbox ||
+    process.env.ORCHENTRA_SANDBOX_DISABLED === '1' ||
+    ctx.permissionMode === 'danger-full-access'
+  ) {
     return { program: 'sh', args: ['-c', input.command] }
   }
   const wrap = wrapBashCommand(input.command, ctx.cwd, {
