@@ -453,6 +453,115 @@ describe('enforce — mode escalation prompt', () => {
   })
 })
 
+describe('workspace boundary check (write/edit tools)', () => {
+  const writeOutside: ToolCall = { id: 'w', name: 'write', input: { file_path: '/etc/passwd', content: 'x' } }
+  const writeInside: ToolCall = { id: 'w', name: 'write', input: { file_path: '/work/src/x.ts', content: 'x' } }
+  const editOutside: ToolCall = {
+    id: 'e',
+    name: 'edit',
+    input: { file_path: '/etc/hosts', old_string: 'a', new_string: 'b' },
+  }
+
+  test('write outside workspace + mode=workspace-write → deny', async () => {
+    const decision = await createEnforcer().enforce(writeOutside, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      workspaceRoot: '/work',
+    })
+    expect(decision.kind).toBe('deny')
+    if (decision.kind === 'deny') expect(decision.reason).toMatch(/outside workspace/i)
+  })
+
+  test('edit outside workspace + mode=workspace-write → deny', async () => {
+    const decision = await createEnforcer().enforce(editOutside, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      workspaceRoot: '/work',
+    })
+    expect(decision.kind).toBe('deny')
+  })
+
+  test('write inside workspace → falls through to normal prompt flow (not auto-denied)', async () => {
+    let prompted = false
+    const decision = await createEnforcer().enforce(writeInside, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'allow-once'
+      },
+      workspaceRoot: '/work',
+    })
+    expect(decision.kind).toBe('allow')
+    expect(prompted).toBe(true)
+  })
+
+  test('write outside + mode=danger-full-access → boundary bypassed', async () => {
+    const decision = await createEnforcer().enforce(writeOutside, {
+      mode: 'danger-full-access',
+      askUser: async () => 'allow-once',
+      workspaceRoot: '/work',
+    })
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('write outside + no workspaceRoot → no boundary check, falls through to prompt', async () => {
+    let prompted = false
+    const decision = await createEnforcer().enforce(writeOutside, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'allow-once'
+      },
+    })
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('write tool + mode=read-only → deny (writes not allowed in read-only)', async () => {
+    const decision = await createEnforcer().enforce(writeInside, {
+      mode: 'read-only',
+      askUser: async () => 'allow-once',
+      workspaceRoot: '/work',
+    })
+    expect(decision.kind).toBe('deny')
+    if (decision.kind === 'deny') expect(decision.reason).toMatch(/read-only/i)
+  })
+
+  test('relative path normalized against workspace root', async () => {
+    const writeRelative: ToolCall = { id: 'w', name: 'write', input: { file_path: 'src/x.ts', content: 'x' } }
+    let prompted = false
+    const decision = await createEnforcer().enforce(writeRelative, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'allow-once'
+      },
+      workspaceRoot: '/work',
+    })
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('workspace root with trailing slash handled', async () => {
+    const decision = await createEnforcer().enforce(writeInside, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      workspaceRoot: '/work/',
+    })
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('prefix match boundary bug: /workspacex/hack must not pass for /workspace', async () => {
+    const sneaky: ToolCall = { id: 's', name: 'write', input: { file_path: '/workspacex/hack', content: 'x' } }
+    const decision = await createEnforcer().enforce(sneaky, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      workspaceRoot: '/workspace',
+    })
+    expect(decision.kind).toBe('deny')
+  })
+})
+
 describe('PromptRequest enrichment', () => {
   test('hook "ask" → reason carried into PromptRequest', async () => {
     let captured: PromptRequest | null = null
