@@ -350,4 +350,107 @@ describe('enforce — with PermissionStore', () => {
   })
 })
 
+describe('enforce — mode escalation prompt', () => {
+  test('workspace-write + tool requires danger-full-access → prompts even with stored allow', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: '*', decision: 'allow' })
+    let prompted = false
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'allow-once'
+      },
+      store,
+      toolRequirements: { bash: 'danger-full-access' },
+    })
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('workspace-write + tool requires danger-full-access → prompts even with policy allow', async () => {
+    let prompted = false
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'allow-once'
+      },
+      policy: () => ({ kind: 'allow', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'allow' } }),
+      toolRequirements: { bash: 'danger-full-access' },
+    })
+    expect(prompted).toBe(true)
+  })
+
+  test('danger-full-access mode + danger-full-access-required → no escalation prompt', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: '*', decision: 'allow' })
+    let prompted = false
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'danger-full-access',
+      askUser: async () => {
+        prompted = true
+        return 'deny'
+      },
+      store,
+      toolRequirements: { bash: 'danger-full-access' },
+    })
+    expect(prompted).toBe(false)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('workspace-write + tool requires workspace-write → no escalation (existing behavior preserved)', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: '*', decision: 'allow' })
+    let prompted = false
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'deny'
+      },
+      store,
+      toolRequirements: { bash: 'workspace-write' },
+    })
+    expect(prompted).toBe(false)
+  })
+
+  test('no toolRequirements supplied → no escalation, existing behavior', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: '*', decision: 'allow' })
+    let prompted = false
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'deny'
+      },
+      store,
+    })
+    expect(prompted).toBe(false)
+  })
+
+  test('escalation prompt still defers to destructive deny', async () => {
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'rm -rf /' } },
+      {
+        mode: 'workspace-write',
+        askUser: async () => 'allow-once',
+        toolRequirements: { bash: 'danger-full-access' },
+      },
+    )
+    expect(decision.kind).toBe('deny')
+  })
+
+  test('escalation prompt still defers to policy deny', async () => {
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      policy: () => ({ kind: 'deny', rule: { tool: 'bash', pattern: '*', decision: 'deny' } }),
+      toolRequirements: { bash: 'danger-full-access' },
+    })
+    expect(decision.kind).toBe('deny')
+  })
+})
+
 void ((): PromptChoice => 'allow-once')
