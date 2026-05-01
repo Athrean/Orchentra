@@ -21,8 +21,8 @@ orchentra.yml
 .idea/
 
 # Internal docs (git-ignored, local only)
-docs/engineering/
-docs/superpowers/
+docs/
+UBIQUITOUS_LANGUAGE.md
 
 # Local agent/IDE plugin folders (not part of the product repo)
 .claude-plugins/
