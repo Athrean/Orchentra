@@ -3,7 +3,7 @@ import { createEnforcer, type AskUser, type PromptChoice, type PromptRequest } f
 import { createPermissionStore } from '../src/permissions/store'
 import type { ToolCall } from '../src/runtime/events'
 
-const bashCall: ToolCall = { id: 't1', name: 'bash', input: { command: 'gh issue list --state open' } }
+const bashCall: ToolCall = { id: 't1', name: 'bash', input: { command: 'npm publish --access public' } }
 const readCall: ToolCall = { id: 't2', name: 'read', input: { path: '/tmp/x' } }
 
 const ctx = (askUser: AskUser): { mode: 'workspace-write'; askUser: AskUser } => ({ mode: 'workspace-write', askUser })
@@ -30,7 +30,7 @@ describe('enforce', () => {
     expect(decision.kind).toBe('allow')
     expect(seen).toHaveLength(1)
     expect(seen[0]?.toolName).toBe('bash')
-    expect(seen[0]?.suggestedPattern).toContain('gh issue')
+    expect(seen[0]?.suggestedPattern).toContain('npm publish')
   })
 
   test('"allow-pattern" also allows in A2 (no store yet — slice A3 will persist)', async () => {
@@ -60,7 +60,58 @@ describe('enforce', () => {
       return 'allow-once'
     }
     await createEnforcer().enforce(bashCall, ctx(askUser))
-    expect(captured?.inputJson).toBe(JSON.stringify({ command: 'gh issue list --state open' }))
+    expect(captured?.inputJson).toBe(JSON.stringify({ command: 'npm publish --access public' }))
+  })
+})
+
+describe('enforce — bash read-only auto-allow', () => {
+  test('common read-only bash commands skip the prompt', async () => {
+    const cmds = ['cat README.md', 'ls -la', 'git status', 'git log --oneline -5', 'grep foo bar.txt', 'rg pattern src']
+    for (const cmd of cmds) {
+      let prompted = false
+      const decision = await createEnforcer().enforce(
+        { id: 't', name: 'bash', input: { command: cmd } },
+        {
+          mode: 'workspace-write',
+          askUser: async () => {
+            prompted = true
+            return 'deny'
+          },
+        },
+      )
+      expect(decision.kind).toBe('allow')
+      expect(prompted).toBe(false)
+    }
+  })
+
+  test('redirected output drops the read-only auto-allow', async () => {
+    let prompted = false
+    await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'cat secrets > /tmp/leak' } },
+      {
+        mode: 'workspace-write',
+        askUser: async () => {
+          prompted = true
+          return 'deny'
+        },
+      },
+    )
+    expect(prompted).toBe(true)
+  })
+
+  test('non-read first token still prompts', async () => {
+    let prompted = false
+    await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'npm publish' } },
+      {
+        mode: 'workspace-write',
+        askUser: async () => {
+          prompted = true
+          return 'deny'
+        },
+      },
+    )
+    expect(prompted).toBe(true)
   })
 })
 
@@ -131,7 +182,7 @@ describe('enforce — destructive hard-deny', () => {
 describe('enforce — with PermissionStore', () => {
   test('store "allow" verdict short-circuits before askUser', async () => {
     const store = createPermissionStore()
-    store.remember({ tool: 'bash', pattern: 'gh issue *', decision: 'allow' })
+    store.remember({ tool: 'bash', pattern: 'npm publish *', decision: 'allow' })
     let prompted = false
     const askUser: AskUser = async () => {
       prompted = true
@@ -164,7 +215,7 @@ describe('enforce — with PermissionStore', () => {
     const rules = store.list()
     expect(rules).toHaveLength(1)
     expect(rules[0]?.tool).toBe('bash')
-    expect(rules[0]?.pattern).toContain('gh issue')
+    expect(rules[0]?.pattern).toContain('npm publish')
     expect(rules[0]?.decision).toBe('allow')
   })
 
