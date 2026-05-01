@@ -47,4 +47,23 @@ describe('resolveBashSpawn', () => {
     const r = resolveBashSpawn({ command: 'echo "hello world"' }, { cwd: '/Users/dev/proj' })
     expect(r.args[r.args.length - 1]).toBe('echo "hello world"')
   })
+
+  test('permissionMode = danger-full-access → bypass sandbox', () => {
+    const r = resolveBashSpawn({ command: 'echo ok' }, { cwd: '/Users/dev/proj', permissionMode: 'danger-full-access' })
+    expect(r.program).toBe('sh')
+    expect(r.args).toEqual(['-c', 'echo ok'])
+    expect(r.sandboxStatus).toBeUndefined()
+  })
+
+  test('permissionMode = workspace-write → sandbox still applies', () => {
+    if (process.platform !== 'darwin') return
+    const r = resolveBashSpawn({ command: 'echo ok' }, { cwd: '/Users/dev/proj', permissionMode: 'workspace-write' })
+    expect(r.program).toBe('sandbox-exec')
+  })
+
+  test('permissionMode = read-only → sandbox still applies', () => {
+    if (process.platform !== 'darwin') return
+    const r = resolveBashSpawn({ command: 'echo ok' }, { cwd: '/Users/dev/proj', permissionMode: 'read-only' })
+    expect(r.program).toBe('sandbox-exec')
+  })
 })
