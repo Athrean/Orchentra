@@ -29,11 +29,15 @@ export interface EnforcerContext {
    */
   readonly policy?: (toolCall: ToolCall) => PolicyVerdict
   /**
-   * Optional sink invoked when a policy rule fires (allow or deny). UIs use
-   * it to surface "auto-allowed by policy: <pattern>" / "denied by policy:
-   * <pattern>" notices so users see what is silently approving or blocking.
+   * Optional sink invoked when a policy rule fires (allow, deny, or ask).
+   * UIs use it to surface "auto-allowed by policy: <pattern>" / "denied by
+   * policy: <pattern>" / "ask required by policy: <pattern>" notices so
+   * users see what is silently approving, blocking, or forcing a prompt.
    */
-  readonly notifyPolicy?: (info: { readonly kind: 'allow' | 'deny'; readonly rule: PolicyRule }) => Promise<void>
+  readonly notifyPolicy?: (info: {
+    readonly kind: 'allow' | 'deny' | 'ask'
+    readonly rule: PolicyRule
+  }) => Promise<void>
   /**
    * Optional sink for destructive-pattern denials. The enforcer does not
    * await it for the decision — the call is denied either way — but UIs can
@@ -83,6 +87,10 @@ export function createEnforcer(): Enforcer {
           await ctx.notifyPolicy?.({ kind: 'allow', rule: v.rule })
           return { kind: 'allow' }
         }
+        if (v.kind === 'ask') {
+          await ctx.notifyPolicy?.({ kind: 'ask', rule: v.rule })
+          return promptUser(toolCall, ctx)
+        }
       }
 
       if (READ_TOOLS.has(toolCall.name.toLowerCase())) return { kind: 'allow' }
@@ -93,23 +101,27 @@ export function createEnforcer(): Enforcer {
         if (verdict === 'deny') return { kind: 'deny', reason: 'denied by stored rule' }
       }
 
-      const suggestedPattern = deriveSuggestedPattern(toolCall)
-      const request: PromptRequest = {
-        toolName: toolCall.name,
-        inputJson: JSON.stringify(toolCall.input),
-        suggestedPattern,
-      }
-      const choice = await ctx.askUser(request)
-
-      if (choice === 'allow-pattern') {
-        ctx.store?.remember({ tool: toolCall.name, pattern: suggestedPattern, decision: 'allow' })
-        return { kind: 'allow' }
-      }
-      if (choice === 'allow-once') return { kind: 'allow' }
-      if (choice === 'cancel') return { kind: 'deny', reason: 'user cancelled the prompt' }
-      return { kind: 'deny', reason: 'user denied this command' }
+      return promptUser(toolCall, ctx)
     },
   }
+}
+
+async function promptUser(toolCall: ToolCall, ctx: EnforcerContext): Promise<Decision> {
+  const suggestedPattern = deriveSuggestedPattern(toolCall)
+  const request: PromptRequest = {
+    toolName: toolCall.name,
+    inputJson: JSON.stringify(toolCall.input),
+    suggestedPattern,
+  }
+  const choice = await ctx.askUser(request)
+
+  if (choice === 'allow-pattern') {
+    ctx.store?.remember({ tool: toolCall.name, pattern: suggestedPattern, decision: 'allow' })
+    return { kind: 'allow' }
+  }
+  if (choice === 'allow-once') return { kind: 'allow' }
+  if (choice === 'cancel') return { kind: 'deny', reason: 'user cancelled the prompt' }
+  return { kind: 'deny', reason: 'user denied this command' }
 }
 
 function deriveSuggestedPattern(toolCall: ToolCall): string {

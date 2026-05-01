@@ -131,6 +131,57 @@ describe('enforce — policy hook', () => {
     })
     expect(decision.kind).toBe('allow')
   })
+
+  test('policy ask → forces askUser even when stored allow rule would match', async () => {
+    const store = createPermissionStore()
+    store.remember({ tool: 'bash', pattern: 'npm publish *', decision: 'allow' })
+    let prompted = false
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'allow-once'
+      },
+      policy: () => ({ kind: 'ask', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'ask' } }),
+      store,
+    })
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('policy ask → user "deny" turns into a deny decision', async () => {
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'deny',
+      policy: () => ({ kind: 'ask', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'ask' } }),
+    })
+    expect(decision.kind).toBe('deny')
+  })
+
+  test('policy ask fires notifyPolicy with kind ask', async () => {
+    const calls: { kind: string; pattern: string }[] = []
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      policy: () => ({ kind: 'ask', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'ask' } }),
+      notifyPolicy: async (info) => {
+        calls.push({ kind: info.kind, pattern: info.rule.pattern })
+      },
+    })
+    expect(calls).toEqual([{ kind: 'ask', pattern: 'npm publish *' }])
+  })
+
+  test('destructive hard-deny still wins over a policy ask', async () => {
+    const decision = await createEnforcer().enforce(
+      { id: 't', name: 'bash', input: { command: 'rm -rf /' } },
+      {
+        mode: 'workspace-write',
+        askUser: async () => 'allow-once',
+        policy: () => ({ kind: 'ask', rule: { tool: 'bash', pattern: '*', decision: 'ask' } }),
+      },
+    )
+    expect(decision.kind).toBe('deny')
+  })
 })
 
 describe('enforce — bash read-only auto-allow', () => {
