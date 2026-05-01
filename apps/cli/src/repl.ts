@@ -60,6 +60,10 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     return { added, removed, errors: fresh.errors.length }
   })
 
+  for (const notice of cli.consumeStartupNotices()) {
+    process.stderr.write(`${notice}\n`)
+  }
+
   if (options.prompt) {
     await cli.runTurn(options.prompt)
     await cliCtx.close()
