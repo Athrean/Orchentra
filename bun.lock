@@ -126,6 +126,7 @@
       "name": "@orchentra/cli-tools",
       "version": "0.1.0",
       "dependencies": {
+        "@orchentra/cli-api": "workspace:*",
         "@orchentra/cli-core": "workspace:*",
       },
       "devDependencies": {
