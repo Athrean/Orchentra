@@ -15,6 +15,7 @@ import type { SystemPrompt } from './system-prompt'
 import type { SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
 import type { PermissionEnforcer } from './permission-enforcer'
+import type { Enforcer } from '../permissions/enforcer'
 
 const PLAN_MODE_ALLOWED_TOOLS = new Set<string>([
   'exit_plan_mode',
@@ -42,6 +43,9 @@ export interface ConversationDeps {
   systemPrompt: SystemPrompt
   hookRunner?: HookRunner
   permissionEnforcer?: PermissionEnforcer
+  enforcer?: Enforcer
+  enforcerAskUser?: import('../permissions/enforcer').AskUser
+  permissionMode?: import('./permissions').PermissionMode
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -304,6 +308,16 @@ export class ConversationRuntime {
       const enforcement = this.deps.permissionEnforcer.check(call.name, inputJson)
       if (enforcement.kind === 'denied') {
         return { id: call.id, content: `permission denied: ${enforcement.reason}`, isError: true }
+      }
+    }
+
+    if (this.deps.enforcer && this.deps.enforcerAskUser && this.deps.permissionMode) {
+      const decision = await this.deps.enforcer.enforce(call, {
+        mode: this.deps.permissionMode,
+        askUser: this.deps.enforcerAskUser,
+      })
+      if (decision.kind === 'deny') {
+        return { id: call.id, content: `permission denied: ${decision.reason}`, isError: true }
       }
     }
 

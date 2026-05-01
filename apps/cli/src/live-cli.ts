@@ -24,7 +24,9 @@ import {
   prepareMemoryContext,
   PatternStore,
   embedText,
+  createEnforcer,
 } from '@orchentra/cli-core'
+import type { AskUser as ToolAskUser, PromptChoice as ToolPromptChoice } from '@orchentra/cli-core'
 import {
   Spinner,
   renderToolCall,
@@ -39,6 +41,8 @@ export type ModelResolver = (raw: string) => { model: string; provider: Provider
 
 export type RuntimeEventSink = (event: RuntimeEvent) => void
 export type AskUserOverride = (prompt: string) => Promise<string>
+export type AskToolUserOverride = ToolAskUser
+export type { ToolPromptChoice }
 
 export class LiveCli implements SessionControl {
   private model: string
@@ -59,7 +63,9 @@ export class LiveCli implements SessionControl {
   private forceCompactFlag = false
   private eventSink: RuntimeEventSink | null = null
   private askUserOverride: AskUserOverride | null = null
+  private askToolUserOverride: AskToolUserOverride | null = null
   private currentAbort: AbortController | null = null
+  private readonly enforcer = createEnforcer()
 
   constructor(deps: {
     model: string
@@ -112,6 +118,10 @@ export class LiveCli implements SessionControl {
 
   setAskUser(askUser: AskUserOverride | null): void {
     this.askUserOverride = askUser
+  }
+
+  setAskToolUser(askUser: AskToolUserOverride | null): void {
+    this.askToolUserOverride = askUser
   }
 
   abort(): void {
@@ -250,6 +260,21 @@ export class LiveCli implements SessionControl {
       return outcome.type === 'submit' ? outcome.text : ''
     }
 
+    const askToolUser: ToolAskUser = async (request) => {
+      if (this.askToolUserOverride) return this.askToolUserOverride(request)
+      this.spinner.stop()
+      process.stdout.write(
+        `\nAllow ${request.toolName}? input=${request.inputJson}\n` + '  1) Yes  2) Yes, allow this pattern  3) No\n',
+      )
+      const outcome = await readLine('> ')
+      if (!sink) this.spinner.start('Thinking...')
+      const text = outcome.type === 'submit' ? outcome.text.trim() : ''
+      if (text === '1') return 'allow-once'
+      if (text === '2') return 'allow-pattern'
+      if (text === '3') return 'deny'
+      return 'cancel'
+    }
+
     this.currentAbort = new AbortController()
     const deps: ConversationDeps = {
       provider: this.provider,
@@ -257,6 +282,9 @@ export class LiveCli implements SessionControl {
       systemPrompt,
       sharedState: this.sharedState,
       askUser,
+      enforcer: this.enforcer,
+      enforcerAskUser: askToolUser,
+      permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,
     }
 
