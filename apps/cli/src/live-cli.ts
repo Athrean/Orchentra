@@ -53,7 +53,7 @@ export type RuntimeEventSink = (event: RuntimeEvent) => void
 export type AskUserOverride = (prompt: string) => Promise<string>
 export type AskToolUserOverride = ToolAskUser
 export type NotifyDenyOverride = (info: { toolName: string; inputJson: string; reason: string }) => Promise<void>
-export type NotifyPolicyOverride = (info: { kind: 'allow' | 'deny'; rule: PolicyRule }) => Promise<void>
+export type NotifyPolicyOverride = (info: { kind: 'allow' | 'deny' | 'ask'; rule: PolicyRule }) => Promise<void>
 export type { ToolPromptChoice }
 
 export class LiveCli implements SessionControl {
