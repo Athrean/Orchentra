@@ -121,6 +121,12 @@ function allowResult(messages: string[] = []): HookRunResult {
   }
 }
 
+function formatHookFailure(command: string, exitCode: number | null, stderr: string): string {
+  const codeStr = exitCode === null ? 'signal' : String(exitCode)
+  const base = `Hook \`${command}\` exited with status ${codeStr}`
+  return stderr.length > 0 ? `${base}: ${stderr}` : base
+}
+
 function cancelledResult(messages: string[]): HookRunResult {
   return {
     denied: false,
@@ -375,9 +381,7 @@ export class HookRunner {
           mergeParsedOutput(result, parsed)
           result.failed = true
           if (parsed.messages.length === 0) {
-            result.messages.push(
-              `${event} hook \`${command}\` failed (exit ${exitCode}) while handling \`${toolName}\``,
-            )
+            result.messages.push(formatHookFailure(command, exitCode, stderr))
           }
           return result
         }
