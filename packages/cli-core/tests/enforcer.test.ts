@@ -453,6 +453,70 @@ describe('enforce — mode escalation prompt', () => {
   })
 })
 
+describe('PromptRequest enrichment', () => {
+  test('hook "ask" → reason carried into PromptRequest', async () => {
+    let captured: PromptRequest | null = null
+    const askUser: AskUser = async (req) => {
+      captured = req
+      return 'allow-once'
+    }
+    await createEnforcer().enforce(bashCall, {
+      mode: 'danger-full-access',
+      askUser,
+      hookOverride: { decision: 'ask', reason: 'lint hook wants confirmation' },
+    })
+    expect(captured?.reason).toBe('lint hook wants confirmation')
+    expect(captured?.currentMode).toBe('danger-full-access')
+  })
+
+  test('policy.ask match → PromptRequest.reason cites the rule pattern', async () => {
+    let captured: PromptRequest | null = null
+    const askUser: AskUser = async (req) => {
+      captured = req
+      return 'allow-once'
+    }
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser,
+      policy: () => ({ kind: 'ask', rule: { tool: 'bash', pattern: 'npm publish *', decision: 'ask' } }),
+    })
+    expect(captured?.reason).toContain('npm publish *')
+  })
+
+  test('mode escalation → PromptRequest.reason cites both modes + sets requiredMode', async () => {
+    let captured: PromptRequest | null = null
+    const askUser: AskUser = async (req) => {
+      captured = req
+      return 'allow-once'
+    }
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser,
+      policy: () => ({ kind: 'allow', rule: { tool: 'bash', pattern: '*', decision: 'allow' } }),
+      toolRequirements: { bash: 'danger-full-access' },
+    })
+    expect(captured?.requiredMode).toBe('danger-full-access')
+    expect(captured?.currentMode).toBe('workspace-write')
+    expect(captured?.reason).toContain('workspace-write')
+    expect(captured?.reason).toContain('danger-full-access')
+  })
+
+  test('plain prompt (no hook, no policy, no escalation) → reason undefined, currentMode set', async () => {
+    let captured: PromptRequest | null = null
+    const askUser: AskUser = async (req) => {
+      captured = req
+      return 'allow-once'
+    }
+    await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser,
+    })
+    expect(captured?.reason).toBeUndefined()
+    expect(captured?.currentMode).toBe('workspace-write')
+    expect(captured?.requiredMode).toBeUndefined()
+  })
+})
+
 describe('enforce — hook context override', () => {
   test('hookOverride.decision="deny" → deny short-circuits with hook reason', async () => {
     const askUser: AskUser = async () => 'allow-once'

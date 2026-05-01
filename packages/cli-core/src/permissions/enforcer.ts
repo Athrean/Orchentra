@@ -12,6 +12,12 @@ export interface PromptRequest {
   readonly inputJson: string
   /** Glob hint shown next to "Yes, and allow this pattern". */
   readonly suggestedPattern: string
+  /** Active mode at the time of the prompt. */
+  readonly currentMode: PermissionMode
+  /** Mode the tool requires, when prompting because of escalation. */
+  readonly requiredMode?: PermissionMode
+  /** Why the user is being prompted (hook reason / matched ask rule / escalation copy). */
+  readonly reason?: string
 }
 
 export type AskUser = (request: PromptRequest) => Promise<PromptChoice>
@@ -99,7 +105,7 @@ export function createEnforcer(): Enforcer {
         return { kind: 'deny', reason: hook.reason ?? `denied by pre-tool hook for ${toolCall.name}` }
       }
       if (hook?.decision === 'ask') {
-        return promptUser(toolCall, ctx)
+        return promptUser(toolCall, ctx, { reason: hook.reason })
       }
 
       if (toolCall.name.toLowerCase() === 'bash' && !hook) {
@@ -115,13 +121,16 @@ export function createEnforcer(): Enforcer {
         }
         if (v.kind === 'ask') {
           await ctx.notifyPolicy?.({ kind: 'ask', rule: v.rule })
-          return promptUser(toolCall, ctx)
+          return promptUser(toolCall, ctx, { reason: `matches ask rule '${v.rule.pattern}'` })
         }
         if (v.kind === 'allow' && !needsEscalation(ctx, toolCall)) {
           await ctx.notifyPolicy?.({ kind: 'allow', rule: v.rule })
           return { kind: 'allow' }
         }
-        // policy allow with escalation: fall through to prompt
+        if (v.kind === 'allow' && needsEscalation(ctx, toolCall)) {
+          await ctx.notifyPolicy?.({ kind: 'allow', rule: v.rule })
+          return promptUser(toolCall, ctx, escalationReason(ctx, toolCall))
+        }
       }
 
       if (hook?.decision === 'allow') {
@@ -134,9 +143,14 @@ export function createEnforcer(): Enforcer {
         const verdict = ctx.store.decide(toolCall.name, toolCall.input)
         if (verdict === 'deny') return { kind: 'deny', reason: 'denied by stored rule' }
         if (verdict === 'allow' && !needsEscalation(ctx, toolCall)) return { kind: 'allow' }
-        // store allow with escalation: fall through to prompt
+        if (verdict === 'allow' && needsEscalation(ctx, toolCall)) {
+          return promptUser(toolCall, ctx, escalationReason(ctx, toolCall))
+        }
       }
 
+      if (needsEscalation(ctx, toolCall)) {
+        return promptUser(toolCall, ctx, escalationReason(ctx, toolCall))
+      }
       return promptUser(toolCall, ctx)
     },
   }
@@ -149,12 +163,28 @@ function needsEscalation(ctx: EnforcerContext, toolCall: ToolCall): boolean {
   return permissionModeRank(ctx.mode) < permissionModeRank(required)
 }
 
-async function promptUser(toolCall: ToolCall, ctx: EnforcerContext): Promise<Decision> {
+function escalationReason(ctx: EnforcerContext, toolCall: ToolCall): { reason: string; requiredMode?: PermissionMode } {
+  const required = ctx.toolRequirements?.[toolCall.name]
+  return {
+    reason: `requires escalation from ${ctx.mode} to ${required ?? ctx.mode}`,
+    requiredMode: required,
+  }
+}
+
+interface PromptOptions {
+  reason?: string
+  requiredMode?: PermissionMode
+}
+
+async function promptUser(toolCall: ToolCall, ctx: EnforcerContext, opts: PromptOptions = {}): Promise<Decision> {
   const suggestedPattern = deriveSuggestedPattern(toolCall)
   const request: PromptRequest = {
     toolName: toolCall.name,
     inputJson: JSON.stringify(toolCall.input),
     suggestedPattern,
+    currentMode: ctx.mode,
+    requiredMode: opts.requiredMode,
+    reason: opts.reason,
   }
   const choice = await ctx.askUser(request)
 
