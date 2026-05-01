@@ -67,7 +67,7 @@ export class LiveCli implements SessionControl {
   private askToolUserOverride: AskToolUserOverride | null = null
   private currentAbort: AbortController | null = null
   private readonly enforcer = createEnforcer()
-  private readonly permissionStore: PermissionStore = createPermissionStore()
+  private readonly permissionStore: PermissionStore
 
   constructor(deps: {
     model: string
@@ -91,6 +91,7 @@ export class LiveCli implements SessionControl {
     this.memoryConfig = deps.memoryConfig ?? null
     this.tracker = new UsageTracker()
     this.spinner = new Spinner()
+    this.permissionStore = createPermissionStore({ cwd: this.cwd })
   }
 
   // SessionControl implementation
