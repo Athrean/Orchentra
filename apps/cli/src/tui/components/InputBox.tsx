@@ -1,6 +1,7 @@
 import React from 'react'
 import { Box, Text } from 'ink'
 import { BRAND_GREEN, type PasteChip } from '../types'
+import { THEME } from '../theme'
 
 export interface InputBoxProps {
   readonly buffer: string
@@ -23,8 +24,8 @@ export function InputBox(props: InputBoxProps): React.ReactElement {
   const showPlaceholder = buffer.length === 0 && !!placeholder
 
   return (
-    <Box borderStyle="round" borderColor={disabled ? 'gray' : BRAND_GREEN} paddingX={1} flexDirection="row">
-      <Text color={disabled ? 'gray' : BRAND_GREEN} bold>
+    <Box borderStyle="round" borderColor={disabled ? THEME.muted : BRAND_GREEN} paddingX={1} flexDirection="row">
+      <Text color={disabled ? THEME.muted : BRAND_GREEN} bold>
         {'> '}
       </Text>
       <Box flexDirection="column" flexGrow={1}>
