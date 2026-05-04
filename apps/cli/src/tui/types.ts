@@ -149,6 +149,7 @@ export type TuiAction =
   | { type: 'turn/cancelling' }
   | { type: 'turn/end' }
   | { type: 'turn/tick'; elapsedMs: number }
+  | { type: 'verb/rotate'; verb: string }
   | { type: 'tokens/set'; usage: UsageTotals }
   | { type: 'mode/cycle' }
   | { type: 'mode/set'; mode: PermissionMode }
