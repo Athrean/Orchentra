@@ -1,0 +1,27 @@
+apps/cli/tests/markdown.test.ts
+  27be1972cf29b313 74-85
+apps/cli/src/tui/markdown/inline.ts
+  27be1972cf29b313 2-4,11,39-56
+apps/cli/src/tui/components/MarkdownView.tsx
+  27be1972cf29b313 25-32,61-62,70,102,107-111,113-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b3570d64d8ec8aad37f0beac84dd34e5c56c0c28",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 88,
+      "overriden_lines": 0
+    }
+  }
+}
