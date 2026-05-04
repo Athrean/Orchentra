@@ -630,6 +630,7 @@ const SHORTCUT_SECTIONS = [
       { key: 'ctrl+l', value: 'clear transcript' },
       { key: 'ctrl+r', value: 'expand / collapse last reasoning block' },
       { key: 'ctrl+o', value: 'expand / collapse last tool result' },
+      { key: 'ctrl+e', value: 'explain pending command (in confirmation overlay)' },
       { key: 'shift+tab', value: 'cycle permission mode' },
       { key: 'esc', value: 'cancel running turn / clear buffer' },
       { key: 'ctrl+c', value: 'cancel turn / quit' },
