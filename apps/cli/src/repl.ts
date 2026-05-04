@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import type { PermissionMode } from '@orchentra/cli-core'
 import { loadSkills } from '@orchentra/cli-core'
+import { gateTrust } from './trust/prompt-trust'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { createCliContext } from './live-cli-factory'
 import { registry } from './commands'
@@ -23,6 +24,18 @@ export interface ReplOptions {
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
+  if (shouldGateTrust(options.permissionMode)) {
+    const verdict = await gateTrust({ cwd: options.cwd })
+    if (verdict === 'denied') {
+      process.stderr.write(`[orchentra] trust denied for ${options.cwd}; not starting.\n`)
+      return 1
+    }
+    if (verdict === 'cancelled') {
+      process.stderr.write(`[orchentra] trust prompt cancelled.\n`)
+      return 1
+    }
+  }
+
   const cliCtx = await createCliContext({
     model: options.model,
     permissionMode: options.permissionMode,
@@ -116,6 +129,13 @@ function readGitSummary(cwd: string): GitSummary {
   if (porcelain.length === 0) return { branch, workspaceStatus: 'clean' }
   const lines = porcelain.split('\n').length
   return { branch, workspaceStatus: `${lines} change${lines === 1 ? '' : 's'}` }
+}
+
+function shouldGateTrust(mode: PermissionMode): boolean {
+  if (mode === 'danger-full-access') return false
+  if (process.env.ORCHENTRA_TRUST_BYPASS === '1') return false
+  if (!process.stdin.isTTY) return false
+  return true
 }
 
 function runGit(args: string[], cwd: string): string | null {
