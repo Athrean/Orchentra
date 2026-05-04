@@ -193,6 +193,24 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, transcript: next }
     }
 
+    case 'collapsible/toggle-last': {
+      let lastIdx = -1
+      for (let i = state.transcript.length - 1; i >= 0; i--) {
+        const k = state.transcript[i].kind
+        if (k === 'tool_result' || k === 'reasoning') {
+          lastIdx = i
+          break
+        }
+      }
+      if (lastIdx === -1) return state
+      const next = state.transcript.map((row, i) => {
+        if (i !== lastIdx) return row
+        if (row.kind !== 'tool_result' && row.kind !== 'reasoning') return row
+        return { ...row, expanded: !row.expanded }
+      })
+      return { ...state, transcript: next }
+    }
+
     case 'turn/start':
       return {
         ...state,
