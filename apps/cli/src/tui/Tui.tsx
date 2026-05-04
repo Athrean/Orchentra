@@ -586,6 +586,14 @@ export function Tui(props: TuiProps): React.ReactElement {
               dispatch({ type: 'flow/end' })
               if (flow?.kind === 'confirmation-prompt') flow.resolve(choice)
             }}
+            onExplain={() => {
+              const flow = state.activeFlow
+              if (flow?.kind !== 'confirmation-prompt') return
+              const explainPrompt = `Explain this command before I run it: ${flow.request.commandLine}`
+              dispatch({ type: 'flow/end' })
+              flow.resolve('cancel')
+              dispatch({ type: 'buffer/set', buffer: explainPrompt, cursor: explainPrompt.length })
+            }}
           />
         ) : null}
         {state.activeFlow?.kind === 'model-picker' ? (
