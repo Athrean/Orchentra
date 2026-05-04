@@ -52,13 +52,13 @@ export function ConfirmationPrompt(props: ConfirmationPromptProps): React.ReactE
 
   if (denyBanner) {
     return (
-      <Box flexDirection="column" borderStyle="round" borderColor="red" paddingX={1}>
-        <Text color="red" bold>
+      <Box flexDirection="column" borderStyle="round" borderColor={THEME.danger} paddingX={1}>
+        <Text color={THEME.danger} bold>
           Blocked: {props.request.toolLabel}
         </Text>
         <Text>{props.request.commandLine}</Text>
         <Box height={1} />
-        <Text color="red">{denyBanner}</Text>
+        <Text color={THEME.danger}>{denyBanner}</Text>
         <Box height={1} />
         <Text dimColor>Press any key to continue.</Text>
       </Box>
