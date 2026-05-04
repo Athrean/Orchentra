@@ -6,6 +6,7 @@ import type { LiveCli } from '../live-cli'
 import type { CommandRegistry } from '../commands/builtin'
 import type { CommandContext } from '../commands/builtin'
 import { initialState, reducer } from './reducer'
+import { pickVerb } from './components/loading-verbs'
 import { computeSuggestions } from './suggestions'
 import { evaluatePaste, expandPastes } from './paste'
 import { appendHistory, loadHistory } from './hooks/useHistory'
@@ -133,6 +134,16 @@ export function Tui(props: TuiProps): React.ReactElement {
     }, 100)
     return () => clearInterval(id)
   }, [state.turn.state, state.turn.startedAt])
+
+  // Rotate the loading verb every ~8s while a turn runs so long reasoning
+  // loops feel alive instead of stuck on a single word.
+  useEffect(() => {
+    if (state.turn.state !== 'running') return
+    const id = setInterval(() => {
+      dispatch({ type: 'verb/rotate', verb: pickVerb() })
+    }, 8000)
+    return () => clearInterval(id)
+  }, [state.turn.state])
 
   // Exit hint auto-clear.
   useEffect(() => {

@@ -16,9 +16,9 @@ export const THEME = {
   warn: 'yellow',
   danger: 'red',
 
-  // Markdown / content palette (Claude Code-like).
+  // Markdown / content palette.
   // Brand stays for branding moments (banner, prompt glyph, list markers,
-  // headings level 1); the rest follow the wider terminal-renderer palette.
+  // headings level 1); the rest follow a high-contrast terminal palette.
   heading: 'cyan',
   headingAlt: 'white',
   emphasis: 'magenta',
