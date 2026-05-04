@@ -1,7 +1,6 @@
 // Whimsical present-continuous verbs surfaced in the footer while a turn is
-// running. Lifted in spirit from Claude Code — the rotating verb makes long
-// reasoning loops feel like the agent is *doing* something rather than just
-// hanging on "thinking…".
+// running. The rotating verb makes long reasoning loops feel like the agent
+// is *doing* something rather than just hanging on "thinking…".
 const VERBS = [
   'Bloviating',
   'Brewing',
