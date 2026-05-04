@@ -90,4 +90,18 @@ describe('tui reducer', () => {
     expect(s.turn.state).toBe('idle')
     expect(s.streamingRowId).toBeNull()
   })
+
+  test('verb/rotate replaces verb while running', () => {
+    let s = reducer(base(), { type: 'turn/start' })
+    const first = s.turn.verb
+    s = reducer(s, { type: 'verb/rotate', verb: 'Smelting' })
+    expect(s.turn.verb).toBe('Smelting')
+    expect(s.turn.verb).not.toBe(first === 'Smelting' ? null : first)
+  })
+
+  test('verb/rotate is a no-op while idle', () => {
+    const s = reducer(base(), { type: 'verb/rotate', verb: 'Smelting' })
+    expect(s.turn.state).toBe('idle')
+    expect(s.turn.verb).toBeNull()
+  })
 })
