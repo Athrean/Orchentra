@@ -10,8 +10,7 @@ export interface TabsProps {
 
 /**
  * Text tab strip. The active tab is rendered as a brand-coloured "pill"
- * (inverse text), inactive tabs render in the default colour. Spacing
- * between items mirrors Claude Code's status surface.
+ * (inverse text), inactive tabs render in the default colour.
  */
 export function Tabs(props: TabsProps): React.ReactElement {
   const accent = props.accent ?? THEME.brand
