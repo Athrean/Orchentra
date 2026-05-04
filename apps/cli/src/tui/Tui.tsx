@@ -432,7 +432,7 @@ export function Tui(props: TuiProps): React.ReactElement {
       }
 
       if (key.ctrl && input === 'o') {
-        return dispatch({ type: 'tool_result/toggle-last' })
+        return dispatch({ type: 'collapsible/toggle-last' })
       }
 
       if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
