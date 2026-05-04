@@ -9,6 +9,7 @@ import { initialState, reducer } from './reducer'
 import { pickVerb } from './components/loading-verbs'
 import { computeSuggestions } from './suggestions'
 import { evaluatePaste, expandPastes } from './paste'
+import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from './word-boundary'
 import { appendHistory, loadHistory } from './hooks/useHistory'
 import { InputBox } from './components/InputBox'
 import { Suggestions } from './components/Suggestions'
@@ -432,7 +433,7 @@ export function Tui(props: TuiProps): React.ReactElement {
       }
 
       if (key.ctrl && input === 'o') {
-        return dispatch({ type: 'tool_result/toggle-last' })
+        return dispatch({ type: 'collapsible/toggle-last' })
       }
 
       if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
@@ -460,8 +461,23 @@ export function Tui(props: TuiProps): React.ReactElement {
       }
 
       if (key.ctrl && input === 'w') {
-        const trimmed = trimWordBack(cur.buffer, cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: trimmed.next, cursor: trimmed.cursor })
+        const trimmed = deleteWordBack(cur.buffer, cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
+      }
+
+      if (key.leftArrow && (key.meta || key.ctrl)) {
+        return dispatch({
+          type: 'buffer/set',
+          buffer: cur.buffer,
+          cursor: wordBoundaryLeft(cur.buffer, cur.cursor),
+        })
+      }
+      if (key.rightArrow && (key.meta || key.ctrl)) {
+        return dispatch({
+          type: 'buffer/set',
+          buffer: cur.buffer,
+          cursor: wordBoundaryRight(cur.buffer, cur.cursor),
+        })
       }
 
       if (key.upArrow) {
@@ -570,6 +586,14 @@ export function Tui(props: TuiProps): React.ReactElement {
               dispatch({ type: 'flow/end' })
               if (flow?.kind === 'confirmation-prompt') flow.resolve(choice)
             }}
+            onExplain={() => {
+              const flow = state.activeFlow
+              if (flow?.kind !== 'confirmation-prompt') return
+              const explainPrompt = `Explain this command before I run it: ${flow.request.commandLine}`
+              dispatch({ type: 'flow/end' })
+              flow.resolve('cancel')
+              dispatch({ type: 'buffer/set', buffer: explainPrompt, cursor: explainPrompt.length })
+            }}
           />
         ) : null}
         {state.activeFlow?.kind === 'model-picker' ? (
@@ -621,6 +645,7 @@ const SHORTCUT_SECTIONS = [
       { key: 'ctrl+u', value: 'delete to start of line' },
       { key: 'ctrl+k', value: 'delete to end of line' },
       { key: 'ctrl+w', value: 'delete previous word' },
+      { key: 'alt+← / →', value: 'jump cursor to previous / next word' },
       { key: '↑ / ↓', value: 'history (or move cursor in multi-line)' },
     ],
   },
@@ -630,6 +655,7 @@ const SHORTCUT_SECTIONS = [
       { key: 'ctrl+l', value: 'clear transcript' },
       { key: 'ctrl+r', value: 'expand / collapse last reasoning block' },
       { key: 'ctrl+o', value: 'expand / collapse last tool result' },
+      { key: 'ctrl+e', value: 'explain pending command (in confirmation overlay)' },
       { key: 'shift+tab', value: 'cycle permission mode' },
       { key: 'esc', value: 'cancel running turn / clear buffer' },
       { key: 'ctrl+c', value: 'cancel turn / quit' },
@@ -738,13 +764,6 @@ function handleRuntimeEvent(
       dispatch({ type: 'transcript/stream-end' })
       break
   }
-}
-
-function trimWordBack(buffer: string, cursor: number): { next: string; cursor: number } {
-  let end = cursor
-  while (end > 0 && /\s/.test(buffer[end - 1] ?? '')) end -= 1
-  while (end > 0 && !/\s/.test(buffer[end - 1] ?? '')) end -= 1
-  return { next: buffer.slice(0, end) + buffer.slice(cursor), cursor: end }
 }
 
 function moveLine(state: TuiState, delta: -1 | 1, dispatch: React.Dispatch<TuiAction>): void {

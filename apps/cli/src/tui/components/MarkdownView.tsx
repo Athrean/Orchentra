@@ -3,12 +3,31 @@ import { Box, Text } from 'ink'
 import { THEME } from '../theme'
 import { parseMarkdown, type Block } from '../markdown/parse'
 import { tokenizeInline, type InlineToken } from '../markdown/inline'
+import { splitAtStreamBoundary } from '../markdown/stream'
 
 export interface MarkdownViewProps {
   readonly text: string
+  /**
+   * When true, defer rendering of the trailing partial block (open fence,
+   * mid-paragraph) as plain text instead of styled markdown — avoids the
+   * flicker of a half-typed code block being rendered as a closed box.
+   */
+  readonly streaming?: boolean
 }
 
 export function MarkdownView(props: MarkdownViewProps): React.ReactElement {
+  if (props.streaming) {
+    const { safe, pending } = splitAtStreamBoundary(props.text)
+    const blocks = parseMarkdown(safe)
+    return (
+      <Box flexDirection="column">
+        {blocks.map((block, i) => (
+          <BlockView key={i} block={block} />
+        ))}
+        {pending.length > 0 ? <Text>{pending}</Text> : null}
+      </Box>
+    )
+  }
   const blocks = parseMarkdown(props.text)
   return (
     <Box flexDirection="column">
