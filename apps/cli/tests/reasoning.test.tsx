@@ -4,6 +4,7 @@ import { render } from 'ink-testing-library'
 import { initialState, reducer } from '../src/tui/reducer'
 import { ReasoningBlock } from '../src/tui/components/ReasoningBlock'
 import type { ReasoningRow } from '../src/tui/types'
+import { verbForId } from '../src/tui/components/loading-verbs'
 
 describe('reducer reasoning actions', () => {
   test('reasoning-begin/append/end builds a single reasoning row', () => {
@@ -45,6 +46,27 @@ describe('reducer reasoning actions', () => {
   })
 })
 
+describe('reducer collapsible/toggle-last', () => {
+  test('toggles the most recent collapsible row regardless of kind', () => {
+    let state = initialState({ model: 'm', mode: 'workspace-write' })
+    state = reducer(state, { type: 'transcript/reasoning-begin', rowId: 'r1', startedAt: 0 })
+    state = reducer(state, { type: 'transcript/reasoning-end', rowId: 'r1', endedAt: 100 })
+    state = reducer(state, {
+      type: 'transcript/push',
+      row: { kind: 'tool_result', id: 't1', preview: 'a\nb\nc\nd\ne', isError: false, expanded: false },
+    })
+    state = reducer(state, { type: 'collapsible/toggle-last' })
+    const t1 = state.transcript[1]
+    if (t1.kind === 'tool_result') expect(t1.expanded).toBe(true)
+
+    state = reducer(state, { type: 'transcript/reasoning-begin', rowId: 'r2', startedAt: 200 })
+    state = reducer(state, { type: 'transcript/reasoning-end', rowId: 'r2', endedAt: 300 })
+    state = reducer(state, { type: 'collapsible/toggle-last' })
+    const r2 = state.transcript[2]
+    if (r2.kind === 'reasoning') expect(r2.expanded).toBe(true)
+  })
+})
+
 describe('ReasoningBlock', () => {
   function row(opts: Partial<ReasoningRow> = {}): ReasoningRow {
     return {
@@ -58,23 +80,35 @@ describe('ReasoningBlock', () => {
     }
   }
 
-  test('collapsed view hides the body and shows the duration', () => {
+  test('collapsed view hides the body and renders * <Verb> for <elapsed>', () => {
     const { lastFrame } = render(<ReasoningBlock row={row()} />)
     const out = lastFrame() ?? ''
-    expect(out).toContain('thought for')
     expect(out).not.toContain('hidden thought')
+    expect(out).toMatch(/\*\s+\w+\s+for\s+\d/)
+  })
+
+  test('streaming row renders * <Verb>… <elapsed>', () => {
+    const { lastFrame } = render(<ReasoningBlock row={row({ endedAt: null, expanded: false })} />)
+    const out = lastFrame() ?? ''
+    expect(out).toMatch(/\*\s+\w+…\s+\d/)
   })
 
   test('expanded view reveals the full body', () => {
     const { lastFrame } = render(<ReasoningBlock row={row({ expanded: true })} />)
     const out = lastFrame() ?? ''
     expect(out).toContain('hidden thought')
-    expect(out).toContain('reasoning')
   })
 
-  test('streaming row (no endedAt) shows live thinking label', () => {
-    const { lastFrame } = render(<ReasoningBlock row={row({ endedAt: null, expanded: false })} />)
-    const out = lastFrame() ?? ''
-    expect(out).toContain('thinking…')
+  test('verb is deterministic for a given row id (no flicker on re-render)', () => {
+    const a = render(<ReasoningBlock row={row({ id: 'stable-id' })} />).lastFrame() ?? ''
+    const b = render(<ReasoningBlock row={row({ id: 'stable-id' })} />).lastFrame() ?? ''
+    expect(a).toBe(b)
+  })
+
+  test('verbForId returns the same verb for the same id, different verb across many ids', () => {
+    expect(verbForId('xyz')).toBe(verbForId('xyz'))
+    const sample = new Set<string>()
+    for (let i = 0; i < 50; i++) sample.add(verbForId(`row-${i}`))
+    expect(sample.size).toBeGreaterThan(1)
   })
 })
