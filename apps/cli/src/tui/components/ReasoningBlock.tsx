@@ -2,6 +2,8 @@ import React from 'react'
 import { Box, Text } from 'ink'
 import { THEME } from '../theme'
 import type { ReasoningRow } from '../types'
+import { CollapsibleBlock } from './CollapsibleBlock'
+import { verbForId } from './loading-verbs'
 
 export interface ReasoningBlockProps {
   readonly row: ReasoningRow
@@ -12,13 +14,14 @@ export function ReasoningBlock(props: ReasoningBlockProps): React.ReactElement {
   const elapsedMs = (row.endedAt ?? Date.now()) - row.startedAt
   const elapsed = formatDuration(elapsedMs)
   const streaming = row.endedAt === null
+  const verb = verbForId(row.id)
 
   if (!row.expanded) {
-    const summary = streaming ? `thinking… ${elapsed}` : `thought for ${elapsed}`
+    const summary = streaming ? `${verb}… ${elapsed}` : `${verb} for ${elapsed}`
     return (
       <Box paddingX={1} flexDirection="row">
-        <Text color={THEME.brand}>✦ </Text>
-        <Text color={THEME.brand} dimColor>
+        <Text color={THEME.brand}>* </Text>
+        <Text color={THEME.brand} dimColor italic>
           {summary}
         </Text>
         {!streaming ? (
@@ -31,22 +34,24 @@ export function ReasoningBlock(props: ReasoningBlockProps): React.ReactElement {
     )
   }
 
-  const lines = row.text.split('\n')
+  const lines = row.text.split('\n').map((l) => (l.length === 0 ? ' ' : l))
   return (
     <Box paddingX={1} flexDirection="column">
       <Box flexDirection="row">
-        <Text color={THEME.brand}>✦ </Text>
-        <Text color={THEME.brand} bold>
-          reasoning
+        <Text color={THEME.brand}>* </Text>
+        <Text color={THEME.brand} bold italic>
+          {`${verb} for ${elapsed}`}
         </Text>
-        <Text dimColor>{`  ${THEME.bullet}  ${elapsed}  ${THEME.bullet}  ctrl+r to collapse`}</Text>
+        <Text dimColor>{`  ${THEME.bullet}  ctrl+r to collapse`}</Text>
       </Box>
-      <Box flexDirection="column" marginLeft={2}>
-        {lines.map((line, i) => (
-          <Text key={i} dimColor italic>
-            {line.length === 0 ? ' ' : line}
-          </Text>
-        ))}
+      <Box marginLeft={2}>
+        <CollapsibleBlock
+          lines={lines}
+          expanded={true}
+          collapsedTo={lines.length}
+          collapseHint="(ctrl+r to collapse)"
+          expandHint="(ctrl+r to expand)"
+        />
       </Box>
     </Box>
   )

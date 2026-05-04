@@ -119,4 +119,35 @@ describe('ConfirmationPrompt — keyboard', () => {
     await tick()
     expect(chosen).toBe('cancel')
   })
+
+  test('ctrl+e calls onExplain when provided', async () => {
+    let explained = false
+    const { stdin } = render(
+      <ConfirmationPrompt
+        request={baseReq}
+        onChoose={(): void => {}}
+        onExplain={() => {
+          explained = true
+        }}
+      />,
+    )
+    stdin.write('\x05')
+    await tick()
+    expect(explained).toBe(true)
+  })
+
+  test('ctrl+e is a no-op when onExplain is omitted', async () => {
+    let chosen: PromptChoice | null = null
+    const { stdin } = render(
+      <ConfirmationPrompt
+        request={baseReq}
+        onChoose={(c): void => {
+          chosen = c
+        }}
+      />,
+    )
+    stdin.write('\x05')
+    await tick()
+    expect(chosen).toBeNull()
+  })
 })

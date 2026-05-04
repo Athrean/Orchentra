@@ -145,6 +145,7 @@ export type TuiAction =
   | { type: 'reasoning/toggle'; rowId: string }
   | { type: 'tool_result/toggle-last' }
   | { type: 'tool_result/toggle'; rowId: string }
+  | { type: 'collapsible/toggle-last' }
   | { type: 'turn/start' }
   | { type: 'turn/cancelling' }
   | { type: 'turn/end' }
