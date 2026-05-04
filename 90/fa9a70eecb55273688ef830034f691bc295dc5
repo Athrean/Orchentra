@@ -1,0 +1,23 @@
+apps/cli/src/tui/Tui.tsx
+  27be1972cf29b313 633
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "90fa9a70eecb55273688ef830034f691bc295dc5",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 950,
+      "total_deletions": 0,
+      "accepted_lines": 1901,
+      "overriden_lines": 0
+    }
+  }
+}
