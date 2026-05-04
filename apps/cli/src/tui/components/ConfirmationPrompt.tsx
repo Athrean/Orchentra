@@ -24,6 +24,12 @@ export interface PromptRequest {
 export interface ConfirmationPromptProps {
   readonly request: PromptRequest
   readonly onChoose: (choice: PromptChoice) => void
+  /**
+   * Called when the user presses ctrl+e. The caller is expected to cancel
+   * the prompt and present an explanation surface (typically: prefill the
+   * input buffer with a "Explain this command: …" prompt for the agent).
+   */
+  readonly onExplain?: () => void
 }
 
 const OPTIONS: readonly { readonly label: string; readonly choice: PromptChoice }[] = [
@@ -42,6 +48,7 @@ export function ConfirmationPrompt(props: ConfirmationPromptProps): React.ReactE
       return
     }
     if (key.escape) return props.onChoose('cancel')
+    if (key.ctrl && input === 'e' && props.onExplain) return props.onExplain()
     if (key.upArrow) return setSelected((i) => (i - 1 + OPTIONS.length) % OPTIONS.length)
     if (key.downArrow) return setSelected((i) => (i + 1) % OPTIONS.length)
     if (input === '1') return props.onChoose('allow-once')
