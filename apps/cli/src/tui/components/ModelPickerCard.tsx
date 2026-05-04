@@ -72,13 +72,13 @@ export function ModelPickerCard(props: ModelPickerCardProps): React.ReactElement
         const isCurrent = m.id === props.current
         return (
           <Box key={m.id} flexDirection="row">
-            <Text color={active ? 'cyan' : undefined}>{active ? '❯ ' : '  '}</Text>
-            <Text color={active ? 'cyan' : undefined} bold={active}>
+            <Text color={active ? THEME.brand : undefined}>{active ? '❯ ' : '  '}</Text>
+            <Text color={active ? THEME.brand : undefined} bold={active}>
               {m.label}
             </Text>
             <Text dimColor>{`  ${m.provider}`}</Text>
             {m.hint ? <Text dimColor>{` · ${m.hint}`}</Text> : null}
-            {isCurrent ? <Text color="green">{'  (current)'}</Text> : null}
+            {isCurrent ? <Text color={THEME.brand}>{'  (current)'}</Text> : null}
           </Box>
         )
       })}
