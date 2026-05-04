@@ -1,0 +1,27 @@
+apps/cli/tests/word-boundary.test.ts
+  27be1972cf29b313 1-46
+apps/cli/src/tui/word-boundary.ts
+  27be1972cf29b313 1-31,33-35
+apps/cli/src/tui/Tui.tsx
+  27be1972cf29b313 12,464-480,640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "4db6dcecdece2bd30786d67f90a481ad0e1a5afd",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 990,
+      "total_deletions": 9,
+      "accepted_lines": 2057,
+      "overriden_lines": 3
+    }
+  }
+}
