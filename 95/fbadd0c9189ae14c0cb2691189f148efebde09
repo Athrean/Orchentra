@@ -1,0 +1,27 @@
+apps/cli/src/tui/components/loading-verbs.ts
+  27be1972cf29b313 2-3
+apps/cli/src/tui/theme.ts
+  27be1972cf29b313 19,21
+apps/cli/src/tui/components/Tabs.tsx
+  27be1972cf29b313 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "95fbadd0c9189ae14c0cb2691189f148efebde09",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 872,
+      "total_deletions": 33,
+      "accepted_lines": 846,
+      "overriden_lines": 0
+    }
+  }
+}
