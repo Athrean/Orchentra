@@ -71,4 +71,16 @@ describe('tokenizeInline', () => {
   test('returns plain text when no markers are present', () => {
     expect(tokenizeInline('hello world')).toEqual([{ kind: 'text', value: 'hello world' }])
   })
+
+  test('extracts [text](href) links', () => {
+    expect(tokenizeInline('see [docs](https://example.com) please')).toEqual([
+      { kind: 'text', value: 'see ' },
+      { kind: 'link', text: 'docs', href: 'https://example.com' },
+      { kind: 'text', value: ' please' },
+    ])
+  })
+
+  test('leaves bracket text alone when no (href) follows', () => {
+    expect(tokenizeInline('an [unmatched bracket')).toEqual([{ kind: 'text', value: 'an [unmatched bracket' }])
+  })
 })
