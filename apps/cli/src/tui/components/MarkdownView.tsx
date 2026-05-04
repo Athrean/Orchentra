@@ -22,7 +22,14 @@ export function MarkdownView(props: MarkdownViewProps): React.ReactElement {
 function BlockView({ block }: { readonly block: Block }): React.ReactElement {
   switch (block.kind) {
     case 'heading': {
-      const color = block.level === 1 ? THEME.brand : block.level === 2 ? THEME.brandDim : undefined
+      const color =
+        block.level === 1
+          ? THEME.brand
+          : block.level === 2
+            ? THEME.heading
+            : block.level === 3
+              ? THEME.headingAlt
+              : undefined
       return (
         <Text bold color={color}>
           <Inline text={block.text} />
@@ -51,8 +58,8 @@ function BlockView({ block }: { readonly block: Block }): React.ReactElement {
     case 'quote':
       return (
         <Box flexDirection="row">
-          <Text color={THEME.muted}>{'│ '}</Text>
-          <Text dimColor italic>
+          <Text color={THEME.quote}>{'│ '}</Text>
+          <Text color={THEME.quote} italic>
             <Inline text={block.text} />
           </Text>
         </Box>
@@ -60,7 +67,7 @@ function BlockView({ block }: { readonly block: Block }): React.ReactElement {
     case 'code': {
       const lines = block.text.split('\n')
       return (
-        <Box flexDirection="column" borderStyle="round" borderColor={THEME.muted} paddingX={1}>
+        <Box flexDirection="column" borderStyle="round" borderColor={THEME.codeBorder} paddingX={1}>
           {block.lang ? (
             <Text color={THEME.brand} dimColor>
               {block.lang}
@@ -92,13 +99,28 @@ function InlineToken({ token }: { readonly token: InlineToken }): React.ReactEle
       return <Text>{token.value}</Text>
     case 'code':
       return (
-        <Text color={THEME.brandDim} backgroundColor={undefined}>
+        <Text color={THEME.inlineCode} backgroundColor={undefined}>
           {`\`${token.value}\``}
         </Text>
       )
     case 'bold':
-      return <Text bold>{token.value}</Text>
+      return (
+        <Text bold color={THEME.strong}>
+          {token.value}
+        </Text>
+      )
     case 'italic':
-      return <Text italic>{token.value}</Text>
+      return (
+        <Text italic color={THEME.emphasis}>
+          {token.value}
+        </Text>
+      )
+    case 'link':
+      return (
+        <Text underline color={THEME.link}>
+          {token.text}
+          {token.text === token.href ? '' : ` (${token.href})`}
+        </Text>
+      )
   }
 }
