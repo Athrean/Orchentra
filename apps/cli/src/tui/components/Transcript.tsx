@@ -36,13 +36,14 @@ export function Transcript(props: TranscriptProps): React.ReactElement {
   return (
     <>
       <Static items={completed}>{(row) => <TranscriptRowView key={row.id} row={row} />}</Static>
-      {streaming ? <TranscriptRowView row={streaming} /> : null}
+      {streaming ? <TranscriptRowView row={streaming} streaming /> : null}
     </>
   )
 }
 
 interface RowProps {
   readonly row: TranscriptRow
+  readonly streaming?: boolean
 }
 
 export function TranscriptRowView(props: RowProps): React.ReactElement {
@@ -64,7 +65,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
             ●{' '}
           </Text>
           <Box flexDirection="column" flexGrow={1}>
-            <MarkdownView text={row.text} />
+            <MarkdownView text={row.text} streaming={props.streaming} />
           </Box>
         </Box>
       )
