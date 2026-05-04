@@ -219,6 +219,10 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       if (state.turn.state === 'idle') return state
       return { ...state, turn: { ...state.turn, elapsedMs: action.elapsedMs } }
 
+    case 'verb/rotate':
+      if (state.turn.state === 'idle') return state
+      return { ...state, turn: { ...state.turn, verb: action.verb } }
+
     case 'tokens/set':
       return { ...state, turn: { ...state.turn, tokens: action.usage } }
 
