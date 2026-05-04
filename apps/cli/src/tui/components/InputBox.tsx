@@ -22,19 +22,30 @@ const CHIP_RE = /\[Pasted #([a-z0-9]+) — (\d+) lines]/g
 export function InputBox(props: InputBoxProps): React.ReactElement {
   const { buffer, cursor, placeholder, disabled } = props
   const showPlaceholder = buffer.length === 0 && !!placeholder
+  // Surface the multi-line affordance only once the buffer actually wraps.
+  // Permanent hints belong behind `?` (per CLAUDE.md §8); a contextual hint
+  // only when the user has produced a newline keeps idle frames quiet.
+  const showMultilineHint = !disabled && buffer.includes('\n')
 
   return (
-    <Box borderStyle="round" borderColor={disabled ? THEME.muted : BRAND_GREEN} paddingX={1} flexDirection="row">
-      <Text color={disabled ? THEME.muted : BRAND_GREEN} bold>
-        {'> '}
-      </Text>
-      <Box flexDirection="column" flexGrow={1}>
-        {showPlaceholder ? (
-          <Text dimColor>{placeholder}</Text>
-        ) : (
-          <BufferText buffer={buffer} cursor={disabled ? -1 : cursor} />
-        )}
+    <Box flexDirection="column">
+      <Box borderStyle="round" borderColor={disabled ? THEME.muted : BRAND_GREEN} paddingX={1} flexDirection="row">
+        <Text color={disabled ? THEME.muted : BRAND_GREEN} bold>
+          {'> '}
+        </Text>
+        <Box flexDirection="column" flexGrow={1}>
+          {showPlaceholder ? (
+            <Text dimColor>{placeholder}</Text>
+          ) : (
+            <BufferText buffer={buffer} cursor={disabled ? -1 : cursor} />
+          )}
+        </Box>
       </Box>
+      {showMultilineHint ? (
+        <Box paddingX={1}>
+          <Text dimColor>shift+enter for newline · enter to submit</Text>
+        </Box>
+      ) : null}
     </Box>
   )
 }
