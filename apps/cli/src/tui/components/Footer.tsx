@@ -56,7 +56,7 @@ interface StatusInnerProps {
   readonly spinnerFrame: number
 }
 
-function StatusGlyph({ turn, spinnerFrame }: StatusInnerProps): React.ReactElement {
+function StatusGlyph({ turn }: StatusInnerProps): React.ReactElement {
   if (turn.state === 'idle') {
     return (
       <Text color={THEME.brand} bold>
@@ -64,11 +64,10 @@ function StatusGlyph({ turn, spinnerFrame }: StatusInnerProps): React.ReactEleme
       </Text>
     )
   }
-  const frame = THEME.spinner[spinnerFrame % THEME.spinner.length]
   const color = turn.state === 'cancelling' ? THEME.warn : THEME.brand
   return (
     <Text color={color} bold>
-      {frame}
+      *
     </Text>
   )
 }
@@ -87,11 +86,12 @@ function StatusLabel({ turn, spinnerFrame }: StatusInnerProps): React.ReactEleme
     )
   }
   const label = `${turn.verb ?? 'Thinking'}…`
-  const tokenSegment = turn.tokens.outputTokens > 0 ? `  ↓${turn.tokens.outputTokens}` : ''
+  const upSegment = turn.tokens.inputTokens > 0 ? `  ↑${turn.tokens.inputTokens}` : ''
+  const downSegment = turn.tokens.outputTokens > 0 ? `  ↓${turn.tokens.outputTokens}` : ''
   return (
     <Text>
       <ShimmerText text={label} frame={spinnerFrame} bold />
-      <Text dimColor>{`  ${elapsed}${tokenSegment}  (esc to interrupt)`}</Text>
+      <Text dimColor>{`  ${elapsed}${upSegment}${downSegment}  (esc to interrupt)`}</Text>
     </Text>
   )
 }
