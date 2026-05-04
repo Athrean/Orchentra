@@ -148,13 +148,13 @@ function renderPhase(phase: Phase, spinnerFrame: number, toast: string | null): 
     return (
       <Box flexDirection="column">
         <Text>
-          <Text color="green">✓</Text> Browser opened to claude.ai
+          <Text color={THEME.brand}>✓</Text> Browser opened to claude.ai
         </Text>
         <Text>
-          <Text color="cyan">{SPINNER[spinnerFrame]}</Text> Waiting for code — copy it from the browser
+          <Text color={THEME.accent}>{SPINNER[spinnerFrame]}</Text> Waiting for code — copy it from the browser
         </Text>
         <Text dimColor>The code will be auto-detected from your clipboard.</Text>
-        {toast ? <Text color="green">{toast}</Text> : null}
+        {toast ? <Text color={THEME.brand}>{toast}</Text> : null}
       </Box>
     )
   }
@@ -164,8 +164,8 @@ function renderPhase(phase: Phase, spinnerFrame: number, toast: string | null): 
       <Box flexDirection="column">
         <Text>Paste authorization code (Enter to submit, Esc to cancel):</Text>
         <Text>
-          <Text color="cyan">›</Text> {phase.buffer}
-          <Text color="cyan">█</Text>
+          <Text color={THEME.accent}>›</Text> {phase.buffer}
+          <Text color={THEME.accent}>█</Text>
         </Text>
       </Box>
     )
@@ -174,15 +174,15 @@ function renderPhase(phase: Phase, spinnerFrame: number, toast: string | null): 
   if (phase.kind === 'exchanging') {
     return (
       <Text>
-        <Text color="cyan">{SPINNER[spinnerFrame]}</Text> Exchanging tokens…
+        <Text color={THEME.accent}>{SPINNER[spinnerFrame]}</Text> Exchanging tokens…
       </Text>
     )
   }
 
   return (
     <Text>
-      <Text color={phase.ok ? 'green' : 'red'}>{phase.ok ? '✓' : '✗'}</Text>{' '}
-      <Text color={phase.ok ? 'green' : 'red'}>{phase.message}</Text>
+      <Text color={phase.ok ? THEME.brand : THEME.danger}>{phase.ok ? '✓' : '✗'}</Text>{' '}
+      <Text color={phase.ok ? THEME.brand : THEME.danger}>{phase.message}</Text>
     </Text>
   )
 }

@@ -96,7 +96,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
         maxChars: 240,
         full: row.expanded,
       })
-      const errColor = row.isError ? 'yellow' : undefined
+      const errColor = row.isError ? THEME.warn : undefined
       return (
         <Box paddingX={1} flexDirection="column">
           {result.lines.map((line, i) => (
@@ -127,7 +127,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
     case 'system':
       return (
         <Box paddingX={1}>
-          <Text color={row.tone === 'warn' ? 'yellow' : 'cyan'} dimColor>
+          <Text color={row.tone === 'warn' ? THEME.warn : THEME.accent} dimColor>
             {row.text}
           </Text>
         </Box>
@@ -135,7 +135,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
     case 'error':
       return (
         <Box paddingX={1}>
-          <Text color="yellow">Error: {row.message}</Text>
+          <Text color={THEME.warn}>Error: {row.message}</Text>
         </Box>
       )
     case 'compacted':
