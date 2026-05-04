@@ -1,0 +1,27 @@
+packages/cli-core/src/index.ts
+  27be1972cf29b313 9
+packages/cli-core/src/trust/store.ts
+  27be1972cf29b313 1-107
+packages/cli-core/tests/trust-store.test.ts
+  27be1972cf29b313 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "17182674cdc5ba266568b00c1cfb221d85bab0c3",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 909,
+      "total_deletions": 1504,
+      "accepted_lines": 713,
+      "overriden_lines": 0
+    }
+  }
+}
