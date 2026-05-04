@@ -275,6 +275,66 @@ describe('ConversationRuntime', () => {
     expect(toolEnd!.status).toBe('ok')
   })
 
+  test('tool throw is retried via withRecovery and eventually succeeds', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'flaky', input: {} } },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    let calls = 0
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'flaky', description: 'flaky', inputSchema: {} }],
+      has: () => true,
+      execute: async () => {
+        calls++
+        if (calls < 3) throw Object.assign(new Error('reset'), { code: 'ECONNRESET' })
+        return { content: 'ok', isError: false }
+      },
+    }
+    const deps = makeDeps(provider, tools)
+    deps.recoveryOptions = { sleep: async () => Promise.resolve() }
+    const rt = new ConversationRuntime(makeConfig(), deps)
+    const events = await collect(rt, 'hi')
+
+    expect(calls).toBe(3)
+    const toolResult = events.find((e) => e.kind === 'tool_result')
+    expect(toolResult).toMatchObject({ kind: 'tool_result', result: { content: 'ok', isError: false } })
+  })
+
+  test('tool throw without recipe match returns error result (no retry)', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'fail', input: {} } },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    let calls = 0
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'fail', description: 'fail', inputSchema: {} }],
+      has: () => true,
+      execute: async () => {
+        calls++
+        throw new Error('non-transient')
+      },
+    }
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    await collect(rt, 'hi')
+    expect(calls).toBe(1)
+  })
+
   test('tool failure marks span_end status=error', async () => {
     const provider = fakeProvider([
       [

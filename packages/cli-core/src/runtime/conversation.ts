@@ -16,6 +16,7 @@ import type { SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
 import type { PermissionEnforcer } from './permission-enforcer'
 import type { Enforcer } from '../permissions/enforcer'
+import { withRecovery, type WithRecoveryOptions } from '../recovery/recipes'
 
 const PLAN_MODE_ALLOWED_TOOLS = new Set<string>([
   'exit_plan_mode',
@@ -56,6 +57,7 @@ export interface ConversationDeps {
   idGen?: () => string
   sharedState?: SharedToolState
   askUser?: (prompt: string) => Promise<string>
+  recoveryOptions?: WithRecoveryOptions
 }
 
 export interface RunInput {
@@ -337,7 +339,7 @@ export class ConversationRuntime {
     }
 
     try {
-      const r = await this.deps.tools.execute(call.name, call.input, ctx)
+      const r = await withRecovery(() => this.deps.tools.execute(call.name, call.input, ctx), this.deps.recoveryOptions)
 
       if (this.deps.hookRunner) {
         await this.deps.hookRunner.runPostToolUse(call.name, inputJson, r.content, r.isError)
