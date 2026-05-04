@@ -9,6 +9,7 @@ import { initialState, reducer } from './reducer'
 import { pickVerb } from './components/loading-verbs'
 import { computeSuggestions } from './suggestions'
 import { evaluatePaste, expandPastes } from './paste'
+import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from './word-boundary'
 import { appendHistory, loadHistory } from './hooks/useHistory'
 import { InputBox } from './components/InputBox'
 import { Suggestions } from './components/Suggestions'
@@ -460,8 +461,23 @@ export function Tui(props: TuiProps): React.ReactElement {
       }
 
       if (key.ctrl && input === 'w') {
-        const trimmed = trimWordBack(cur.buffer, cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: trimmed.next, cursor: trimmed.cursor })
+        const trimmed = deleteWordBack(cur.buffer, cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
+      }
+
+      if (key.leftArrow && (key.meta || key.ctrl)) {
+        return dispatch({
+          type: 'buffer/set',
+          buffer: cur.buffer,
+          cursor: wordBoundaryLeft(cur.buffer, cur.cursor),
+        })
+      }
+      if (key.rightArrow && (key.meta || key.ctrl)) {
+        return dispatch({
+          type: 'buffer/set',
+          buffer: cur.buffer,
+          cursor: wordBoundaryRight(cur.buffer, cur.cursor),
+        })
       }
 
       if (key.upArrow) {
@@ -621,6 +637,7 @@ const SHORTCUT_SECTIONS = [
       { key: 'ctrl+u', value: 'delete to start of line' },
       { key: 'ctrl+k', value: 'delete to end of line' },
       { key: 'ctrl+w', value: 'delete previous word' },
+      { key: 'alt+← / →', value: 'jump cursor to previous / next word' },
       { key: '↑ / ↓', value: 'history (or move cursor in multi-line)' },
     ],
   },
@@ -739,13 +756,6 @@ function handleRuntimeEvent(
       dispatch({ type: 'transcript/stream-end' })
       break
   }
-}
-
-function trimWordBack(buffer: string, cursor: number): { next: string; cursor: number } {
-  let end = cursor
-  while (end > 0 && /\s/.test(buffer[end - 1] ?? '')) end -= 1
-  while (end > 0 && !/\s/.test(buffer[end - 1] ?? '')) end -= 1
-  return { next: buffer.slice(0, end) + buffer.slice(cursor), cursor: end }
 }
 
 function moveLine(state: TuiState, delta: -1 | 1, dispatch: React.Dispatch<TuiAction>): void {
