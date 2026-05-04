@@ -33,4 +33,19 @@ export function pickVerb(rng: () => number = Math.random): string {
   return VERBS[i] ?? VERBS[0]!
 }
 
+/**
+ * Deterministic verb selection from the same pool as `pickVerb`. Same id
+ * always maps to the same verb, so reasoning rows do not flicker between
+ * verbs across re-renders.
+ */
+export function verbForId(id: string): string {
+  let h = 2166136261
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  const index = (h >>> 0) % VERBS.length
+  return VERBS[index] ?? VERBS[0]!
+}
+
 export const LOADING_VERBS = VERBS

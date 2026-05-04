@@ -4,6 +4,7 @@ import { formatUsd, pricingForModel, type UsageTotals } from '@orchentra/cli-cor
 import { BRAND_GREEN, type TranscriptRow } from '../types'
 import { THEME } from '../theme'
 import { CardSections } from './CardSections'
+import { CollapsibleBlock } from './CollapsibleBlock'
 import { DiffView, looksLikeDiff } from './DiffView'
 import { ReasoningBlock } from './ReasoningBlock'
 import { MarkdownView } from './MarkdownView'
@@ -35,13 +36,14 @@ export function Transcript(props: TranscriptProps): React.ReactElement {
   return (
     <>
       <Static items={completed}>{(row) => <TranscriptRowView key={row.id} row={row} />}</Static>
-      {streaming ? <TranscriptRowView row={streaming} /> : null}
+      {streaming ? <TranscriptRowView row={streaming} streaming /> : null}
     </>
   )
 }
 
 interface RowProps {
   readonly row: TranscriptRow
+  readonly streaming?: boolean
 }
 
 export function TranscriptRowView(props: RowProps): React.ReactElement {
@@ -63,7 +65,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
             ●{' '}
           </Text>
           <Box flexDirection="column" flexGrow={1}>
-            <MarkdownView text={row.text} />
+            <MarkdownView text={row.text} streaming={props.streaming} />
           </Box>
         </Box>
       )
@@ -91,36 +93,42 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
           </Box>
         )
       }
-      const result = previewToolResult(row.preview, {
-        maxLines: 3,
-        maxChars: 240,
-        full: row.expanded,
-      })
-      const errColor = row.isError ? THEME.warn : undefined
+      // Compute the collapsed view first so we always know how many lines
+      // would be hidden — that count drives both the summary line (collapsed)
+      // and whether to render the collapse hint (expanded).
+      const collapsedView = previewToolResult(row.preview, { maxLines: 3, maxChars: 240 })
+      const result = row.expanded
+        ? previewToolResult(row.preview, { maxLines: 3, maxChars: 240, full: true })
+        : collapsedView
+      const hiddenWhenCollapsed = collapsedView.truncated ? collapsedView.hiddenLines : 0
+      if (row.isError) {
+        return (
+          <Box paddingX={1} flexDirection="column">
+            {result.lines.map((line, i) => (
+              <Box key={i} flexDirection="row">
+                <Text color={THEME.muted}>{i === 0 ? '  ⎿  ' : '     '}</Text>
+                <Text color={THEME.warn}>{line}</Text>
+              </Box>
+            ))}
+            {result.truncated ? (
+              <Box flexDirection="row">
+                <Text color={THEME.muted}>{'     '}</Text>
+                <Text
+                  dimColor
+                >{`… +${result.hiddenLines} line${result.hiddenLines === 1 ? '' : 's'} (ctrl+o to expand)`}</Text>
+              </Box>
+            ) : null}
+          </Box>
+        )
+      }
       return (
-        <Box paddingX={1} flexDirection="column">
-          {result.lines.map((line, i) => (
-            <Box key={i} flexDirection="row">
-              <Text color={THEME.muted}>{i === 0 ? '  ⎿  ' : '     '}</Text>
-              <Text color={errColor} dimColor={!row.isError}>
-                {line}
-              </Text>
-            </Box>
-          ))}
-          {result.truncated ? (
-            <Box flexDirection="row">
-              <Text color={THEME.muted}>{'     '}</Text>
-              <Text
-                dimColor
-              >{`… +${result.hiddenLines} line${result.hiddenLines === 1 ? '' : 's'} (ctrl+o to expand)`}</Text>
-            </Box>
-          ) : null}
-          {row.expanded && !result.truncated ? (
-            <Box flexDirection="row">
-              <Text color={THEME.muted}>{'     '}</Text>
-              <Text dimColor>(ctrl+o to collapse)</Text>
-            </Box>
-          ) : null}
+        <Box paddingX={1}>
+          <CollapsibleBlock
+            lines={result.lines}
+            expanded={row.expanded}
+            collapsedTo={result.lines.length}
+            summaryHidden={hiddenWhenCollapsed}
+          />
         </Box>
       )
     }
