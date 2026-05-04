@@ -1,0 +1,25 @@
+packages/cli-core/tests/conversation.test.ts
+  27be1972cf29b313 278-337
+packages/cli-core/src/runtime/conversation.ts
+  27be1972cf29b313 19,60,342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "952b32f187957e558dc3d9cca94e3b8e20ffd611",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 4,
+      "accepted_lines": 98,
+      "overriden_lines": 0
+    }
+  }
+}
