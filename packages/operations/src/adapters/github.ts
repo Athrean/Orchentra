@@ -84,7 +84,7 @@ export interface GithubCommit {
 }
 
 export type GithubContent =
-  | { type: 'file'; path: string; content: string; size: number }
+  | { type: 'file'; path: string; content: string; size: number; encoding?: string }
   | { type: string; path?: string }
   | Array<unknown>
 
