@@ -2,6 +2,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema'
 import {
   dispatch,
   OperationError,
+  type ApprovalCallback,
   type Operation,
   type OperationContext,
   type OperationScope,
@@ -17,6 +18,13 @@ import {
 export interface HandleRpcDeps {
   operations: Operation[]
   serverInfo: ServerInfo
+  /**
+   * Optional approval callback consulted by `dispatch` before any
+   * `write`- or `admin`-scoped op runs over a remote transport. Stdio leaves
+   * this unset (so the existing fail-closed posture holds); HTTP transports
+   * inject an org-scoped allowlist or other gate here.
+   */
+  approval?: ApprovalCallback
 }
 
 /**
@@ -24,10 +32,11 @@ export interface HandleRpcDeps {
  * let one in-flight request mutate `remote` or `allowedScopes` and bypass the
  * trust-boundary check on a concurrent request.
  */
-function buildRemoteCtx(): OperationContext {
+function buildRemoteCtx(approval?: ApprovalCallback): OperationContext {
   return {
     remote: true,
     allowedScopes: new Set<OperationScope>(['read', 'write', 'admin']),
+    approval,
   }
 }
 
@@ -61,7 +70,7 @@ export async function handleRpc(message: IncomingMessage, deps: HandleRpcDeps): 
       if (!op) return invalidParams(id, `tools/call: unknown tool '${name}'`)
 
       try {
-        const result = await dispatch(op, buildRemoteCtx(), params.arguments ?? {})
+        const result = await dispatch(op, buildRemoteCtx(deps.approval), params.arguments ?? {})
         return ok(id, {
           content: [{ type: 'text', text: JSON.stringify(result) }],
           isError: false,

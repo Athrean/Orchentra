@@ -1,4 +1,5 @@
 export type {
+  ApprovalCallback,
   Operation,
   OperationCliHints,
   OperationContext,

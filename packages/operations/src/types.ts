@@ -17,16 +17,28 @@ export interface OperationErrorPayload {
 }
 
 /**
+ * Approval callback invoked by `dispatch` before running a `write`- or
+ * `admin`-scoped op on a remote-trust ctx. When it returns `true`, dispatch
+ * proceeds; otherwise the call is rejected with `permission_denied`. This is
+ * the escape hatch that lets HTTP/hosted transports run mutating ops without
+ * weakening the `remote: true` trust posture itself.
+ */
+export type ApprovalCallback = <TParams, TResult>(op: Operation<TParams, TResult>, params: TParams) => Promise<boolean>
+
+/**
  * Carrier for handler execution context. `remote` is REQUIRED so the compiler
  * forces every transport to declare its trust posture explicitly. The optional
- * fields are seams reserved for the next slice (auth, approval, audit, creds,
- * brain) and are unused today.
+ * fields are seams reserved for follow-up slices (auth, audit, creds, brain).
+ *
+ * `approval` is checked by `dispatch` only when `remote === true` AND the op
+ * is `write`- or `admin`-scoped. Local callers (`remote: false`) never hit
+ * the approval gate. `localOnly` ops are not approval-bypassable.
  */
 export interface OperationContext {
   remote: boolean
   allowedScopes: Set<OperationScope>
   auth?: unknown
-  approval?: unknown
+  approval?: ApprovalCallback
   audit?: unknown
   creds?: unknown
   brain?: unknown

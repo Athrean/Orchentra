@@ -148,4 +148,129 @@ describe('dispatch trust boundary', () => {
     expect(handlerCalled).toBe(true)
     expect(result).toEqual({ ok: true })
   })
+
+  test('runs write-scoped op when ctx.remote is true and approval callback returns true', async () => {
+    let approvalArgs: { opId: string; params: unknown } | null = null
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async (op, params) => {
+        approvalArgs = { opId: op.id, params }
+        return true
+      },
+    }
+
+    const result = await dispatch(writeOp, ctx, { msg: 'hi' })
+
+    expect(result).toEqual({ ok: true })
+    expect(approvalArgs).toEqual({ opId: 'fixture_write', params: { msg: 'hi' } })
+  })
+
+  test('rejects write-scoped op when ctx.remote is true and approval callback returns false', async () => {
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async () => false,
+    }
+
+    let caught: unknown
+    try {
+      await dispatch(writeOp, ctx, { msg: 'hi' })
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeInstanceOf(OperationError)
+    expect((caught as OperationError).code).toBe('permission_denied')
+  })
+
+  test('approval callback is bypassed for read-scoped ops on remote ctx', async () => {
+    let approvalCalled = false
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async () => {
+        approvalCalled = true
+        return false
+      },
+    }
+    const readOp: Operation<{ q: string }, { hits: number }> = {
+      id: 'fixture_read_no_approval',
+      description: '',
+      scope: 'read',
+      mutating: false,
+      localOnly: false,
+      parameters: z.object({ q: z.string() }),
+      handler: async () => ({ hits: 1 }),
+    }
+
+    const result = await dispatch(readOp, ctx, { q: 'orchentra' })
+
+    expect(result).toEqual({ hits: 1 })
+    expect(approvalCalled).toBe(false)
+  })
+
+  test('approval callback is consulted for admin-scoped ops too', async () => {
+    let approvalCalled = false
+    const adminOp: Operation<Record<string, never>, { ok: true }> = {
+      id: 'fixture_admin',
+      description: '',
+      scope: 'admin',
+      mutating: true,
+      localOnly: false,
+      parameters: z.object({}),
+      handler: async () => ({ ok: true }),
+    }
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async () => {
+        approvalCalled = true
+        return true
+      },
+    }
+
+    const result = await dispatch(adminOp, ctx, {})
+
+    expect(result).toEqual({ ok: true })
+    expect(approvalCalled).toBe(true)
+  })
+
+  test('approval callback is ignored when ctx.remote is false (local always allowed)', async () => {
+    let approvalCalled = false
+    const ctx: OperationContext = {
+      remote: false,
+      approval: async () => {
+        approvalCalled = true
+        return false
+      },
+    }
+
+    const result = await dispatch(writeOp, ctx, { msg: 'hi' })
+
+    expect(result).toEqual({ ok: true })
+    expect(approvalCalled).toBe(false)
+  })
+
+  test('localOnly op with remote=true still rejected even when approval returns true', async () => {
+    const localOp: Operation<{ path: string }, { ok: true }> = {
+      id: 'fixture_local_only_no_approval_bypass',
+      description: '',
+      scope: 'read',
+      mutating: false,
+      localOnly: true,
+      parameters: z.object({ path: z.string() }),
+      handler: async () => ({ ok: true }),
+    }
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async () => true,
+    }
+
+    let caught: unknown
+    try {
+      await dispatch(localOp, ctx, { path: '/etc/hosts' })
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeInstanceOf(OperationError)
+    expect((caught as OperationError).code).toBe('permission_denied')
+  })
 })
