@@ -1,7 +1,7 @@
 import { tool } from 'ai'
+import { getWorkflowLogsOperation } from '@orchentra/operations'
 import {
   fetchFailedJobLogs as fetchFailedJobLogsImpl,
-  getWorkflowLogsOperation,
   type GetWorkflowLogsResult,
   type WorkflowLogError as OpWorkflowLogError,
   type WorkflowLogResult as OpWorkflowLogResult,
