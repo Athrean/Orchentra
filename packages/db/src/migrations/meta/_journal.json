@@ -134,6 +134,20 @@
       "when": 1814457600000,
       "tag": "0018_org_llm_configs",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1819670400000,
+      "tag": "0019_episodes",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1819756800000,
+      "tag": "0020_runbooks",
+      "breakpoints": true
     }
   ]
 }

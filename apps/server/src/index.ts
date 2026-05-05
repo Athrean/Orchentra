@@ -23,8 +23,12 @@ import { usageRouter } from './routes/usage'
 import { webhookEventsRouter } from './routes/webhook-events'
 import { setJobQueue, startQueueWorker } from './lib/job-queue'
 import { PgJobQueue } from './lib/pg-job-queue'
+import { ensureServerBrainWired } from './agent/brain-adapter'
 
 setJobQueue(new PgJobQueue())
+// Bind brain ops to the real Drizzle store at boot so MCP clients get a
+// working record_episode / list_episodes / runbook surface.
+ensureServerBrainWired()
 import {
   registerWsClient,
   unregisterWsClient,

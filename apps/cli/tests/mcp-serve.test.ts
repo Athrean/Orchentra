@@ -136,17 +136,26 @@ describe('orchentra mcp serve (subprocess)', () => {
       const listResp = await server.next(2)
       expect(listResp.error).toBeUndefined()
       const listResult = listResp.result as { tools: Array<{ name: string; description?: string }> }
-      expect(listResult.tools.length).toBe(7)
+      expect(listResult.tools.length).toBe(12)
       const names = listResult.tools.map((t) => t.name).sort()
-      expect(names).toEqual([
-        'get_commit_changes',
-        'get_file_content',
-        'get_issue',
-        'get_pull_request',
-        'get_workflow_logs',
-        'post_comment',
-        'search_code',
-      ])
+      expect(names).toEqual(
+        [
+          // GitHub adapter ops
+          'get_commit_changes',
+          'get_file_content',
+          'get_issue',
+          'get_pull_request',
+          'get_workflow_logs',
+          'post_comment',
+          'search_code',
+          // Brain ops (Phase 2 skeleton)
+          'export_skills_md',
+          'get_runbook',
+          'list_episodes',
+          'list_runbooks',
+          'record_episode',
+        ].sort(),
+      )
 
       await server.send({
         jsonrpc: '2.0',
