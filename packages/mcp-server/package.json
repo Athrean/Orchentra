@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@orchentra/operations": "workspace:*",
+    "hono": "^4.7.0",
     "zod": "^3.24.0",
     "zod-to-json-schema": "^3.24.1"
   },
