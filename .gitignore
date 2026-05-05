@@ -34,6 +34,7 @@ CLAUDE.md
 .claude/settings.json
 .claude/skills/
 .claude/hooks/
+.claude/worktrees/
 .claude.env
 .mcp.json
 
