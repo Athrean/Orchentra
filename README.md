@@ -2,37 +2,50 @@
 
 <img src="apps/web/public/green-logo.png" alt="Orchentra" width="480">
 
-### The DevOps engineer's daily co-pilot.
+### Contract-first DevOps operations runtime.
 
-Open-source, terminal-native. CI failures, on-call alerts, and scheduled ops all flow through the same primitive — an **Execution Graph** of typed nodes you can query, replay, and explain.
+Open-source, terminal-native. Every capability is a typed `Operation` exposed over two surfaces from one registry: a CLI for humans and an MCP server for external agents (Claude Desktop, Cursor, Windsurf). Trust-boundary enforcement lives in the runtime, not the caller.
 
-[**What it is**](#what-it-is) · [**Status**](#status) · [**How it works**](#how-it-works) · [**Getting started**](#getting-started) · [**CLI**](#cli) · [**Self-hosting**](#self-hosting)
+[**What is Orchentra**](#what-is-orchentra) · [**Quick start**](#quick-start) · [**Status**](#status) · [**How it works**](#how-it-works) · [**Getting started**](#getting-started) · [**CLI**](#cli) · [**Self-hosting**](#self-hosting)
 
 </div>
 
 ---
 
-## What it is
+## What is Orchentra
 
-Orchentra runs the work a DevOps engineer does between Slack pings:
+Orchentra is a contract-first DevOps operations runtime. Every capability — fetching workflow logs, posting a PR comment, searching code — is a typed `Operation` (Zod-validated input/output, declared trust class, single handler) registered once and exposed over two surfaces: the `orchentra` CLI for humans, and an MCP server for external agents like Claude Desktop, Cursor, and Windsurf. Both call into the same registry, so the same operations show up wherever the engineer already works. Webhooks (CI failures, Sentry alerts, cron ticks) record every run as an **execution** with a tree of **nodes**, and the web dashboard is a read-only projection of that graph.
 
-- **Triages a CI failure** when a `workflow_run` webhook arrives — pulls logs, diffs the change, names a root cause, optionally opens a fix PR.
-- **Investigates an alert** when Sentry fires — same loop, different entry point.
-- **Runs scheduled ops** off a cron spec — health checks, queue drains, weekly sweeps.
+This is **not** a Datadog/Grafana replacement, a "PR fixer" SaaS, or yet another alerting product. The wedge is the operations contract, the graph, and the terminal.
 
-Every run becomes an **execution** with a tree of **nodes** (tool calls, decisions, writebacks). The same graph powers the CLI (`orchentra graph <id>` / `orchentra why <node>`) and the web dashboard (read-only projection). One primitive, three surfaces.
+## Quick start
 
-This is **not** a Datadog/Grafana replacement, a "PR fixer" SaaS, or yet another alerting product. The wedge is the graph and the terminal.
+```bash
+git clone https://github.com/Athrean/Orchentra.git
+cd Orchentra
+bun install
+orchentra mcp serve   # stdio MCP server, ready to wire into an MCP client
+```
+
+To wire the stdio server into an MCP client, add an entry to its `mcpServers` config that runs `orchentra mcp serve`. See your client's docs for the exact config-file location:
+
+- Claude Desktop — `claude_desktop_config.json` <!-- TODO: link once docs page lands -->
+- Cursor — `~/.cursor/mcp.json` <!-- TODO: link once docs page lands -->
+- Windsurf — MCP settings panel <!-- TODO: link once docs page lands -->
+
+Phase 1B will add an HTTP transport behind bearer auth so the same operations are reachable from a hosted endpoint.
 
 ## Status
 
-| Phase | Description                                                        | Status                  |
-| ----- | ------------------------------------------------------------------ | ----------------------- |
-| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped                 |
-| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped                 |
-| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#228, #235)    |
-| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#225, #236–40) |
-| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future                  |
+| Phase | Description                                                        | Status                   |
+| ----- | ------------------------------------------------------------------ | ------------------------ |
+| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped                  |
+| 1A    | Operations contract + stdio MCP server (`orchentra mcp serve`)     | shipped (#295)           |
+| 1B    | HTTP MCP transport + bearer auth + hosted Worker scaffold          | next                     |
+| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped                  |
+| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#228, #235)     |
+| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#225, #236–40)  |
+| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future                   |
 
 Side-shipped: per-org LLM config (multi-provider), live agent investigation timeline, CLI Pro/Max OAuth on macOS (Keychain auto-detect), in-TUI login + model picker.
 
@@ -63,6 +76,8 @@ Cross-execution diff (`/dashboard/diff`) lines up two executions for postmortems
 ## Surfaces
 
 **CLI (primary).** Interactive Ink TUI — REPL, slash commands (`/login`, `/doctor`, `/graph`, `/why`, `/issue`, `/pr`, `/model`, `/skills`, …), arrow-key model picker, in-TUI Anthropic OAuth login, native `--output-format json` for diagnostic verbs, resume model.
+
+**MCP server.** `orchentra mcp serve` exposes the operations registry to external MCP clients (Claude Desktop, Cursor, Windsurf) over stdio. Same operations the CLI verbs hit, validated by the same Zod schemas, with trust-class enforcement at dispatch. HTTP transport + bearer auth lands in Phase 1B.
 
 **Server.** Hono backend — webhooks (`workflow_run`, Sentry), cron tick, agent loop with multi-provider LLM (per-org config), Postgres-backed job queue with retry + dead-letter, idempotent two-tier dedup.
 
@@ -143,12 +158,13 @@ Server: `http://localhost:3001` · Web: `http://localhost:3000`.
 ```bash
 orchentra              # interactive TUI
 orchentra doctor       # environment preflight (auth, DB, repo)
+orchentra mcp serve    # stdio MCP server exposing the operations registry
 orchentra graph <id>   # ASCII tree of nodes for an execution
 orchentra why <node>   # walk parent chain, print inputs + rationale
 ```
 
-- **Anthropic auth:** [`docs/cli/anthropic-auth.md`](docs/cli/anthropic-auth.md) — Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting.
-- **Skills:** [`docs/cli/skills.md`](docs/cli/skills.md) — frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload.
+- **Anthropic auth:** Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting. <!-- TODO: link once docs/cli/anthropic-auth.md lands -->
+- **Skills:** frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload. <!-- TODO: link once docs/cli/skills.md lands -->
 - **Examples:** [`examples/skills/`](examples/skills/) — drop-in `SKILL.md` samples (`/incident`, `/deploy`).
 
 **macOS Pro/Max users:** if you already use Claude Code, just run `orchentra` — your subscription is picked up from the system Keychain on first request, no extra login needed.
@@ -172,6 +188,8 @@ Orchentra/
 │   ├── server/              # Hono backend — webhooks, cron, agent, queue, integrations
 │   └── web/                 # Next.js — dashboard, exec graph view, cross-exec diff
 ├── packages/
+│   ├── operations/          # @orchentra/operations — typed Operation contract + registry
+│   ├── mcp-server/          # @orchentra/mcp-server — stdio MCP transport over the registry
 │   ├── cli-core/            # Skill loader, permissions, runtime primitives
 │   ├── cli-api/             # Provider clients (Anthropic OAuth, GitHub, Gemini), keychain
 │   ├── cli-tools/           # Built-in tool registry + MCP transport
