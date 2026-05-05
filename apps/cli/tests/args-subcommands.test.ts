@@ -67,4 +67,24 @@ describe('parseArgs — subcommands', () => {
   test('watch missing repo throws', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'watch'])).toThrow(/missing/)
   })
+
+  test('mcp serve returns mcp serve action', () => {
+    expect(parseArgs(['bun', 'orchentra', 'mcp', 'serve'])).toMatchObject({
+      kind: 'mcp',
+      sub: 'serve',
+      printToolsJson: false,
+    })
+  })
+
+  test('mcp serve --print-tools-json sets the flag', () => {
+    expect(parseArgs(['bun', 'orchentra', 'mcp', 'serve', '--print-tools-json'])).toMatchObject({
+      kind: 'mcp',
+      sub: 'serve',
+      printToolsJson: true,
+    })
+  })
+
+  test('mcp serve rejects unknown flags', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'mcp', 'serve', '--bogus'])).toThrow(/unknown flag/)
+  })
 })
