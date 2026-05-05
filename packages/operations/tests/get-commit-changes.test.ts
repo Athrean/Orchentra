@@ -102,6 +102,40 @@ describe('get_commit_changes operation', () => {
     expect(result.error).toContain('Not Found')
   })
 
+  test('flags totalChangedFilesTruncated when GitHub returns the page cap (300)', async () => {
+    const bigFiles = Array.from({ length: 300 }, (_, i) => ({
+      filename: `f${i}.ts`,
+      status: 'modified',
+      additions: 1,
+      deletions: 0,
+    }))
+    setGithubAdapter(
+      fakeAdapter({
+        getCommit: () =>
+          Promise.resolve({
+            data: { sha: 's', commit: { message: 'big', author: { name: 'D' } }, files: bigFiles },
+          }),
+      }),
+    )
+    const result = (await getCommitChangesOperation.handler(localCtx, {
+      owner: 'my-org',
+      repo: 'api',
+      sha: 's',
+    })) as { totalChangedFiles: number; totalChangedFilesTruncated: boolean }
+    expect(result.totalChangedFiles).toBe(300)
+    expect(result.totalChangedFilesTruncated).toBe(true)
+  })
+
+  test('does not flag truncated for normal-sized commits', async () => {
+    setGithubAdapter(fakeAdapter())
+    const result = (await getCommitChangesOperation.handler(localCtx, {
+      owner: 'my-org',
+      repo: 'api',
+      sha: 'abc1234',
+    })) as { totalChangedFilesTruncated: boolean }
+    expect(result.totalChangedFilesTruncated).toBe(false)
+  })
+
   test('dispatch rejects malformed input with OperationError(invalid_input)', async () => {
     setGithubAdapter(fakeAdapter())
 
