@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { parseArgs } from '../src/args'
+import { parseArgs, renderHelp } from '../src/args'
 
 describe('parseArgs — subcommands', () => {
   test('investigate spec', () => {
@@ -86,5 +86,20 @@ describe('parseArgs — subcommands', () => {
 
   test('mcp serve rejects unknown flags', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'mcp', 'serve', '--bogus'])).toThrow(/unknown flag/)
+  })
+
+  test('graph with executionId', () => {
+    expect(parseArgs(['bun', 'orchentra', 'graph', 'exec_abc123'])).toMatchObject({
+      kind: 'graph',
+      executionId: 'exec_abc123',
+    })
+  })
+
+  test('graph missing executionId throws', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'graph'])).toThrow(/missing/)
+  })
+
+  test('help text lists the graph verb', () => {
+    expect(renderHelp()).toMatch(/orchentra graph <executionId>/)
   })
 })

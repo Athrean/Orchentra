@@ -31,6 +31,7 @@ export type CliAction =
   | { kind: 'login'; provider?: string; apiKey?: string }
   | { kind: 'logout'; provider: string }
   | { kind: 'auth-status' }
+  | { kind: 'graph'; executionId: string }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -90,6 +91,12 @@ export function parseArgs(argv: string[]): CliAction {
 
   if (first === 'whoami' || first === 'auth') {
     return { kind: 'auth-status' }
+  }
+
+  if (first === 'graph') {
+    const executionId = args[1]
+    if (!executionId) throw new Error('graph: missing <executionId>')
+    return { kind: 'graph', executionId }
   }
 
   let model = defaultModel()
@@ -152,6 +159,7 @@ USAGE
   orchentra session replay <id|latest>    Replay a recorded session as JSONL events
   orchentra doctor                        Check auth, provider, and workspace health
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
+  orchentra graph <executionId>           Render the execution graph as an ASCII tree
   orchentra mcp list                       List configured MCP servers + connection status
   orchentra mcp test <name>                Connect to one MCP server and print its tools
   orchentra mcp serve [--print-tools-json] Start the stdio MCP server (or print tool schemas)
