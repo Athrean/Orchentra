@@ -47,6 +47,10 @@ export async function startStdioServer(operations: Operation[], opts: StartStdio
     }
   }
 
+  // Flush the decoder before processing the tail. A multibyte UTF-8 sequence
+  // split across the final two chunks would otherwise be dropped, truncating
+  // the last message in the buffer.
+  buffer += decoder.decode()
   if (buffer.trim().length > 0) {
     await processLine(buffer.trim(), deps, stdout)
   }
