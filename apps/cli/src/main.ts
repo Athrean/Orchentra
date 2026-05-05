@@ -111,10 +111,18 @@ async function main(argv: string[]): Promise<number> {
       return runAuthStatus()
 
     case 'graph':
-      return runGraph({ executionId: action.executionId, cwd: process.cwd() })
+      return runGraph({
+        executionId: action.executionId,
+        cwd: process.cwd(),
+        outputFormat: action.outputFormat,
+      })
 
     case 'why':
-      return runWhy({ nodeId: action.nodeId, cwd: process.cwd() })
+      return runWhy({
+        nodeId: action.nodeId,
+        cwd: process.cwd(),
+        outputFormat: action.outputFormat,
+      })
   }
 }
 

@@ -92,6 +92,7 @@ describe('parseArgs — subcommands', () => {
     expect(parseArgs(['bun', 'orchentra', 'graph', 'exec_abc123'])).toMatchObject({
       kind: 'graph',
       executionId: 'exec_abc123',
+      outputFormat: 'tree',
     })
   })
 
@@ -99,15 +100,68 @@ describe('parseArgs — subcommands', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'graph'])).toThrow(/missing/)
   })
 
+  test('graph --output-format json sets outputFormat', () => {
+    expect(parseArgs(['bun', 'orchentra', 'graph', 'exec_abc', '--output-format', 'json'])).toMatchObject({
+      kind: 'graph',
+      executionId: 'exec_abc',
+      outputFormat: 'json',
+    })
+  })
+
+  test('graph --json is an alias for --output-format json', () => {
+    expect(parseArgs(['bun', 'orchentra', 'graph', 'exec_abc', '--json'])).toMatchObject({
+      kind: 'graph',
+      executionId: 'exec_abc',
+      outputFormat: 'json',
+    })
+  })
+
+  test('graph --output-format tree is the default and explicit', () => {
+    expect(parseArgs(['bun', 'orchentra', 'graph', 'exec_abc', '--output-format', 'tree'])).toMatchObject({
+      kind: 'graph',
+      outputFormat: 'tree',
+    })
+  })
+
+  test('graph --output-format yaml is rejected', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'graph', 'exec_abc', '--output-format', 'yaml'])).toThrow(
+      /output-format/,
+    )
+  })
+
   test('help text lists the graph verb', () => {
     expect(renderHelp()).toMatch(/orchentra graph <executionId>/)
   })
 
   test('why with nodeId', () => {
-    expect(parseArgs(['bun', 'orchentra', 'why', 'node_abc'])).toMatchObject({ kind: 'why', nodeId: 'node_abc' })
+    expect(parseArgs(['bun', 'orchentra', 'why', 'node_abc'])).toMatchObject({
+      kind: 'why',
+      nodeId: 'node_abc',
+      outputFormat: 'tree',
+    })
   })
 
   test('why missing nodeId throws', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'why'])).toThrow(/missing/)
+  })
+
+  test('why --output-format json sets outputFormat', () => {
+    expect(parseArgs(['bun', 'orchentra', 'why', 'node_abc', '--output-format', 'json'])).toMatchObject({
+      kind: 'why',
+      nodeId: 'node_abc',
+      outputFormat: 'json',
+    })
+  })
+
+  test('why --json is an alias for --output-format json', () => {
+    expect(parseArgs(['bun', 'orchentra', 'why', 'node_abc', '--json'])).toMatchObject({
+      kind: 'why',
+      nodeId: 'node_abc',
+      outputFormat: 'json',
+    })
+  })
+
+  test('why --output-format yaml is rejected', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'why', 'node_abc', '--output-format', 'yaml'])).toThrow(/output-format/)
   })
 })
