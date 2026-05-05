@@ -173,6 +173,7 @@ USAGE
   orchentra login <provider> [--api-key]   Sign in (anthropic|gemini|github|openai|xai|dashscope)
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra whoami                        Show signed-in providers and credential sources
+  orchentra why <nodeId>                  Trace a node's ancestor chain + inputs + outcome
   orchentra --version                     Print version
 
 FLAGS
