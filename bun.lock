@@ -28,6 +28,8 @@
         "@orchentra/cli-api": "workspace:*",
         "@orchentra/cli-core": "workspace:*",
         "@orchentra/cli-tools": "workspace:*",
+        "@orchentra/mcp-server": "workspace:*",
+        "@orchentra/operations": "workspace:*",
         "ink": "^7",
         "react": "^19",
       },
@@ -52,6 +54,7 @@
         "@openrouter/ai-sdk-provider": "^0.5.0",
         "@orchentra/core": "workspace:*",
         "@orchentra/db": "workspace:*",
+        "@orchentra/operations": "workspace:*",
         "ai": "^4.3.0",
         "arctic": "^3.7.0",
         "drizzle-orm": "^0.39.0",
@@ -179,6 +182,36 @@
         "drizzle-kit": "^0.30.0",
         "eslint": "^8.57.0",
         "typescript": "^5.0.0",
+      },
+    },
+    "packages/mcp-server": {
+      "name": "@orchentra/mcp-server",
+      "version": "0.1.0",
+      "dependencies": {
+        "@orchentra/operations": "workspace:*",
+        "zod": "^3.24.0",
+        "zod-to-json-schema": "^3.24.1",
+      },
+      "devDependencies": {
+        "@orchentra/eslint-config": "workspace:*",
+        "@orchentra/typescript-config": "workspace:*",
+        "@types/bun": "latest",
+        "eslint": "^8.57.0",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/operations": {
+      "name": "@orchentra/operations",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "^3.24.0",
+      },
+      "devDependencies": {
+        "@orchentra/eslint-config": "workspace:*",
+        "@orchentra/typescript-config": "workspace:*",
+        "@types/bun": "latest",
+        "eslint": "^8.57.0",
+        "typescript": "^5.9.3",
       },
     },
   },
@@ -436,6 +469,10 @@
     "@orchentra/db": ["@orchentra/db@workspace:packages/db"],
 
     "@orchentra/eslint-config": ["@orchentra/eslint-config@workspace:packages/config-eslint"],
+
+    "@orchentra/mcp-server": ["@orchentra/mcp-server@workspace:packages/mcp-server"],
+
+    "@orchentra/operations": ["@orchentra/operations@workspace:packages/operations"],
 
     "@orchentra/server": ["@orchentra/server@workspace:apps/server"],
 

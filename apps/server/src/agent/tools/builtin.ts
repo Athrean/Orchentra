@@ -1,7 +1,8 @@
 import type { CoreTool } from 'ai'
 import type { z } from 'zod'
+import { getWorkflowLogsOperation } from '@orchentra/operations/ops/github/get-workflow-logs'
 import { type Permission, type ToolDefinition, ToolRegistry } from '../tool-registry'
-import { githubActionsTool } from './github-actions'
+import { ensureServerOperationsWired } from '../operations-adapter'
 import { getCommitChangesTool, getFileContentTool } from './github-repo'
 import { getPullRequestTool, getIssueTool, searchCodeTool } from './github-issues'
 import { postCommentTool } from './post-comment'
@@ -17,7 +18,8 @@ function adapt(name: string, permission: Permission, t: CoreTool): ToolDefinitio
 }
 
 export function registerBuiltinTools(registry: ToolRegistry): void {
-  registry.register(adapt('get_workflow_logs', 'read', githubActionsTool))
+  ensureServerOperationsWired()
+  registry.registerOperation(getWorkflowLogsOperation)
   registry.register(adapt('get_commit_changes', 'read', getCommitChangesTool))
   registry.register(adapt('get_file_content', 'read', getFileContentTool))
   registry.register(adapt('get_pull_request', 'read', getPullRequestTool))
