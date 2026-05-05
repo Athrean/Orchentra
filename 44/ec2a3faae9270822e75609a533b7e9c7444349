@@ -1,0 +1,29 @@
+packages/brain/tests/runbooks-schema.test.ts
+  27be1972cf29b313 1-13,15-43
+packages/db/src/migrations/0020_runbooks.sql
+  27be1972cf29b313 1-24
+packages/db/src/migrations/meta/_journal.json
+  27be1972cf29b313 144-150
+packages/db/src/schema.ts
+  27be1972cf29b313 366-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "44ec2a3faae9270822e75609a533b7e9c7444349",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 125,
+      "total_deletions": 0,
+      "accepted_lines": 122,
+      "overriden_lines": 1
+    }
+  }
+}
