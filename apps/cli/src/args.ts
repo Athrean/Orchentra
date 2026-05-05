@@ -31,8 +31,8 @@ export type CliAction =
   | { kind: 'login'; provider?: string; apiKey?: string }
   | { kind: 'logout'; provider: string }
   | { kind: 'auth-status' }
-  | { kind: 'graph'; executionId: string }
-  | { kind: 'why'; nodeId: string }
+  | { kind: 'graph'; executionId: string; outputFormat: 'tree' | 'json' }
+  | { kind: 'why'; nodeId: string; outputFormat: 'tree' | 'json' }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -97,13 +97,15 @@ export function parseArgs(argv: string[]): CliAction {
   if (first === 'graph') {
     const executionId = args[1]
     if (!executionId) throw new Error('graph: missing <executionId>')
-    return { kind: 'graph', executionId }
+    const outputFormat = parseOutputFormat('graph', args.slice(2))
+    return { kind: 'graph', executionId, outputFormat }
   }
 
   if (first === 'why') {
     const nodeId = args[1]
     if (!nodeId) throw new Error('why: missing <nodeId>')
-    return { kind: 'why', nodeId }
+    const outputFormat = parseOutputFormat('why', args.slice(2))
+    return { kind: 'why', nodeId, outputFormat }
   }
 
   let model = defaultModel()
@@ -166,14 +168,16 @@ USAGE
   orchentra session replay <id|latest>    Replay a recorded session as JSONL events
   orchentra doctor                        Check auth, provider, and workspace health
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
-  orchentra graph <executionId>           Render the execution graph as an ASCII tree
+  orchentra graph <executionId> [--output-format tree|json]
+                                          Render the execution graph (tree default; --json for raw DTO)
   orchentra mcp list                       List configured MCP servers + connection status
   orchentra mcp test <name>                Connect to one MCP server and print its tools
   orchentra mcp serve [--print-tools-json] Start the stdio MCP server (or print tool schemas)
   orchentra login <provider> [--api-key]   Sign in (anthropic|gemini|github|openai|xai|dashscope)
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra whoami                        Show signed-in providers and credential sources
-  orchentra why <nodeId>                  Trace a node's ancestor chain + inputs + outcome
+  orchentra why <nodeId> [--output-format tree|json]
+                                          Trace a node's ancestors + inputs (tree default; --json for raw DTO)
   orchentra --version                     Print version
 
 FLAGS
@@ -300,6 +304,27 @@ function parseLoginArgs(rest: string[]): CliAction {
   }
   if (!provider) return { kind: 'login' }
   return apiKey ? { kind: 'login', provider, apiKey } : { kind: 'login', provider }
+}
+
+function parseOutputFormat(verb: 'graph' | 'why', rest: string[]): 'tree' | 'json' {
+  let format: 'tree' | 'json' = 'tree'
+  let i = 0
+  while (i < rest.length) {
+    const arg = rest[i]
+    if (arg === '--json') {
+      format = 'json'
+    } else if (arg === '--output-format') {
+      const val = rest[++i]
+      if (val !== 'tree' && val !== 'json') {
+        throw new Error(`${verb}: invalid --output-format value: ${val ?? ''}. valid: tree, json`)
+      }
+      format = val
+    } else {
+      throw new Error(`${verb}: unknown flag: ${arg}`)
+    }
+    i++
+  }
+  return format
 }
 
 function parseWatchArgs(rest: string[]): CliAction {

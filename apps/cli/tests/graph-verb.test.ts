@@ -98,4 +98,50 @@ describe('runGraph (verb path)', () => {
       cap.restore()
     }
   })
+
+  test('outputFormat=json prints a single parseable JSON object matching the DTO shape', async () => {
+    const cap = captureStdio()
+    const nodes = [fakeNode({ id: 'p' }), fakeNode({ id: 'c', parentNodeId: 'p', round: 2 })]
+    try {
+      const code = await runGraph({
+        executionId: 'exec-1',
+        cwd: '/work',
+        outputFormat: 'json',
+        deps: {
+          fetchGraph: async () => ({ executionId: 'exec-1', nodes }),
+          resolveConfig: () => ({ serverUrl: 'https://api', orgId: 'o1', apiKey: 'k' }),
+        },
+      })
+      expect(code).toBe(0)
+      const text = cap.out.join('')
+      // No ASCII tree decoration in json mode
+      expect(text).not.toMatch(/[├└]/)
+      const parsed = JSON.parse(text)
+      expect(parsed).toEqual({ executionId: 'exec-1', nodes })
+    } finally {
+      cap.restore()
+    }
+  })
+
+  test('outputFormat=json surfaces fetch errors to stderr with non-zero exit', async () => {
+    const cap = captureStdio()
+    try {
+      const code = await runGraph({
+        executionId: 'exec-1',
+        cwd: '/work',
+        outputFormat: 'json',
+        deps: {
+          fetchGraph: async () => {
+            throw new Error('boom')
+          },
+          resolveConfig: () => ({ serverUrl: '', orgId: '', apiKey: '' }),
+        },
+      })
+      expect(code).not.toBe(0)
+      expect(cap.err.join('')).toContain('boom')
+      expect(cap.out.join('')).toBe('')
+    } finally {
+      cap.restore()
+    }
+  })
 })
