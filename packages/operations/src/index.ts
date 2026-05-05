@@ -21,6 +21,7 @@ import type { Operation } from './types'
 import { getCommitChangesOperation } from './ops/github/get-commit-changes'
 import { getFileContentOperation } from './ops/github/get-file-content'
 import { getPullRequestOperation } from './ops/github/get-pull-request'
+import { getIssueOperation } from './ops/github/get-issue'
 
 /**
  * Source-of-truth registry consumed by every transport (CLI, MCP, in-process
@@ -30,4 +31,5 @@ export const operations: Operation[] = [
   getCommitChangesOperation as Operation,
   getFileContentOperation as Operation,
   getPullRequestOperation as Operation,
+  getIssueOperation as Operation,
 ]
