@@ -1,45 +1,37 @@
+/**
+ * Re-export wrapper. Read-scoped op bodies are migrating to @orchentra/operations
+ * one at a time; this file keeps the original `tool({...})` shape so existing
+ * in-process agent loop callers stay unchanged for one release per the project
+ * alias rule.
+ */
 import { tool } from 'ai'
 import { z } from 'zod'
+import { setGithubAdapter, setRepoMonitoredCheck, type GithubAdapter } from '@orchentra/operations'
+import { getCommitChangesOperation } from '@orchentra/operations/ops/github/get-commit-changes'
 import { getOctokit } from '../../github/octokit'
 import { isRepoMonitored } from '../../lib/repo-cache'
 
-const MAX_PATCH_CHARS = 2000
 const MAX_FILE_CHARS = 4000
 
+const localCtx = { remote: false as const, allowedScopes: new Set<'read' | 'write' | 'admin'>(['read']) }
+
+/**
+ * Re-bind the operations-package adapters to the live server modules on every
+ * call. Doing it per-call (rather than once at module load) makes the wiring
+ * resilient to bun:test's mock.module overrides that redefine these modules
+ * after this wrapper has already loaded.
+ */
+function bindOpsAdapters(): void {
+  setGithubAdapter(getOctokit() as unknown as GithubAdapter)
+  setRepoMonitoredCheck((fullName) => isRepoMonitored(fullName))
+}
+
 export const getCommitChangesTool = tool({
-  description:
-    'Fetch the files changed in a specific commit. ' +
-    'Returns changed file names, their status (added/modified/removed), and diffs. ' +
-    'Use this to understand what code changed before the failure.',
-  parameters: z.object({
-    owner: z.string().describe('Repository owner'),
-    repo: z.string().describe('Repository name'),
-    sha: z.string().describe('The commit SHA to inspect'),
-  }),
-  execute: async ({ owner, repo, sha }) => {
-    const fullName = `${owner}/${repo}`
-    if (!(await isRepoMonitored(fullName))) {
-      return { error: `Repository ${fullName} is not monitored` }
-    }
-    try {
-      const { data } = await getOctokit().repos.getCommit({ owner, repo, ref: sha })
-      const files = (data.files ?? []).slice(0, 20).map((f) => ({
-        filename: f.filename,
-        status: f.status,
-        additions: f.additions,
-        deletions: f.deletions,
-        patch: f.patch ? f.patch.slice(0, MAX_PATCH_CHARS) : undefined,
-      }))
-      return {
-        sha: data.sha,
-        message: data.commit.message,
-        author: data.commit.author?.name,
-        files,
-        totalChangedFiles: data.files?.length ?? 0,
-      }
-    } catch (err) {
-      return { error: `Failed to fetch commit: ${err instanceof Error ? err.message : String(err)}` }
-    }
+  description: getCommitChangesOperation.description,
+  parameters: getCommitChangesOperation.parameters,
+  execute: async (args) => {
+    bindOpsAdapters()
+    return getCommitChangesOperation.handler(localCtx, args)
   },
 })
 
