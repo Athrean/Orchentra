@@ -102,4 +102,12 @@ describe('parseArgs — subcommands', () => {
   test('help text lists the graph verb', () => {
     expect(renderHelp()).toMatch(/orchentra graph <executionId>/)
   })
+
+  test('why with nodeId', () => {
+    expect(parseArgs(['bun', 'orchentra', 'why', 'node_abc'])).toMatchObject({ kind: 'why', nodeId: 'node_abc' })
+  })
+
+  test('why missing nodeId throws', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'why'])).toThrow(/missing/)
+  })
 })

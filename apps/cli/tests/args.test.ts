@@ -79,4 +79,9 @@ describe('parseArgs', () => {
       'invalid permission mode',
     )
   })
+
+  test('renderHelp lists why verb', async () => {
+    const { renderHelp } = await import('../src/args')
+    expect(renderHelp()).toContain('orchentra why')
+  })
 })
