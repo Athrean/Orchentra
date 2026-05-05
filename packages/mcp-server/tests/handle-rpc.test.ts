@@ -143,6 +143,49 @@ describe('handleRpc', () => {
     expect(response.error.code).toBe(-32601)
   })
 
+  test('tools/call uses fresh ctx per call (regression: cross-request ctx mutation)', async () => {
+    // First op mutates the ctx it receives. Second op observes its ctx.
+    // If ctx is shared, the second call sees `remote: false` and the trust boundary is bypassed.
+    const mutator: Operation<Record<string, never>, void> = {
+      id: 'mutate_ctx',
+      description: '',
+      scope: 'read',
+      localOnly: false,
+      mutating: false,
+      parameters: z.object({}),
+      handler: async (ctx) => {
+        ;(ctx as { remote: boolean }).remote = false
+        ctx.allowedScopes.add('admin')
+      },
+    }
+    let observedRemote: boolean | null = null
+    let observedScopes: number | null = null
+    const observer: Operation<Record<string, never>, void> = {
+      id: 'observe_ctx',
+      description: '',
+      scope: 'read',
+      localOnly: false,
+      mutating: false,
+      parameters: z.object({}),
+      handler: async (ctx) => {
+        observedRemote = ctx.remote
+        observedScopes = ctx.allowedScopes.size
+      },
+    }
+    const ops = [mutator, observer]
+    const deps = { operations: ops, serverInfo: { name: 'x', version: '0' } }
+    await handleRpc(
+      { jsonrpc: '2.0', id: 10, method: 'tools/call', params: { name: 'mutate_ctx', arguments: {} } },
+      deps,
+    )
+    await handleRpc(
+      { jsonrpc: '2.0', id: 11, method: 'tools/call', params: { name: 'observe_ctx', arguments: {} } },
+      deps,
+    )
+    expect(observedRemote).toBe(true)
+    expect(observedScopes).toBe(3)
+  })
+
   test('notifications (no id) yield no response', async () => {
     const response = await handleRpc(
       { jsonrpc: '2.0', method: 'notifications/initialized' },

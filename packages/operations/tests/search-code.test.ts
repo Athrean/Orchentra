@@ -86,6 +86,19 @@ describe('search_code operation', () => {
     expect(capture.q).toBe('password repo:my-org/api')
   })
 
+  test('handler strips scope qualifiers regardless of case (regression)', async () => {
+    const capture: { q?: string } = {}
+    setGithubAdapter(fakeAdapter(undefined, capture))
+
+    await searchCodeOperation.handler(localCtx, {
+      owner: 'my-org',
+      repo: 'api',
+      query: 'password REPO:other/secret ORG:bigcorp User:rogue',
+    })
+
+    expect(capture.q).toBe('password repo:my-org/api')
+  })
+
   test('handler rejects unmonitored repo', async () => {
     setGithubAdapter(fakeAdapter())
 
