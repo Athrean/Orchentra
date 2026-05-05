@@ -18,7 +18,8 @@
     "@orchentra/mcp-server": "workspace:*",
     "@orchentra/operations": "workspace:*",
     "ink": "^7",
-    "react": "^19"
+    "react": "^19",
+    "zod-to-json-schema": "^3.23.5"
   },
   "devDependencies": {
     "@orchentra/eslint-config": "workspace:*",
