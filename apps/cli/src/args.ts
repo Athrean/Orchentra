@@ -27,6 +27,7 @@ export type CliAction =
   | { kind: 'watch'; repo: string; intervalMs?: number }
   | { kind: 'mcp'; sub: 'list' }
   | { kind: 'mcp'; sub: 'test'; name: string }
+  | { kind: 'mcp'; sub: 'serve' }
   | { kind: 'login'; provider?: string; apiKey?: string }
   | { kind: 'logout'; provider: string }
   | { kind: 'auth-status' }
@@ -153,6 +154,7 @@ USAGE
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
   orchentra mcp list                      List configured MCP servers + connection status
   orchentra mcp test <name>               Connect to one MCP server and print its tools
+  orchentra mcp serve                     Run as a stdio MCP server exposing Orchentra ops
   orchentra login <provider> [--api-key]  Sign in (anthropic|gemini|github|openai|xai|dashscope)
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra whoami                        Show signed-in providers and credential sources
@@ -249,7 +251,10 @@ function parseMcpArgs(rest: string[]): CliAction {
     if (!name) throw new Error('mcp test: missing <server-name>')
     return { kind: 'mcp', sub: 'test', name }
   }
-  throw new Error(`mcp: unknown subcommand '${sub}'. expected 'list' or 'test <name>'`)
+  if (sub === 'serve') {
+    return { kind: 'mcp', sub: 'serve' }
+  }
+  throw new Error(`mcp: unknown subcommand '${sub}'. expected 'list', 'test <name>', or 'serve'`)
 }
 
 function parseLoginArgs(rest: string[]): CliAction {
