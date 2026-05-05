@@ -137,15 +137,30 @@ describe('postCommentTool', () => {
     expect(result.error).toContain('Failed to post comment')
   })
 
-  test('body is capped at 6000 chars', async () => {
+  test('rejects body longer than 6000 chars at the schema boundary', async () => {
+    let caught: unknown
+    try {
+      await postCommentTool.execute(
+        { owner: 'my-org', repo: 'api', prNumber: 1, body: 'x'.repeat(10_000), kind: 'note' },
+        ctx,
+      )
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeDefined()
+    expect(fake.requests.filter((r) => r.method === 'POST')).toHaveLength(0)
+  })
+
+  test('accepts a 6000-char body and forwards it unchanged', async () => {
     await postCommentTool.execute(
-      { owner: 'my-org', repo: 'api', prNumber: 1, body: 'x'.repeat(10_000), kind: 'note' },
+      { owner: 'my-org', repo: 'api', prNumber: 1, body: 'x'.repeat(6000), kind: 'note' },
       ctx,
     )
 
     const body = lastCommentBody()
     expect(body).not.toBeNull()
     const xCount = (body as string).match(/x/g)?.length ?? 0
-    expect(xCount).toBeLessThanOrEqual(6000)
+    expect(xCount).toBe(6000)
   })
 })
