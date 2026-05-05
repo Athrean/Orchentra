@@ -6,8 +6,10 @@ export type {
   OperationErrorPayload,
   OperationScope,
 } from './types'
-export { OperationError } from './types'
+export { OperationError, toOperationError } from './types'
 export { dispatch } from './dispatch'
+export { serializeOperationErrorForCli } from './cli-serialize'
+export type { CliErrorWrite } from './cli-serialize'
 export { operations } from './ops'
 export type { GitHubAdapter, GitHubJob, GitHubJobStep, ListJobsResult } from './ops/github/adapter'
 export { getGitHubAdapter, setGitHubAdapter } from './ops/github/adapter'
