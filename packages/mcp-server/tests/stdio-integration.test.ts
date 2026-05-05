@@ -82,20 +82,29 @@ describe('orchentra mcp serve (stdio)', () => {
     expect((res.result as { serverInfo: { name: string } }).serverInfo.name).toBe('orchentra-mcp')
   })
 
-  test('tools/list returns the migrated read-scoped GitHub tools', async () => {
+  test('tools/list returns the migrated read-scoped GitHub tools and the brain ops', async () => {
     const res = await rpc('tools/list')
     const tools = (res.result as { tools: Array<{ name: string }> }).tools
     const names = tools.map((t) => t.name).sort()
 
-    expect(names).toEqual([
-      'get_commit_changes',
-      'get_file_content',
-      'get_issue',
-      'get_pull_request',
-      'get_workflow_logs',
-      'post_comment',
-      'search_code',
-    ])
+    expect(names).toEqual(
+      [
+        // GitHub adapter ops
+        'get_commit_changes',
+        'get_file_content',
+        'get_issue',
+        'get_pull_request',
+        'get_workflow_logs',
+        'post_comment',
+        'search_code',
+        // Brain ops (Phase 2 skeleton)
+        'export_skills_md',
+        'get_runbook',
+        'list_episodes',
+        'list_runbooks',
+        'record_episode',
+      ].sort(),
+    )
   })
 
   test('tools/call get_commit_changes succeeds with the fake adapter', async () => {
