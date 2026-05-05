@@ -1,29 +1,27 @@
 {
-  "name": "@orchentra/mcp-server",
+  "name": "@orchentra/mcp-host",
   "version": "0.1.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
-  },
+  "main": "./src/worker.ts",
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "bun test tests/"
   },
   "dependencies": {
+    "@orchentra/mcp-server": "workspace:*",
     "@orchentra/operations": "workspace:*",
-    "hono": "^4.7.0",
-    "zod": "^3.24.0",
-    "zod-to-json-schema": "^3.24.1"
+    "hono": "^4.7.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240502.0",
     "@orchentra/eslint-config": "workspace:*",
     "@orchentra/typescript-config": "workspace:*",
     "@types/bun": "latest",
     "eslint": "^8.57.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "^3.78.0"
   }
 }
