@@ -329,3 +329,37 @@ export const orgLlmConfigs = pgTable('org_llm_configs', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// --- Brain skeleton tables (Phase 2) ---
+
+/**
+ * Episodes are the append-only "what happened" log for the brain. Each row
+ * references the originating execution so a reader can join back to the full
+ * node graph when the summary alone is not enough. `ops_called` stores the
+ * flat list of operation ids the run used so a future runbook distiller can
+ * group similar episodes without re-walking the node tree.
+ */
+export const episodes = pgTable(
+  'episodes',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    executionId: text('execution_id')
+      .notNull()
+      .references(() => executions.id, { onDelete: 'cascade' }),
+    /** Mirrors executions.kind so episodes can be filtered without a join. */
+    kind: text('kind').notNull(),
+    summary: text('summary').notNull(),
+    /** JSON-encoded array of operation ids — kept as text to stay portable. */
+    opsCalled: jsonb('ops_called').notNull().default([]),
+    outcome: text('outcome').notNull().default('unknown'), // 'success' | 'failure' | 'unknown'
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('episodes_org_id_idx').on(table.orgId),
+    index('episodes_execution_id_idx').on(table.executionId),
+    index('episodes_kind_idx').on(table.kind),
+  ],
+)
