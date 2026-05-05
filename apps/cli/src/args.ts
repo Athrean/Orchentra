@@ -32,6 +32,7 @@ export type CliAction =
   | { kind: 'logout'; provider: string }
   | { kind: 'auth-status' }
   | { kind: 'graph'; executionId: string }
+  | { kind: 'why'; nodeId: string }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -97,6 +98,12 @@ export function parseArgs(argv: string[]): CliAction {
     const executionId = args[1]
     if (!executionId) throw new Error('graph: missing <executionId>')
     return { kind: 'graph', executionId }
+  }
+
+  if (first === 'why') {
+    const nodeId = args[1]
+    if (!nodeId) throw new Error('why: missing <nodeId>')
+    return { kind: 'why', nodeId }
   }
 
   let model = defaultModel()
@@ -166,6 +173,7 @@ USAGE
   orchentra login <provider> [--api-key]   Sign in (anthropic|gemini|github|openai|xai|dashscope)
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra whoami                        Show signed-in providers and credential sources
+  orchentra why <nodeId>                  Trace a node's ancestor chain + inputs + outcome
   orchentra --version                     Print version
 
 FLAGS
