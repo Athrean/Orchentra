@@ -1,6 +1,6 @@
 import type { CoreTool } from 'ai'
 import type { z } from 'zod'
-import { getWorkflowLogsOperation } from '@orchentra/operations/ops/github/get-workflow-logs'
+import { getWorkflowLogsOperation } from '@orchentra/operations'
 import { type Permission, type ToolDefinition, ToolRegistry } from '../tool-registry'
 import { ensureServerOperationsWired } from '../operations-adapter'
 import { getCommitChangesTool, getFileContentTool } from './github-repo'
