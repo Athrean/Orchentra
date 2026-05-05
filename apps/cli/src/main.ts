@@ -12,6 +12,7 @@ import { runWatch } from './commands/watch'
 import { runMcpList, runMcpTest } from './commands/mcp'
 import { runMcpServe } from './commands/mcp-serve'
 import { runLogin, runLogout, runAuthStatus } from './commands/run-auth'
+import { runGraph } from './commands/run-graph'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -107,6 +108,9 @@ async function main(argv: string[]): Promise<number> {
 
     case 'auth-status':
       return runAuthStatus()
+
+    case 'graph':
+      return runGraph({ executionId: action.executionId, cwd: process.cwd() })
   }
 }
 
