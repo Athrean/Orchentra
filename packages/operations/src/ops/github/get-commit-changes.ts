@@ -3,6 +3,10 @@ import type { Operation } from '../../types'
 import { getGithubAdapter, getRepoMonitoredCheck } from '../../adapters/github'
 
 const MAX_PATCH_CHARS = 2000
+// GitHub's commit API returns up to 300 files per page. When `files.length`
+// hits this cap the real total may be higher; flag it so callers can treat
+// the count as a lower bound and fetch additional pages if they need exactness.
+const COMMIT_FILES_PAGE_CAP = 300
 
 const parameters = z.object({
   owner: z.string().describe('Repository owner'),
@@ -37,12 +41,14 @@ export const getCommitChangesOperation: Operation<Params, unknown> = {
         deletions: f.deletions,
         patch: f.patch ? f.patch.slice(0, MAX_PATCH_CHARS) : undefined,
       }))
+      const returnedFileCount = data.files?.length ?? 0
       return {
         sha: data.sha,
         message: data.commit.message,
         author: data.commit.author?.name,
         files,
-        totalChangedFiles: data.files?.length ?? 0,
+        totalChangedFiles: returnedFileCount,
+        totalChangedFilesTruncated: returnedFileCount >= COMMIT_FILES_PAGE_CAP,
       }
     } catch (err) {
       return { error: `Failed to fetch commit: ${err instanceof Error ? err.message : String(err)}` }
