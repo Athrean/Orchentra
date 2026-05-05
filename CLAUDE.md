@@ -14,17 +14,17 @@ We are **not** a "PR fixer," not a Datadog/Grafana replacement, and not a SaaS-o
 
 ### What a daily surface looks like
 
-| Surface | Status | Mechanism |
-|---|---|---|
-| CLI invocation of operations | shipped | `orchentra <verb>` against the operations registry |
-| MCP server (stdio) for external agents | shipped (Phase 1A) | `orchentra mcp serve` exposes operations as MCP tools |
-| MCP server (HTTP) + hosted | next (Phase 1B) | bearer auth + `x-orchentra-org` header + Cloudflare Worker scaffold |
-| CI failure triage | shipped | `kind='ci_failure'` from GitHub `workflow_run` webhook |
-| On-call alerting | shipped | `kind='alert'` from Sentry webhook (extend to Datadog/PagerDuty on real demand) |
-| Cron / scheduled ops | shipped | `kind='cron'` driven by `cronSpecs` table |
-| Deploy gating / canary | future | new `kind='deploy'` |
-| Cross-execution diff (postmortem, A/B) | future Phase 4 | web projection of graph |
-| Runbook automation | partial | promote skills to first-class graph nodes |
+| Surface                                | Status             | Mechanism                                                                       |
+| -------------------------------------- | ------------------ | ------------------------------------------------------------------------------- |
+| CLI invocation of operations           | shipped            | `orchentra <verb>` against the operations registry                              |
+| MCP server (stdio) for external agents | shipped (Phase 1A) | `orchentra mcp serve` exposes operations as MCP tools                           |
+| MCP server (HTTP) + hosted             | shipped (Phase 1B) | bearer auth + `x-orchentra-org` header + Cloudflare Worker scaffold             |
+| CI failure triage                      | shipped            | `kind='ci_failure'` from GitHub `workflow_run` webhook                          |
+| On-call alerting                       | shipped            | `kind='alert'` from Sentry webhook (extend to Datadog/PagerDuty on real demand) |
+| Cron / scheduled ops                   | shipped            | `kind='cron'` driven by `cronSpecs` table                                       |
+| Deploy gating / canary                 | future             | new `kind='deploy'`                                                             |
+| Cross-execution diff (postmortem, A/B) | shipped (Phase 4)  | web projection of graph                                                         |
+| Runbook automation                     | partial            | promote skills to first-class graph nodes                                       |
 
 Every new feature must answer: **what `Operation` does it add (or extend), and what `execution.kind` / node type does it produce?** If it doesn't fit the operations contract or the graph, we don't build it.
 
@@ -34,21 +34,21 @@ Every new feature must answer: **what `Operation` does it add (or extend), and w
 
 **No phase rewrites a working module.** Phase gating: if verification fails, the next phase doesn't start.
 
-| Phase | Description | Status | Reference |
-|---|---|---|---|
-| 1 | Generalize `incidents`/`tool_calls` → `executions`/`nodes` (with aliases for one release) | shipped | PR #209 / `fa636d5` |
-| 1A | Operations contract (`@orchentra/operations`) + stdio MCP server (`@orchentra/mcp-server`) + `orchentra mcp serve` | shipped | PR #295 / `7bde111` |
-| 1B | HTTP MCP transport, real approval gate, hosted Cloudflare Worker scaffold | **next** | TBD |
-| 2 | New execution kinds: Sentry `alert` + `cron` | shipped | PR #218 / `e0db7dc` |
-| 3 | `orchentra graph <executionId>` + `orchentra why <nodeId>` | queued (after 1B) | TBD |
-| 4 | Web becomes read-only projection + cross-execution diff | partial (live timeline #225) | TBD |
-| 5 | Pick next adapter from real usage data | gated on usage | — |
+| Phase | Description                                                                                                        | Status         | Reference           |
+| ----- | ------------------------------------------------------------------------------------------------------------------ | -------------- | ------------------- |
+| 1     | Generalize `incidents`/`tool_calls` → `executions`/`nodes` (with aliases for one release)                          | shipped        | PR #209 / `fa636d5` |
+| 1A    | Operations contract (`@orchentra/operations`) + stdio MCP server (`@orchentra/mcp-server`) + `orchentra mcp serve` | shipped        | PR #295 / `7bde111` |
+| 1B    | HTTP MCP transport, real approval gate, hosted Cloudflare Worker scaffold                                          | shipped        | PR #298 / `6d1c82c` |
+| 2     | New execution kinds: Sentry `alert` + `cron`                                                                       | shipped        | PR #218 / `e0db7dc` |
+| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`                                                         | shipped        | PRs #306–#310       |
+| 4     | Web becomes read-only projection + cross-execution diff                                                            | shipped        | PRs #235–#240       |
+| 5     | Pick next adapter from real usage data                                                                             | gated on usage | —                   |
 
 Side-shipped (outside the phase plan but landed): per-org LLM config (#226), test architecture refactor (#220–#224, mock-github-service / mock-openrouter-service / JobQueue DI), live agent investigation timeline (#225).
 
-### Next up — Phase 1B
+### Next up — Phase 5 (gated on usage)
 
-Phase 1B promotes the MCP server from a local stdio process to a remote-callable surface. It adds an HTTP transport on top of the same operations registry, an `Authorization: Bearer` token check, an `x-orchentra-org` header for tenant scoping, a real approval gate for write-class operations (replacing the placeholder), and a Cloudflare Worker scaffold so the hosted variant ships behind the same contract. No new operations land in 1B — the contract is frozen; only the transport, auth, and approval enforcement change.
+Phases 1 through 4 are shipped. Phase 5 — "pick the next adapter from real usage data" — has no scheduled deliverable. It opens once we have enough usage data to point at a specific second integration (deploy gating, runbook automation, or a new webhook source). Until then, parallel polish tracks (CLI UX, TUI aesthetic, doc refresh) ship independently and do not gate the roadmap.
 
 ### Verification per phase
 
@@ -113,11 +113,11 @@ The test: every changed line traces directly to the user's request.
 
 Define success criteria. Loop until verified.
 
-| Imperative ask | Verifiable goal |
-|---|---|
+| Imperative ask   | Verifiable goal                                       |
+| ---------------- | ----------------------------------------------------- |
 | "Add validation" | "Write tests for invalid inputs, then make them pass" |
-| "Fix the bug" | "Write a test that reproduces it, then make it pass" |
-| "Refactor X" | "Tests pass before and after" |
+| "Fix the bug"    | "Write a test that reproduces it, then make it pass"  |
+| "Refactor X"     | "Tests pass before and after"                         |
 
 For multi-step tasks, state a brief plan upfront:
 
@@ -176,23 +176,16 @@ The CLI is the product surface. These patterns come from studying `claw-code-mai
 
 ## 7. Module map
 
-| Module | Lives in | Notes |
-|---|---|---|
-| Operations Contract | `packages/operations` (`@orchentra/operations`) | single typed `Operation` shape (Zod input/output, trust class, handler). Source of truth for every CLI verb and MCP tool. |
-| MCP Server | `packages/mcp-server` (`@orchentra/mcp-server`) | stdio transport today; exposes the operations registry as MCP tools. HTTP transport + bearer auth land in Phase 1B. |
-| Execution Engine | `apps/server/src/agent/runner.ts`, `agent-event-bus.ts` | LLM-loop today; needs node-typed dispatch beyond tool_calls |
-| Decision Engine | `apps/server/src/agent/{prompts,tool-registry}.ts` | branches on `execution.kind`; rationale is logged to `nodes.argsJson` |
-| Observability Substrate | `apps/server/src/db/`, `nodes` table | event-tied; future `query(filter) → events` API |
-| CLI Surface | `apps/cli/src/commands/*` | rich (triage, investigate, fix, brief, watch, login, `mcp serve`). Add `graph.ts` + `why.ts` for Phase 3. |
-| Web Surface | `apps/web/app/` | constrain to read-only projection (Phase 4) |
-| Integration Adapters | `apps/server/src/routes/{webhooks,sentry}.ts`, `apps/server/src/github/*` | one adapter = one webhook source = one `kind` |
-
-### Critical files for Phase 3
-
-- `apps/cli/src/commands/builtin/graph.ts` (new) — streams ASCII tree of `nodes` for an execution.
-- `apps/cli/src/commands/builtin/why.ts` (new) — walks `parent_node_id`, prints inputs + rationale.
-- `apps/server/src/routes/executions.ts` (extend) — `GET /api/executions/:id/graph`, `GET /api/nodes/:id/lineage`.
-- `packages/cli-core/src/render/graph-tree.ts` (new) — shared formatter so Phase 4 web reuses the same tree shape.
+| Module                  | Lives in                                                                  | Notes                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Operations Contract     | `packages/operations` (`@orchentra/operations`)                           | single typed `Operation` shape (Zod input/output, trust class, handler). Source of truth for every CLI verb and MCP tool. |
+| MCP Server              | `packages/mcp-server` (`@orchentra/mcp-server`)                           | stdio + HTTP transports; exposes the operations registry as MCP tools. Bearer auth + `x-orchentra-org` enforced on HTTP.  |
+| Execution Engine        | `apps/server/src/agent/runner.ts`, `agent-event-bus.ts`                   | LLM-loop today; needs node-typed dispatch beyond tool_calls                                                               |
+| Decision Engine         | `apps/server/src/agent/{prompts,tool-registry}.ts`                        | branches on `execution.kind`; rationale is logged to `nodes.argsJson`                                                     |
+| Observability Substrate | `apps/server/src/db/`, `nodes` table                                      | event-tied; future `query(filter) → events` API                                                                           |
+| CLI Surface             | `apps/cli/src/commands/*`                                                 | rich (triage, investigate, fix, brief, watch, login, `mcp serve`, `graph`, `why`).                                        |
+| Web Surface             | `apps/web/app/`                                                           | constrain to read-only projection (Phase 4)                                                                               |
+| Integration Adapters    | `apps/server/src/routes/{webhooks,sentry}.ts`, `apps/server/src/github/*` | one adapter = one webhook source = one `kind`                                                                             |
 
 ### Module design rule
 
@@ -243,16 +236,16 @@ If a request lands in this list, reply with the policy + offer the smallest vali
 
 ## 11. Quick reference
 
-| Need | Skill / file |
-|---|---|
-| Plan a new feature from conversation context | `to-prd` skill |
-| Break a plan into shippable issues | `to-issues` skill (vertical slices) |
-| Implement an issue | `tdd` skill (red → green → refactor, vertical) |
-| Stress-test a design | `grill-me` or `domain-model` skill |
-| Find refactor opportunities | `improve-codebase-architecture` skill |
-| Set up commit-time guardrails | `setup-pre-commit` + `git-guardrails-claude-code` skills |
-| Replace `as` in tests | `migrate-to-shoehorn` skill |
-| Triage GitHub issues | `github-triage` or `triage-issue` skill |
-| Sharpen vocabulary | `ubiquitous-language` skill |
+| Need                                         | Skill / file                                             |
+| -------------------------------------------- | -------------------------------------------------------- |
+| Plan a new feature from conversation context | `to-prd` skill                                           |
+| Break a plan into shippable issues           | `to-issues` skill (vertical slices)                      |
+| Implement an issue                           | `tdd` skill (red → green → refactor, vertical)           |
+| Stress-test a design                         | `grill-me` or `domain-model` skill                       |
+| Find refactor opportunities                  | `improve-codebase-architecture` skill                    |
+| Set up commit-time guardrails                | `setup-pre-commit` + `git-guardrails-claude-code` skills |
+| Replace `as` in tests                        | `migrate-to-shoehorn` skill                              |
+| Triage GitHub issues                         | `github-triage` or `triage-issue` skill                  |
+| Sharpen vocabulary                           | `ubiquitous-language` skill                              |
 
 When unsure, default to checking the skill list with the `Skill` tool and pick the closest match. Skills evolve; always read the current version, do not work from memory of the skill's contents.
