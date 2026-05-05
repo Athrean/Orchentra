@@ -70,3 +70,15 @@ export class OperationError extends Error {
     return out
   }
 }
+
+/**
+ * Wrap any thrown value into an `OperationError` so transports always
+ * serialize through the same `toJSON` contract. Existing `OperationError`
+ * instances pass through unchanged; everything else becomes
+ * `internal_error` with a best-effort message.
+ */
+export function toOperationError(thrown: unknown): OperationError {
+  if (thrown instanceof OperationError) return thrown
+  const message = thrown instanceof Error ? thrown.message : typeof thrown === 'string' ? thrown : 'unknown error'
+  return new OperationError({ code: 'internal_error', message })
+}
