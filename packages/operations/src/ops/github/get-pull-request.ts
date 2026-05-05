@@ -8,7 +8,7 @@ const MAX_BODY_CHARS = 3000
 const parameters = z.object({
   owner: z.string().describe('Repository owner'),
   repo: z.string().describe('Repository name'),
-  number: z.number().describe('Pull request number'),
+  number: z.number().int().positive().describe('Pull request number'),
 })
 
 type Params = z.infer<typeof parameters>

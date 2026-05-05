@@ -143,6 +143,41 @@ describe('get_workflow_logs operation', () => {
     expect(result.durationSeconds).toBeNull()
   })
 
+  test('treats timed_out / cancelled / action_required jobs as failed', async () => {
+    for (const conclusion of ['timed_out', 'cancelled', 'action_required'] as const) {
+      const { adapter } = fakeAdapter({
+        jobs: [
+          {
+            id: 11,
+            name: `${conclusion} job`,
+            conclusion,
+            steps: [{ name: 'main', conclusion }],
+            started_at: null,
+            completed_at: null,
+          },
+        ],
+        logsByJobId: { 11: 'log line' },
+      })
+      setGitHubAdapter(adapter)
+      const result = ok(await dispatch(getWorkflowLogsOperation, ctx, { owner: 'my-org', repo: 'api', runId: 1 }))
+      expect(result.jobName).toBe(`${conclusion} job`)
+      expect(result.failedStep).toBe('main')
+    }
+  })
+
+  test('skips in_progress (conclusion: null) jobs when matching failed', async () => {
+    const { adapter } = fakeAdapter({
+      jobs: [
+        { id: 1, name: 'Running', conclusion: null, steps: [], started_at: null, completed_at: null },
+        { id: 2, name: 'TimedOut', conclusion: 'timed_out', steps: [], started_at: null, completed_at: null },
+      ],
+      logsByJobId: { 2: 'timeout log' },
+    })
+    setGitHubAdapter(adapter)
+    const result = ok(await dispatch(getWorkflowLogsOperation, ctx, { owner: 'my-org', repo: 'api', runId: 1 }))
+    expect(result.jobName).toBe('TimedOut')
+  })
+
   test('returns error object when upstream throws', async () => {
     const { adapter } = fakeAdapter({ listJobsThrows: new Error('rate limit exceeded') })
     setGitHubAdapter(adapter)
