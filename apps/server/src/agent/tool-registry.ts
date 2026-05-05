@@ -1,5 +1,6 @@
 import { tool, type CoreTool } from 'ai'
 import type { z } from 'zod'
+import { dispatch, type Operation, type OperationContext, type OperationScope } from '@orchentra/operations'
 
 export type Permission = 'read' | 'write' | 'admin'
 
@@ -33,6 +34,26 @@ export class ToolRegistry {
       throw new Error(`Tool already registered: ${def.name}`)
     }
     this.tools.set(def.name, def)
+  }
+
+  /**
+   * Adapt an Operation from `@orchentra/operations` to the legacy ToolDefinition
+   * shape so the in-process agent loop keeps working unchanged. Every call funnels
+   * through the shared `dispatch` so behavior is identical to other transports
+   * (CLI, MCP, future HTTP) — this is the only place the conversion happens.
+   */
+  registerOperation<TParams, TResult>(op: Operation<TParams, TResult>): void {
+    const ctx: OperationContext = {
+      remote: false,
+      allowedScopes: new Set<OperationScope>(['read', 'write', 'admin']),
+    }
+    this.register({
+      name: op.id,
+      permission: op.scope,
+      description: op.description,
+      parameters: op.parameters as z.ZodSchema,
+      execute: async (args: unknown) => dispatch(op, ctx, args),
+    })
   }
 
   setHooks(hooks: ToolHooks): void {
