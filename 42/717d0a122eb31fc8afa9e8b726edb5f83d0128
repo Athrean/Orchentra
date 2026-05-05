@@ -1,0 +1,25 @@
+apps/cli/src/commands/run-why.ts
+  27be1972cf29b313 1,9,15-40
+apps/cli/tests/why-verb.test.ts
+  27be1972cf29b313 92-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "42717d0a122eb31fc8afa9e8b726edb5f83d0128",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 80,
+      "total_deletions": 0,
+      "accepted_lines": 82,
+      "overriden_lines": 0
+    }
+  }
+}
