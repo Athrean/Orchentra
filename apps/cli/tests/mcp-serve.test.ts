@@ -178,4 +178,142 @@ describe('orchentra mcp serve (subprocess)', () => {
       await server.close()
     }
   })
+
+  test('tools/call exercises every read-scope op via the lowercase GithubAdapter', async () => {
+    fake.setScenario({
+      pulls: {
+        'my-org/api#7': {
+          title: 'Add login flow',
+          body: 'Adds login',
+          state: 'open',
+          merged: false,
+          user: { login: 'alice' },
+          base: { ref: 'main' },
+          head: { ref: 'feature/login' },
+          created_at: '2026-04-01T10:00:00Z',
+        },
+      },
+      pullFiles: {
+        'my-org/api#7': [{ filename: 'src/login.ts', status: 'added', additions: 50, deletions: 0 }],
+      },
+      pullReviewComments: {
+        'my-org/api#7': [{ user: { login: 'bob' }, body: 'looks good' }],
+      },
+      issues: {
+        'my-org/api#42': {
+          title: 'Login is broken',
+          body: 'Reproduces on main',
+          state: 'open',
+          labels: [{ name: 'bug' }],
+          user: { login: 'carol' },
+          created_at: '2026-04-02T10:00:00Z',
+        },
+      },
+      issueComments: {
+        'my-org/api#42': [{ user: { login: 'dave' }, body: 'I can repro' }],
+      },
+      commits: {
+        'my-org/api#abc1234': {
+          sha: 'abc1234',
+          commit: { message: 'fix login', author: { name: 'alice' } },
+          files: [{ filename: 'src/login.ts', status: 'modified', additions: 3, deletions: 1, patch: '@@ -1 +1 @@' }],
+        },
+      },
+      contents: {
+        'my-org/api#README.md': {
+          type: 'file',
+          path: 'README.md',
+          content: Buffer.from('hello world').toString('base64'),
+          size: 11,
+          encoding: 'base64',
+        },
+      },
+      codeSearch: {
+        total_count: 1,
+        items: [{ path: 'src/login.ts', name: 'login.ts' }],
+      },
+    })
+
+    const server = await spawnServer()
+    try {
+      await server.send({ jsonrpc: '2.0', id: 1, method: 'initialize' })
+      await server.next(1)
+
+      const calls: Array<{ id: number; name: string; args: Record<string, unknown> }> = [
+        { id: 100, name: 'get_pull_request', args: { owner: 'my-org', repo: 'api', number: 7 } },
+        { id: 101, name: 'get_issue', args: { owner: 'my-org', repo: 'api', number: 42 } },
+        { id: 102, name: 'get_commit_changes', args: { owner: 'my-org', repo: 'api', sha: 'abc1234' } },
+        { id: 103, name: 'get_file_content', args: { owner: 'my-org', repo: 'api', path: 'README.md' } },
+        { id: 104, name: 'search_code', args: { owner: 'my-org', repo: 'api', query: 'loginHandler' } },
+      ]
+
+      const results: Record<string, { isError: boolean; payload: Record<string, unknown> }> = {}
+      for (const c of calls) {
+        await server.send({
+          jsonrpc: '2.0',
+          id: c.id,
+          method: 'tools/call',
+          params: { name: c.name, arguments: c.args },
+        })
+        const resp = await server.next(c.id)
+        expect(resp.error).toBeUndefined()
+        const result = resp.result as { content: Array<{ type: string; text: string }>; isError?: boolean }
+        results[c.name] = {
+          isError: result.isError === true,
+          payload: JSON.parse(result.content[0].text) as Record<string, unknown>,
+        }
+      }
+
+      expect(results.get_pull_request.isError).toBe(false)
+      expect(results.get_pull_request.payload.title).toBe('Add login flow')
+
+      expect(results.get_issue.isError).toBe(false)
+      expect(results.get_issue.payload.title).toBe('Login is broken')
+
+      expect(results.get_commit_changes.isError).toBe(false)
+      expect(results.get_commit_changes.payload.sha).toBe('abc1234')
+
+      expect(results.get_file_content.isError).toBe(false)
+      expect(results.get_file_content.payload.content).toBe('hello world')
+
+      expect(results.search_code.isError).toBe(false)
+      const searchPayload = results.search_code.payload as { total: number; results: Array<{ path: string }> }
+      expect(searchPayload.total).toBe(1)
+      expect(searchPayload.results[0].path).toBe('src/login.ts')
+    } finally {
+      await server.close()
+    }
+  })
+
+  test('tools/call post_comment surfaces a clear permission_denied error', async () => {
+    // post_comment is scope:'write' and dispatch enforces a remote-write
+    // approval gate. Until Slice C wires per-call creds + an approval flow,
+    // this op MUST surface as isError:true with permission_denied so callers
+    // see the gap instead of a silent stub.
+    fake.setScenario({})
+    const server = await spawnServer()
+    try {
+      await server.send({ jsonrpc: '2.0', id: 1, method: 'initialize' })
+      await server.next(1)
+
+      await server.send({
+        jsonrpc: '2.0',
+        id: 200,
+        method: 'tools/call',
+        params: {
+          name: 'post_comment',
+          arguments: { owner: 'my-org', repo: 'api', prNumber: 7, body: 'hi', kind: 'note' },
+        },
+      })
+      const resp = await server.next(200)
+      expect(resp.error).toBeUndefined()
+      const result = resp.result as { content: Array<{ type: string; text: string }>; isError?: boolean }
+      expect(result.isError).toBe(true)
+      const payload = JSON.parse(result.content[0].text) as { code: string; message: string }
+      expect(payload.code).toBe('permission_denied')
+      expect(payload.message).toContain('post_comment')
+    } finally {
+      await server.close()
+    }
+  })
 })
