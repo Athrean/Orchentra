@@ -5,10 +5,10 @@
  * alias rule.
  */
 import { tool } from 'ai'
-import { z } from 'zod'
 import { setGithubAdapter, setRepoMonitoredCheck, type GithubAdapter } from '@orchentra/operations'
 import { getPullRequestOperation } from '@orchentra/operations/ops/github/get-pull-request'
 import { getIssueOperation } from '@orchentra/operations/ops/github/get-issue'
+import { searchCodeOperation } from '@orchentra/operations/ops/github/search-code'
 import { getOctokit } from '../../github/octokit'
 import { isRepoMonitored } from '../../lib/repo-cache'
 
@@ -38,38 +38,10 @@ export const getIssueTool = tool({
 })
 
 export const searchCodeTool = tool({
-  description:
-    'Search for code in the repository. Returns matching file paths. ' +
-    'Useful for finding related test files, imports, or configuration references.',
-  parameters: z.object({
-    owner: z.string().describe('Repository owner'),
-    repo: z.string().describe('Repository name'),
-    query: z.string().describe('Search query — a class name, function name, error message, or code pattern'),
-  }),
-  execute: async ({ owner, repo, query }) => {
-    const fullName = `${owner}/${repo}`
-    if (!(await isRepoMonitored(fullName))) {
-      return { error: `Repository ${fullName} is not monitored` }
-    }
-    try {
-      // Strip scope qualifiers to prevent cross-repo query injection
-      const sanitized = query.replace(/\b(repo|org|user):[^\s]+/g, '').trim()
-      const { data } = await getOctokit().search.code({
-        q: `${sanitized} repo:${owner}/${repo}`,
-        per_page: 10,
-      })
-
-      const results = data.items.map((item) => ({
-        path: item.path,
-        name: item.name,
-      }))
-
-      return {
-        total: data.total_count,
-        results,
-      }
-    } catch (err) {
-      return { error: `Failed to search code: ${err instanceof Error ? err.message : String(err)}` }
-    }
+  description: searchCodeOperation.description,
+  parameters: searchCodeOperation.parameters,
+  execute: async (args) => {
+    bindOpsAdapters()
+    return searchCodeOperation.handler(localCtx, args)
   },
 })
