@@ -28,3 +28,5 @@ export type { BrainAdapter, EpisodeRow, RunbookRow, ListEpisodesFilter, ListRunb
 export { getBrainAdapter, setBrainAdapter } from './ops/brain/adapter'
 export { recordEpisodeOperation } from './ops/brain/record-episode'
 export { listEpisodesOperation } from './ops/brain/list-episodes'
+export { getRunbookOperation } from './ops/brain/get-runbook'
+export { listRunbooksOperation } from './ops/brain/list-runbooks'
