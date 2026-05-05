@@ -1,0 +1,29 @@
+packages/operations/src/ops/github/get-issue.ts
+  27be1972cf29b313 1-59
+packages/operations/tests/get-issue.test.ts
+  27be1972cf29b313 1-150
+packages/operations/src/index.ts
+  27be1972cf29b313 24,34
+apps/server/src/agent/tools/github-issues.ts
+  27be1972cf29b313 11,32-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "41e365b53d41092835ecea4e19b39da6f8731d05",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 216,
+      "total_deletions": 42,
+      "accepted_lines": 217,
+      "overriden_lines": 0
+    }
+  }
+}
