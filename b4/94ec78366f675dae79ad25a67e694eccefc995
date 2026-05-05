@@ -1,0 +1,29 @@
+packages/operations/src/dispatch.ts
+  27be1972cf29b313 1,6-11,18-35
+packages/operations/tests/operation-error.test.ts
+  27be1972cf29b313 1-33
+packages/operations/tests/dispatch-trust-boundary.test.ts
+  27be1972cf29b313 1-151
+package.json
+  27be1972cf29b313 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b494ec78366f675dae79ad25a67e694eccefc995",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 210,
+      "total_deletions": 6,
+      "accepted_lines": 210,
+      "overriden_lines": 0
+    }
+  }
+}
