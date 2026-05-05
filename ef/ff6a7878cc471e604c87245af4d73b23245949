@@ -1,0 +1,59 @@
+apps/server/src/agent/tools/github-repo.ts
+  27be1972cf29b313 1-6,8-14,18-29,32-36,41-45
+packages/operations/src/ops/github/get-pull-request.ts
+  27be1972cf29b313 1-75
+packages/operations/src/ops/github/get-issue.ts
+  27be1972cf29b313 1-59
+apps/server/src/agent/tools/github-issues.ts
+  27be1972cf29b313 1-6,8-15,19,21-24,26-31,36-40,45-49
+package.json
+  27be1972cf29b313 17
+packages/mcp-server/tests/fixtures/test-server.ts
+  27be1972cf29b313 1-70
+packages/operations/tests/get-commit-changes.test.ts
+  27be1972cf29b313 1-125
+packages/operations/src/ops/github/get-file-content.ts
+  27be1972cf29b313 1-52
+packages/operations/tests/search-code.test.ts
+  27be1972cf29b313 1-133
+packages/operations/src/ops/index.ts
+  27be1972cf29b313 3-7,9-16
+packages/operations/src/adapters/github.ts
+  27be1972cf29b313 1-121
+packages/mcp-server/tests/stdio-integration.test.ts
+  27be1972cf29b313 1-120
+packages/operations/tests/get-file-content.test.ts
+  27be1972cf29b313 1-144
+packages/operations/tests/get-issue.test.ts
+  27be1972cf29b313 1-150
+packages/operations/tests/get-pull-request.test.ts
+  27be1972cf29b313 1-159
+packages/operations/src/ops/github/get-commit-changes.ts
+  27be1972cf29b313 1-51
+packages/operations/src/ops/github/search-code.ts
+  27be1972cf29b313 1-49
+packages/operations/src/index.ts
+  27be1972cf29b313 16-21
+apps/cli/tests/mcp-serve.test.ts
+  27be1972cf29b313 139-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "efff6a7878cc471e604c87245af4d73b23245949",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1419,
+      "total_deletions": 215,
+      "accepted_lines": 1408,
+      "overriden_lines": 0
+    }
+  }
+}
