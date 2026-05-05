@@ -1,4 +1,13 @@
-import { operations, setGitHubAdapter, type GitHubAdapter, type Operation } from '@orchentra/operations'
+import {
+  operations,
+  setGitHubAdapter,
+  setGithubAdapter,
+  setRepoMonitoredCheck,
+  type GitHubAdapter,
+  type GithubAdapter,
+  type Operation,
+  type RepoMonitoredCheck,
+} from '@orchentra/operations'
 import { startStdioServer } from '@orchentra/mcp-server'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import { CLI_NAME, CLI_VERSION } from '../version'
@@ -31,6 +40,15 @@ export function buildToolsJson(ops: readonly Operation[]): ToolDefinitionJson[] 
  * operation's JSONSchema and exit 0 without starting the server.
  *
  * stdio is the protocol channel, so all CLI logging MUST go to stderr.
+ *
+ * Six of the seven exposed tools resolve through the lowercase `GithubAdapter`
+ * + `RepoMonitoredCheck` surface; only `get_workflow_logs` uses the uppercase
+ * `GitHubAdapter`. Both adapter surfaces must be wired here or the read ops
+ * throw "GithubAdapter is not configured" at first call.
+ *
+ * `post_comment` is scope:'write' and the operation dispatcher rejects remote
+ * write calls with `permission_denied`. That gate stays in place until a
+ * future slice wires per-call creds + an approval flow over MCP.
  */
 export async function runMcpServe(options: McpServeOptions = { printToolsJson: false }): Promise<number> {
   if (options.printToolsJson) {
@@ -39,7 +57,10 @@ export async function runMcpServe(options: McpServeOptions = { printToolsJson: f
     return 0
   }
 
-  setGitHubAdapter(buildGitHubAdapter())
+  const allowedRepos = parseAllowedRepos(process.env.ORCHENTRA_ALLOWED_REPOS)
+  setGitHubAdapter(buildGitHubAdapter(allowedRepos))
+  setGithubAdapter(buildLowercaseGithubAdapter())
+  setRepoMonitoredCheck(buildRepoMonitoredCheck(allowedRepos))
   process.stderr.write(`${CLI_NAME} ${CLI_VERSION} mcp-server (stdio) ready\n`)
   await startStdioServer(operations, {
     serverInfo: { name: CLI_NAME, version: CLI_VERSION },
@@ -47,11 +68,16 @@ export async function runMcpServe(options: McpServeOptions = { printToolsJson: f
   return 0
 }
 
-function buildGitHubAdapter(): GitHubAdapter {
+interface GitHubFetchers {
+  baseUrl: string
+  headers: Record<string, string>
+  fetchJson: (path: string) => Promise<unknown>
+  fetchText: (path: string) => Promise<string>
+}
+
+function buildGitHubFetchers(): GitHubFetchers {
   const baseUrl = process.env.ORCHENTRA_MCP_FAKE_GH_BASE ?? process.env.GITHUB_API_BASE_URL ?? 'https://api.github.com'
   const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? ''
-  const allowedRepos = parseAllowedRepos(process.env.ORCHENTRA_ALLOWED_REPOS)
-
   const headers: Record<string, string> = { accept: 'application/vnd.github+json' }
   if (token) headers.authorization = `token ${token}`
 
@@ -65,6 +91,12 @@ function buildGitHubAdapter(): GitHubAdapter {
     if (!r.ok) throw new Error(`GitHub ${r.status} ${r.statusText} at ${path}`)
     return r.text()
   }
+
+  return { baseUrl, headers, fetchJson, fetchText }
+}
+
+function buildGitHubAdapter(allowedRepos: Set<string> | null): GitHubAdapter {
+  const { fetchJson, fetchText } = buildGitHubFetchers()
 
   return {
     isRepoAllowed: async (fullName) => {
@@ -85,6 +117,79 @@ function buildGitHubAdapter(): GitHubAdapter {
       return { jobs: data.jobs }
     },
     downloadJobLogs: async ({ owner, repo, jobId }) => fetchText(`/repos/${owner}/${repo}/actions/jobs/${jobId}/logs`),
+  }
+}
+
+function buildLowercaseGithubAdapter(): GithubAdapter {
+  const { fetchJson } = buildGitHubFetchers()
+
+  function qs(params: Record<string, string | number | undefined>): string {
+    const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null)
+    if (entries.length === 0) return ''
+    const search = new URLSearchParams()
+    for (const [k, v] of entries) search.set(k, String(v))
+    return `?${search.toString()}`
+  }
+
+  return {
+    pulls: {
+      get: async ({ owner, repo, pull_number }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/pulls/${pull_number}`)) as Awaited<
+          ReturnType<GithubAdapter['pulls']['get']>
+        >['data'],
+      }),
+      listFiles: async ({ owner, repo, pull_number, per_page }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/pulls/${pull_number}/files${qs({ per_page })}`)) as Awaited<
+          ReturnType<GithubAdapter['pulls']['listFiles']>
+        >['data'],
+      }),
+      listReviewComments: async ({ owner, repo, pull_number, per_page }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/pulls/${pull_number}/comments${qs({ per_page })}`)) as Awaited<
+          ReturnType<GithubAdapter['pulls']['listReviewComments']>
+        >['data'],
+      }),
+    },
+    issues: {
+      get: async ({ owner, repo, issue_number }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/issues/${issue_number}`)) as Awaited<
+          ReturnType<GithubAdapter['issues']['get']>
+        >['data'],
+      }),
+      listComments: async ({ owner, repo, issue_number, per_page }) => ({
+        data: (await fetchJson(
+          `/repos/${owner}/${repo}/issues/${issue_number}/comments${qs({ per_page })}`,
+        )) as Awaited<ReturnType<GithubAdapter['issues']['listComments']>>['data'],
+      }),
+    },
+    repos: {
+      getCommit: async ({ owner, repo, ref }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}`)) as Awaited<
+          ReturnType<GithubAdapter['repos']['getCommit']>
+        >['data'],
+      }),
+      getContent: async ({ owner, repo, path, ref }) => ({
+        // GitHub's contents API encodes path segments individually; encoding
+        // the full path with encodeURIComponent would escape '/' separators
+        // and 404 the request.
+        data: (await fetchJson(
+          `/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}${qs({ ref })}`,
+        )) as Awaited<ReturnType<GithubAdapter['repos']['getContent']>>['data'],
+      }),
+    },
+    search: {
+      code: async ({ q, per_page }) => ({
+        data: (await fetchJson(`/search/code${qs({ q, per_page })}`)) as Awaited<
+          ReturnType<GithubAdapter['search']['code']>
+        >['data'],
+      }),
+    },
+  }
+}
+
+function buildRepoMonitoredCheck(allowedRepos: Set<string> | null): RepoMonitoredCheck {
+  return async (fullName) => {
+    if (!allowedRepos) return true
+    return allowedRepos.has(fullName.toLowerCase())
   }
 }
 
