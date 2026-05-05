@@ -89,4 +89,56 @@ describe('runWhy (verb path)', () => {
     expect(code).not.toBe(0)
     expect(cap.stderr.join('')).toContain('node not found')
   })
+
+  test('outputFormat=json prints a single parseable JSON object matching the DTO shape', async () => {
+    const cap = captureStreams()
+    const node = fakeNode({ id: 'leaf', argsJson: '{"reason":"alert"}', resultJson: '{"ok":true}' })
+    const ancestors = [
+      fakeNode({ id: 'root', parentNodeId: null, round: 1 }),
+      fakeNode({ id: 'mid', parentNodeId: 'root', round: 2 }),
+    ]
+    let code: number
+    try {
+      code = await runWhy({
+        nodeId: 'leaf',
+        cwd: '/work',
+        outputFormat: 'json',
+        fetchLineage: async () => ({ node, ancestors }),
+        resolveConfig: () => ({ serverUrl: 'https://api', orgId: 'o1', apiKey: 'k' }),
+      })
+    } finally {
+      cap.restore()
+    }
+    expect(code).toBe(0)
+    const text = cap.stdout.join('')
+    const parsed = JSON.parse(text)
+    expect(parsed).toEqual({
+      node,
+      ancestors,
+      argsJson: node.argsJson,
+      resultJson: node.resultJson,
+    })
+    expect(cap.stderr.join('')).toBe('')
+  })
+
+  test('outputFormat=json surfaces fetch errors to stderr with non-zero exit', async () => {
+    const cap = captureStreams()
+    let code: number
+    try {
+      code = await runWhy({
+        nodeId: 'missing',
+        cwd: '/work',
+        outputFormat: 'json',
+        fetchLineage: async () => {
+          throw new Error('boom')
+        },
+        resolveConfig: () => ({ serverUrl: '', orgId: '', apiKey: '' }),
+      })
+    } finally {
+      cap.restore()
+    }
+    expect(code).not.toBe(0)
+    expect(cap.stderr.join('')).toContain('boom')
+    expect(cap.stdout.join('')).toBe('')
+  })
 })

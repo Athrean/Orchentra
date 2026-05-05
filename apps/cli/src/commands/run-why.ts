@@ -1,3 +1,4 @@
+import { fetchNodeLineage, resolveOrchentraConfig } from '@orchentra/cli-api'
 import { createWhyCommand, type WhyCommandDeps } from './builtin/why'
 import type { CommandContext } from './registry'
 import type { SessionControl } from '@orchentra/cli-core'
@@ -5,11 +6,38 @@ import type { SessionControl } from '@orchentra/cli-core'
 export interface RunWhyOptions {
   readonly nodeId: string
   readonly cwd: string
+  readonly outputFormat?: 'tree' | 'json'
   readonly fetchLineage?: WhyCommandDeps['fetchLineage']
   readonly resolveConfig?: WhyCommandDeps['resolveConfig']
 }
 
 export async function runWhy(options: RunWhyOptions): Promise<number> {
+  if (options.outputFormat === 'json') {
+    const fetchLineage = options.fetchLineage ?? fetchNodeLineage
+    const resolveConfig = options.resolveConfig ?? resolveOrchentraConfig
+    try {
+      const cfg = resolveConfig({ cwd: options.cwd })
+      const lineage = await fetchLineage({
+        serverUrl: cfg.serverUrl,
+        orgId: cfg.orgId,
+        apiKey: cfg.apiKey,
+        nodeId: options.nodeId,
+      })
+      process.stdout.write(
+        JSON.stringify({
+          node: lineage.node,
+          ancestors: lineage.ancestors,
+          argsJson: lineage.node.argsJson,
+          resultJson: lineage.node.resultJson,
+        }) + '\n',
+      )
+      return 0
+    } catch (err) {
+      process.stderr.write(`error: ${err instanceof Error ? err.message : String(err)}\n`)
+      return 1
+    }
+  }
+
   const deps: Partial<WhyCommandDeps> = {}
   if (options.fetchLineage) deps.fetchLineage = options.fetchLineage
   if (options.resolveConfig) deps.resolveConfig = options.resolveConfig

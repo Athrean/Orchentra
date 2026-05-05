@@ -1,4 +1,5 @@
 import { emptyUsage, type SessionControl } from '@orchentra/cli-core'
+import { fetchExecutionGraph, resolveOrchentraConfig } from '@orchentra/cli-api'
 import { createGraphCommand, type GraphCommandDeps } from './builtin/graph'
 import type { CommandContext } from './registry'
 import type { UiOutput } from './ui-output'
@@ -6,6 +7,7 @@ import type { UiOutput } from './ui-output'
 export interface RunGraphOptions {
   readonly executionId: string
   readonly cwd: string
+  readonly outputFormat?: 'tree' | 'json'
   readonly deps?: GraphCommandDeps
 }
 
@@ -19,6 +21,25 @@ export async function runGraph(options: RunGraphOptions): Promise<number> {
   if (!options.executionId) {
     process.stderr.write('usage: orchentra graph <executionId>\n')
     return 1
+  }
+
+  if (options.outputFormat === 'json') {
+    const fetchGraph = options.deps?.fetchGraph ?? fetchExecutionGraph
+    const resolveConfig = options.deps?.resolveConfig ?? resolveOrchentraConfig
+    try {
+      const cfg = resolveConfig({ cwd: options.cwd })
+      const result = await fetchGraph({
+        serverUrl: cfg.serverUrl,
+        orgId: cfg.orgId,
+        apiKey: cfg.apiKey,
+        executionId: options.executionId,
+      })
+      process.stdout.write(JSON.stringify({ executionId: result.executionId, nodes: result.nodes }) + '\n')
+      return 0
+    } catch (err) {
+      process.stderr.write(`error: ${err instanceof Error ? err.message : String(err)}\n`)
+      return 1
+    }
   }
 
   let warned = false
