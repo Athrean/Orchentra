@@ -15,6 +15,7 @@
     "test": "bun test tests/"
   },
   "dependencies": {
+    "@orchentra/brain": "workspace:*",
     "zod": "^3.24.0"
   },
   "devDependencies": {

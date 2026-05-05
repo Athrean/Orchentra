@@ -136,7 +136,6 @@
       "version": "0.1.0",
       "dependencies": {
         "@orchentra/db": "workspace:*",
-        "@orchentra/operations": "workspace:*",
         "drizzle-orm": "^0.39.0",
         "zod": "^3.24.0",
       },
@@ -255,6 +254,7 @@
       "name": "@orchentra/operations",
       "version": "0.1.0",
       "dependencies": {
+        "@orchentra/brain": "workspace:*",
         "zod": "^3.24.0",
       },
       "devDependencies": {
