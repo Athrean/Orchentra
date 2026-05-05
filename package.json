@@ -14,7 +14,7 @@
     "db:generate": "bun run --filter './packages/db' generate",
     "db:migrate": "bun run --filter './packages/db' migrate",
     "test": "bun run --filter @orchentra/server test",
-    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests packages/operations/tests packages/mcp-server/tests apps/cli/tests",
+    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests packages/operations/tests packages/mcp-server/tests apps/cli/tests apps/mcp-host/tests",
     "typecheck": "turbo run typecheck",
     "prepare": "husky"
   },
