@@ -182,6 +182,19 @@
         "typescript": "^5.0.0",
       },
     },
+    "packages/mcp-server": {
+      "name": "@orchentra/mcp-server",
+      "version": "0.1.0",
+      "dependencies": {
+        "@orchentra/operations": "workspace:*",
+        "zod": "^3.24.0",
+      },
+      "devDependencies": {
+        "@orchentra/typescript-config": "workspace:*",
+        "@types/bun": "latest",
+        "typescript": "^5.9.3",
+      },
+    },
     "packages/operations": {
       "name": "@orchentra/operations",
       "version": "0.1.0",
@@ -449,6 +462,8 @@
     "@orchentra/db": ["@orchentra/db@workspace:packages/db"],
 
     "@orchentra/eslint-config": ["@orchentra/eslint-config@workspace:packages/config-eslint"],
+
+    "@orchentra/mcp-server": ["@orchentra/mcp-server@workspace:packages/mcp-server"],
 
     "@orchentra/operations": ["@orchentra/operations@workspace:packages/operations"],
 
