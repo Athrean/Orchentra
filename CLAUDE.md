@@ -46,9 +46,9 @@ Every new feature must answer: **what `Operation` does it add (or extend), and w
 
 Side-shipped (outside the phase plan but landed): per-org LLM config (#226), test architecture refactor (#220–#224, mock-github-service / mock-openrouter-service / JobQueue DI), live agent investigation timeline (#225).
 
-### Next up — Phase 1B
+### Next up — Phase 5 (gated on usage)
 
-Phase 1B promotes the MCP server from a local stdio process to a remote-callable surface. It adds an HTTP transport on top of the same operations registry, an `Authorization: Bearer` token check, an `x-orchentra-org` header for tenant scoping, a real approval gate for write-class operations (replacing the placeholder), and a Cloudflare Worker scaffold so the hosted variant ships behind the same contract. No new operations land in 1B — the contract is frozen; only the transport, auth, and approval enforcement change.
+Phases 1 through 4 are shipped. Phase 5 — "pick the next adapter from real usage data" — has no scheduled deliverable. It opens once we have enough usage data to point at a specific second integration (deploy gating, runbook automation, or a new webhook source). Until then, parallel polish tracks (CLI UX, TUI aesthetic, doc refresh) ship independently and do not gate the roadmap.
 
 ### Verification per phase
 
@@ -179,20 +179,13 @@ The CLI is the product surface. These patterns come from studying `claw-code-mai
 | Module                  | Lives in                                                                  | Notes                                                                                                                     |
 | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Operations Contract     | `packages/operations` (`@orchentra/operations`)                           | single typed `Operation` shape (Zod input/output, trust class, handler). Source of truth for every CLI verb and MCP tool. |
-| MCP Server              | `packages/mcp-server` (`@orchentra/mcp-server`)                           | stdio transport today; exposes the operations registry as MCP tools. HTTP transport + bearer auth land in Phase 1B.       |
+| MCP Server              | `packages/mcp-server` (`@orchentra/mcp-server`)                           | stdio + HTTP transports; exposes the operations registry as MCP tools. Bearer auth + `x-orchentra-org` enforced on HTTP.  |
 | Execution Engine        | `apps/server/src/agent/runner.ts`, `agent-event-bus.ts`                   | LLM-loop today; needs node-typed dispatch beyond tool_calls                                                               |
 | Decision Engine         | `apps/server/src/agent/{prompts,tool-registry}.ts`                        | branches on `execution.kind`; rationale is logged to `nodes.argsJson`                                                     |
 | Observability Substrate | `apps/server/src/db/`, `nodes` table                                      | event-tied; future `query(filter) → events` API                                                                           |
-| CLI Surface             | `apps/cli/src/commands/*`                                                 | rich (triage, investigate, fix, brief, watch, login, `mcp serve`). Add `graph.ts` + `why.ts` for Phase 3.                 |
+| CLI Surface             | `apps/cli/src/commands/*`                                                 | rich (triage, investigate, fix, brief, watch, login, `mcp serve`, `graph`, `why`).                                        |
 | Web Surface             | `apps/web/app/`                                                           | constrain to read-only projection (Phase 4)                                                                               |
 | Integration Adapters    | `apps/server/src/routes/{webhooks,sentry}.ts`, `apps/server/src/github/*` | one adapter = one webhook source = one `kind`                                                                             |
-
-### Critical files for Phase 3
-
-- `apps/cli/src/commands/builtin/graph.ts` (new) — streams ASCII tree of `nodes` for an execution.
-- `apps/cli/src/commands/builtin/why.ts` (new) — walks `parent_node_id`, prints inputs + rationale.
-- `apps/server/src/routes/executions.ts` (extend) — `GET /api/executions/:id/graph`, `GET /api/nodes/:id/lineage`.
-- `packages/cli-core/src/render/graph-tree.ts` (new) — shared formatter so Phase 4 web reuses the same tree shape.
 
 ### Module design rule
 
