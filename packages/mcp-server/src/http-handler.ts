@@ -1,5 +1,6 @@
 import { OperationError, type OperationErrorPayload } from '@orchentra/operations'
-import type { HandleRpcDeps } from './handle-rpc'
+import { handleRpc, type HandleRpcDeps } from './handle-rpc'
+import type { IncomingMessage } from './protocol'
 
 /**
  * HTTP transport adapter for the MCP server.
@@ -19,7 +20,7 @@ import type { HandleRpcDeps } from './handle-rpc'
  * Errors serialize to the same `OperationError.toJSON()` shape as stdio so
  * downstream MCP clients see consistent payloads regardless of transport.
  */
-export async function handleHttpRpc(req: Request, _deps: HandleRpcDeps): Promise<Response> {
+export async function handleHttpRpc(req: Request, deps: HandleRpcDeps): Promise<Response> {
   const authHeader = req.headers.get('authorization')
   const bearer = parseBearer(authHeader)
   if (!bearer) {
@@ -39,10 +40,40 @@ export async function handleHttpRpc(req: Request, _deps: HandleRpcDeps): Promise
     })
   }
 
-  // Slice 3 wires the request body through handleRpc.
-  return errorResponse(500, {
-    code: 'internal_error',
-    message: 'http transport not yet wired to handleRpc',
+  let parsed: IncomingMessage
+  try {
+    parsed = (await req.json()) as IncomingMessage
+  } catch {
+    return errorResponse(400, {
+      code: 'invalid_input',
+      message: 'request body is not valid JSON',
+    })
+  }
+
+  if (!parsed || typeof parsed.method !== 'string') {
+    return errorResponse(400, {
+      code: 'invalid_input',
+      message: 'request body is not a valid JSON-RPC message (missing method)',
+    })
+  }
+
+  let response
+  try {
+    response = await handleRpc(parsed, deps)
+  } catch (err) {
+    return errorResponse(500, {
+      code: 'internal_error',
+      message: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  if (response === null) {
+    return new Response(null, { status: 204 })
+  }
+
+  return new Response(JSON.stringify(response), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
   })
 }
 
