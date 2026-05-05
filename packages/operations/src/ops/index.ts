@@ -6,8 +6,14 @@ import { getPullRequestOperation } from './github/get-pull-request'
 import { getIssueOperation } from './github/get-issue'
 import { searchCodeOperation } from './github/search-code'
 import { postCommentOp } from './github/post-comment'
+import { recordEpisodeOperation } from './brain/record-episode'
+import { listEpisodesOperation } from './brain/list-episodes'
+import { getRunbookOperation } from './brain/get-runbook'
+import { listRunbooksOperation } from './brain/list-runbooks'
+import { exportSkillsMdOperation } from './brain/export-skills-md'
 
 export const operations: Operation[] = [
+  // GitHub adapter ops (Phase 1A)
   getWorkflowLogsOperation as Operation,
   getCommitChangesOperation as Operation,
   getFileContentOperation as Operation,
@@ -15,4 +21,10 @@ export const operations: Operation[] = [
   getIssueOperation as Operation,
   searchCodeOperation as Operation,
   postCommentOp as Operation,
+  // Brain ops (Phase 2 skeleton)
+  recordEpisodeOperation as Operation,
+  listEpisodesOperation as Operation,
+  getRunbookOperation as Operation,
+  listRunbooksOperation as Operation,
+  exportSkillsMdOperation as Operation,
 ]
