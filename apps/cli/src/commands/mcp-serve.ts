@@ -1,15 +1,44 @@
-import { operations, setGitHubAdapter, type GitHubAdapter } from '@orchentra/operations'
+import { operations, setGitHubAdapter, type GitHubAdapter, type Operation } from '@orchentra/operations'
 import { startStdioServer } from '@orchentra/mcp-server'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import { CLI_NAME, CLI_VERSION } from '../version'
 
+export interface McpServeOptions {
+  printToolsJson: boolean
+}
+
 /**
- * Boot the stdio MCP server. Wires a fetch-based GitHub adapter using either
- * the env-configured token (production) or — when `ORCHENTRA_MCP_FAKE_GH_BASE`
- * is set — an unauthenticated adapter pointed at a test fake.
+ * Shape of one entry in the MCP `tools/list` response. Mirrored exactly so
+ * `--print-tools-json` output is a snapshot of `tools/list` without booting
+ * the server.
+ */
+export interface ToolDefinitionJson {
+  name: string
+  description: string
+  inputSchema: Record<string, unknown>
+}
+
+export function buildToolsJson(ops: readonly Operation[]): ToolDefinitionJson[] {
+  return ops.map((op) => ({
+    name: op.id,
+    description: op.description,
+    inputSchema: zodToJsonSchema(op.parameters, { target: 'jsonSchema7' }) as Record<string, unknown>,
+  }))
+}
+
+/**
+ * Boot the stdio MCP server, OR (with `--print-tools-json`) print every
+ * operation's JSONSchema and exit 0 without starting the server.
  *
  * stdio is the protocol channel, so all CLI logging MUST go to stderr.
  */
-export async function runMcpServe(): Promise<number> {
+export async function runMcpServe(options: McpServeOptions = { printToolsJson: false }): Promise<number> {
+  if (options.printToolsJson) {
+    const tools = buildToolsJson(operations)
+    process.stdout.write(JSON.stringify(tools, null, 2) + '\n')
+    return 0
+  }
+
   setGitHubAdapter(buildGitHubAdapter())
   process.stderr.write(`${CLI_NAME} ${CLI_VERSION} mcp-server (stdio) ready\n`)
   await startStdioServer(operations, {

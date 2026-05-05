@@ -96,7 +96,7 @@ async function main(argv: string[]): Promise<number> {
 
     case 'mcp':
       if (action.sub === 'list') return runMcpList(process.cwd())
-      if (action.sub === 'serve') return runMcpServe()
+      if (action.sub === 'serve') return runMcpServe({ printToolsJson: action.printToolsJson })
       return runMcpTest(action.name, process.cwd())
 
     case 'login':

@@ -27,7 +27,7 @@ export type CliAction =
   | { kind: 'watch'; repo: string; intervalMs?: number }
   | { kind: 'mcp'; sub: 'list' }
   | { kind: 'mcp'; sub: 'test'; name: string }
-  | { kind: 'mcp'; sub: 'serve' }
+  | { kind: 'mcp'; sub: 'serve'; printToolsJson: boolean }
   | { kind: 'login'; provider?: string; apiKey?: string }
   | { kind: 'logout'; provider: string }
   | { kind: 'auth-status' }
@@ -152,10 +152,10 @@ USAGE
   orchentra session replay <id|latest>    Replay a recorded session as JSONL events
   orchentra doctor                        Check auth, provider, and workspace health
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
-  orchentra mcp list                      List configured MCP servers + connection status
-  orchentra mcp test <name>               Connect to one MCP server and print its tools
-  orchentra mcp serve                     Run as a stdio MCP server exposing Orchentra ops
-  orchentra login <provider> [--api-key]  Sign in (anthropic|gemini|github|openai|xai|dashscope)
+  orchentra mcp list                       List configured MCP servers + connection status
+  orchentra mcp test <name>                Connect to one MCP server and print its tools
+  orchentra mcp serve [--print-tools-json] Start the stdio MCP server (or print tool schemas)
+  orchentra login <provider> [--api-key]   Sign in (anthropic|gemini|github|openai|xai|dashscope)
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra whoami                        Show signed-in providers and credential sources
   orchentra --version                     Print version
@@ -252,7 +252,16 @@ function parseMcpArgs(rest: string[]): CliAction {
     return { kind: 'mcp', sub: 'test', name }
   }
   if (sub === 'serve') {
-    return { kind: 'mcp', sub: 'serve' }
+    let printToolsJson = false
+    for (let i = 1; i < rest.length; i++) {
+      const arg = rest[i]
+      if (arg === '--print-tools-json') {
+        printToolsJson = true
+      } else {
+        throw new Error(`mcp serve: unknown flag: ${arg}`)
+      }
+    }
+    return { kind: 'mcp', sub: 'serve', printToolsJson }
   }
   throw new Error(`mcp: unknown subcommand '${sub}'. expected 'list', 'test <name>', or 'serve'`)
 }
