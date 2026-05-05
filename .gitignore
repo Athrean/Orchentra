@@ -34,6 +34,7 @@ CLAUDE.md
 .claude/settings.json
 .claude/skills/
 .claude/hooks/
+.claude/worktrees/
 .claude.env
 .mcp.json
 
@@ -48,3 +49,6 @@ claw-code-main-3/
 gemini-cli-main/
 codebuff-main/
 opencode-dev/
+gbrain-master/
+rowboat-main/
+supermemory-main/

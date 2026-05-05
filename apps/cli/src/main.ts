@@ -10,6 +10,7 @@ import { runSessionReplay } from './commands/session-replay'
 import { runDoctor } from './commands/doctor'
 import { runWatch } from './commands/watch'
 import { runMcpList, runMcpTest } from './commands/mcp'
+import { runMcpServe } from './commands/mcp-serve'
 import { runLogin, runLogout, runAuthStatus } from './commands/run-auth'
 
 async function main(argv: string[]): Promise<number> {
@@ -95,6 +96,7 @@ async function main(argv: string[]): Promise<number> {
 
     case 'mcp':
       if (action.sub === 'list') return runMcpList(process.cwd())
+      if (action.sub === 'serve') return runMcpServe({ printToolsJson: action.printToolsJson })
       return runMcpTest(action.name, process.cwd())
 
     case 'login':
