@@ -150,6 +150,20 @@ describe('get_pull_request operation', () => {
     expect((captured as OperationError).code).toBe('invalid_input')
   })
 
+  test('dispatch rejects non-positive or non-integer PR number', async () => {
+    setGithubAdapter(fakeAdapter())
+    for (const number of [0, -1, 1.5]) {
+      let captured: unknown
+      try {
+        await dispatch(getPullRequestOperation, localCtx, { owner: 'my-org', repo: 'api', number })
+      } catch (err) {
+        captured = err
+      }
+      expect(captured).toBeInstanceOf(OperationError)
+      expect((captured as OperationError).code).toBe('invalid_input')
+    }
+  })
+
   test('operation metadata is read-scoped, non-mutating, non-localOnly', () => {
     expect(getPullRequestOperation.id).toBe('get_pull_request')
     expect(getPullRequestOperation.scope).toBe('read')
