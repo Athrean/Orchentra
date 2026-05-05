@@ -5,6 +5,7 @@ import { getFileContentOperation } from './github/get-file-content'
 import { getPullRequestOperation } from './github/get-pull-request'
 import { getIssueOperation } from './github/get-issue'
 import { searchCodeOperation } from './github/search-code'
+import { postCommentOp } from './github/post-comment'
 
 export const operations: Operation[] = [
   getWorkflowLogsOperation as Operation,
@@ -13,4 +14,5 @@ export const operations: Operation[] = [
   getPullRequestOperation as Operation,
   getIssueOperation as Operation,
   searchCodeOperation as Operation,
+  postCommentOp as Operation,
 ]
