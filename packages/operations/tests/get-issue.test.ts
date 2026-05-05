@@ -141,6 +141,20 @@ describe('get_issue operation', () => {
     expect((captured as OperationError).code).toBe('invalid_input')
   })
 
+  test('dispatch rejects non-positive or non-integer issue number', async () => {
+    setGithubAdapter(fakeAdapter())
+    for (const number of [0, -1, 1.5]) {
+      let captured: unknown
+      try {
+        await dispatch(getIssueOperation, localCtx, { owner: 'my-org', repo: 'api', number })
+      } catch (err) {
+        captured = err
+      }
+      expect(captured).toBeInstanceOf(OperationError)
+      expect((captured as OperationError).code).toBe('invalid_input')
+    }
+  })
+
   test('operation metadata is read-scoped, non-mutating, non-localOnly', () => {
     expect(getIssueOperation.id).toBe('get_issue')
     expect(getIssueOperation.scope).toBe('read')
