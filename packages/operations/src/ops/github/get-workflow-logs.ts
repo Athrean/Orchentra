@@ -4,6 +4,11 @@ import { getGitHubAdapter } from './adapter'
 
 const MAX_LOG_LINES = 300
 
+// Terminal non-success conclusions reported by GitHub Actions for a job/step.
+// Anything in this set means "did not pass" and the logs are worth fetching.
+// `null` (in_progress) and `success`/`neutral`/`skipped` are intentionally excluded.
+const FAILED_CONCLUSIONS = new Set(['failure', 'timed_out', 'cancelled', 'action_required', 'startup_failure'])
+
 const Params = z.object({
   owner: z.string().describe('Repository owner'),
   repo: z.string().describe('Repository name'),
@@ -35,7 +40,7 @@ export async function fetchFailedJobLogs(owner: string, repo: string, runId: num
 
     const { jobs } = await adapter.listJobsForWorkflowRun({ owner, repo, runId })
 
-    const failedJob = jobs.find((j) => j.conclusion === 'failure')
+    const failedJob = jobs.find((j) => j.conclusion !== null && FAILED_CONCLUSIONS.has(j.conclusion))
     if (!failedJob) {
       return { error: 'No failed job found in this workflow run' }
     }
@@ -44,7 +49,9 @@ export async function fetchFailedJobLogs(owner: string, repo: string, runId: num
     const lines = rawLogs.split('\n')
     const relevant = lines.slice(-MAX_LOG_LINES).join('\n')
 
-    const failedStep = failedJob.steps?.find((s) => s.conclusion === 'failure')?.name ?? null
+    const failedStep =
+      failedJob.steps?.find((s) => typeof s.conclusion === 'string' && FAILED_CONCLUSIONS.has(s.conclusion))?.name ??
+      null
 
     const durationSeconds =
       failedJob.completed_at && failedJob.started_at
