@@ -131,6 +131,23 @@
         "typescript": "^5.7.0",
       },
     },
+    "packages/brain": {
+      "name": "@orchentra/brain",
+      "version": "0.1.0",
+      "dependencies": {
+        "@orchentra/db": "workspace:*",
+        "@orchentra/operations": "workspace:*",
+        "drizzle-orm": "^0.39.0",
+        "zod": "^3.24.0",
+      },
+      "devDependencies": {
+        "@orchentra/eslint-config": "workspace:*",
+        "@orchentra/typescript-config": "workspace:*",
+        "@types/bun": "latest",
+        "eslint": "^8.57.0",
+        "typescript": "^5.9.3",
+      },
+    },
     "packages/cli-api": {
       "name": "@orchentra/cli-api",
       "version": "0.1.0",
@@ -513,6 +530,8 @@
     "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@0.5.0", "", { "dependencies": { "@ai-sdk/provider": "1.0.9", "@ai-sdk/provider-utils": "2.1.10" }, "peerDependencies": { "zod": "^3.0.0" } }, "sha512-IQbpWT9okY78tGHQuSgahKavgVTdDnGF4HoDhBB2oFBz7YUMvmRyG4SCYmKqhPx+FMSrN7zKWhSKBLbshadwmQ=="],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
+
+    "@orchentra/brain": ["@orchentra/brain@workspace:packages/brain"],
 
     "@orchentra/cli": ["@orchentra/cli@workspace:apps/cli"],
 
