@@ -1,0 +1,23 @@
+apps/server/tests/why-rationale.test.ts
+  27be1972cf29b313 1-192,194-210,212-270,272-335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "71cb0e4d1f928c0a0deace2e6c2f82e3c44cb3b3",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 325,
+      "total_deletions": 3,
+      "accepted_lines": 332,
+      "overriden_lines": 3
+    }
+  }
+}
