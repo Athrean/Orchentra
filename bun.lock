@@ -44,6 +44,20 @@
         "typescript": "^5.9.3",
       },
     },
+    "apps/install-mcp": {
+      "name": "@orchentra/install-mcp",
+      "version": "0.1.0",
+      "bin": {
+        "install-mcp": "./src/main.ts",
+      },
+      "devDependencies": {
+        "@orchentra/eslint-config": "workspace:*",
+        "@orchentra/typescript-config": "workspace:*",
+        "@types/bun": "latest",
+        "eslint": "^8.57.0",
+        "typescript": "^5.9.3",
+      },
+    },
     "apps/mcp-host": {
       "name": "@orchentra/mcp-host",
       "version": "0.1.0",
@@ -513,6 +527,8 @@
     "@orchentra/db": ["@orchentra/db@workspace:packages/db"],
 
     "@orchentra/eslint-config": ["@orchentra/eslint-config@workspace:packages/config-eslint"],
+
+    "@orchentra/install-mcp": ["@orchentra/install-mcp@workspace:apps/install-mcp"],
 
     "@orchentra/mcp-host": ["@orchentra/mcp-host@workspace:apps/mcp-host"],
 
