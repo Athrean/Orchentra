@@ -13,6 +13,7 @@ import { runMcpList, runMcpTest } from './commands/mcp'
 import { runMcpServe } from './commands/mcp-serve'
 import { runLogin, runLogout, runAuthStatus } from './commands/run-auth'
 import { runGraph } from './commands/run-graph'
+import { runWhy } from './commands/run-why'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -111,6 +112,9 @@ async function main(argv: string[]): Promise<number> {
 
     case 'graph':
       return runGraph({ executionId: action.executionId, cwd: process.cwd() })
+
+    case 'why':
+      return runWhy({ nodeId: action.nodeId, cwd: process.cwd() })
   }
 }
 
