@@ -171,3 +171,84 @@ describe('handleHttpRpc — happy path through handleRpc', () => {
     expect(res.status).toBe(204)
   })
 })
+
+describe('handleHttpRpc — approval gate for write/admin ops', () => {
+  function writeOp(): Operation<{ body: string }, { posted: boolean }> {
+    return {
+      id: 'post_thing',
+      description: '',
+      scope: 'write',
+      localOnly: false,
+      mutating: true,
+      parameters: z.object({ body: z.string() }),
+      handler: async () => ({ posted: true }),
+    }
+  }
+
+  test('write op without approval callback returns isError=true (permission_denied)', async () => {
+    const deps = { operations: [writeOp() as Operation], serverInfo: { name: 'x', version: '0' } }
+    const res = await handleHttpRpc(
+      authedRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'post_thing', arguments: { body: 'spam' } },
+      }),
+      deps,
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      result: { content: Array<{ type: string; text: string }>; isError?: boolean }
+    }
+    expect(body.result.isError).toBe(true)
+    expect(body.result.content[0].text).toContain('permission_denied')
+  })
+
+  test('write op succeeds when approval callback returns true', async () => {
+    const deps = {
+      operations: [writeOp() as Operation],
+      serverInfo: { name: 'x', version: '0' },
+      approval: async () => true,
+    }
+    const res = await handleHttpRpc(
+      authedRequest({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'post_thing', arguments: { body: 'looks good' } },
+      }),
+      deps,
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      result: { content: Array<{ type: string; text: string }>; isError?: boolean }
+    }
+    expect(body.result.isError).toBe(false)
+    expect(body.result.content[0].text).toContain('"posted":true')
+  })
+
+  test('approval callback receives op + parsed params and is async', async () => {
+    let received: { opId: string; params: unknown } | null = null
+    const deps = {
+      operations: [writeOp() as Operation],
+      serverInfo: { name: 'x', version: '0' },
+      approval: async (op: Operation, params: unknown) => {
+        received = { opId: op.id, params }
+        return true
+      },
+    }
+    await handleHttpRpc(
+      authedRequest({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'post_thing', arguments: { body: 'audit me' } },
+      }),
+      deps,
+    )
+
+    expect(received).toEqual({ opId: 'post_thing', params: { body: 'audit me' } })
+  })
+})
