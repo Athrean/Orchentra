@@ -10,11 +10,14 @@ import { OperationError, type Operation, type OperationContext } from './types'
  * as remote/untrusted. The strict equality is the security property;
  * a falsy check would let `remote: undefined` slip through.
  */
-export async function dispatch<TParams, TResult>(
-  op: Operation<TParams, TResult>,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function dispatch<O extends Operation<any, any>>(
+  op: O,
   ctx: OperationContext,
-  params: TParams,
-): Promise<TResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  params: O extends Operation<infer P, any> ? P : never,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<O extends Operation<any, infer R> ? R : never> {
   const trusted = ctx.remote === false
 
   if (op.localOnly && !trusted) {
