@@ -33,19 +33,19 @@ To wire the stdio server into an MCP client, add an entry to its `mcpServers` co
 - Cursor — `~/.cursor/mcp.json` <!-- TODO: link once docs page lands -->
 - Windsurf — MCP settings panel <!-- TODO: link once docs page lands -->
 
-Phase 1B will add an HTTP transport behind bearer auth so the same operations are reachable from a hosted endpoint.
+An HTTP transport behind bearer auth (Phase 1B, shipped) makes the same operations reachable from a hosted endpoint.
 
 ## Status
 
-| Phase | Description                                                        | Status                  |
-| ----- | ------------------------------------------------------------------ | ----------------------- |
-| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped                 |
-| 1A    | Operations contract + stdio MCP server (`orchentra mcp serve`)     | shipped (#295)          |
-| 1B    | HTTP MCP transport + bearer auth + hosted Worker scaffold          | next                    |
-| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped                 |
-| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#228, #235)    |
-| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#225, #236–40) |
-| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future                  |
+| Phase | Description                                                        | Status              |
+| ----- | ------------------------------------------------------------------ | ------------------- |
+| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped             |
+| 1A    | Operations contract + stdio MCP server (`orchentra mcp serve`)     | shipped (#295)      |
+| 1B    | HTTP MCP transport + bearer auth + hosted Worker scaffold          | shipped (#298)      |
+| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped             |
+| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#306–#310) |
+| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#235–#240) |
+| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future              |
 
 Side-shipped: per-org LLM config (multi-provider), live agent investigation timeline, CLI Pro/Max OAuth on macOS (Keychain auto-detect), in-TUI login + model picker.
 
@@ -77,7 +77,7 @@ Cross-execution diff (`/dashboard/diff`) lines up two executions for postmortems
 
 **CLI (primary).** Interactive Ink TUI — REPL, slash commands (`/login`, `/doctor`, `/graph`, `/why`, `/issue`, `/pr`, `/model`, `/skills`, …), arrow-key model picker, in-TUI Anthropic OAuth login, native `--output-format json` for diagnostic verbs, resume model.
 
-**MCP server.** `orchentra mcp serve` exposes the operations registry to external MCP clients (Claude Desktop, Cursor, Windsurf) over stdio. Same operations the CLI verbs hit, validated by the same Zod schemas, with trust-class enforcement at dispatch. HTTP transport + bearer auth lands in Phase 1B.
+**MCP server.** `orchentra mcp serve` exposes the operations registry to external MCP clients (Claude Desktop, Cursor, Windsurf) over stdio. Same operations the CLI verbs hit, validated by the same Zod schemas, with trust-class enforcement at dispatch. An HTTP transport + bearer auth + hosted Cloudflare Worker scaffold ship as Phase 1B.
 
 **Server.** Hono backend — webhooks (`workflow_run`, Sentry), cron tick, agent loop with multi-provider LLM (per-org config), Postgres-backed job queue with retry + dead-letter, idempotent two-tier dedup.
 
