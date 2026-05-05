@@ -121,6 +121,33 @@ describe('get_file_content operation', () => {
     expect(result.error).toContain('Failed to fetch file')
   })
 
+  test('handler returns explicit error for files >1MB (encoding=none)', async () => {
+    setGithubAdapter(
+      fakeAdapter(() =>
+        Promise.resolve({
+          data: {
+            type: 'file',
+            path: 'huge.bin',
+            content: '',
+            size: 5_000_000,
+            encoding: 'none',
+          },
+        }),
+      ),
+    )
+
+    const result = (await getFileContentOperation.handler(localCtx, {
+      owner: 'my-org',
+      repo: 'api',
+      path: 'huge.bin',
+    })) as { error: string; path: string; size: number }
+
+    expect(result.error).toContain('encoding=none')
+    expect(result.error).toContain('blob API')
+    expect(result.path).toBe('huge.bin')
+    expect(result.size).toBe(5_000_000)
+  })
+
   test('dispatch rejects malformed input with OperationError(invalid_input)', async () => {
     setGithubAdapter(fakeAdapter(() => Promise.reject(new Error('not used'))))
 
