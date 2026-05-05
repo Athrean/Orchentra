@@ -1,0 +1,29 @@
+packages/operations/src/ops/github/search-code.ts
+  27be1972cf29b313 1-49
+packages/operations/tests/search-code.test.ts
+  27be1972cf29b313 1-63,65-101,103-133
+packages/operations/src/index.ts
+  27be1972cf29b313 25,36
+apps/server/src/agent/tools/github-issues.ts
+  27be1972cf29b313 11,41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "bf7a220181b833562a0c9918de341d9d92e6bf9c",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 194,
+      "total_deletions": 34,
+      "accepted_lines": 188,
+      "overriden_lines": 2
+    }
+  }
+}
