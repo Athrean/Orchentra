@@ -1,0 +1,45 @@
+packages/operations/.eslintrc.cjs
+  27be1972cf29b313 1-4
+packages/operations/src/index.ts
+  27be1972cf29b313 1-11
+packages/operations/package.json
+  27be1972cf29b313 1-27
+packages/operations/tests/dispatch.test.ts
+  27be1972cf29b313 1-114
+packages/operations/src/ops/github/get-workflow-logs.ts
+  27be1972cf29b313 1-27,29-50,52-70
+packages/operations/tests/types.test.ts
+  27be1972cf29b313 1-29,31-61
+packages/operations/src/ops/github/adapter.ts
+  27be1972cf29b313 1-45
+packages/operations/src/types.ts
+  27be1972cf29b313 1-72
+packages/operations/tests/get-workflow-logs.test.ts
+  27be1972cf29b313 1-7,9-114,116-140,142-160
+packages/operations/src/ops/index.ts
+  27be1972cf29b313 1-4
+packages/operations/src/dispatch.ts
+  27be1972cf29b313 1-47
+packages/operations/tsconfig.json
+  27be1972cf29b313 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f733aba81f76b836a7617c1b7886aab9a9924187",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 641,
+      "total_deletions": 0,
+      "accepted_lines": 617,
+      "overriden_lines": 6
+    }
+  }
+}
