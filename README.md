@@ -37,15 +37,15 @@ Phase 1B will add an HTTP transport behind bearer auth so the same operations ar
 
 ## Status
 
-| Phase | Description                                                        | Status                   |
-| ----- | ------------------------------------------------------------------ | ------------------------ |
-| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped                  |
-| 1A    | Operations contract + stdio MCP server (`orchentra mcp serve`)     | shipped (#295)           |
-| 1B    | HTTP MCP transport + bearer auth + hosted Worker scaffold          | next                     |
-| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped                  |
-| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#228, #235)     |
-| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#225, #236–40)  |
-| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future                   |
+| Phase | Description                                                        | Status                  |
+| ----- | ------------------------------------------------------------------ | ----------------------- |
+| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped                 |
+| 1A    | Operations contract + stdio MCP server (`orchentra mcp serve`)     | shipped (#295)          |
+| 1B    | HTTP MCP transport + bearer auth + hosted Worker scaffold          | next                    |
+| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped                 |
+| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#228, #235)    |
+| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#225, #236–40) |
+| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future                  |
 
 Side-shipped: per-org LLM config (multi-provider), live agent investigation timeline, CLI Pro/Max OAuth on macOS (Keychain auto-detect), in-TUI login + model picker.
 
@@ -156,11 +156,13 @@ Server: `http://localhost:3001` · Web: `http://localhost:3000`.
 ## CLI
 
 ```bash
-orchentra              # interactive TUI
-orchentra doctor       # environment preflight (auth, DB, repo)
-orchentra mcp serve    # stdio MCP server exposing the operations registry
-orchentra graph <id>   # ASCII tree of nodes for an execution
-orchentra why <node>   # walk parent chain, print inputs + rationale
+orchentra                                       # interactive TUI
+orchentra doctor                                # environment preflight (auth, DB, repo)
+orchentra mcp serve                             # stdio MCP server exposing the operations registry
+orchentra graph <executionId>                   # ASCII tree of nodes for an execution
+orchentra graph <executionId> --output-format json
+orchentra why <nodeId>                          # walk parent chain, print inputs + rationale
+orchentra why <nodeId> --output-format json
 ```
 
 - **Anthropic auth:** Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting. <!-- TODO: link once docs/cli/anthropic-auth.md lands -->
