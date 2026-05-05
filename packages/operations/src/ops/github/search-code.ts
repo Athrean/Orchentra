@@ -26,8 +26,11 @@ export const searchCodeOperation: Operation<Params, unknown> = {
       return { error: `Repository ${fullName} is not monitored` }
     }
     try {
-      // Strip scope qualifiers to prevent cross-repo query injection
-      const sanitized = query.replace(/\b(repo|org|user):[^\s]+/g, '').trim()
+      // Strip scope qualifiers to prevent cross-repo query injection.
+      // The /i flag is required: GitHub's search syntax accepts qualifiers in
+      // any case (REPO:, Repo:, repo:), so a case-sensitive regex would let
+      // upper-case variants slip through and target a different repo.
+      const sanitized = query.replace(/\b(repo|org|user):[^\s]+/gi, '').trim()
       const { data } = await getGithubAdapter().search.code({
         q: `${sanitized} repo:${owner}/${repo}`,
         per_page: 10,
