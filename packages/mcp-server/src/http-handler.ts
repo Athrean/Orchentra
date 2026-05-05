@@ -30,7 +30,16 @@ export async function handleHttpRpc(req: Request, _deps: HandleRpcDeps): Promise
     })
   }
 
-  // Slice 2/3 wires org header + handleRpc routing.
+  const orgId = (req.headers.get('x-orchentra-org') ?? '').trim()
+  if (orgId.length === 0) {
+    return errorResponse(400, {
+      code: 'invalid_input',
+      message: 'missing or empty x-orchentra-org header',
+      suggestion: 'set x-orchentra-org: <orgId> on the request',
+    })
+  }
+
+  // Slice 3 wires the request body through handleRpc.
   return errorResponse(500, {
     code: 'internal_error',
     message: 'http transport not yet wired to handleRpc',

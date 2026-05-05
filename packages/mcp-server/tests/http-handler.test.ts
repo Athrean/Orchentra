@@ -45,3 +45,41 @@ describe('handleHttpRpc — auth gate', () => {
     expect(res.status).toBe(401)
   })
 })
+
+describe('handleHttpRpc — org header gate', () => {
+  test('returns 400 when x-orchentra-org header is missing', async () => {
+    const req = new Request('https://mcp.example.com/mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer test-token',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    })
+
+    const res = await handleHttpRpc(req, baseDeps)
+
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { code: string; message: string }
+    expect(body.code).toBe('invalid_input')
+    expect(body.message).toMatch(/x-orchentra-org/i)
+  })
+
+  test('returns 400 when x-orchentra-org header is empty', async () => {
+    const req = new Request('https://mcp.example.com/mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer test-token',
+        'x-orchentra-org': '   ',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+    })
+
+    const res = await handleHttpRpc(req, baseDeps)
+
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { code: string }
+    expect(body.code).toBe('invalid_input')
+  })
+})
