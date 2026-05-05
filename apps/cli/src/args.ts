@@ -168,14 +168,16 @@ USAGE
   orchentra session replay <id|latest>    Replay a recorded session as JSONL events
   orchentra doctor                        Check auth, provider, and workspace health
   orchentra watch <owner/repo>            Watch a repo for failing workflows and triage them
-  orchentra graph <executionId>           Render the execution graph as an ASCII tree
+  orchentra graph <executionId> [--output-format tree|json]
+                                          Render the execution graph (tree default; --json for raw DTO)
   orchentra mcp list                       List configured MCP servers + connection status
   orchentra mcp test <name>                Connect to one MCP server and print its tools
   orchentra mcp serve [--print-tools-json] Start the stdio MCP server (or print tool schemas)
   orchentra login <provider> [--api-key]   Sign in (anthropic|gemini|github|openai|xai|dashscope)
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra whoami                        Show signed-in providers and credential sources
-  orchentra why <nodeId>                  Trace a node's ancestor chain + inputs + outcome
+  orchentra why <nodeId> [--output-format tree|json]
+                                          Trace a node's ancestors + inputs (tree default; --json for raw DTO)
   orchentra --version                     Print version
 
 FLAGS
