@@ -93,6 +93,7 @@ describe('orchentra mcp serve (stdio)', () => {
       'get_issue',
       'get_pull_request',
       'get_workflow_logs',
+      'post_comment',
       'search_code',
     ])
   })
