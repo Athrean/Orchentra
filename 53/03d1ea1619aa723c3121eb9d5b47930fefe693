@@ -1,0 +1,25 @@
+packages/operations/tests/get-workflow-logs.test.ts
+  27be1972cf29b313 146-180
+packages/operations/src/ops/github/get-workflow-logs.ts
+  27be1972cf29b313 7-11,43,52-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "5303d1ea1619aa723c3121eb9d5b47930fefe693",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 2,
+      "accepted_lines": 44,
+      "overriden_lines": 0
+    }
+  }
+}
