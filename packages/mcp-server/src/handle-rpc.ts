@@ -19,9 +19,16 @@ export interface HandleRpcDeps {
   serverInfo: ServerInfo
 }
 
-const REMOTE_CTX: OperationContext = {
-  remote: true,
-  allowedScopes: new Set<OperationScope>(['read', 'write', 'admin']),
+/**
+ * Construct a fresh OperationContext per RPC call. A shared mutable ctx would
+ * let one in-flight request mutate `remote` or `allowedScopes` and bypass the
+ * trust-boundary check on a concurrent request.
+ */
+function buildRemoteCtx(): OperationContext {
+  return {
+    remote: true,
+    allowedScopes: new Set<OperationScope>(['read', 'write', 'admin']),
+  }
 }
 
 /**
@@ -54,7 +61,7 @@ export async function handleRpc(message: IncomingMessage, deps: HandleRpcDeps): 
       if (!op) return invalidParams(id, `tools/call: unknown tool '${name}'`)
 
       try {
-        const result = await dispatch(op, REMOTE_CTX, params.arguments ?? {})
+        const result = await dispatch(op, buildRemoteCtx(), params.arguments ?? {})
         return ok(id, {
           content: [{ type: 'text', text: JSON.stringify(result) }],
           isError: false,
