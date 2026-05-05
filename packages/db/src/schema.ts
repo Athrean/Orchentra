@@ -363,3 +363,52 @@ export const episodes = pgTable(
     index('episodes_kind_idx').on(table.kind),
   ],
 )
+
+/**
+ * Runbooks are reusable patterns distilled from one or more successful
+ * episodes. The body is human-readable Markdown — the same content the
+ * SKILL.md exporter wraps with frontmatter so an external agent can load
+ * the runbook as context. `triggers` and `ops_used` are jsonb arrays of
+ * free-form strings; the distillation pipeline (Phase 2B) will refine the
+ * structure later.
+ */
+export const runbooks = pgTable(
+  'runbooks',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    triggers: jsonb('triggers').notNull().default([]),
+    opsUsed: jsonb('ops_used').notNull().default([]),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('runbooks_org_name_unique').on(table.orgId, table.name),
+    index('runbooks_org_id_idx').on(table.orgId),
+  ],
+)
+
+/**
+ * Many-to-many edge between a runbook and the SKILL.md "skill" names it is
+ * exported under. Today we only ever export a single skill per runbook, but
+ * the join table is here so we can later attach the same runbook under
+ * multiple skill names without a schema change.
+ */
+export const runbookSkills = pgTable(
+  'runbook_skills',
+  {
+    runbookId: text('runbook_id')
+      .notNull()
+      .references(() => runbooks.id, { onDelete: 'cascade' }),
+    skillName: text('skill_name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runbookId, table.skillName] }),
+    index('runbook_skills_skill_name_idx').on(table.skillName),
+  ],
+)
