@@ -1,0 +1,27 @@
+packages/operations/src/ops/github/post-comment.ts
+  27be1972cf29b313 1-100
+packages/operations/src/dispatch.ts
+  27be1972cf29b313 13-15,17-20
+packages/operations/tests/post-comment.test.ts
+  27be1972cf29b313 1-4,6-39,42-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cab8bece480575a465e06b0a9df80b3c5595e6c1",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 343,
+      "total_deletions": 65,
+      "accepted_lines": 334,
+      "overriden_lines": 3
+    }
+  }
+}
