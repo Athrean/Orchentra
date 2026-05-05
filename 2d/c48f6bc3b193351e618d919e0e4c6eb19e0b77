@@ -1,0 +1,29 @@
+packages/operations/tests/record-episode.test.ts
+  27be1972cf29b313 1-103
+packages/operations/src/index.ts
+  27be1972cf29b313 28-29
+packages/operations/src/ops/brain/record-episode.ts
+  27be1972cf29b313 1-50
+packages/operations/src/ops/brain/adapter.ts
+  27be1972cf29b313 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "2dc48f6bc3b193351e618d919e0e4c6eb19e0b77",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 236,
+      "total_deletions": 5,
+      "accepted_lines": 221,
+      "overriden_lines": 0
+    }
+  }
+}

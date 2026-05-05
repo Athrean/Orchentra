@@ -1,0 +1,27 @@
+packages/brain/tests/types.test.ts
+  27be1972cf29b313 1-59
+packages/brain/src/index.ts
+  27be1972cf29b313 1-3
+packages/brain/src/types.ts
+  27be1972cf29b313 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "08ea69e760ec55d92af9e5e28712fa160fa1f7ae",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 127,
+      "total_deletions": 6,
+      "accepted_lines": 127,
+      "overriden_lines": 0
+    }
+  }
+}

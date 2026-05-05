@@ -1,0 +1,29 @@
+packages/brain/tests/export-skill.test.ts
+  27be1972cf29b313 1-62
+packages/brain/src/index.ts
+  27be1972cf29b313 1-4
+packages/brain/SKILL_FORMAT.md
+  27be1972cf29b313 1-76
+packages/brain/src/export-skill.ts
+  27be1972cf29b313 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "07e2bd3d9da23cea08997a9561e85460d9296493",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 220,
+      "total_deletions": 4,
+      "accepted_lines": 216,
+      "overriden_lines": 0
+    }
+  }
+}

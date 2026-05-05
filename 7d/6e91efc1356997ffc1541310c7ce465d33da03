@@ -1,0 +1,27 @@
+packages/operations/src/ops/brain/list-episodes.ts
+  27be1972cf29b313 1-41
+packages/operations/tests/list-episodes.test.ts
+  27be1972cf29b313 1-95
+packages/operations/src/index.ts
+  27be1972cf29b313 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7d6e91efc1356997ffc1541310c7ce465d33da03",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 140,
+      "total_deletions": 0,
+      "accepted_lines": 137,
+      "overriden_lines": 0
+    }
+  }
+}
