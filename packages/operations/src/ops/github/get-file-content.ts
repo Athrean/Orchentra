@@ -37,6 +37,16 @@ export const getFileContentOperation: Operation<Params, unknown> = {
       if (data.type !== 'file' || !('content' in data)) {
         return { error: 'Not a readable file' }
       }
+      // GitHub returns encoding="none" with empty content for files larger than
+      // ~1MB; the caller must use the blob API in that case. Surface this
+      // explicitly instead of silently returning an empty string.
+      if ('encoding' in data && data.encoding && data.encoding !== 'base64') {
+        return {
+          error: `File too large or unsupported encoding (encoding=${data.encoding}); fetch via blob API`,
+          path: data.path,
+          size: data.size,
+        }
+      }
       const content = Buffer.from(data.content, 'base64').toString('utf-8')
       const truncated = content.length > MAX_FILE_CHARS
       return {
