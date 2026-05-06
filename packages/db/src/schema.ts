@@ -412,3 +412,93 @@ export const runbookSkills = pgTable(
     index('runbook_skills_skill_name_idx').on(table.skillName),
   ],
 )
+
+// --- Credential vault + audit log + per-org install state (Slice 2) ---
+
+/**
+ * Per-org credential vault. `encrypted_value` is an opaque string — the
+ * envelope shape is owned by `apps/server/src/vault/`. Production target is
+ * pgsodium on Supabase Postgres (per ORCHENTRA_PLAN.md §3.3.5); the in-tree
+ * fallback wraps Node `aes-256-gcm` with the same envelope so dev/CI work
+ * without a Supabase dependency. Decryption is bounded to the vault module
+ * regardless of which backend produced the bytes.
+ */
+export const credentials = pgTable(
+  'credentials',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    /** e.g. 'github.app.private_key', 'datadog.api_key'. */
+    kind: text('kind').notNull(),
+    encryptedValue: text('encrypted_value').notNull(),
+    /** Granted scopes — text[] so callers can filter without parsing. */
+    scopes: jsonb('scopes').notNull().default([]),
+    metadata: jsonb('metadata').notNull().default({}),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    rotatedAt: timestamp('rotated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('credentials_org_kind_unique').on(table.orgId, table.kind),
+    index('credentials_org_id_idx').on(table.orgId),
+  ],
+)
+
+/**
+ * Append-only audit trail for vault reads, install state changes, and any
+ * other security-sensitive operation. `actor` carries `{ type, id }`.
+ * `metadata` is jsonb; the writer is responsible for redacting secret bytes
+ * before insertion (the vault module enforces this at its boundary).
+ */
+export const auditLog = pgTable(
+  'audit_log',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    actor: jsonb('actor').notNull(),
+    action: text('action').notNull(),
+    resource: jsonb('resource'),
+    metadata: jsonb('metadata').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('audit_log_org_id_idx').on(table.orgId),
+    index('audit_log_action_idx').on(table.action),
+    index('audit_log_org_created_idx').on(table.orgId, table.createdAt),
+  ],
+)
+
+/**
+ * Per-org GitHub App install state. Populated by the install callback
+ * (Slice 3) and read by `getOctokitForInstall(orgId)` to resolve the right
+ * install id when minting App tokens. `installation_id` is unique because a
+ * GH installation maps to exactly one (App, account) pair.
+ */
+export const githubInstallations = pgTable(
+  'github_installations',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    installationId: bigint('installation_id', { mode: 'number' }).notNull(),
+    accountLogin: text('account_login').notNull(),
+    /** GitHub returns 'User' | 'Organization'. */
+    accountType: text('account_type').notNull(),
+    /** 'all' | 'selected' per the GH App webhook payload. */
+    repositorySelection: text('repository_selection').notNull(),
+    permissions: jsonb('permissions').notNull().default({}),
+    events: jsonb('events').notNull().default([]),
+    installedAt: timestamp('installed_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('github_installations_installation_id_unique').on(table.installationId),
+    index('github_installations_org_id_idx').on(table.orgId),
+  ],
+)

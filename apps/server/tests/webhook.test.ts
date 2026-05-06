@@ -548,8 +548,9 @@ describe('GitHub Webhook — check_suite normalization', () => {
 
 describe('GitHub Webhook — installation event dispatch', () => {
   test('routes installation.created and records via the installations module', async () => {
-    const { resetInstallationsStoreForTests, getInstallationByOrg } = await import('../src/github/installations')
-    resetInstallationsStoreForTests()
+    const { setInstallationStoreForTesting, getInstallationByOrg } = await import('../src/github/installations')
+    const { createMemoryInstallationStore } = await import('../src/github/installations-memory-store')
+    setInstallationStoreForTesting(createMemoryInstallationStore())
 
     const app = makeApp()
     const body = JSON.stringify({
