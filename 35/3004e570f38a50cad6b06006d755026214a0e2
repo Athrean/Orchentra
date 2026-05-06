@@ -1,0 +1,30 @@
+scripts/check-fixture-drift.test.ts
+  s_27be1972cf29b3::t_30e36c7e4f6906 1-25
+packages/operations/tests/list-branches-live.test.ts
+  s_27be1972cf29b3::t_cf88f46c78d601 1-46
+.github/workflows/nightly-live.yml
+  s_27be1972cf29b3::t_644633c6b3eca5 1-99
+packages/operations/tests/list-pull-requests-live.test.ts
+  s_27be1972cf29b3::t_470ca38f5b7660 1-31,33,40,42-46
+  s_27be1972cf29b3::t_0da7949737b010 32,34-39,41
+scripts/check-fixture-drift.ts
+  s_27be1972cf29b3::t_84a26c7bc5a67b 22,27,56-57,60,62,65,67,74
+  s_27be1972cf29b3::t_5ec7588b15abdd 1-16,19-21,23-26,28-55,58-59,61,63-64,66,68-73,75-88
+  s_27be1972cf29b3::t_191d210a8c65c2 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "353004e570f38a50cad6b06006d755026214a0e2",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
