@@ -1,0 +1,21 @@
+packages/operations/tests/create-branch.test.ts
+  s_27be1972cf29b3::t_c78ac4ef9cb6b3 1-168
+packages/operations/src/ops/github/create-branch.ts
+  s_27be1972cf29b3::t_e9f806af7ea7f6 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "3ff2271d24ce52d0cffb6254cc960d9dfd0b336f",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
