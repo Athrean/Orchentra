@@ -30,6 +30,8 @@ secrets/
 
 # Internal docs (git-ignored, local only)
 docs/
+# Tracked product docs that live alongside the app they document
+!apps/*/docs/
 UBIQUITOUS_LANGUAGE.md
 
 # Local agent/IDE plugin folders (not part of the product repo)
