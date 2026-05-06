@@ -1,5 +1,8 @@
 export type {
   ApprovalCallback,
+  ApprovalCallbackResult,
+  ApprovalDecisionResult,
+  ApprovalDecisionStatus,
   Operation,
   OperationCliHints,
   OperationContext,
@@ -9,6 +12,8 @@ export type {
 } from './types'
 export { OperationError, toOperationError } from './types'
 export { dispatch } from './dispatch'
+export type { ApprovalActor, ApprovalRequestSnapshot, ApprovalDecision, OperationTrustClass } from './trust'
+export { resolveTrustClass, requiresApproval, validateActorCanApprove } from './trust'
 export { serializeOperationErrorForCli } from './cli-serialize'
 export type { CliErrorWrite } from './cli-serialize'
 export { operations } from './ops'

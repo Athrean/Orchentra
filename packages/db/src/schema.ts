@@ -502,3 +502,42 @@ export const githubInstallations = pgTable(
     index('github_installations_org_id_idx').on(table.orgId),
   ],
 )
+
+/**
+ * Slice 6 — pending approval requests for write/destructive ops invoked
+ * over the MCP HTTP transport. The dispatcher persists a row here when the
+ * approval gate cannot resolve synchronously; the human (or another agent)
+ * acks via `POST /api/approvals/:id/ack`, which flips `status` and unblocks
+ * the suspended awaitApproval poll on the server.
+ *
+ * `actor` shape: { id: string, type?: 'user' | 'agent' | 'system' }.
+ * `metadata` is jsonb and intentionally free-form so adapters can stash
+ * Octokit snapshot context (diff URL, target branch, etc.) without a
+ * schema migration per op.
+ */
+export const approvalRequests = pgTable(
+  'approval_requests',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    operationId: text('operation_id').notNull(),
+    /** Trust class at request time. Snapshotted so policy changes don't reinterpret old rows. */
+    trustClass: text('trust_class').notNull(),
+    /** Zod-validated input (redacted by the writer). */
+    input: jsonb('input').notNull(),
+    requestedBy: jsonb('requested_by').notNull(),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    /** 'pending' | 'approved' | 'denied' | 'expired'. */
+    status: text('status').notNull().default('pending'),
+    decidedBy: jsonb('decided_by'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    metadata: jsonb('metadata').notNull().default({}),
+  },
+  (table) => [
+    index('approval_requests_org_status_idx').on(table.orgId, table.status),
+    index('approval_requests_expires_at_idx').on(table.expiresAt),
+  ],
+)

@@ -8,6 +8,7 @@ export type OperationErrorCode =
   | 'not_found'
   | 'upstream_error'
   | 'internal_error'
+  | 'awaiting_approval'
 
 export interface OperationErrorPayload {
   code: OperationErrorCode
@@ -17,13 +18,43 @@ export interface OperationErrorPayload {
 }
 
 /**
- * Approval callback invoked by `dispatch` before running a `write`- or
- * `admin`-scoped op on a remote-trust ctx. When it returns `true`, dispatch
- * proceeds; otherwise the call is rejected with `permission_denied`. This is
- * the escape hatch that lets HTTP/hosted transports run mutating ops without
- * weakening the `remote: true` trust posture itself.
+ * Result of consulting an approval callback for one dispatch call.
+ *
+ *   - `approved`         — handler runs.
+ *   - `denied`           — dispatch throws permission_denied.
+ *   - `awaiting_approval` — dispatch throws an `awaiting_approval` error
+ *                            carrying the persisted approval id, so the
+ *                            transport can hand it back to the caller and
+ *                            let them poll/re-invoke. Used by the MCP HTTP
+ *                            transport so the request itself doesn't long-
+ *                            poll the server.
  */
-export type ApprovalCallback = <TParams, TResult>(op: Operation<TParams, TResult>, params: TParams) => Promise<boolean>
+export type ApprovalDecisionStatus = 'approved' | 'denied' | 'awaiting_approval'
+
+export interface ApprovalDecisionResult {
+  status: ApprovalDecisionStatus
+  /** Populated when status === 'awaiting_approval'. */
+  approvalId?: string
+  /** Optional ISO-8601 expiry to surface to the caller. */
+  expiresAt?: string
+  /** Human-readable reason (denied/awaiting). */
+  reason?: string
+}
+
+/**
+ * Approval callback invoked by `dispatch` before running an op whose
+ * trust class requires approval (see `requiresApproval` in `trust.ts`).
+ *
+ * Returning a boolean is the legacy short form — `true` ≈ `{status:'approved'}`,
+ * `false` ≈ `{status:'denied'}`. New transports should return the structured
+ * `ApprovalDecisionResult` so the dispatcher can surface `awaiting_approval`
+ * to the caller without blocking on a long-poll.
+ */
+export type ApprovalCallbackResult = boolean | ApprovalDecisionResult
+export type ApprovalCallback = <TParams, TResult>(
+  op: Operation<TParams, TResult>,
+  params: TParams,
+) => Promise<ApprovalCallbackResult>
 
 /**
  * Carrier for handler execution context. `remote` is REQUIRED so the compiler
@@ -54,6 +85,14 @@ export interface Operation<TParams = unknown, TResult = unknown> {
   id: string
   description: string
   scope: OperationScope
+  /**
+   * Trust class — what gate the dispatcher applies. Defaults to scope-derived:
+   *   read  → 'read', write/admin → 'write'. Ops that need the second-approver
+   *   rule must opt in explicitly with `trustClass: 'destructive'`.
+   * Imported lazily here as a string union to avoid a circular import with
+   * `trust.ts`; the canonical type is exported as `OperationTrustClass`.
+   */
+  trustClass?: 'read' | 'write' | 'destructive'
   localOnly: boolean
   mutating: boolean
   parameters: z.ZodType<TParams>
