@@ -29,6 +29,23 @@ export interface GithubAdapter {
       pull_number: number
       per_page?: number
     }) => Promise<{ data: GithubComment[] }>
+    create: (p: {
+      owner: string
+      repo: string
+      title: string
+      head: string
+      base: string
+      body?: string
+      draft?: boolean
+      maintainer_can_modify?: boolean
+    }) => Promise<{ data: GithubPullRefSummary }>
+    requestReviewers: (p: {
+      owner: string
+      repo: string
+      pull_number: number
+      reviewers?: string[]
+      team_reviewers?: string[]
+    }) => Promise<{ data: GithubReviewersResponse }>
   }
   issues: {
     get: (p: { owner: string; repo: string; issue_number: number }) => Promise<{ data: GithubIssue }>
@@ -49,6 +66,24 @@ export interface GithubAdapter {
       issue_number: number
       per_page?: number
     }) => Promise<{ data: GithubComment[] }>
+    create: (p: {
+      owner: string
+      repo: string
+      title: string
+      body?: string
+      labels?: string[]
+      assignees?: string[]
+    }) => Promise<{ data: GithubIssueRefSummary }>
+    update: (p: {
+      owner: string
+      repo: string
+      issue_number: number
+      title?: string
+      body?: string
+      state?: 'open' | 'closed'
+      labels?: string[]
+      assignees?: string[]
+    }) => Promise<{ data: GithubIssueRefSummary }>
   }
   repos: {
     get: (p: { owner: string; repo: string }) => Promise<{ data: GithubRepo }>
@@ -63,6 +98,15 @@ export interface GithubAdapter {
     }) => Promise<{ data: GithubBranch[] }>
     listLanguages: (p: { owner: string; repo: string }) => Promise<{ data: Record<string, number> }>
     getAllTopics: (p: { owner: string; repo: string }) => Promise<{ data: { names: string[] } }>
+    createCommitStatus: (p: {
+      owner: string
+      repo: string
+      sha: string
+      state: 'error' | 'failure' | 'pending' | 'success'
+      target_url?: string
+      description?: string
+      context?: string
+    }) => Promise<{ data: GithubCommitStatus }>
   }
   checks: {
     listForRef: (p: {
@@ -72,6 +116,16 @@ export interface GithubAdapter {
       per_page?: number
       page?: number
     }) => Promise<{ data: { total_count: number; check_runs: GithubCheckRun[] } }>
+    create: (p: {
+      owner: string
+      repo: string
+      name: string
+      head_sha: string
+      status?: 'queued' | 'in_progress' | 'completed'
+      conclusion?: string
+      details_url?: string
+      output?: { title: string; summary: string; text?: string }
+    }) => Promise<{ data: GithubCheckRun }>
   }
   actions: {
     listWorkflowRunsForRepo: (p: {
@@ -294,6 +348,47 @@ export interface GithubArtifact {
   size_in_bytes: number
   expired: boolean
   archive_download_url: string
+}
+
+/**
+ * Compact response shape for `pulls.create`. Only the fields the
+ * `create_pull_request` op surfaces back to callers — the actual GitHub
+ * payload carries dozens more.
+ */
+export interface GithubPullRefSummary {
+  number: number
+  html_url: string
+  state: string
+}
+
+/**
+ * Compact response shape shared by `issues.create` and `issues.update`.
+ */
+export interface GithubIssueRefSummary {
+  number: number
+  html_url: string
+  state: string
+}
+
+/**
+ * Response shape for `pulls.requestReviewers`. GitHub returns the full PR
+ * object plus the resolved reviewer arrays; we only need the latter two.
+ */
+export interface GithubReviewersResponse {
+  requested_reviewers?: Array<{ login?: string | null }> | null
+  requested_teams?: Array<{ slug?: string | null }> | null
+}
+
+/**
+ * Response shape for `repos.createCommitStatus`. GitHub returns the full
+ * status object; we only surface id, html_url (if present), and state.
+ */
+export interface GithubCommitStatus {
+  id: number
+  state: string
+  target_url?: string | null
+  description?: string | null
+  context?: string | null
 }
 
 export type RepoMonitoredCheck = (fullName: string) => Promise<boolean>

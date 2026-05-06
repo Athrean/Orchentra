@@ -73,6 +73,8 @@ interface GitHubFetchers {
   headers: Record<string, string>
   fetchJson: (path: string) => Promise<unknown>
   fetchText: (path: string) => Promise<string>
+  fetchPostJson: (path: string, body: unknown) => Promise<unknown>
+  fetchPatchJson: (path: string, body: unknown) => Promise<unknown>
 }
 
 function buildGitHubFetchers(): GitHubFetchers {
@@ -91,8 +93,24 @@ function buildGitHubFetchers(): GitHubFetchers {
     if (!r.ok) throw new Error(`GitHub ${r.status} ${r.statusText} at ${path}`)
     return r.text()
   }
+  async function fetchWithBody(path: string, body: unknown, method: 'POST' | 'PATCH'): Promise<unknown> {
+    const r = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!r.ok) throw new Error(`GitHub ${r.status} ${r.statusText} at ${path}`)
+    return r.json()
+  }
 
-  return { baseUrl, headers, fetchJson, fetchText }
+  return {
+    baseUrl,
+    headers,
+    fetchJson,
+    fetchText,
+    fetchPostJson: (path, body) => fetchWithBody(path, body, 'POST'),
+    fetchPatchJson: (path, body) => fetchWithBody(path, body, 'PATCH'),
+  }
 }
 
 function buildGitHubAdapter(allowedRepos: Set<string> | null): GitHubAdapter {
@@ -121,7 +139,7 @@ function buildGitHubAdapter(allowedRepos: Set<string> | null): GitHubAdapter {
 }
 
 function buildLowercaseGithubAdapter(): GithubAdapter {
-  const { fetchJson, fetchText, baseUrl, headers } = buildGitHubFetchers()
+  const { fetchJson, fetchText, fetchPostJson, fetchPatchJson, baseUrl, headers } = buildGitHubFetchers()
 
   function qs(params: Record<string, string | number | undefined>): string {
     const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null)
@@ -175,6 +193,22 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
           ReturnType<GithubAdapter['pulls']['listReviewComments']>
         >['data'],
       }),
+      create: async ({ owner, repo, title, head, base, body, draft, maintainer_can_modify }) => ({
+        data: (await fetchPostJson(`/repos/${owner}/${repo}/pulls`, {
+          title,
+          head,
+          base,
+          body,
+          draft,
+          maintainer_can_modify,
+        })) as Awaited<ReturnType<GithubAdapter['pulls']['create']>>['data'],
+      }),
+      requestReviewers: async ({ owner, repo, pull_number, reviewers, team_reviewers }) => ({
+        data: (await fetchPostJson(`/repos/${owner}/${repo}/pulls/${pull_number}/requested_reviewers`, {
+          reviewers,
+          team_reviewers,
+        })) as Awaited<ReturnType<GithubAdapter['pulls']['requestReviewers']>>['data'],
+      }),
     },
     issues: {
       get: async ({ owner, repo, issue_number }) => ({
@@ -191,6 +225,23 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
         data: (await fetchJson(
           `/repos/${owner}/${repo}/issues/${issue_number}/comments${qs({ per_page })}`,
         )) as Awaited<ReturnType<GithubAdapter['issues']['listComments']>>['data'],
+      }),
+      create: async ({ owner, repo, title, body, labels, assignees }) => ({
+        data: (await fetchPostJson(`/repos/${owner}/${repo}/issues`, {
+          title,
+          body,
+          labels,
+          assignees,
+        })) as Awaited<ReturnType<GithubAdapter['issues']['create']>>['data'],
+      }),
+      update: async ({ owner, repo, issue_number, title, body, state, labels, assignees }) => ({
+        data: (await fetchPatchJson(`/repos/${owner}/${repo}/issues/${issue_number}`, {
+          title,
+          body,
+          state,
+          labels,
+          assignees,
+        })) as Awaited<ReturnType<GithubAdapter['issues']['update']>>['data'],
       }),
     },
     repos: {
@@ -223,12 +274,30 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
       getAllTopics: async ({ owner, repo }) => ({
         data: (await fetchJson(`/repos/${owner}/${repo}/topics`)) as { names: string[] },
       }),
+      createCommitStatus: async ({ owner, repo, sha, state, target_url, description, context }) => ({
+        data: (await fetchPostJson(`/repos/${owner}/${repo}/statuses/${encodeURIComponent(sha)}`, {
+          state,
+          target_url,
+          description,
+          context,
+        })) as Awaited<ReturnType<GithubAdapter['repos']['createCommitStatus']>>['data'],
+      }),
     },
     checks: {
       listForRef: async ({ owner, repo, ref, per_page, page }) => ({
         data: (await fetchJson(
           `/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}/check-runs${qs({ per_page, page })}`,
         )) as Awaited<ReturnType<GithubAdapter['checks']['listForRef']>>['data'],
+      }),
+      create: async ({ owner, repo, name, head_sha, status, conclusion, details_url, output }) => ({
+        data: (await fetchPostJson(`/repos/${owner}/${repo}/check-runs`, {
+          name,
+          head_sha,
+          status,
+          conclusion,
+          details_url,
+          output,
+        })) as Awaited<ReturnType<GithubAdapter['checks']['create']>>['data'],
       }),
     },
     actions: {
