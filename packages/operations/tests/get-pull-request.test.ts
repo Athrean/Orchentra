@@ -32,6 +32,7 @@ function fakeAdapter(pulls: PullsOverrides = {}): GithubAdapter {
               created_at: '2026-04-01T10:00:00Z',
             },
           })),
+      list: () => Promise.reject(new Error('not used')),
       listFiles:
         pulls.listFiles ??
         (() =>
@@ -41,11 +42,23 @@ function fakeAdapter(pulls: PullsOverrides = {}): GithubAdapter {
     },
     issues: {
       get: () => Promise.reject(new Error('not used')),
+      list: () => Promise.reject(new Error('not used')),
       listComments: () => Promise.reject(new Error('not used')),
     },
     repos: {
+      get: () => Promise.reject(new Error('not used')),
       getCommit: () => Promise.reject(new Error('not used')),
       getContent: () => Promise.reject(new Error('not used')),
+      listBranches: () => Promise.reject(new Error('not used')),
+      listLanguages: () => Promise.reject(new Error('not used')),
+      getAllTopics: () => Promise.reject(new Error('not used')),
+    },
+    checks: {
+      listForRef: () => Promise.reject(new Error('not used')),
+    },
+    actions: {
+      listWorkflowRunArtifacts: () => Promise.reject(new Error('not used')),
+      downloadArtifact: () => Promise.reject(new Error('not used')),
     },
     search: {
       code: () => Promise.reject(new Error('not used')),

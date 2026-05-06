@@ -12,16 +12,29 @@ function fakeAdapter(getContent: GithubAdapter['repos']['getContent']): GithubAd
   return {
     pulls: {
       get: () => Promise.reject(new Error('not used')),
+      list: () => Promise.reject(new Error('not used')),
       listFiles: () => Promise.reject(new Error('not used')),
       listReviewComments: () => Promise.reject(new Error('not used')),
     },
     issues: {
       get: () => Promise.reject(new Error('not used')),
+      list: () => Promise.reject(new Error('not used')),
       listComments: () => Promise.reject(new Error('not used')),
     },
     repos: {
+      get: () => Promise.reject(new Error('not used')),
       getCommit: () => Promise.reject(new Error('not used')),
       getContent,
+      listBranches: () => Promise.reject(new Error('not used')),
+      listLanguages: () => Promise.reject(new Error('not used')),
+      getAllTopics: () => Promise.reject(new Error('not used')),
+    },
+    checks: {
+      listForRef: () => Promise.reject(new Error('not used')),
+    },
+    actions: {
+      listWorkflowRunArtifacts: () => Promise.reject(new Error('not used')),
+      downloadArtifact: () => Promise.reject(new Error('not used')),
     },
     search: {
       code: () => Promise.reject(new Error('not used')),
