@@ -170,4 +170,35 @@ describe.skipIf(!liveEnabled)('GitHub App live integration', () => {
     expect(res.data.private).toBe(true)
     expect(res.data.full_name).toBe('Athrean/Orchentra')
   })
+
+  // Slice 2 — exercise getOctokitForInstall(orgId) end-to-end. Seeds
+  // installation 129899882 against orgId='live-test-org' and verifies the
+  // resolution path returns an App-scoped client that fetches the same
+  // private repo metadata.
+  test('getOctokitForInstall(orgId) returns an App-scoped client', async () => {
+    const { recordInstallation, setInstallationStoreForTesting } = await import('../src/github/installations')
+    const { getOctokitForInstall } = await import('../src/github/octokit')
+
+    // Reset to the default Drizzle-backed store so the env-fallback path is
+    // hit — we want the live env path here, not an in-memory override.
+    setInstallationStoreForTesting(null)
+
+    const creds = loadAppCredentialsFromEnv()
+    expect(creds).not.toBeNull()
+
+    await recordInstallation({
+      orgId: 'live-test-org',
+      installationId: creds!.installationId!,
+      accountLogin: 'Athrean',
+      accountType: 'Organization',
+      repositorySelection: 'selected',
+    })
+
+    const client = await getOctokitForInstall('live-test-org')
+    const res = await client.repos.get({ owner: 'Athrean', repo: 'Orchentra' })
+
+    expect(res.status).toBe(200)
+    expect(res.data.name).toBe('Orchentra')
+    expect(res.data.full_name).toBe('Athrean/Orchentra')
+  })
 })

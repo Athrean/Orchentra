@@ -6,10 +6,11 @@ import {
   InstallationRepositoriesPayloadSchema,
   resolveOrgIdForInstallation,
 } from '../src/github/installation-handlers'
-import { getInstallationByOrg, resetInstallationsStoreForTests } from '../src/github/installations'
+import { getInstallationByOrg, setInstallationStoreForTesting } from '../src/github/installations'
+import { createMemoryInstallationStore } from '../src/github/installations-memory-store'
 
 beforeEach(() => {
-  resetInstallationsStoreForTests()
+  setInstallationStoreForTesting(createMemoryInstallationStore())
 })
 
 function makeInstallationPayload(overrides: Record<string, unknown> = {}): unknown {
