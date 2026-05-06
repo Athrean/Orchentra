@@ -155,11 +155,6 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
     return r.arrayBuffer()
   }
 
-  /**
-   * POST/DELETE helper for mutating Actions endpoints. GitHub returns 204 No
-   * Content for re-run / cancel / dispatch — we don't decode a body. `body`
-   * is JSON-encoded when present; absent for cancel.
-   */
   async function fetchVoid(path: string, init: { method: 'POST' | 'DELETE'; body?: unknown }): Promise<void> {
     const reqHeaders: Record<string, string> = { ...headers }
     let bodyInit: string | undefined
@@ -169,6 +164,17 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
     }
     const r = await fetch(`${baseUrl}${path}`, { method: init.method, headers: reqHeaders, body: bodyInit })
     if (!r.ok) throw new Error(`GitHub ${r.status} ${r.statusText} at ${path}`)
+  }
+
+  async function fetchPutJson(path: string, body: unknown): Promise<unknown> {
+    const r = await fetch(`${baseUrl}${path}`, {
+      method: 'PUT',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!r.ok) throw new Error(`GitHub PUT ${r.status} ${r.statusText} at ${path}`)
+    const text = await r.text()
+    return text.length > 0 ? JSON.parse(text) : null
   }
 
   return {
@@ -208,6 +214,14 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
           reviewers,
           team_reviewers,
         })) as Awaited<ReturnType<GithubAdapter['pulls']['requestReviewers']>>['data'],
+      }),
+      merge: async ({ owner, repo, pull_number, commit_title, commit_message, sha, merge_method }) => ({
+        data: (await fetchPutJson(`/repos/${owner}/${repo}/pulls/${pull_number}/merge`, {
+          commit_title,
+          commit_message,
+          sha,
+          merge_method,
+        })) as Awaited<ReturnType<GithubAdapter['pulls']['merge']>>['data'],
       }),
     },
     issues: {
@@ -281,6 +295,19 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
           description,
           context,
         })) as Awaited<ReturnType<GithubAdapter['repos']['createCommitStatus']>>['data'],
+      }),
+      createOrUpdateFileContents: async ({ owner, repo, path, message, content, branch, sha }) => ({
+        data: (await fetchPutJson(
+          `/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`,
+          { message, content, branch, sha },
+        )) as Awaited<ReturnType<GithubAdapter['repos']['createOrUpdateFileContents']>>['data'],
+      }),
+    },
+    git: {
+      createRef: async ({ owner, repo, ref, sha }) => ({
+        data: (await fetchPostJson(`/repos/${owner}/${repo}/git/refs`, { ref, sha })) as Awaited<
+          ReturnType<GithubAdapter['git']['createRef']>
+        >['data'],
       }),
     },
     checks: {
