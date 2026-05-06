@@ -98,6 +98,7 @@ describe('orchentra mcp serve (stdio)', () => {
         'post_comment',
         'search_code',
         // GitHub read ops batch B (Slice 5)
+        'list_branches',
         'list_check_runs',
         'list_issues',
         'list_pull_requests',
