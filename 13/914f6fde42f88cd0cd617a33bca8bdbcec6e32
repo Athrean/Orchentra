@@ -1,0 +1,25 @@
+apps/server/src/github/installation-handlers.ts
+  s_27be1972cf29b3::t_913552848f6e9d 1-10,12-60,62-71
+apps/server/src/routes/webhooks.ts
+  s_27be1972cf29b3::t_ed20a198e1994e 112
+  s_27be1972cf29b3::t_c436c8e23fe290 19-33
+  s_27be1972cf29b3::t_25bcd193ff86b8 242-271,273-275,277
+turbo.json
+  s_27be1972cf29b3::t_428dde66c1aa68 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "13914f6fde42f88cd0cd617a33bca8bdbcec6e32",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
