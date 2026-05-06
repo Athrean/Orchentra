@@ -24,6 +24,26 @@ export { getIssueOperation } from './ops/github/get-issue'
 export { searchCodeOperation } from './ops/github/search-code'
 export { postCommentOp } from './ops/github/post-comment'
 export type { PostCommentAdapters, PostCommentParams, PostCommentResult } from './ops/github/post-comment'
+export { listWorkflowRunsOperation } from './ops/github/list-workflow-runs'
+export type { ListWorkflowRunsResult, ListWorkflowRunsError, ListedWorkflowRun } from './ops/github/list-workflow-runs'
+export { getWorkflowRunOperation } from './ops/github/get-workflow-run'
+export type { WorkflowRunDetails, GetWorkflowRunError } from './ops/github/get-workflow-run'
+export { getWorkflowRunJobsOperation } from './ops/github/get-workflow-run-jobs'
+export type {
+  GetWorkflowRunJobsResult,
+  GetWorkflowRunJobsError,
+  WorkflowJob,
+  WorkflowJobStep,
+} from './ops/github/get-workflow-run-jobs'
+export { getJobLogsOperation } from './ops/github/get-job-logs'
+export type { GetJobLogsResult, GetJobLogsError } from './ops/github/get-job-logs'
+export { listPullRequestsOperation } from './ops/github/list-pull-requests'
+export { listIssuesOperation } from './ops/github/list-issues'
+export { listCheckRunsOperation } from './ops/github/list-check-runs'
+export { listBranchesOperation } from './ops/github/list-branches'
+export { getRepoMetadataOperation } from './ops/github/get-repo-metadata'
+export { listWorkflowRunArtifactsOperation } from './ops/github/list-workflow-run-artifacts'
+export { downloadArtifactOperation } from './ops/github/download-artifact'
 export type { BrainAdapter, EpisodeRow, RunbookRow, ListEpisodesFilter, ListRunbooksFilter } from './ops/brain/adapter'
 export { getBrainAdapter, setBrainAdapter } from './ops/brain/adapter'
 export { recordEpisodeOperation } from './ops/brain/record-episode'

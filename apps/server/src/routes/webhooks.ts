@@ -16,6 +16,21 @@ import {
   markWebhookFailed,
   markWebhookSkipped,
 } from '../queries/webhook-events'
+import {
+  InstallationPayloadSchema,
+  InstallationRepositoriesPayloadSchema,
+  handleInstallationEvent,
+  handleInstallationRepositoriesEvent,
+} from '../github/installation-handlers'
+
+/**
+ * Resolve the active webhook secret. The GitHub App secret (env var) takes
+ * precedence over the legacy orchentra.yml `github.webhook_secret`. This lets
+ * the App migration land without forcing every dev/CI to update their YAML.
+ */
+function getWebhookSecret(): string {
+  return process.env.GITHUB_APP_WEBHOOK_SECRET ?? config.github.webhook_secret
+}
 
 export const webhooksRouter = new Hono()
 
@@ -94,7 +109,7 @@ webhooksRouter.post('/github', async (c) => {
   const body = await c.req.text()
   const sig = c.req.header('x-hub-signature-256') ?? ''
 
-  const expected = 'sha256=' + createHmac('sha256', config.github.webhook_secret).update(body).digest('hex')
+  const expected = 'sha256=' + createHmac('sha256', getWebhookSecret()).update(body).digest('hex')
   const sigBuf = Buffer.from(sig)
   const expectedBuf = Buffer.from(expected)
 
@@ -224,9 +239,42 @@ webhooksRouter.post('/github', async (c) => {
       createdAt: suite.created_at ?? new Date().toISOString(),
     }
     return await dispatchFailure(c, failure, repo, webhookEventId, deliveryId)
+  } else if (event === 'installation') {
+    const parsed = InstallationPayloadSchema.safeParse(payload)
+    if (!parsed.success) {
+      markWebhookSkipped(webhookEventId).catch(console.error)
+      return c.json({ ok: true })
+    }
+    // Fire-and-forget so we stay <200ms per the GitHub delivery SLO.
+    handleInstallationEvent(parsed.data)
+      .then(() => markWebhookProcessed(webhookEventId))
+      .catch((err) => {
+        console.error('installation handler failed', err)
+        markWebhookFailed(webhookEventId, err instanceof Error ? err.message : String(err)).catch(console.error)
+      })
+    return c.json({ ok: true }, 202)
+  } else if (event === 'installation_repositories') {
+    const parsed = InstallationRepositoriesPayloadSchema.safeParse(payload)
+    if (!parsed.success) {
+      markWebhookSkipped(webhookEventId).catch(console.error)
+      return c.json({ ok: true })
+    }
+    handleInstallationRepositoriesEvent(parsed.data)
+      .then(() => markWebhookProcessed(webhookEventId))
+      .catch((err) => {
+        console.error('installation_repositories handler failed', err)
+        markWebhookFailed(webhookEventId, err instanceof Error ? err.message : String(err)).catch(console.error)
+      })
+    return c.json({ ok: true }, 202)
+  } else if (event === 'ping') {
+    markWebhookProcessed(webhookEventId).catch(console.error)
+    return c.json({ ok: true, pong: true })
   } else {
-    // Unhandled event type
+    // Unhandled event type — log so we can spot new event sources without
+    // failing the delivery.
+    console.log(`webhook: unhandled github event "${event ?? 'unknown'}", returning 202`)
     markWebhookSkipped(webhookEventId).catch(console.error)
+    return c.json({ ok: true }, 202)
   }
 
   return c.json({ ok: true })

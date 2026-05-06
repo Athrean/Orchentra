@@ -545,3 +545,49 @@ describe('GitHub Webhook — check_suite normalization', () => {
     expect(insertedIncidents.length).toBe(1)
   })
 })
+
+describe('GitHub Webhook — installation event dispatch', () => {
+  test('routes installation.created and records via the installations module', async () => {
+    const { resetInstallationsStoreForTests, getInstallationByOrg } = await import('../src/github/installations')
+    resetInstallationsStoreForTests()
+
+    const app = makeApp()
+    const body = JSON.stringify({
+      action: 'created',
+      installation: {
+        id: 8675309,
+        account: { login: 'Athrean', id: 1, type: 'Organization' },
+        repository_selection: 'selected',
+        permissions: { contents: 'read', metadata: 'read' },
+        events: ['workflow_run'],
+      },
+    })
+
+    const res = await sendWebhook(app, body, { event: 'installation' })
+    expect(res.status).toBe(202)
+    await Bun.sleep(50)
+
+    const record = await getInstallationByOrg(process.env.ORCHENTRA_DEFAULT_ORG_ID ?? 'Athrean')
+    expect(record).not.toBeNull()
+    expect(record!.installationId).toBe(8675309)
+    expect(record!.repositorySelection).toBe('selected')
+  })
+
+  test('routes ping events with a 200 + pong body without enqueueing work', async () => {
+    const app = makeApp()
+    const body = JSON.stringify({ zen: 'Speak like a human.', hook_id: 1 })
+    const res = await sendWebhook(app, body, { event: 'ping' })
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as { ok: boolean; pong: boolean }
+    expect(json.pong).toBe(true)
+    expect(queueCalls.length).toBe(0)
+    expect(insertedIncidents.length).toBe(0)
+  })
+
+  test('returns 202 for unknown event types instead of erroring', async () => {
+    const app = makeApp()
+    const body = JSON.stringify({ action: 'whatever' })
+    const res = await sendWebhook(app, body, { event: 'meta' })
+    expect(res.status).toBe(202)
+  })
+})

@@ -90,7 +90,7 @@ export async function getOctokitForInstall(orgId: string): Promise<OctokitLike> 
     const install = await getInstallationByOrg(orgId)
     const appIdRaw = vaultCred.metadata.appId
     const appId = typeof appIdRaw === 'number' ? appIdRaw : Number(appIdRaw)
-    const installationId = install?.installationId ?? getDefaultInstallation()?.installationId
+    const installationId = install?.installationId ?? (await getDefaultInstallation())?.installationId
     if (Number.isFinite(appId) && installationId) {
       return buildAppOctokit({ appId, privateKey: vaultCred.value, installationId })
     }
