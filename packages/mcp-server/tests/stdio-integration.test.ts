@@ -110,6 +110,11 @@ describe('orchentra mcp serve (stdio)', () => {
         'list_issues',
         'list_pull_requests',
         'list_workflow_run_artifacts',
+        // GitHub Actions write ops (Slice 7)
+        'cancel_workflow_run',
+        'dispatch_workflow',
+        'rerun_failed_jobs',
+        'rerun_workflow',
         // Brain ops (Phase 2 skeleton)
         'export_skills_md',
         'get_runbook',
