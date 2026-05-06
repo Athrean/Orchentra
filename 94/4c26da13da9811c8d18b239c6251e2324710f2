@@ -1,0 +1,19 @@
+apps/server/tests/helpers/db-client-mock.ts
+  s_27be1972cf29b3::t_96196d10a154e1 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "944c26da13da9811c8d18b239c6251e2324710f2",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
