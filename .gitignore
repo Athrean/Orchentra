@@ -7,8 +7,16 @@ dist/
 *.db-shm
 orchentra.yml
 .env
-.env.local
+.env.*
+!.env.example
 .DS_Store
+
+# Credentials — NEVER commit
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Turbo cache
 .turbo/
