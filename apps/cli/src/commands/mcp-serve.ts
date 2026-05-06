@@ -121,7 +121,7 @@ function buildGitHubAdapter(allowedRepos: Set<string> | null): GitHubAdapter {
 }
 
 function buildLowercaseGithubAdapter(): GithubAdapter {
-  const { fetchJson } = buildGitHubFetchers()
+  const { fetchJson, fetchText } = buildGitHubFetchers()
 
   function qs(params: Record<string, string | number | undefined>): string {
     const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null)
@@ -181,6 +181,32 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
         data: (await fetchJson(`/search/code${qs({ q, per_page })}`)) as Awaited<
           ReturnType<GithubAdapter['search']['code']>
         >['data'],
+      }),
+    },
+    actions: {
+      listWorkflowRunsForRepo: async ({ owner, repo, status, branch, event, per_page, page }) => ({
+        data: (await fetchJson(
+          `/repos/${owner}/${repo}/actions/runs${qs({ status, branch, event, per_page, page })}`,
+        )) as Awaited<ReturnType<GithubAdapter['actions']['listWorkflowRunsForRepo']>>['data'],
+      }),
+      getWorkflowRun: async ({ owner, repo, run_id }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/actions/runs/${run_id}`)) as Awaited<
+          ReturnType<GithubAdapter['actions']['getWorkflowRun']>
+        >['data'],
+      }),
+      listJobsForWorkflowRun: async ({ owner, repo, run_id, attempt_number }) => {
+        const path =
+          attempt_number !== undefined
+            ? `/repos/${owner}/${repo}/actions/runs/${run_id}/attempts/${attempt_number}/jobs`
+            : `/repos/${owner}/${repo}/actions/runs/${run_id}/jobs`
+        return {
+          data: (await fetchJson(path)) as Awaited<
+            ReturnType<GithubAdapter['actions']['listJobsForWorkflowRun']>
+          >['data'],
+        }
+      },
+      downloadJobLogsForWorkflowRun: async ({ owner, repo, job_id }) => ({
+        data: await fetchText(`/repos/${owner}/${repo}/actions/jobs/${job_id}/logs`),
       }),
     },
   }
