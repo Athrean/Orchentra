@@ -44,5 +44,6 @@ export function dbClientMockBase(): Record<string, unknown> {
     credentials: {},
     auditLog: {},
     githubInstallations: {},
+    approvalRequests: {},
   }
 }
