@@ -32,6 +32,9 @@ import { createPullRequestOperation } from './github/create-pull-request'
 import { requestPrReviewOperation } from './github/request-pr-review'
 import { createCheckRunOperation } from './github/create-check-run'
 import { createCommitStatusOperation } from './github/create-commit-status'
+import { createOrUpdateFileContentsOperation } from './github/create-or-update-file-contents'
+import { createBranchOperation } from './github/create-branch'
+import { mergePullRequestOperation } from './github/merge-pull-request'
 
 export const operations: Operation[] = [
   // GitHub adapter ops (Phase 1A)
@@ -73,4 +76,8 @@ export const operations: Operation[] = [
   requestPrReviewOperation as Operation,
   createCheckRunOperation as Operation,
   createCommitStatusOperation as Operation,
+  // GitHub commit/branch write ops (Slice 9)
+  createOrUpdateFileContentsOperation as Operation,
+  createBranchOperation as Operation,
+  mergePullRequestOperation as Operation,
 ]
