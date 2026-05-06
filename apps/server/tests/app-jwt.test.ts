@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { createPublicKey, verify, KeyObject } from 'crypto'
 import { mintAppJwt } from '../src/github/app-jwt'
+import { loadAppCredentialsFromEnv } from '../src/github/octokit-app'
 
 // Test-only RSA key — generated for this unit test, never used against real GitHub.
 const TEST_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
@@ -66,5 +67,27 @@ describe('mintAppJwt', () => {
     expect(typeof payload.iat).toBe('number')
     expect(typeof payload.exp).toBe('number')
     expect(payload.exp - payload.iat).toBeLessThanOrEqual(600)
+  })
+})
+
+// Live integration — gated behind GITHUB_APP_LIVE=1 so CI without real creds
+// skips it. Mints a JWT against the configured App private key and calls
+// GET /app on api.github.com to verify the JWT signer.
+const liveEnabled = process.env.GITHUB_APP_LIVE === '1'
+describe.skipIf(!liveEnabled)('mintAppJwt live integration', () => {
+  test('JWT authenticates as the App against api.github.com /app', async () => {
+    const creds = loadAppCredentialsFromEnv()
+    expect(creds).not.toBeNull()
+    const jwt = await mintAppJwt(creds!)
+    const res = await fetch('https://api.github.com/app', {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'orchentra-test',
+      },
+    })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { id: number }
+    expect(body.id).toBe(creds!.appId)
   })
 })
