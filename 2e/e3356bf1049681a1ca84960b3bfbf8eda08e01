@@ -1,0 +1,25 @@
+packages/db/src/schema.ts
+  s_27be1972cf29b3::t_62f27a4cc0d1b6 505-543
+packages/db/src/migrations/meta/_journal.json
+  s_27be1972cf29b3::t_ce37f9a1b1c6ac 158-164
+packages/db/src/migrations/0022_approval_requests.sql
+  s_27be1972cf29b3::t_3222630bb528b8 1-27
+apps/server/src/db/client.ts
+  s_27be1972cf29b3::t_3b77de96d982bc 25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "2ee3356bf1049681a1ca84960b3bfbf8eda08e01",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
