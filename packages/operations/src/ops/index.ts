@@ -12,6 +12,7 @@ import { listCheckRunsOperation } from './github/list-check-runs'
 import { listBranchesOperation } from './github/list-branches'
 import { getRepoMetadataOperation } from './github/get-repo-metadata'
 import { listWorkflowRunArtifactsOperation } from './github/list-workflow-run-artifacts'
+import { downloadArtifactOperation } from './github/download-artifact'
 import { recordEpisodeOperation } from './brain/record-episode'
 import { listEpisodesOperation } from './brain/list-episodes'
 import { getRunbookOperation } from './brain/get-runbook'
@@ -34,6 +35,7 @@ export const operations: Operation[] = [
   listBranchesOperation as Operation,
   getRepoMetadataOperation as Operation,
   listWorkflowRunArtifactsOperation as Operation,
+  downloadArtifactOperation as Operation,
   // Brain ops (Phase 2 skeleton)
   recordEpisodeOperation as Operation,
   listEpisodesOperation as Operation,
