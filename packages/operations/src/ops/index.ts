@@ -7,6 +7,7 @@ import { getIssueOperation } from './github/get-issue'
 import { searchCodeOperation } from './github/search-code'
 import { postCommentOp } from './github/post-comment'
 import { listPullRequestsOperation } from './github/list-pull-requests'
+import { listIssuesOperation } from './github/list-issues'
 import { recordEpisodeOperation } from './brain/record-episode'
 import { listEpisodesOperation } from './brain/list-episodes'
 import { getRunbookOperation } from './brain/get-runbook'
@@ -24,6 +25,7 @@ export const operations: Operation[] = [
   postCommentOp as Operation,
   // GitHub read ops batch B (Slice 5)
   listPullRequestsOperation as Operation,
+  listIssuesOperation as Operation,
   // Brain ops (Phase 2 skeleton)
   recordEpisodeOperation as Operation,
   listEpisodesOperation as Operation,
