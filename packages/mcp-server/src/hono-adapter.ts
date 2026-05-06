@@ -1,8 +1,7 @@
 import type { Hono } from 'hono'
-import { handleHttpRpc } from './http-handler'
-import type { HandleRpcDeps } from './handle-rpc'
+import { handleHttpRpc, type HandleHttpRpcDeps } from './http-handler'
 
-export interface MountMcpRoutesOptions extends HandleRpcDeps {
+export interface MountMcpRoutesOptions extends HandleHttpRpcDeps {
   /** Path prefix for the MCP endpoint. Defaults to `/mcp`. */
   path?: string
 }
@@ -17,10 +16,11 @@ export interface MountMcpRoutesOptions extends HandleRpcDeps {
  */
 export function mountMcpRoutes(app: Hono, options: MountMcpRoutesOptions): void {
   const path = options.path ?? '/mcp'
-  const deps: HandleRpcDeps = {
+  const deps: HandleHttpRpcDeps = {
     operations: options.operations,
     serverInfo: options.serverInfo,
     approval: options.approval,
+    approvalPort: options.approvalPort,
   }
 
   app.post(path, async (c) => {

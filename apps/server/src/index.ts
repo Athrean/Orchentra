@@ -22,6 +22,7 @@ import { workflowsRouter } from './routes/workflows'
 import { analyticsRouter } from './routes/analytics'
 import { usageRouter } from './routes/usage'
 import { webhookEventsRouter } from './routes/webhook-events'
+import { approvalsRouter } from './routes/approvals'
 import { setJobQueue, startQueueWorker } from './lib/job-queue'
 import { PgJobQueue } from './lib/pg-job-queue'
 import { ensureServerBrainWired } from './agent/brain-adapter'
@@ -155,6 +156,7 @@ app.route('/api/orgs/:orgId', workflowsRouter) // CI/CD workflow management
 app.route('/api/orgs/:orgId', analyticsRouter) // CI/CD health analytics
 app.route('/api/orgs/:orgId', usageRouter) // token usage aggregates
 app.route('/api/orgs/:orgId', webhookEventsRouter) // webhook event replay
+app.route('/api/orgs/:orgId', approvalsRouter) // pending-approval ack + list
 
 const port = parseInt(process.env.PORT ?? '3001')
 

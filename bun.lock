@@ -91,6 +91,7 @@
         "@orchentra/brain": "workspace:*",
         "@orchentra/core": "workspace:*",
         "@orchentra/db": "workspace:*",
+        "@orchentra/mcp-server": "workspace:*",
         "@orchentra/operations": "workspace:*",
         "ai": "^4.3.0",
         "arctic": "^3.7.0",
