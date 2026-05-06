@@ -103,6 +103,7 @@ describe('orchentra mcp serve (stdio)', () => {
         'list_check_runs',
         'list_issues',
         'list_pull_requests',
+        'list_workflow_run_artifacts',
         // Brain ops (Phase 2 skeleton)
         'export_skills_md',
         'get_runbook',
