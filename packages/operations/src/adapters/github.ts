@@ -46,6 +46,15 @@ export interface GithubAdapter {
       reviewers?: string[]
       team_reviewers?: string[]
     }) => Promise<{ data: GithubReviewersResponse }>
+    merge: (p: {
+      owner: string
+      repo: string
+      pull_number: number
+      commit_title?: string
+      commit_message?: string
+      sha?: string
+      merge_method?: 'merge' | 'squash' | 'rebase'
+    }) => Promise<{ data: GithubMergePullRequest }>
   }
   issues: {
     get: (p: { owner: string; repo: string; issue_number: number }) => Promise<{ data: GithubIssue }>
@@ -107,6 +116,18 @@ export interface GithubAdapter {
       description?: string
       context?: string
     }) => Promise<{ data: GithubCommitStatus }>
+    createOrUpdateFileContents: (p: {
+      owner: string
+      repo: string
+      path: string
+      message: string
+      content: string
+      branch?: string
+      sha?: string
+    }) => Promise<{ data: GithubCreateOrUpdateFileResponse }>
+  }
+  git: {
+    createRef: (p: { owner: string; repo: string; ref: string; sha: string }) => Promise<{ data: GithubGitRef }>
   }
   checks: {
     listForRef: (p: {
@@ -389,6 +410,23 @@ export interface GithubCommitStatus {
   target_url?: string | null
   description?: string | null
   context?: string | null
+}
+
+export interface GithubCreateOrUpdateFileResponse {
+  commit: { sha: string; html_url?: string | null }
+  content: { sha: string; html_url?: string | null; path?: string } | null
+}
+
+export interface GithubGitRef {
+  ref: string
+  url: string
+  object: { sha: string; type?: string; url?: string }
+}
+
+export interface GithubMergePullRequest {
+  sha: string
+  merged: boolean
+  message: string
 }
 
 export type RepoMonitoredCheck = (fullName: string) => Promise<boolean>

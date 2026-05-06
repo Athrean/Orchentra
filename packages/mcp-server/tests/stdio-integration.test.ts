@@ -128,6 +128,10 @@ describe('orchentra mcp serve (stdio)', () => {
         'request_pr_review',
         'create_check_run',
         'create_commit_status',
+        // GitHub commit/branch write ops (Slice 9)
+        'create_branch',
+        'create_or_update_file_contents',
+        'merge_pull_request',
       ].sort(),
     )
   })
