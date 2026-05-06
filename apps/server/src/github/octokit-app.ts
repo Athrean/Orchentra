@@ -2,8 +2,16 @@ import { readFileSync } from 'fs'
 import { isAbsolute, resolve } from 'path'
 import { Octokit } from '@octokit/rest'
 import { createAppAuth } from '@octokit/auth-app'
+import { throttling } from '@octokit/plugin-throttling'
+import { retry } from '@octokit/plugin-retry'
 import { z } from 'zod'
 import type { OctokitLike } from './octokit'
+import { buildThrottleOptions } from './octokit-plugins'
+
+// Composed Octokit class with throttling + retry — both App and PAT clients use
+// the same plugin set so secondary-rate-limit handling and 5xx retry behaviour
+// are uniform across auth strategies.
+const HardenedOctokit = Octokit.plugin(throttling, retry)
 
 const AppCredentialsSchema = z.object({
   appId: z.coerce.number().int().positive(),
@@ -51,7 +59,7 @@ export function buildAppOctokit(creds: AppCredentials, installationId?: number):
   if (!targetInstallId) {
     throw new Error('buildAppOctokit: installationId required. Pass arg or set GITHUB_APP_INSTALLATION_ID.')
   }
-  return new Octokit({
+  return new HardenedOctokit({
     authStrategy: createAppAuth,
     auth: {
       appId: creds.appId,
@@ -60,5 +68,6 @@ export function buildAppOctokit(creds: AppCredentials, installationId?: number):
       ...(creds.clientId ? { clientId: creds.clientId } : {}),
       ...(creds.clientSecret ? { clientSecret: creds.clientSecret } : {}),
     },
+    throttle: buildThrottleOptions(`app:${targetInstallId}`),
   })
 }

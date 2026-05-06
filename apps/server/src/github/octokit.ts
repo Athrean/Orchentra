@@ -1,6 +1,11 @@
 import { Octokit } from '@octokit/rest'
+import { throttling } from '@octokit/plugin-throttling'
+import { retry } from '@octokit/plugin-retry'
 import { config } from '../config'
 import { buildAppOctokit, loadAppCredentialsFromEnv } from './octokit-app'
+import { buildThrottleOptions } from './octokit-plugins'
+
+const HardenedOctokit = Octokit.plugin(throttling, retry)
 
 export type OctokitLike = Pick<
   Octokit,
@@ -21,9 +26,10 @@ function defaultBuilder(opts: { auth?: string; log?: unknown }): OctokitLike {
       return buildAppOctokit(appCreds)
     }
   }
-  return new Octokit({
+  return new HardenedOctokit({
     auth: opts.auth ?? config.github.token,
     baseUrl: config.github.api_base_url ?? 'https://api.github.com',
+    throttle: buildThrottleOptions('pat'),
     ...(opts.log ? { log: opts.log as never } : {}),
   })
 }
