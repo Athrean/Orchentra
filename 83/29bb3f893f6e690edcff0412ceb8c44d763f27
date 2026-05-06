@@ -1,0 +1,21 @@
+apps/server/src/agent/tools/github-actions.ts
+  s_27be1972cf29b3::t_efe95fc57727e3 3-11,19-20,43-90
+apps/server/tests/list-workflow-runs-live.test.ts
+  s_27be1972cf29b3::t_e0cface21810d0 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "8329bb3f893f6e690edcff0412ceb8c44d763f27",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
