@@ -1,0 +1,29 @@
+packages/operations/tests/update-issue.test.ts
+  s_27be1972cf29b3::t_a82f1488058a7e 1-116,118-163
+packages/operations/tests/create-check-run.test.ts
+  s_27be1972cf29b3::t_91c19d4c642f1d 1-140,142-174
+packages/operations/tests/create-commit-status.test.ts
+  s_27be1972cf29b3::t_f49c926c8bc477 1-92,94-129,131-188
+packages/operations/tests/create-issue.test.ts
+  s_27be1972cf29b3::t_8ac4ca74d335eb 1-117,119-151
+packages/operations/tests/request-pr-review.test.ts
+  s_27be1972cf29b3::t_f984c02b2fc149 1-158,160-197
+packages/operations/tests/create-pull-request.test.ts
+  s_27be1972cf29b3::t_e080e8b2ecceff 1-122,124-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "35154010ea17fdc27bd193d51dc62670b6d9a15c",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
