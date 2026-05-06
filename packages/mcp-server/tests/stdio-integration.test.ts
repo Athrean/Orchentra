@@ -97,6 +97,8 @@ describe('orchentra mcp serve (stdio)', () => {
         'get_workflow_logs',
         'post_comment',
         'search_code',
+        // GitHub read ops batch B (Slice 5)
+        'list_pull_requests',
         // Brain ops (Phase 2 skeleton)
         'export_skills_md',
         'get_runbook',
