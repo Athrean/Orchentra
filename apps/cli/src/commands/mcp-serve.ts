@@ -137,6 +137,22 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
     return r.arrayBuffer()
   }
 
+  /**
+   * POST/DELETE helper for mutating Actions endpoints. GitHub returns 204 No
+   * Content for re-run / cancel / dispatch — we don't decode a body. `body`
+   * is JSON-encoded when present; absent for cancel.
+   */
+  async function fetchVoid(path: string, init: { method: 'POST' | 'DELETE'; body?: unknown }): Promise<void> {
+    const reqHeaders: Record<string, string> = { ...headers }
+    let bodyInit: string | undefined
+    if (init.body !== undefined) {
+      reqHeaders['content-type'] = 'application/json'
+      bodyInit = JSON.stringify(init.body)
+    }
+    const r = await fetch(`${baseUrl}${path}`, { method: init.method, headers: reqHeaders, body: bodyInit })
+    if (!r.ok) throw new Error(`GitHub ${r.status} ${r.statusText} at ${path}`)
+  }
+
   return {
     pulls: {
       get: async ({ owner, repo, pull_number }) => ({
@@ -248,6 +264,24 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
       downloadArtifact: async ({ owner, repo, artifact_id, archive_format }) => ({
         data: await fetchBytes(`/repos/${owner}/${repo}/actions/artifacts/${artifact_id}/${archive_format}`),
       }),
+      // Slice 7 — mutating Actions endpoints. All return 204 No Content.
+      reRunWorkflow: async ({ owner, repo, run_id, enable_debug_logging }) =>
+        fetchVoid(`/repos/${owner}/${repo}/actions/runs/${run_id}/rerun`, {
+          method: 'POST',
+          ...(enable_debug_logging !== undefined ? { body: { enable_debug_logging } } : {}),
+        }),
+      reRunWorkflowFailedJobs: async ({ owner, repo, run_id, enable_debug_logging }) =>
+        fetchVoid(`/repos/${owner}/${repo}/actions/runs/${run_id}/rerun-failed-jobs`, {
+          method: 'POST',
+          ...(enable_debug_logging !== undefined ? { body: { enable_debug_logging } } : {}),
+        }),
+      cancelWorkflowRun: async ({ owner, repo, run_id }) =>
+        fetchVoid(`/repos/${owner}/${repo}/actions/runs/${run_id}/cancel`, { method: 'POST' }),
+      createWorkflowDispatch: async ({ owner, repo, workflow_id, ref, inputs }) =>
+        fetchVoid(`/repos/${owner}/${repo}/actions/workflows/${encodeURIComponent(String(workflow_id))}/dispatches`, {
+          method: 'POST',
+          body: { ref, ...(inputs !== undefined ? { inputs } : {}) },
+        }),
     },
     search: {
       code: async ({ q, per_page }) => ({
