@@ -1,0 +1,31 @@
+apps/server/src/github/octokit.ts
+  s_27be1972cf29b3::t_f331beb1a620b9 2-3,6-8,29,32
+apps/server/src/github/octokit-app.ts
+  s_27be1972cf29b3::t_f331beb1a620b9 5-6,9-14,62,71
+apps/server/src/github/octokit-plugins.ts
+  s_27be1972cf29b3::t_f331beb1a620b9 1-35,39-54
+  ai_agent 36-38
+apps/server/package.json
+  s_27be1972cf29b3::t_33cc4fb9c6898d 18-19
+apps/server/tests/octokit-plugins.test.ts
+  s_27be1972cf29b3::t_f331beb1a620b9 1-3,5-38
+  s_27be1972cf29b3::t_478b263d5c2fbb 4
+bun.lock
+  ai_agent 87-88,538-541,784-785,1586-1591,1746-1748
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "3bd43ce27ebb4b214d1b66b4f91737ea68345305",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
