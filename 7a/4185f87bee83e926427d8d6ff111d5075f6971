@@ -1,0 +1,26 @@
+apps/server/src/routes/github-app.ts
+  s_27be1972cf29b3::t_74dce288e46833 22
+  s_27be1972cf29b3::t_79fb6d21276f0e 1-21,23-95
+apps/server/tests/github-app-callback.test.ts
+  s_27be1972cf29b3::t_87e647e8bf157a 31
+  s_27be1972cf29b3::t_3df9bf94922436 1-30,32-126
+apps/server/src/index.ts
+  s_27be1972cf29b3::t_42412507f3812c 11
+  s_27be1972cf29b3::t_c8f5e60398dfac 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "7a4185f87bee83e926427d8d6ff111d5075f6971",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
