@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest'
 import { config } from '../config'
+import { buildAppOctokit, loadAppCredentialsFromEnv } from './octokit-app'
 
 export type OctokitLike = Pick<
   Octokit,
@@ -12,6 +13,14 @@ let instance: OctokitLike | null = null
 let builderOverride: OctokitBuilder | null = null
 
 function defaultBuilder(opts: { auth?: string; log?: unknown }): OctokitLike {
+  // Prefer GitHub App install-token auth when configured + a per-call auth override
+  // was not supplied (per-call auth = user-scoped path, kept on PAT semantics).
+  if (!opts.auth) {
+    const appCreds = loadAppCredentialsFromEnv()
+    if (appCreds && appCreds.installationId) {
+      return buildAppOctokit(appCreds)
+    }
+  }
   return new Octokit({
     auth: opts.auth ?? config.github.token,
     baseUrl: config.github.api_base_url ?? 'https://api.github.com',
