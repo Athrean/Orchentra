@@ -1,0 +1,24 @@
+apps/server/src/index.ts
+  s_27be1972cf29b3::t_dbf9b3d8c3278a 25
+  s_27be1972cf29b3::t_a4ab64eeeb0e71 159
+apps/server/tests/approvals-routes.test.ts
+  s_27be1972cf29b3::t_8044f006a8d344 1-9,11-210
+apps/server/src/routes/approvals.ts
+  s_27be1972cf29b3::t_64d694fcf10ec6 1-3,6-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "2499277f0eaa8a76349b4eb4ffe074e17e1d1699",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
