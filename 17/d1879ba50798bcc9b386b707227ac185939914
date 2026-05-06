@@ -1,0 +1,21 @@
+apps/server/tests/approvals-end-to-end.test.ts
+  s_27be1972cf29b3::t_bf5f907a098a27 1-139,141-191,193-206
+apps/server/package.json
+  s_27be1972cf29b3::t_005dc68040b3fd 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "17d1879ba50798bcc9b386b707227ac185939914",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
