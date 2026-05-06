@@ -1,0 +1,30 @@
+packages/operations/src/types.ts
+  s_27be1972cf29b3::t_e64c8766a1cafd 11,21-51,53-57
+  s_27be1972cf29b3::t_f9633d8ef801d0 88-95
+packages/operations/tests/trust.test.ts
+  s_27be1972cf29b3::t_db1e3ff2476347 1-78,80-83,85-91,93-95
+packages/operations/tests/dispatch-trust-boundary.test.ts
+  s_27be1972cf29b3::t_c9af3a8314f50a 251-316
+packages/operations/src/index.ts
+  s_27be1972cf29b3::t_97d162569aaaa2 3-5,15-16
+packages/operations/src/trust.ts
+  s_27be1972cf29b3::t_5a1565c235df32 1-46,48-98
+packages/operations/src/dispatch.ts
+  s_27be1972cf29b3::t_65d265023f5407 1,31,40,42,49-50,53-67,82-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "f4a992bcf584d324047eabde7e54125cb75d1f0d",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
