@@ -22,4 +22,6 @@ export {
   credentials,
   auditLog,
   githubInstallations,
+  // Slice 6 — pending approval requests for write/destructive ops.
+  approvalRequests,
 } from '@orchentra/db'
