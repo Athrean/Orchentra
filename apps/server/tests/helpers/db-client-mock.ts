@@ -41,5 +41,8 @@ export function dbClientMockBase(): Record<string, unknown> {
     webhookEvents: {},
     incidentJobs: {},
     orgLlmConfigs: {},
+    credentials: {},
+    auditLog: {},
+    githubInstallations: {},
   }
 }

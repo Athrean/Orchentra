@@ -148,6 +148,13 @@
       "when": 1819756800000,
       "tag": "0020_runbooks",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1830384000000,
+      "tag": "0021_credential_vault",
+      "breakpoints": true
     }
   ]
 }
