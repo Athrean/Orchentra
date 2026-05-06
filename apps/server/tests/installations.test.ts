@@ -125,10 +125,13 @@ describe('getDefaultInstallation', () => {
     process.env.GITHUB_APP_INSTALLATION_ID = ORIGINAL_INSTALL_ID
   })
 
-  test('returns null when env-fallback is not configured', () => {
+  test('returns null when env-fallback is not configured', async () => {
     delete process.env.GITHUB_APP_ID
     delete process.env.GITHUB_APP_PRIVATE_KEY_PATH
     delete process.env.GITHUB_APP_INSTALLATION_ID
-    expect(getDefaultInstallation()).toBeNull()
+    const { setInstallationStoreForTesting } = await import('../src/github/installations')
+    const { createMemoryInstallationStore } = await import('../src/github/installations-memory-store')
+    setInstallationStoreForTesting(createMemoryInstallationStore())
+    expect(await getDefaultInstallation()).toBeNull()
   })
 })
