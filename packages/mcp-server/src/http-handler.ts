@@ -1,6 +1,21 @@
 import { OperationError, type OperationErrorPayload } from '@orchentra/operations'
+import { buildApprovalCallbackFromPort, type ApprovalPort } from './approval-port'
 import { handleRpc, type HandleRpcDeps } from './handle-rpc'
 import type { IncomingMessage } from './protocol'
+
+export interface HandleHttpRpcDeps extends HandleRpcDeps {
+  /**
+   * Optional approval persistence backend. When set, write/destructive ops
+   * persist a pending row via the port and the dispatcher returns
+   * `awaiting_approval` to the MCP caller — same contract as the structured
+   * `ApprovalDecisionResult` in @orchentra/operations.
+   *
+   * The host (apps/server, hosted Worker) injects an implementation that
+   * writes through to its store. The mcp-server package itself never
+   * imports the store directly, so it stays portable.
+   */
+  approvalPort?: ApprovalPort
+}
 
 /**
  * HTTP transport adapter for the MCP server.
@@ -20,7 +35,7 @@ import type { IncomingMessage } from './protocol'
  * Errors serialize to the same `OperationError.toJSON()` shape as stdio so
  * downstream MCP clients see consistent payloads regardless of transport.
  */
-export async function handleHttpRpc(req: Request, deps: HandleRpcDeps): Promise<Response> {
+export async function handleHttpRpc(req: Request, deps: HandleHttpRpcDeps): Promise<Response> {
   const authHeader = req.headers.get('authorization')
   const bearer = parseBearer(authHeader)
   if (!bearer) {
@@ -57,9 +72,24 @@ export async function handleHttpRpc(req: Request, deps: HandleRpcDeps): Promise<
     })
   }
 
+  // Per-request deps: when an approvalPort is configured, build an org+actor-
+  // scoped approval callback that persists a pending row and returns
+  // `awaiting_approval` to the dispatcher. Otherwise fall back to whatever
+  // approval callback the host configured globally (or none, for stdio-style
+  // fail-closed behavior).
+  const requestDeps: HandleRpcDeps = deps.approvalPort
+    ? {
+        ...deps,
+        approval: buildApprovalCallbackFromPort(deps.approvalPort, {
+          orgId,
+          requestedBy: { id: bearer, type: 'agent' },
+        }),
+      }
+    : deps
+
   let response
   try {
-    response = await handleRpc(parsed, deps)
+    response = await handleRpc(parsed, requestDeps)
   } catch (err) {
     return errorResponse(500, {
       code: 'internal_error',

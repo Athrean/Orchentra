@@ -248,6 +248,72 @@ describe('dispatch trust boundary', () => {
     expect(approvalCalled).toBe(false)
   })
 
+  test('approval callback can return a structured awaiting_approval decision', async () => {
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async () => ({
+        status: 'awaiting_approval',
+        approvalId: 'apr_123',
+        expiresAt: '2026-01-01T00:00:00Z',
+        reason: 'queued for human review',
+      }),
+    }
+
+    let caught: unknown
+    try {
+      await dispatch(writeOp, ctx, { msg: 'hi' })
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeInstanceOf(OperationError)
+    const err = caught as OperationError
+    expect(err.code).toBe('awaiting_approval')
+    expect(err.message).toContain('queued for human review')
+    expect(err.suggestion).toContain('apr_123')
+    expect(err.docs).toContain('apr_123')
+    expect(err.docs).toContain('2026-01-01T00:00:00Z')
+  })
+
+  test('approval callback returning structured approved decision runs the handler', async () => {
+    let handlerCalled = false
+    const op: Operation<{ msg: string }, { ok: true }> = {
+      ...writeOp,
+      handler: async () => {
+        handlerCalled = true
+        return { ok: true }
+      },
+    }
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async () => ({ status: 'approved' }),
+    }
+
+    const result = await dispatch(op, ctx, { msg: 'hi' })
+
+    expect(result).toEqual({ ok: true })
+    expect(handlerCalled).toBe(true)
+  })
+
+  test('approval callback returning structured denied decision throws permission_denied', async () => {
+    const ctx: OperationContext = {
+      remote: true,
+      approval: async () => ({ status: 'denied', reason: 'policy violation: forbidden repo' }),
+    }
+
+    let caught: unknown
+    try {
+      await dispatch(writeOp, ctx, { msg: 'hi' })
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeInstanceOf(OperationError)
+    const err = caught as OperationError
+    expect(err.code).toBe('permission_denied')
+    expect(err.message).toContain('policy violation')
+  })
+
   test('localOnly op with remote=true still rejected even when approval returns true', async () => {
     const localOp: Operation<{ path: string }, { ok: true }> = {
       id: 'fixture_local_only_no_approval_bypass',
