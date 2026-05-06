@@ -109,6 +109,15 @@ const fake: GithubAdapter = {
     }),
     listJobsForWorkflowRun: async () => ({ data: { total_count: 0, jobs: [] } }),
     downloadJobLogsForWorkflowRun: async () => ({ data: 'fake job logs' }),
+    listWorkflowRunArtifacts: async () => ({ data: { total_count: 0, artifacts: [] } }),
+    downloadArtifact: async () => ({ data: new ArrayBuffer(0) }),
+    // Slice 7 — mutating Actions ops. Stubbed no-ops; the stdio integration
+    // test only verifies tools/list contains them. Per-op behavior is covered
+    // in their dedicated unit tests.
+    reRunWorkflow: async () => undefined,
+    reRunWorkflowFailedJobs: async () => undefined,
+    cancelWorkflowRun: async () => undefined,
+    createWorkflowDispatch: async () => undefined,
   },
 }
 

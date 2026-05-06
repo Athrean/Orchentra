@@ -17,6 +17,10 @@ import { listBranchesOperation } from './github/list-branches'
 import { getRepoMetadataOperation } from './github/get-repo-metadata'
 import { listWorkflowRunArtifactsOperation } from './github/list-workflow-run-artifacts'
 import { downloadArtifactOperation } from './github/download-artifact'
+import { rerunWorkflowOperation } from './github/rerun-workflow'
+import { rerunFailedJobsOperation } from './github/rerun-failed-jobs'
+import { cancelWorkflowRunOperation } from './github/cancel-workflow-run'
+import { dispatchWorkflowOperation } from './github/dispatch-workflow'
 import { recordEpisodeOperation } from './brain/record-episode'
 import { listEpisodesOperation } from './brain/list-episodes'
 import { getRunbookOperation } from './brain/get-runbook'
@@ -45,6 +49,11 @@ export const operations: Operation[] = [
   getRepoMetadataOperation as Operation,
   listWorkflowRunArtifactsOperation as Operation,
   downloadArtifactOperation as Operation,
+  // GitHub Actions write ops (Slice 7)
+  rerunWorkflowOperation as Operation,
+  rerunFailedJobsOperation as Operation,
+  cancelWorkflowRunOperation as Operation,
+  dispatchWorkflowOperation as Operation,
   // Brain ops (Phase 2 skeleton)
   recordEpisodeOperation as Operation,
   listEpisodesOperation as Operation,

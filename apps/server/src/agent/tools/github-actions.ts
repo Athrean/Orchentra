@@ -1,10 +1,14 @@
 import { tool } from 'ai'
 import {
+  cancelWorkflowRunOperation,
+  dispatchWorkflowOperation,
   getJobLogsOperation,
   getWorkflowLogsOperation,
   getWorkflowRunJobsOperation,
   getWorkflowRunOperation,
   listWorkflowRunsOperation,
+  rerunFailedJobsOperation,
+  rerunWorkflowOperation,
   setGithubAdapter,
   setRepoMonitoredCheck,
   type GithubAdapter,
@@ -87,5 +91,43 @@ export const getJobLogsTool = tool({
   execute: async (args) => {
     bindOpsAdapters()
     return getJobLogsOperation.handler(localCtx, args)
+  },
+})
+
+// Slice 7 — mutating Actions ops. Local LLM-loop ctx (`remote: false`) so the
+// approval gate is not consulted; the gate enforces on remote MCP callers.
+export const rerunWorkflowTool = tool({
+  description: rerunWorkflowOperation.description,
+  parameters: rerunWorkflowOperation.parameters,
+  execute: async (args) => {
+    bindOpsAdapters()
+    return rerunWorkflowOperation.handler(localCtx, args)
+  },
+})
+
+export const rerunFailedJobsTool = tool({
+  description: rerunFailedJobsOperation.description,
+  parameters: rerunFailedJobsOperation.parameters,
+  execute: async (args) => {
+    bindOpsAdapters()
+    return rerunFailedJobsOperation.handler(localCtx, args)
+  },
+})
+
+export const cancelWorkflowRunTool = tool({
+  description: cancelWorkflowRunOperation.description,
+  parameters: cancelWorkflowRunOperation.parameters,
+  execute: async (args) => {
+    bindOpsAdapters()
+    return cancelWorkflowRunOperation.handler(localCtx, args)
+  },
+})
+
+export const dispatchWorkflowTool = tool({
+  description: dispatchWorkflowOperation.description,
+  parameters: dispatchWorkflowOperation.parameters,
+  execute: async (args) => {
+    bindOpsAdapters()
+    return dispatchWorkflowOperation.handler(localCtx, args)
   },
 })

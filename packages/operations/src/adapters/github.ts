@@ -106,6 +106,26 @@ export interface GithubAdapter {
       artifact_id: number
       archive_format: string
     }) => Promise<{ data: ArrayBuffer | Buffer | Uint8Array }>
+    // Mutating Actions ops (Slice 7). All four return 204 No Content from
+    // GitHub on success; we model that as `void` so adapters don't have to
+    // invent a response payload. The dispatcher's approval gate runs before
+    // these ever execute on a remote ctx.
+    reRunWorkflow: (p: { owner: string; repo: string; run_id: number; enable_debug_logging?: boolean }) => Promise<void>
+    reRunWorkflowFailedJobs: (p: {
+      owner: string
+      repo: string
+      run_id: number
+      enable_debug_logging?: boolean
+    }) => Promise<void>
+    cancelWorkflowRun: (p: { owner: string; repo: string; run_id: number }) => Promise<void>
+    createWorkflowDispatch: (p: {
+      owner: string
+      repo: string
+      // Octokit accepts either a numeric id or a workflow filename ('ci.yml').
+      workflow_id: string | number
+      ref: string
+      inputs?: Record<string, string>
+    }) => Promise<void>
   }
   search: {
     code: (p: { q: string; per_page?: number }) => Promise<{ data: GithubCodeSearch }>
