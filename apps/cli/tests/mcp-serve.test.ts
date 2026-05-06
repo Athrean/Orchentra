@@ -136,7 +136,7 @@ describe('orchentra mcp serve (subprocess)', () => {
       const listResp = await server.next(2)
       expect(listResp.error).toBeUndefined()
       const listResult = listResp.result as { tools: Array<{ name: string; description?: string }> }
-      expect(listResult.tools.length).toBe(27)
+      expect(listResult.tools.length).toBe(33)
       const names = listResult.tools.map((t) => t.name).sort()
       expect(names).toEqual(
         [
@@ -172,6 +172,13 @@ describe('orchentra mcp serve (subprocess)', () => {
           'list_episodes',
           'list_runbooks',
           'record_episode',
+          // GitHub issue/PR write ops (Slice 8)
+          'create_issue',
+          'update_issue',
+          'create_pull_request',
+          'request_pr_review',
+          'create_check_run',
+          'create_commit_status',
         ].sort(),
       )
 

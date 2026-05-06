@@ -26,6 +26,12 @@ import { listEpisodesOperation } from './brain/list-episodes'
 import { getRunbookOperation } from './brain/get-runbook'
 import { listRunbooksOperation } from './brain/list-runbooks'
 import { exportSkillsMdOperation } from './brain/export-skills-md'
+import { createIssueOperation } from './github/create-issue'
+import { updateIssueOperation } from './github/update-issue'
+import { createPullRequestOperation } from './github/create-pull-request'
+import { requestPrReviewOperation } from './github/request-pr-review'
+import { createCheckRunOperation } from './github/create-check-run'
+import { createCommitStatusOperation } from './github/create-commit-status'
 
 export const operations: Operation[] = [
   // GitHub adapter ops (Phase 1A)
@@ -60,4 +66,11 @@ export const operations: Operation[] = [
   getRunbookOperation as Operation,
   listRunbooksOperation as Operation,
   exportSkillsMdOperation as Operation,
+  // GitHub issue/PR write ops (Slice 8)
+  createIssueOperation as Operation,
+  updateIssueOperation as Operation,
+  createPullRequestOperation as Operation,
+  requestPrReviewOperation as Operation,
+  createCheckRunOperation as Operation,
+  createCommitStatusOperation as Operation,
 ]
