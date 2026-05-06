@@ -1,0 +1,30 @@
+packages/operations/src/index.ts
+  s_27be1972cf29b3::t_12af06d3bc97b4 33
+apps/cli/tests/mcp-serve.test.ts
+  s_27be1972cf29b3::t_5d3deeff9a932f 139,152
+packages/operations/src/ops/index.ts
+  s_27be1972cf29b3::t_4e221b19b69c34 38
+  s_27be1972cf29b3::t_6eebe41ff967f7 15
+packages/operations/tests/download-artifact.test.ts
+  s_27be1972cf29b3::t_c2522228846c42 1-172
+packages/operations/src/ops/github/download-artifact.ts
+  s_27be1972cf29b3::t_e069e3ad8d495e 1-60
+packages/mcp-server/tests/stdio-integration.test.ts
+  s_27be1972cf29b3::t_f1e6b052cda34a 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "205836eb4b47f4113b0cee795fdb6ec7208e6cf9",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
