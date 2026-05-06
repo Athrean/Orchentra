@@ -62,6 +62,27 @@ const fake: GithubAdapter = {
       },
     }),
   },
+  actions: {
+    listWorkflowRunsForRepo: async () => ({ data: { total_count: 0, workflow_runs: [] } }),
+    getWorkflowRun: async ({ run_id }) => ({
+      data: {
+        id: run_id,
+        name: 'Fake Workflow',
+        head_branch: 'main',
+        head_sha: 'abc1234',
+        status: 'completed',
+        conclusion: 'success',
+        run_attempt: 1,
+        html_url: `https://github.com/fake/fake/actions/runs/${run_id}`,
+        created_at: '2026-04-01T10:00:00Z',
+        updated_at: '2026-04-01T10:05:00Z',
+        jobs_url: `https://api.github.com/repos/fake/fake/actions/runs/${run_id}/jobs`,
+        logs_url: `https://api.github.com/repos/fake/fake/actions/runs/${run_id}/logs`,
+      },
+    }),
+    listJobsForWorkflowRun: async () => ({ data: { total_count: 0, jobs: [] } }),
+    downloadJobLogsForWorkflowRun: async () => ({ data: 'fake job logs' }),
+  },
 }
 
 setGithubAdapter(fake)
