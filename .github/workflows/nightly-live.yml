@@ -1,0 +1,99 @@
+name: nightly-live
+
+# Live integration suite for Orchentra operations.
+#
+# Runs every *-live.test.ts file with GITHUB_APP_LIVE=1 against the real
+# Athrean/Orchentra GitHub repo via the install-token Octokit path. These
+# tests verify that the GithubAdapter contract still matches what the
+# GitHub API actually returns. Local + PR runs SKIP these tests; only this
+# workflow flips the env flag.
+#
+# Triggers:
+#   - Nightly cron at 06:00 UTC (catches API drift early-morning EU)
+#   - Manual dispatch from the Actions tab
+#
+# Required repo secrets:
+#   GH_APP_ID                  GitHub App ID
+#   GH_APP_PRIVATE_KEY         PEM private key (multiline secret)
+#   GH_APP_INSTALLATION_ID     Install id for Athrean/Orchentra
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  live-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Materialize App private key
+        env:
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+        run: |
+          mkdir -p secrets
+          printf '%s' "$GH_APP_PRIVATE_KEY" > secrets/github-app.pem
+          chmod 600 secrets/github-app.pem
+
+      - name: Run live suite
+        env:
+          GITHUB_APP_LIVE: '1'
+          GITHUB_APP_ID: ${{ secrets.GH_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY_PATH: secrets/github-app.pem
+          GITHUB_APP_INSTALLATION_ID: ${{ secrets.GH_APP_INSTALLATION_ID }}
+        run: |
+          # Discover every *-live.test.ts under tests/ and feed them to
+          # bun test. Empty match exits 0 so adding the file isn't a hard
+          # requirement to land slice 10.
+          mapfile -t live_tests < <(find apps packages -name '*-live.test.ts' -not -path '*/node_modules/*' 2>/dev/null)
+          if [[ ${#live_tests[@]} -eq 0 ]]; then
+            echo "No live tests found — passing trivially."
+            exit 0
+          fi
+          echo "Running ${#live_tests[@]} live test file(s):"
+          printf '  %s\n' "${live_tests[@]}"
+          bun test "${live_tests[@]}"
+
+      - name: Fixture drift check
+        if: always()
+        env:
+          GITHUB_APP_LIVE: '1'
+          GITHUB_APP_ID: ${{ secrets.GH_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY_PATH: secrets/github-app.pem
+          GITHUB_APP_INSTALLATION_ID: ${{ secrets.GH_APP_INSTALLATION_ID }}
+        run: bun run scripts/check-fixture-drift.ts
+
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[nightly-live] ${context.runId} failed`;
+            const body = [
+              `Nightly live integration suite failed on ${new Date().toISOString()}.`,
+              ``,
+              `**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ``,
+              `Check the failure log for the specific live test that drifted.`,
+              `Most likely causes: GitHub API contract change, expired install token, repo permissions changed.`,
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['nightly-live-failure'],
+            });
