@@ -1,4 +1,5 @@
-import type { Operation, OperationContext } from './types'
+import { requiresApproval } from './trust'
+import type { ApprovalCallbackResult, ApprovalDecisionResult, Operation, OperationContext } from './types'
 import { OperationError } from './types'
 
 /**
@@ -19,8 +20,6 @@ export async function dispatch<TParams, TResult>(
     })
   }
 
-  const isMutating = operation.scope === 'write' || operation.scope === 'admin'
-
   const parsed = operation.parameters.safeParse(params)
   if (!parsed.success) {
     throw new OperationError({
@@ -29,7 +28,7 @@ export async function dispatch<TParams, TResult>(
     })
   }
 
-  if (isMutating && ctx.remote !== false) {
+  if (requiresApproval(operation, ctx)) {
     const approval = typeof ctx.approval === 'function' ? ctx.approval : null
     if (!approval) {
       throw new OperationError({
@@ -38,19 +37,34 @@ export async function dispatch<TParams, TResult>(
         suggestion: 'invoke this operation locally, or wire an approval callback on OperationContext',
       })
     }
-    let approved = false
+    let raw: ApprovalCallbackResult
     try {
-      approved = await approval(operation, parsed.data)
+      raw = await approval(operation, parsed.data)
     } catch (err) {
       throw new OperationError({
         code: 'permission_denied',
         message: `approval callback for ${operation.id} threw: ${err instanceof Error ? err.message : String(err)}`,
       })
     }
-    if (!approved) {
+    const decision = normalizeDecision(raw)
+    if (decision.status === 'denied') {
       throw new OperationError({
         code: 'permission_denied',
-        message: `operation ${operation.id} was not approved by the configured approval callback`,
+        message: decision.reason ?? `operation ${operation.id} was not approved`,
+      })
+    }
+    if (decision.status === 'awaiting_approval') {
+      // The transport — not the dispatcher — owns surfacing this back to the
+      // caller. We still throw so the handler does not run on this call.
+      throw new OperationError({
+        code: 'awaiting_approval',
+        message: decision.reason ?? `operation ${operation.id} is awaiting approval`,
+        suggestion: decision.approvalId
+          ? `re-invoke once approval ${decision.approvalId} resolves, or POST /api/approvals/${decision.approvalId}/ack`
+          : undefined,
+        ...(decision.approvalId !== undefined || decision.expiresAt !== undefined
+          ? { docs: JSON.stringify({ approvalId: decision.approvalId, expiresAt: decision.expiresAt }) }
+          : {}),
       })
     }
   }
@@ -64,4 +78,9 @@ export async function dispatch<TParams, TResult>(
       message: err instanceof Error ? err.message : String(err),
     })
   }
+}
+
+function normalizeDecision(raw: ApprovalCallbackResult): ApprovalDecisionResult {
+  if (typeof raw === 'boolean') return { status: raw ? 'approved' : 'denied' }
+  return raw
 }
