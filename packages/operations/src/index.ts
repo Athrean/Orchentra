@@ -28,6 +28,13 @@ export { listWorkflowRunsOperation } from './ops/github/list-workflow-runs'
 export type { ListWorkflowRunsResult, ListWorkflowRunsError, ListedWorkflowRun } from './ops/github/list-workflow-runs'
 export { getWorkflowRunOperation } from './ops/github/get-workflow-run'
 export type { WorkflowRunDetails, GetWorkflowRunError } from './ops/github/get-workflow-run'
+export { getWorkflowRunJobsOperation } from './ops/github/get-workflow-run-jobs'
+export type {
+  GetWorkflowRunJobsResult,
+  GetWorkflowRunJobsError,
+  WorkflowJob,
+  WorkflowJobStep,
+} from './ops/github/get-workflow-run-jobs'
 export type { BrainAdapter, EpisodeRow, RunbookRow, ListEpisodesFilter, ListRunbooksFilter } from './ops/brain/adapter'
 export { getBrainAdapter, setBrainAdapter } from './ops/brain/adapter'
 export { recordEpisodeOperation } from './ops/brain/record-episode'

@@ -8,6 +8,7 @@ import { searchCodeOperation } from './github/search-code'
 import { postCommentOp } from './github/post-comment'
 import { listWorkflowRunsOperation } from './github/list-workflow-runs'
 import { getWorkflowRunOperation } from './github/get-workflow-run'
+import { getWorkflowRunJobsOperation } from './github/get-workflow-run-jobs'
 import { recordEpisodeOperation } from './brain/record-episode'
 import { listEpisodesOperation } from './brain/list-episodes'
 import { getRunbookOperation } from './brain/get-runbook'
@@ -26,6 +27,7 @@ export const operations: Operation[] = [
   // GitHub Actions read ops (batch A — Slice 4)
   listWorkflowRunsOperation as Operation,
   getWorkflowRunOperation as Operation,
+  getWorkflowRunJobsOperation as Operation,
   // Brain ops (Phase 2 skeleton)
   recordEpisodeOperation as Operation,
   listEpisodesOperation as Operation,

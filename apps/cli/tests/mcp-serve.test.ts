@@ -136,7 +136,7 @@ describe('orchentra mcp serve (subprocess)', () => {
       const listResp = await server.next(2)
       expect(listResp.error).toBeUndefined()
       const listResult = listResp.result as { tools: Array<{ name: string; description?: string }> }
-      expect(listResult.tools.length).toBe(14)
+      expect(listResult.tools.length).toBe(15)
       const names = listResult.tools.map((t) => t.name).sort()
       expect(names).toEqual(
         [
@@ -151,6 +151,7 @@ describe('orchentra mcp serve (subprocess)', () => {
           // GitHub Actions read ops (batch A — Slice 4)
           'list_workflow_runs',
           'get_workflow_run',
+          'get_workflow_run_jobs',
           // Brain ops (Phase 2 skeleton)
           'export_skills_md',
           'get_runbook',
