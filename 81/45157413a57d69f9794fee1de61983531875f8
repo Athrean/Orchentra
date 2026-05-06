@@ -1,0 +1,19 @@
+packages/operations/src/ops/github/create-pull-request.ts
+  s_27be1972cf29b3::t_d495165893cdb7 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "8145157413a57d69f9794fee1de61983531875f8",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
