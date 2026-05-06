@@ -21,6 +21,7 @@ const fake: GithubAdapter = {
         created_at: '2026-04-01T10:00:00Z',
       },
     }),
+    list: async () => ({ data: [] }),
     listFiles: async () => ({ data: [] }),
     listReviewComments: async () => ({ data: [] }),
   },
@@ -35,9 +36,25 @@ const fake: GithubAdapter = {
         created_at: '2026-04-01T10:00:00Z',
       },
     }),
+    list: async () => ({ data: [] }),
     listComments: async () => ({ data: [] }),
   },
   repos: {
+    get: async () => ({
+      data: {
+        name: 'api',
+        full_name: 'my-org/api',
+        default_branch: 'main',
+        language: 'TypeScript',
+        topics: [],
+        private: true,
+        archived: false,
+        pushed_at: '2026-04-01T10:00:00Z',
+        size: 1024,
+        stargazers_count: 10,
+        open_issues_count: 2,
+      },
+    }),
     getCommit: async () => ({
       data: {
         sha: 'abc1234',
@@ -53,6 +70,16 @@ const fake: GithubAdapter = {
         size: 11,
       },
     }),
+    listBranches: async () => ({ data: [] }),
+    listLanguages: async () => ({ data: { TypeScript: 1000 } }),
+    getAllTopics: async () => ({ data: { names: [] } }),
+  },
+  checks: {
+    listForRef: async () => ({ data: { total_count: 0, check_runs: [] } }),
+  },
+  actions: {
+    listWorkflowRunArtifacts: async () => ({ data: { total_count: 0, artifacts: [] } }),
+    downloadArtifact: async () => ({ data: new ArrayBuffer(0) }),
   },
   search: {
     code: async () => ({

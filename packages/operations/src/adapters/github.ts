@@ -6,6 +6,17 @@
 export interface GithubAdapter {
   pulls: {
     get: (p: { owner: string; repo: string; pull_number: number }) => Promise<{ data: GithubPull }>
+    list: (p: {
+      owner: string
+      repo: string
+      state?: 'open' | 'closed' | 'all'
+      head?: string
+      base?: string
+      sort?: 'created' | 'updated' | 'popularity' | 'long-running'
+      direction?: 'asc' | 'desc'
+      per_page?: number
+      page?: number
+    }) => Promise<{ data: GithubPullSummary[] }>
     listFiles: (p: {
       owner: string
       repo: string
@@ -21,6 +32,17 @@ export interface GithubAdapter {
   }
   issues: {
     get: (p: { owner: string; repo: string; issue_number: number }) => Promise<{ data: GithubIssue }>
+    list: (p: {
+      owner: string
+      repo: string
+      state?: 'open' | 'closed' | 'all'
+      labels?: string
+      assignee?: string
+      creator?: string
+      since?: string
+      per_page?: number
+      page?: number
+    }) => Promise<{ data: GithubIssueSummary[] }>
     listComments: (p: {
       owner: string
       repo: string
@@ -29,8 +51,40 @@ export interface GithubAdapter {
     }) => Promise<{ data: GithubComment[] }>
   }
   repos: {
+    get: (p: { owner: string; repo: string }) => Promise<{ data: GithubRepo }>
     getCommit: (p: { owner: string; repo: string; ref: string }) => Promise<{ data: GithubCommit }>
     getContent: (p: { owner: string; repo: string; path: string; ref?: string }) => Promise<{ data: GithubContent }>
+    listBranches: (p: {
+      owner: string
+      repo: string
+      protected?: boolean
+      per_page?: number
+      page?: number
+    }) => Promise<{ data: GithubBranch[] }>
+    listLanguages: (p: { owner: string; repo: string }) => Promise<{ data: Record<string, number> }>
+    getAllTopics: (p: { owner: string; repo: string }) => Promise<{ data: { names: string[] } }>
+  }
+  checks: {
+    listForRef: (p: {
+      owner: string
+      repo: string
+      ref: string
+      per_page?: number
+      page?: number
+    }) => Promise<{ data: { total_count: number; check_runs: GithubCheckRun[] } }>
+  }
+  actions: {
+    listWorkflowRunArtifacts: (p: {
+      owner: string
+      repo: string
+      run_id: number
+    }) => Promise<{ data: { total_count: number; artifacts: GithubArtifact[] } }>
+    downloadArtifact: (p: {
+      owner: string
+      repo: string
+      artifact_id: number
+      archive_format: string
+    }) => Promise<{ data: ArrayBuffer | Buffer | Uint8Array }>
   }
   search: {
     code: (p: { q: string; per_page?: number }) => Promise<{ data: GithubCodeSearch }>
@@ -48,6 +102,18 @@ export interface GithubPull {
   created_at: string
 }
 
+export interface GithubPullSummary {
+  number: number
+  title: string
+  state: string
+  user?: { login?: string } | null
+  base: { ref: string }
+  head: { ref: string }
+  created_at: string
+  updated_at: string
+  draft?: boolean
+}
+
 export interface GithubPullFile {
   filename: string
   status: string
@@ -62,6 +128,18 @@ export interface GithubIssue {
   labels?: Array<string | { name?: string | null }>
   user?: { login?: string } | null
   created_at: string
+}
+
+export interface GithubIssueSummary {
+  number: number
+  title: string
+  state: string
+  labels?: Array<string | { name?: string | null }>
+  user?: { login?: string } | null
+  assignee?: { login?: string } | null
+  created_at: string
+  updated_at: string
+  pull_request?: unknown
 }
 
 export interface GithubComment {
@@ -91,6 +169,45 @@ export type GithubContent =
 export interface GithubCodeSearch {
   total_count: number
   items: Array<{ path: string; name: string }>
+}
+
+export interface GithubRepo {
+  name: string
+  full_name: string
+  default_branch: string
+  language: string | null
+  topics?: string[]
+  private: boolean
+  archived: boolean
+  pushed_at: string | null
+  size: number
+  stargazers_count: number
+  open_issues_count: number
+}
+
+export interface GithubBranch {
+  name: string
+  protected: boolean
+  commit: { sha: string; url?: string }
+}
+
+export interface GithubCheckRun {
+  id: number
+  name: string
+  status: string
+  conclusion: string | null
+  started_at: string | null
+  completed_at: string | null
+  head_sha: string
+  html_url?: string | null
+}
+
+export interface GithubArtifact {
+  id: number
+  name: string
+  size_in_bytes: number
+  expired: boolean
+  archive_download_url: string
 }
 
 export type RepoMonitoredCheck = (fullName: string) => Promise<boolean>

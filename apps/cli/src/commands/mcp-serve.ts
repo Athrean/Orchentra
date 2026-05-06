@@ -121,7 +121,7 @@ function buildGitHubAdapter(allowedRepos: Set<string> | null): GitHubAdapter {
 }
 
 function buildLowercaseGithubAdapter(): GithubAdapter {
-  const { fetchJson } = buildGitHubFetchers()
+  const { fetchJson, baseUrl, headers } = buildGitHubFetchers()
 
   function qs(params: Record<string, string | number | undefined>): string {
     const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null)
@@ -131,12 +131,23 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
     return `?${search.toString()}`
   }
 
+  async function fetchBytes(path: string): Promise<ArrayBuffer> {
+    const r = await fetch(`${baseUrl}${path}`, { headers })
+    if (!r.ok) throw new Error(`GitHub ${r.status} ${r.statusText} at ${path}`)
+    return r.arrayBuffer()
+  }
+
   return {
     pulls: {
       get: async ({ owner, repo, pull_number }) => ({
         data: (await fetchJson(`/repos/${owner}/${repo}/pulls/${pull_number}`)) as Awaited<
           ReturnType<GithubAdapter['pulls']['get']>
         >['data'],
+      }),
+      list: async ({ owner, repo, state, head, base, sort, direction, per_page, page }) => ({
+        data: (await fetchJson(
+          `/repos/${owner}/${repo}/pulls${qs({ state, head, base, sort, direction, per_page, page })}`,
+        )) as Awaited<ReturnType<GithubAdapter['pulls']['list']>>['data'],
       }),
       listFiles: async ({ owner, repo, pull_number, per_page }) => ({
         data: (await fetchJson(`/repos/${owner}/${repo}/pulls/${pull_number}/files${qs({ per_page })}`)) as Awaited<
@@ -155,6 +166,11 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
           ReturnType<GithubAdapter['issues']['get']>
         >['data'],
       }),
+      list: async ({ owner, repo, state, labels, assignee, creator, since, per_page, page }) => ({
+        data: (await fetchJson(
+          `/repos/${owner}/${repo}/issues${qs({ state, labels, assignee, creator, since, per_page, page })}`,
+        )) as Awaited<ReturnType<GithubAdapter['issues']['list']>>['data'],
+      }),
       listComments: async ({ owner, repo, issue_number, per_page }) => ({
         data: (await fetchJson(
           `/repos/${owner}/${repo}/issues/${issue_number}/comments${qs({ per_page })}`,
@@ -162,6 +178,11 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
       }),
     },
     repos: {
+      get: async ({ owner, repo }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}`)) as Awaited<
+          ReturnType<GithubAdapter['repos']['get']>
+        >['data'],
+      }),
       getCommit: async ({ owner, repo, ref }) => ({
         data: (await fetchJson(`/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}`)) as Awaited<
           ReturnType<GithubAdapter['repos']['getCommit']>
@@ -174,6 +195,34 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
         data: (await fetchJson(
           `/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}${qs({ ref })}`,
         )) as Awaited<ReturnType<GithubAdapter['repos']['getContent']>>['data'],
+      }),
+      listBranches: async ({ owner, repo, protected: isProtected, per_page, page }) => ({
+        data: (await fetchJson(
+          `/repos/${owner}/${repo}/branches${qs({ protected: isProtected === undefined ? undefined : String(isProtected), per_page, page })}`,
+        )) as Awaited<ReturnType<GithubAdapter['repos']['listBranches']>>['data'],
+      }),
+      listLanguages: async ({ owner, repo }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/languages`)) as Record<string, number>,
+      }),
+      getAllTopics: async ({ owner, repo }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/topics`)) as { names: string[] },
+      }),
+    },
+    checks: {
+      listForRef: async ({ owner, repo, ref, per_page, page }) => ({
+        data: (await fetchJson(
+          `/repos/${owner}/${repo}/commits/${encodeURIComponent(ref)}/check-runs${qs({ per_page, page })}`,
+        )) as Awaited<ReturnType<GithubAdapter['checks']['listForRef']>>['data'],
+      }),
+    },
+    actions: {
+      listWorkflowRunArtifacts: async ({ owner, repo, run_id }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/actions/runs/${run_id}/artifacts`)) as Awaited<
+          ReturnType<GithubAdapter['actions']['listWorkflowRunArtifacts']>
+        >['data'],
+      }),
+      downloadArtifact: async ({ owner, repo, artifact_id, archive_format }) => ({
+        data: await fetchBytes(`/repos/${owner}/${repo}/actions/artifacts/${artifact_id}/${archive_format}`),
       }),
     },
     search: {
