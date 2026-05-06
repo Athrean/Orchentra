@@ -1,0 +1,21 @@
+apps/server/tests/webhook.test.ts
+  s_27be1972cf29b3::t_830efd57ee15cd 548-593
+apps/server/tests/installation-handlers.test.ts
+  s_27be1972cf29b3::t_bad32e6312558b 1-8,10-39,41-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "bc605e2edcc070ed210707b03d13c53b18badc69",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
