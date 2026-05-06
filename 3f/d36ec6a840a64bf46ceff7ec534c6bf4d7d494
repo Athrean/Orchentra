@@ -1,0 +1,21 @@
+packages/operations/tests/rerun-workflow.test.ts
+  s_27be1972cf29b3::t_af964270070d6c 1-131,133-203
+packages/operations/src/ops/github/rerun-workflow.ts
+  s_27be1972cf29b3::t_83773dfa138cdf 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "3fd36ec6a840a64bf46ceff7ec534c6bf4d7d494",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
