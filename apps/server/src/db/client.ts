@@ -18,4 +18,8 @@ export {
   webhookEvents,
   incidentJobs,
   orgLlmConfigs,
+  // Slice 2 — credential vault, audit trail, per-org install state.
+  credentials,
+  auditLog,
+  githubInstallations,
 } from '@orchentra/db'

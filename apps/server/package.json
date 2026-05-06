@@ -15,6 +15,8 @@
     "@ai-sdk/openai": "^1",
     "@ai-sdk/openai-compatible": "^0.2.0",
     "@octokit/auth-app": "^8.2.0",
+    "@octokit/plugin-retry": "^7",
+    "@octokit/plugin-throttling": "^9",
     "@octokit/rest": "^21.1.0",
     "@openrouter/ai-sdk-provider": "^0.5.0",
     "@orchentra/brain": "workspace:*",

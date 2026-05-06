@@ -1,84 +1,107 @@
 /**
- * Installation lifecycle helper — minimal in-memory stub used by Slice 3 until
- * Slice 2 lands the `github_installations` Postgres table + Drizzle queries.
+ * Per-org GitHub App install state.
  *
- * TODO(slice-2): Replace this module with the slice-2 implementation that
- * persists to `github_installations`. See PRD #314 + the slice-2 PR (in
- * parallel) for the schema. The exported function names + shapes are chosen
- * to match what slice 2 will provide so swapping is mechanical.
+ * Exposes:
+ *   recordInstallation(input)            — upsert on installation_id
+ *   getInstallationByOrg(orgId)          — read the org's row
+ *   getDefaultInstallation()             — env fallback for single-tenant dev
+ *   suspendInstallation(installationId)  — soft-delete on uninstall/suspend
+ *   setInstallationStoreForTesting(store)— swap persistence in tests
+ *   resetInstallationsStoreForTests()    — clear in-memory test store
+ *
+ * Persistence is delegated to a swappable `InstallationStore` so unit tests
+ * don't need to mock drizzle-orm globally. Default store backs onto the
+ * `github_installations` table via Drizzle.
+ *
+ * The `InstallationRecord` shape mirrors the GH webhook payload (nested
+ * `account: { login, type, id }`) so the install callback handler can pass
+ * payload fields straight through. The Drizzle store flattens login + type
+ * onto separate columns; `account.id` is accepted but not persisted (the
+ * unique key is `installation_id`).
  */
+
+import { defaultInstallationStore } from './installations-store'
+import { loadAppCredentialsFromEnv } from './octokit-app'
+
+export interface InstallationAccount {
+  login: string
+  type: 'User' | 'Organization'
+  id?: number
+}
 
 export interface InstallationRecord {
   installationId: number
   orgId: string
-  account: { login: string; type: 'User' | 'Organization'; id: number }
+  account: InstallationAccount
   repositorySelection: 'all' | 'selected'
   permissions: Record<string, string>
   events: string[]
-  suspendedAt: Date | null
-  createdAt: Date
+  installedAt: Date
   updatedAt: Date
+  suspendedAt: Date | null
 }
 
 export interface RecordInstallationInput {
   installationId: number
   orgId: string
-  account: { login: string; type: 'User' | 'Organization'; id: number }
+  account: InstallationAccount
   repositorySelection: 'all' | 'selected'
-  permissions: Record<string, string>
-  events: string[]
+  permissions?: Record<string, string>
+  events?: string[]
   suspendedAt?: Date | null
 }
 
-// In-memory store. Slice 2 swaps this for Drizzle.
-const store = new Map<number, InstallationRecord>()
-// Reverse lookup so getInstallationByOrg is O(1).
-const orgIndex = new Map<string, number>()
+export interface InstallationStore {
+  upsert(input: RecordInstallationInput): Promise<InstallationRecord>
+  fetchByOrg(orgId: string): Promise<InstallationRecord | null>
+  fetchByInstallationId(installationId: number): Promise<InstallationRecord | null>
+  setSuspended(installationId: number, suspendedAt: Date | null): Promise<void>
+  fetchMostRecent(): Promise<InstallationRecord | null>
+  clear(): Promise<void>
+}
+
+let activeStore: InstallationStore = defaultInstallationStore
+
+export function setInstallationStoreForTesting(store: InstallationStore | null): void {
+  activeStore = store ?? defaultInstallationStore
+}
 
 export async function recordInstallation(input: RecordInstallationInput): Promise<InstallationRecord> {
-  const now = new Date()
-  const existing = store.get(input.installationId)
-  const record: InstallationRecord = {
-    installationId: input.installationId,
-    orgId: input.orgId,
-    account: input.account,
-    repositorySelection: input.repositorySelection,
-    permissions: input.permissions,
-    events: input.events,
-    suspendedAt: input.suspendedAt ?? null,
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-  }
-  store.set(record.installationId, record)
-  orgIndex.set(record.orgId, record.installationId)
-  return record
+  return activeStore.upsert(input)
 }
 
 export async function getInstallationByOrg(orgId: string): Promise<InstallationRecord | null> {
-  const id = orgIndex.get(orgId)
-  if (id === undefined) return null
-  return store.get(id) ?? null
-}
-
-export async function getDefaultInstallation(): Promise<InstallationRecord | null> {
-  // Returns the most recently recorded installation. Slice 2 may scope this
-  // by env var or org membership.
-  let latest: InstallationRecord | null = null
-  for (const record of store.values()) {
-    if (!latest || record.updatedAt > latest.updatedAt) latest = record
-  }
-  return latest
+  return activeStore.fetchByOrg(orgId)
 }
 
 export async function suspendInstallation(installationId: number, suspendedAt: Date = new Date()): Promise<void> {
-  const existing = store.get(installationId)
-  if (!existing) return
-  existing.suspendedAt = suspendedAt
-  existing.updatedAt = new Date()
+  await activeStore.setSuspended(installationId, suspendedAt)
 }
 
-// Test-only helper. Slice 2 will likely drop this in favour of test fixtures.
-export function resetInstallationsStoreForTests(): void {
-  store.clear()
-  orgIndex.clear()
+export async function resetInstallationsStoreForTests(): Promise<void> {
+  await activeStore.clear()
+}
+
+/**
+ * Returns the most recently recorded installation, or — if the store is
+ * empty — falls back to GITHUB_APP_INSTALLATION_ID via env credentials so
+ * single-tenant dev setups keep working without a populated table.
+ */
+export async function getDefaultInstallation(): Promise<InstallationRecord | null> {
+  const stored = await activeStore.fetchMostRecent()
+  if (stored) return stored
+  const creds = loadAppCredentialsFromEnv()
+  if (!creds || !creds.installationId) return null
+  const now = new Date()
+  return {
+    installationId: creds.installationId,
+    orgId: process.env.ORCHENTRA_DEFAULT_ORG_ID ?? 'Athrean',
+    account: { login: process.env.ORCHENTRA_DEFAULT_ORG_ID ?? 'Athrean', type: 'Organization' },
+    repositorySelection: 'selected',
+    permissions: {},
+    events: [],
+    installedAt: now,
+    updatedAt: now,
+    suspendedAt: null,
+  }
 }
