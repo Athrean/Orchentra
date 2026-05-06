@@ -35,6 +35,8 @@ export type {
   WorkflowJob,
   WorkflowJobStep,
 } from './ops/github/get-workflow-run-jobs'
+export { getJobLogsOperation } from './ops/github/get-job-logs'
+export type { GetJobLogsResult, GetJobLogsError } from './ops/github/get-job-logs'
 export type { BrainAdapter, EpisodeRow, RunbookRow, ListEpisodesFilter, ListRunbooksFilter } from './ops/brain/adapter'
 export { getBrainAdapter, setBrainAdapter } from './ops/brain/adapter'
 export { recordEpisodeOperation } from './ops/brain/record-episode'
