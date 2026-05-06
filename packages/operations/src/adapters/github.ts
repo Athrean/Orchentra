@@ -74,6 +74,27 @@ export interface GithubAdapter {
     }) => Promise<{ data: { total_count: number; check_runs: GithubCheckRun[] } }>
   }
   actions: {
+    listWorkflowRunsForRepo: (p: {
+      owner: string
+      repo: string
+      status?: string
+      branch?: string
+      event?: string
+      per_page?: number
+      page?: number
+    }) => Promise<{ data: GithubWorkflowRunList }>
+    getWorkflowRun: (p: { owner: string; repo: string; run_id: number }) => Promise<{ data: GithubWorkflowRun }>
+    listJobsForWorkflowRun: (p: {
+      owner: string
+      repo: string
+      run_id: number
+      attempt_number?: number
+    }) => Promise<{ data: GithubWorkflowRunJobList }>
+    downloadJobLogsForWorkflowRun: (p: {
+      owner: string
+      repo: string
+      job_id: number
+    }) => Promise<{ data: string | ArrayBuffer | Buffer }>
     listWorkflowRunArtifacts: (p: {
       owner: string
       repo: string
@@ -169,6 +190,51 @@ export type GithubContent =
 export interface GithubCodeSearch {
   total_count: number
   items: Array<{ path: string; name: string }>
+}
+
+export interface GithubWorkflowRun {
+  id: number
+  name?: string | null
+  head_branch: string | null
+  head_sha: string
+  status: string | null
+  conclusion: string | null
+  run_attempt?: number
+  html_url: string
+  created_at: string
+  updated_at: string
+  jobs_url: string
+  logs_url: string
+  event?: string
+}
+
+export interface GithubWorkflowRunList {
+  total_count: number
+  workflow_runs: GithubWorkflowRun[]
+}
+
+export interface GithubWorkflowRunJobStep {
+  name: string
+  status: string
+  conclusion: string | null
+  number: number
+  started_at?: string | null
+  completed_at?: string | null
+}
+
+export interface GithubWorkflowRunJob {
+  id: number
+  name: string
+  status: string
+  conclusion: string | null
+  started_at: string | null
+  completed_at: string | null
+  steps?: GithubWorkflowRunJobStep[]
+}
+
+export interface GithubWorkflowRunJobList {
+  total_count: number
+  jobs: GithubWorkflowRunJob[]
 }
 
 export interface GithubRepo {

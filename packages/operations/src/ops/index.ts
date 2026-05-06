@@ -6,6 +6,10 @@ import { getPullRequestOperation } from './github/get-pull-request'
 import { getIssueOperation } from './github/get-issue'
 import { searchCodeOperation } from './github/search-code'
 import { postCommentOp } from './github/post-comment'
+import { listWorkflowRunsOperation } from './github/list-workflow-runs'
+import { getWorkflowRunOperation } from './github/get-workflow-run'
+import { getWorkflowRunJobsOperation } from './github/get-workflow-run-jobs'
+import { getJobLogsOperation } from './github/get-job-logs'
 import { listPullRequestsOperation } from './github/list-pull-requests'
 import { listIssuesOperation } from './github/list-issues'
 import { listCheckRunsOperation } from './github/list-check-runs'
@@ -28,6 +32,11 @@ export const operations: Operation[] = [
   getIssueOperation as Operation,
   searchCodeOperation as Operation,
   postCommentOp as Operation,
+  // GitHub Actions read ops (batch A — Slice 4)
+  listWorkflowRunsOperation as Operation,
+  getWorkflowRunOperation as Operation,
+  getWorkflowRunJobsOperation as Operation,
+  getJobLogsOperation as Operation,
   // GitHub read ops batch B (Slice 5)
   listPullRequestsOperation as Operation,
   listIssuesOperation as Operation,

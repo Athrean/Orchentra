@@ -8,6 +8,7 @@ import { seedMonitoredRepos } from './lib/seed'
 import { backfillRepoIncidents, withConcurrency } from './lib/backfill'
 import { requireAuth, requireOrgMember } from './auth/middleware'
 import { authRouter } from './routes/auth'
+import { githubAppRouter } from './routes/github-app'
 import { webhooksRouter } from './routes/webhooks'
 import { apiRouter } from './routes/api'
 import { incidentsRouter } from './routes/incidents'
@@ -127,6 +128,7 @@ app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOStri
 
 // Public routes
 app.route('/auth', authRouter)
+app.route('/auth/github/app', githubAppRouter)
 app.route('/webhooks', webhooksRouter)
 
 // All /api/* routes require authentication
