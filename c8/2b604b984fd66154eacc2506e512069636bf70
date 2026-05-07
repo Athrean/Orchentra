@@ -1,0 +1,26 @@
+apps/cli/src/commands/builtin/env-slash.ts
+  s_27be1972cf29b3::t_3158a582b6f72d 1-49,51-59,61-95
+apps/cli/src/composites/env.ts
+  s_27be1972cf29b3::t_5905c30b42043b 1-96
+apps/cli/src/commands/builtin/index.ts
+  s_27be1972cf29b3::t_0c6cb8744a02e1 89-91
+  s_27be1972cf29b3::t_f82c326beb0403 30
+apps/cli/tests/env-composite.test.ts
+  s_27be1972cf29b3::t_473238880d01d8 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "c82b604b984fd66154eacc2506e512069636bf70",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
