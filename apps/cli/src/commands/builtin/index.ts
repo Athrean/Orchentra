@@ -28,6 +28,7 @@ import { createWhyCommand } from './why'
 import { TriageSlashCommand } from './triage-slash'
 import { CleanSlashCommand } from './clean-slash'
 import { EnvSlashCommand } from './env-slash'
+import { ScanSlashCommand } from './scan-slash'
 import { registerAllOpsAsSlash } from '../../op-commands/wire'
 
 export function createBuiltinRegistry(): CommandRegistry {
@@ -89,6 +90,9 @@ export function createBuiltinRegistry(): CommandRegistry {
 
   // Slice J: /env list|set|sync — manage GH Actions secrets.
   registry.register(new EnvSlashCommand())
+
+  // Slice K: /scan — LLM code review (BYOK).
+  registry.register(new ScanSlashCommand())
   registry.register(
     createServerCommand(
       {
