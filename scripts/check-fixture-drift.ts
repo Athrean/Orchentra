@@ -27,11 +27,22 @@ interface DriftReport {
 const PROBE = { owner: 'Athrean', repo: 'Orchentra' }
 
 const probeArgsByOp: Record<string, Record<string, unknown>> = {
+  // Slice L expanded coverage — every read op the registry ships gets a
+  // probe entry where deterministic args exist. Ops that need a specific
+  // run/job/artifact id are skipped here because chaining them inside the
+  // probe would couple a single op's drift to the upstream op's response.
   get_repo_metadata: { ...PROBE },
+  get_pull_request: { ...PROBE, number: 1 },
+  get_issue: { ...PROBE, number: 1 },
+  get_file_content: { ...PROBE, path: 'README.md' },
+  get_commit_changes: { ...PROBE, sha: 'main' },
+  search_code: { ...PROBE, query: 'orchentra' },
   list_workflow_runs: { ...PROBE, perPage: 1 },
   list_branches: { ...PROBE, perPage: 1 },
   list_pull_requests: { ...PROBE, state: 'all', perPage: 1 },
   list_issues: { ...PROBE, state: 'all', perPage: 1 },
+  list_check_runs: { ...PROBE, ref: 'main' },
+  list_repo_secrets: { ...PROBE },
 }
 
 async function main(): Promise<void> {
