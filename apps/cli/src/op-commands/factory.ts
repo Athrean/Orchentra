@@ -98,11 +98,33 @@ async function runWithParse<T, R>(
         ...(err.suggestion ? { suggestion: err.suggestion } : {}),
       }
       emit(io, format, executionId, [], null, payload, Date.now() - startedAt)
-      return err.code === 'invalid_input' ? 1 : err.code === 'permission_denied' ? 2 : 3
+      return exitCodeFor(err.code)
     }
     const payload = { code: 'internal_error', message: err instanceof Error ? err.message : String(err) }
     emit(io, format, executionId, [], null, payload, Date.now() - startedAt)
     return 4
+  }
+}
+
+/**
+ * Exit code map for OperationError codes. Stable contract — scripts and CI
+ * gates depend on this. New codes default to 3 (upstream-class) so adding
+ * one does not silently flip an existing caller's behavior.
+ */
+function exitCodeFor(code: string): number {
+  switch (code) {
+    case 'invalid_input':
+      return 1
+    case 'permission_denied':
+    case 'awaiting_approval':
+      return 2
+    case 'not_found':
+    case 'upstream_error':
+      return 3
+    case 'internal_error':
+      return 4
+    default:
+      return 3
   }
 }
 
