@@ -1,0 +1,27 @@
+apps/cli/src/op-commands/help-detail.ts
+  s_27be1972cf29b3::t_f730993a15d5e2 1-77
+apps/cli/tests/help-categorizer.test.ts
+  s_27be1972cf29b3::t_dd8ec10d3643d7 1-30
+apps/cli/src/commands/builtin/help.ts
+  s_27be1972cf29b3::t_66748387e52d20 62-73
+  s_27be1972cf29b3::t_1a2c953180e9f0 109,117
+  s_27be1972cf29b3::t_c6eec325be9bb4 1,5-6,8,11,41-44
+apps/cli/tests/help-detail.test.ts
+  s_27be1972cf29b3::t_fea4a4bc0c9719 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "fcd8ae2543aea6ba9bccd0ec5cc80b6d163b4c4a",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
