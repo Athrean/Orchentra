@@ -201,6 +201,16 @@ export interface GithubAdapter {
       ref: string
       inputs?: Record<string, string>
     }) => Promise<void>
+    // Slice H mutating Actions ops. delete_artifact returns 204 No Content
+    // on success; the secret ops surface { name, updated_at } summaries
+    // (never values) for list and a void ack for set.
+    deleteArtifact: (p: { owner: string; repo: string; artifact_id: number }) => Promise<void>
+    listRepoSecrets: (p: {
+      owner: string
+      repo: string
+      per_page?: number
+    }) => Promise<{ data: { total_count: number; secrets: GithubRepoSecretSummary[] } }>
+    setRepoSecret: (p: { owner: string; repo: string; secret_name: string; value: string }) => Promise<void>
   }
   search: {
     code: (p: { q: string; per_page?: number }) => Promise<{ data: GithubCodeSearch }>
@@ -369,6 +379,12 @@ export interface GithubArtifact {
   size_in_bytes: number
   expired: boolean
   archive_download_url: string
+}
+
+export interface GithubRepoSecretSummary {
+  name: string
+  created_at: string
+  updated_at: string
 }
 
 /**

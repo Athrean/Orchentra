@@ -35,6 +35,9 @@ import { createCommitStatusOperation } from './github/create-commit-status'
 import { createOrUpdateFileContentsOperation } from './github/create-or-update-file-contents'
 import { createBranchOperation } from './github/create-branch'
 import { mergePullRequestOperation } from './github/merge-pull-request'
+import { deleteArtifactOperation } from './github/delete-artifact'
+import { listRepoSecretsOperation } from './github/list-repo-secrets'
+import { setRepoSecretOperation } from './github/set-repo-secret'
 
 export const operations: Operation[] = [
   // GitHub adapter ops (Phase 1A)
@@ -80,4 +83,8 @@ export const operations: Operation[] = [
   createOrUpdateFileContentsOperation as Operation,
   createBranchOperation as Operation,
   mergePullRequestOperation as Operation,
+  // Slice H — artifact + secrets ops (powers /clean and /env composites)
+  deleteArtifactOperation as Operation,
+  listRepoSecretsOperation as Operation,
+  setRepoSecretOperation as Operation,
 ]
