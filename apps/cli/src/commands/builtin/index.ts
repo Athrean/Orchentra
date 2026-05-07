@@ -26,6 +26,7 @@ import { RestartCommand } from './restart'
 import { createGraphCommand } from './graph'
 import { createWhyCommand } from './why'
 import { TriageSlashCommand } from './triage-slash'
+import { CleanSlashCommand } from './clean-slash'
 import { registerAllOpsAsSlash } from '../../op-commands/wire'
 
 export function createBuiltinRegistry(): CommandRegistry {
@@ -81,6 +82,9 @@ export function createBuiltinRegistry(): CommandRegistry {
   // Slice G: local /triage wraps runTriage. Replaces the server-bridged
   // /triage so the slash form and the shell verb hit the same workflow.
   registry.register(new TriageSlashCommand())
+
+  // Slice I: /clean prunes expired Actions artifacts from old failed runs.
+  registry.register(new CleanSlashCommand())
   registry.register(
     createServerCommand(
       {
