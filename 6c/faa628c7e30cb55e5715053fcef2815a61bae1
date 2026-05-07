@@ -1,0 +1,26 @@
+apps/cli/tests/triage-slash.test.ts
+  s_27be1972cf29b3::t_f87df1953f92ee 1-36
+apps/cli/tests/server-bridge-registry.test.ts
+  s_27be1972cf29b3::t_c4ef2fa142d342 11-13
+apps/cli/src/commands/builtin/triage-slash.ts
+  s_27be1972cf29b3::t_98b6e36cbc894e 1-31
+apps/cli/src/commands/builtin/index.ts
+  s_27be1972cf29b3::t_06c865a2b2c2b5 81-83
+  s_27be1972cf29b3::t_b32732a1c0ce31 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "6cfaa628c7e30cb55e5715053fcef2815a61bae1",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
