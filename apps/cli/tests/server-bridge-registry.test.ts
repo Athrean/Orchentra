@@ -8,7 +8,9 @@ describe('builtin registry includes server-bridge commands', () => {
 
   test.each([
     ['incidents', '<filters>'],
-    ['triage', '<id|owner/repo> [run-id]'],
+    // /triage was the server-bridged variant; Slice G replaced it with a
+    // local handler that wraps runTriage, so the hint shape changed.
+    ['triage', '<owner/repo#runId>'],
     ['retry', '<id>'],
     ['explain', '<id>'],
   ])('exposes /%s with arg hint %s', (name, hint) => {
