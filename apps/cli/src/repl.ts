@@ -65,9 +65,16 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   }
 
   if (options.prompt) {
-    await cli.runTurn(options.prompt)
+    // Slice F: orchentra -p is no longer a free-form chat shortcut. The CLI
+    // is slash-only; general AI chat lives in Claude Code. Print the same
+    // hint the TUI surfaces and exit.
+    process.stderr.write(
+      'orchentra -p is removed. orchentra is a slash-command DevOps CLI; type /help in the REPL\n' +
+        'or run a specific verb like `orchentra <op_id> --owner ... --repo ...`. For free-form\n' +
+        'AI chat, use Claude Code or Cursor.\n',
+    )
     await cliCtx.close()
-    return 0
+    return 1
   }
 
   const { branch, workspaceStatus } = readGitSummary(options.cwd)
