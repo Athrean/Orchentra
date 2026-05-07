@@ -25,6 +25,8 @@ import { SkillsCommand } from './skills-adapter'
 import { RestartCommand } from './restart'
 import { createGraphCommand } from './graph'
 import { createWhyCommand } from './why'
+import { getPullRequestOperation } from '@orchentra/operations'
+import { registerOpAsSlash } from '../../op-commands/wire'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -109,6 +111,10 @@ export function createBuiltinRegistry(): CommandRegistry {
       'explain',
     ),
   )
+
+  // Slice A foundation tracer: register get_pull_request as /<op_id>. Slice B
+  // will iterate the entire operations registry.
+  registerOpAsSlash(registry, getPullRequestOperation)
 
   return registry
 }
