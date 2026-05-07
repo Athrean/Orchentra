@@ -25,6 +25,7 @@ import { SkillsCommand } from './skills-adapter'
 import { RestartCommand } from './restart'
 import { createGraphCommand } from './graph'
 import { createWhyCommand } from './why'
+import { TriageSlashCommand } from './triage-slash'
 import { registerAllOpsAsSlash } from '../../op-commands/wire'
 
 export function createBuiltinRegistry(): CommandRegistry {
@@ -77,17 +78,9 @@ export function createBuiltinRegistry(): CommandRegistry {
       'status',
     ),
   )
-  registry.register(
-    createServerCommand(
-      {
-        name: 'triage',
-        aliases: [],
-        summary: 'Trigger triage for a workflow run via the server',
-        argumentHint: '<id|owner/repo> [run-id]',
-      },
-      'triage',
-    ),
-  )
+  // Slice G: local /triage wraps runTriage. Replaces the server-bridged
+  // /triage so the slash form and the shell verb hit the same workflow.
+  registry.register(new TriageSlashCommand())
   registry.register(
     createServerCommand(
       {
