@@ -14,6 +14,7 @@ import { runMcpServe } from './commands/mcp-serve'
 import { runLogin, runLogout, runAuthStatus } from './commands/run-auth'
 import { runGraph } from './commands/run-graph'
 import { runWhy } from './commands/run-why'
+import { runOpVerb } from './op-commands/run-op-verb'
 
 async function main(argv: string[]): Promise<number> {
   let action
@@ -123,6 +124,9 @@ async function main(argv: string[]): Promise<number> {
         cwd: process.cwd(),
         outputFormat: action.outputFormat,
       })
+
+    case 'op':
+      return runOpVerb(action.opId, action.argv)
   }
 }
 

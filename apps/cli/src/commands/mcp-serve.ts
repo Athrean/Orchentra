@@ -138,7 +138,7 @@ function buildGitHubAdapter(allowedRepos: Set<string> | null): GitHubAdapter {
   }
 }
 
-function buildLowercaseGithubAdapter(): GithubAdapter {
+export function buildLowercaseGithubAdapter(): GithubAdapter {
   const { fetchJson, fetchText, fetchPostJson, fetchPatchJson, baseUrl, headers } = buildGitHubFetchers()
 
   function qs(params: Record<string, string | number | undefined>): string {
@@ -389,14 +389,14 @@ function buildLowercaseGithubAdapter(): GithubAdapter {
   }
 }
 
-function buildRepoMonitoredCheck(allowedRepos: Set<string> | null): RepoMonitoredCheck {
+export function buildRepoMonitoredCheck(allowedRepos: Set<string> | null): RepoMonitoredCheck {
   return async (fullName) => {
     if (!allowedRepos) return true
     return allowedRepos.has(fullName.toLowerCase())
   }
 }
 
-function parseAllowedRepos(raw: string | undefined): Set<string> | null {
+export function parseAllowedRepos(raw: string | undefined): Set<string> | null {
   if (!raw) return null
   const items = raw
     .split(',')

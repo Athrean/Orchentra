@@ -33,6 +33,7 @@ export type CliAction =
   | { kind: 'auth-status' }
   | { kind: 'graph'; executionId: string; outputFormat: 'tree' | 'json' }
   | { kind: 'why'; nodeId: string; outputFormat: 'tree' | 'json' }
+  | { kind: 'op'; opId: string; argv: string[] }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -106,6 +107,12 @@ export function parseArgs(argv: string[]): CliAction {
     if (!nodeId) throw new Error('why: missing <nodeId>')
     const outputFormat = parseOutputFormat('why', args.slice(2))
     return { kind: 'why', nodeId, outputFormat }
+  }
+
+  // Slice A foundation tracer: dispatch known op_ids through the op-command
+  // factory. Slice B will replace this single-op gate with a registry walk.
+  if (first === 'get_pull_request') {
+    return { kind: 'op', opId: first, argv: args.slice(1) }
   }
 
   let model = defaultModel()
