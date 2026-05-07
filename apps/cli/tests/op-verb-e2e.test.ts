@@ -64,4 +64,42 @@ describe('orchentra get_pull_request (shell verb e2e)', () => {
     expect(result.exitCode).toBe(1)
     expect(result.stderr.toLowerCase()).toContain('number')
   })
+
+  // One subprocess test per op family — covers the auto-registration path
+  // for every shape (read, list, search, etc.) without burning 36 spawns.
+  test('Issues family: get_issue resolves through the same factory', async () => {
+    fake.setScenario({
+      issues: {
+        'my-org/api#42': {
+          title: 'Login is broken',
+          body: 'Reproduces on main',
+          state: 'open',
+          labels: [{ name: 'bug' }],
+          user: { login: 'alice' },
+          created_at: '2026-04-02T10:00:00Z',
+        },
+      },
+      issueComments: { 'my-org/api#42': [] },
+    })
+    const result = await runVerb(['get_issue', '--owner', 'my-org', '--repo', 'api', '--number', '42'])
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('Login is broken')
+  })
+
+  test('Repos family: get_file_content resolves through the same factory', async () => {
+    fake.setScenario({
+      contents: {
+        'my-org/api#README.md': {
+          type: 'file',
+          path: 'README.md',
+          content: Buffer.from('hello world').toString('base64'),
+          size: 11,
+          encoding: 'base64',
+        },
+      },
+    })
+    const result = await runVerb(['get_file_content', '--owner', 'my-org', '--repo', 'api', '--path', 'README.md'])
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('hello world')
+  })
 })
