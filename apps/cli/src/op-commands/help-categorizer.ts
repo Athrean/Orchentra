@@ -3,7 +3,7 @@
  * so HelpCommand and any future help renderer agree on grouping.
  */
 
-export const OP_CATEGORIES = ['Pulls', 'Issues', 'Repos', 'Branches', 'Actions', 'Checks', 'Brain'] as const
+export const OP_CATEGORIES = ['Pulls', 'Issues', 'Repos', 'Branches', 'Actions', 'Checks', 'Secrets', 'Brain'] as const
 export type OpCategory = (typeof OP_CATEGORIES)[number]
 
 const PULL_OPS = new Set([
@@ -24,11 +24,14 @@ const ACTION_OPS = new Set([
   'get_workflow_logs',
   'list_workflow_run_artifacts',
   'download_artifact',
+  'delete_artifact',
   'rerun_workflow',
   'rerun_failed_jobs',
   'cancel_workflow_run',
   'dispatch_workflow',
 ])
+
+const SECRET_OPS = new Set(['list_repo_secrets', 'set_repo_secret'])
 
 const CHECK_OPS = new Set(['list_check_runs', 'create_check_run', 'create_commit_status'])
 
@@ -42,6 +45,7 @@ export function categoryForOp(opId: string): OpCategory | 'Unknown' {
   if (ACTION_OPS.has(opId)) return 'Actions'
   if (CHECK_OPS.has(opId)) return 'Checks'
   if (BRANCH_OPS.has(opId)) return 'Branches'
+  if (SECRET_OPS.has(opId)) return 'Secrets'
   if (BRAIN_OPS.has(opId)) return 'Brain'
   // Repos catches everything left from the GitHub adapter family
   // (get_repo_metadata, get_file_content, get_commit_changes, search_code,
