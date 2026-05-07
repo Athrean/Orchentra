@@ -1,4 +1,4 @@
-import type { Operation } from '@orchentra/operations'
+import { operations, type Operation } from '@orchentra/operations'
 import type { CommandContext, CommandRegistry } from '../commands/registry'
 import { buildSlashHandlerArgs, type IoSinks } from './factory'
 
@@ -22,6 +22,23 @@ export function registerOpAsSlash<T, R>(registry: CommandRegistry, op: Operation
       return exit === 0
     },
   })
+}
+
+/**
+ * Walk the entire operations registry and register every op as `/<op_id>`.
+ * Throws on collision with an existing builtin slash command so a bad op id
+ * cannot silently shadow `/help`, `/status`, etc.
+ */
+export function registerAllOpsAsSlash(registry: CommandRegistry): void {
+  const existing = new Set(registry.allSpecs().map((s) => s.name))
+  for (const op of operations) {
+    const name = (op.cliHints as { name?: string } | undefined)?.name ?? op.id
+    if (existing.has(name)) {
+      throw new Error(`op-as-slash collision: operation id '${name}' already registered as a builtin command`)
+    }
+    registerOpAsSlash(registry, op as Operation<unknown, unknown>)
+    existing.add(name)
+  }
 }
 
 function makeIoFromCtx(ctx: CommandContext): IoSinks {
