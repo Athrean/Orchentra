@@ -1,4 +1,5 @@
 import type { PermissionMode } from '@orchentra/cli-core'
+import { knownOpIds } from './op-commands/run-op-verb'
 
 export type CliAction =
   | { kind: 'version' }
@@ -109,9 +110,9 @@ export function parseArgs(argv: string[]): CliAction {
     return { kind: 'why', nodeId, outputFormat }
   }
 
-  // Slice A foundation tracer: dispatch known op_ids through the op-command
-  // factory. Slice B will replace this single-op gate with a registry walk.
-  if (first === 'get_pull_request') {
+  // Op-verb dispatch: any op id from the operations registry routes through
+  // the op-command factory. Set is computed once at module load.
+  if (knownOpIds().has(first)) {
     return { kind: 'op', opId: first, argv: args.slice(1) }
   }
 
