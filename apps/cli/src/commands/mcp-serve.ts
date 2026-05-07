@@ -155,7 +155,7 @@ export function buildLowercaseGithubAdapter(): GithubAdapter {
     return r.arrayBuffer()
   }
 
-  async function fetchVoid(path: string, init: { method: 'POST' | 'DELETE'; body?: unknown }): Promise<void> {
+  async function fetchVoid(path: string, init: { method: 'POST' | 'DELETE' | 'PUT'; body?: unknown }): Promise<void> {
     const reqHeaders: Record<string, string> = { ...headers }
     let bodyInit: string | undefined
     if (init.body !== undefined) {
@@ -377,6 +377,26 @@ export function buildLowercaseGithubAdapter(): GithubAdapter {
         fetchVoid(`/repos/${owner}/${repo}/actions/workflows/${encodeURIComponent(String(workflow_id))}/dispatches`, {
           method: 'POST',
           body: { ref, ...(inputs !== undefined ? { inputs } : {}) },
+        }),
+      // Slice H mutating + read ops.
+      deleteArtifact: async ({ owner, repo, artifact_id }) =>
+        fetchVoid(`/repos/${owner}/${repo}/actions/artifacts/${artifact_id}`, { method: 'DELETE' }),
+      listRepoSecrets: async ({ owner, repo, per_page }) => ({
+        data: (await fetchJson(`/repos/${owner}/${repo}/actions/secrets${qs({ per_page })}`)) as Awaited<
+          ReturnType<GithubAdapter['actions']['listRepoSecrets']>
+        >['data'],
+      }),
+      // setRepoSecret takes a plaintext value; the real Octokit-backed adapter
+      // would fetch the repo public key and seal the value with libsodium
+      // before PUTting it to GitHub. The lowercase fetch-based shim here is
+      // unsafe to use against real GitHub (no encryption), so it sends a
+      // structured payload the fake-github-server can verify in tests.
+      // TODO: replace with proper public-key + libsodium encryption before
+      // wiring to real GitHub creds.
+      setRepoSecret: async ({ owner, repo, secret_name, value }) =>
+        fetchVoid(`/repos/${owner}/${repo}/actions/secrets/${encodeURIComponent(secret_name)}`, {
+          method: 'PUT',
+          body: { encrypted_value: value, key_id: 'placeholder' },
         }),
     },
     search: {
