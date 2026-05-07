@@ -132,6 +132,10 @@ describe('orchentra mcp serve (stdio)', () => {
         'create_branch',
         'create_or_update_file_contents',
         'merge_pull_request',
+        // Slice H — artifact + secrets ops
+        'delete_artifact',
+        'list_repo_secrets',
+        'set_repo_secret',
       ].sort(),
     )
   })
