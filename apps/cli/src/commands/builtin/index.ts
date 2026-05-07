@@ -27,6 +27,7 @@ import { createGraphCommand } from './graph'
 import { createWhyCommand } from './why'
 import { TriageSlashCommand } from './triage-slash'
 import { CleanSlashCommand } from './clean-slash'
+import { EnvSlashCommand } from './env-slash'
 import { registerAllOpsAsSlash } from '../../op-commands/wire'
 
 export function createBuiltinRegistry(): CommandRegistry {
@@ -85,6 +86,9 @@ export function createBuiltinRegistry(): CommandRegistry {
 
   // Slice I: /clean prunes expired Actions artifacts from old failed runs.
   registry.register(new CleanSlashCommand())
+
+  // Slice J: /env list|set|sync — manage GH Actions secrets.
+  registry.register(new EnvSlashCommand())
   registry.register(
     createServerCommand(
       {
