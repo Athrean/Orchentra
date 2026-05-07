@@ -9,10 +9,11 @@ export interface WelcomeTipsOptions {
 }
 
 const TIPS: ReadonlyArray<readonly [string, string]> = [
-  ['/login', 'connect Anthropic, OpenAI, or Gemini (run in shell for OAuth)'],
-  ['paste a log', 'drop a failing CI log to start an investigation'],
-  ['/help', 'all commands · `?` for keyboard shortcuts'],
-  ['SKILL.md', 'drop a SKILL.md in .orchentra/skills/<name>/ to register /<name>'],
+  ['/help', 'list every command grouped by category · /help <op> for parameter detail'],
+  ['/triage', 'debug a failing GitHub Actions run in one slash'],
+  ['/clean', 'prune old workflow runs and expired artifacts (approval-gated)'],
+  ['/env', 'list, set, or sync GitHub Actions secrets'],
+  ['/login', 'connect Anthropic, OpenAI, or Gemini (only needed for /scan, /triage)'],
 ]
 
 function capitalize(value: string): string {
