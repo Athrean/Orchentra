@@ -3,9 +3,9 @@ import { homedir } from 'node:os'
 import React from 'react'
 import { Box, render, Text, useApp, useStdout } from 'ink'
 import type { PermissionMode } from '@orchentra/cli-core'
-import { THEME } from '../tui/theme'
 import { detectColorMode } from './ansi'
 import { renderMascot } from './mascot'
+import { THEME } from '../tui/theme'
 
 export interface BannerOptions {
   readonly cliName: string
@@ -18,8 +18,17 @@ export interface BannerOptions {
   readonly sessionId?: string
   readonly sessionPath?: string
   readonly providerName?: string
+  readonly username?: string
 }
 
+const TIPS: ReadonlyArray<readonly [string, string]> = [
+  ['/help', 'list every command grouped by category'],
+  ['/triage', 'debug a failing GitHub Actions run in one slash'],
+  ['/clean', 'prune old workflow runs and expired artifacts'],
+  ['/login', 'connect Anthropic, OpenAI, or Gemini providers'],
+]
+
+const BOX_MAX_WIDTH = 110
 const MASCOT_MIN_COLS = 60
 
 export function WelcomeBanner(props: BannerOptions): React.ReactElement {
@@ -29,23 +38,52 @@ export function WelcomeBanner(props: BannerOptions): React.ReactElement {
 
   const provider = props.providerName ?? 'anthropic'
   const cwd = prettyCwd(props.cwd)
+  const username = props.username ?? process.env.USER ?? 'there'
   const mascotLines = showMascot ? renderMascot(detectColorMode()) : []
 
+  const boxWidth = Math.min(cols - 2, BOX_MAX_WIDTH)
+  const titleLabel = ` ${capitalize(props.cliName)} v${props.cliVersion} `
+  const dashesAfterTitle = Math.max(boxWidth - titleLabel.length - 3, 0)
+  const topBorder = `╭─${titleLabel}${'─'.repeat(dashesAfterTitle)}╮`
+
   return (
-    <Box flexDirection="row" paddingX={1}>
-      {showMascot ? (
-        <Box flexDirection="column" marginRight={2}>
-          {mascotLines.map((line, i) => (
-            <Text key={i}>{line}</Text>
+    <Box flexDirection="column" width={boxWidth}>
+      <Text color={THEME.brand}>{topBorder}</Text>
+      <Box
+        borderStyle="round"
+        borderTop={false}
+        borderColor={THEME.brand}
+        flexDirection="row"
+        paddingX={2}
+        paddingY={1}
+      >
+        <Box flexDirection="column" alignItems="center" marginRight={4} flexGrow={1}>
+          <Text bold>{`Welcome back, ${username}!`}</Text>
+          {showMascot ? (
+            <Box flexDirection="column" paddingY={1}>
+              {mascotLines.map((line, i) => (
+                <Text key={i}>{line}</Text>
+              ))}
+            </Box>
+          ) : (
+            <Box height={1} />
+          )}
+          <Text dimColor>{`${props.model} · ${provider}`}</Text>
+          <Text dimColor>{cwd}</Text>
+        </Box>
+        <Box flexDirection="column" flexGrow={1}>
+          <Text color={THEME.brand} bold>
+            Tips for getting started
+          </Text>
+          <Box height={1} />
+          {TIPS.map(([key, label], i) => (
+            <Box key={key} flexDirection="row">
+              <Text color={THEME.brand}>{`${i + 1}. `}</Text>
+              <Text bold>{key}</Text>
+              <Text dimColor>{`  ${label}`}</Text>
+            </Box>
           ))}
         </Box>
-      ) : null}
-      <Box flexDirection="column" flexGrow={1}>
-        <Text bold>
-          {capitalize(props.cliName)} <Text dimColor>{`v${props.cliVersion}`}</Text>
-        </Text>
-        <Text dimColor>{`${props.model}  ${THEME.bullet}  ${provider}`}</Text>
-        <Text dimColor>{cwd}</Text>
       </Box>
     </Box>
   )
