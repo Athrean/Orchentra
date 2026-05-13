@@ -72,7 +72,7 @@ function IdeCompactBanner(props: BannerOptions): React.ReactElement {
   const metaLine = `${props.model} · ${provider}`
 
   return (
-    <Box flexDirection="row" alignItems="center" paddingX={1}>
+    <Box flexDirection="row" alignItems="flex-start" paddingX={1}>
       {showMascot ? (
         <Box flexDirection="column" marginRight={2}>
           {mascotLines.map((line, i) => (
