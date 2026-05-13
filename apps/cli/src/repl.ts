@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process'
+import { homedir } from 'node:os'
 import type { PermissionMode } from '@orchentra/cli-core'
 import { loadSkills } from '@orchentra/cli-core'
+import { tryLoadKeytar } from '@orchentra/cli-api'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { createCliContext } from './live-cli-factory'
 import { registry } from './commands'
@@ -13,6 +15,8 @@ import {
 import { renderBannerFrame } from './render/banner'
 import { isFirstRun, markWelcomed } from './render/first-run'
 import { runTui } from './tui'
+import { hasAnyLlmCredential } from './auth/credential-check'
+import { runFirstRunFlow, makeDefaultFirstRunDeps } from './auth/first-run-flow'
 
 export interface ReplOptions {
   model: string
@@ -22,6 +26,17 @@ export interface ReplOptions {
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
+  const shim = await tryLoadKeytar()
+  if (!(await hasAnyLlmCredential(homedir(), shim))) {
+    const result = await runFirstRunFlow(makeDefaultFirstRunDeps(undefined, shim))
+    if (result.kind === 'cancelled') {
+      process.stderr.write(
+        'orchentra needs at least one LLM provider configured. Run `orchentra reauth` to try again.\n',
+      )
+      return 1
+    }
+  }
+
   const cliCtx = await createCliContext({
     model: options.model,
     permissionMode: options.permissionMode,
