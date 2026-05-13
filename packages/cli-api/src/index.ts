@@ -85,6 +85,8 @@ export {
   isRetryableStatus,
   enrichAuthError,
   missingCredentialsError,
+  isProviderAuthError,
+  friendlyAuthErrorMessage,
   AnthropicApiError,
   type FailureClass,
 } from './errors'
