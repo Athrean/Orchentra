@@ -47,6 +47,11 @@ export async function runRepl(options: ReplOptions): Promise<number> {
       )
       return 1
     }
+    // Clear the first-run overlay before the regular banner renders so the
+    // user does not see two stacked welcome cards (the bordered first-run
+    // card in scrollback + the post-mount banner). The TUI re-anchors the
+    // banner inside its own static region from this point on.
+    process.stdout.write('\x1b[2J\x1b[H')
   }
 
   const cliCtx = await createCliContext({
