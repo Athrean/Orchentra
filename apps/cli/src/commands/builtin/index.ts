@@ -19,6 +19,7 @@ import { ExportCommand } from './export'
 import { ResumeCommand } from './resume'
 import { LoginCommand } from './login'
 import { LogoutCommand } from './logout'
+import { ReauthCommand } from './reauth-slash'
 import { AuthStatusCommand } from './auth-status'
 import { createServerCommand } from './server-bridge'
 import { SkillsCommand } from './skills-adapter'
@@ -57,6 +58,7 @@ export function createBuiltinRegistry(): CommandRegistry {
   // Auth
   registry.register(new LoginCommand())
   registry.register(new LogoutCommand())
+  registry.register(new ReauthCommand())
   registry.register(new AuthStatusCommand())
 
   // Skills meta-command (lists user-authored skills + load errors)

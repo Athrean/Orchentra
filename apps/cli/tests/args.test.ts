@@ -22,6 +22,10 @@ describe('parseArgs', () => {
     expect(parseArgs(['node', 'orchentra', 'init']).kind).toBe('init')
   })
 
+  test('reauth returns reauth action', () => {
+    expect(parseArgs(['node', 'orchentra', 'reauth']).kind).toBe('reauth')
+  })
+
   test('-p with prompt returns prompt action', () => {
     const action = parseArgs(['node', 'orchentra', '-p', 'hello world'])
     expect(action.kind).toBe('prompt')

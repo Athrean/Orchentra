@@ -12,6 +12,7 @@ import { runWatch } from './commands/watch'
 import { runMcpList, runMcpTest } from './commands/mcp'
 import { runMcpServe } from './commands/mcp-serve'
 import { runLogin, runLogout, runAuthStatus } from './commands/run-auth'
+import { runReauth } from './commands/run-reauth'
 import { runGraph } from './commands/run-graph'
 import { runWhy } from './commands/run-why'
 import { runOpVerb } from './op-commands/run-op-verb'
@@ -107,6 +108,9 @@ async function main(argv: string[]): Promise<number> {
 
     case 'logout':
       return runLogout(action.provider)
+
+    case 'reauth':
+      return runReauth()
 
     case 'auth-status':
       return runAuthStatus()
