@@ -41,6 +41,17 @@ export {
   type StoredCredential,
   type ResolvedApiKey,
 } from './credential-store'
+export {
+  KEYCHAIN_SERVICE,
+  tryLoadKeytar,
+  saveCredentialAsync,
+  getCredentialAsync,
+  clearCredentialAsync,
+  listCredentialProvidersAsync,
+  resolveApiKeyAsync,
+  type KeychainShim,
+  type ResolvedApiKeyAsync,
+} from './keychain-store'
 
 export {
   generatePkce,
