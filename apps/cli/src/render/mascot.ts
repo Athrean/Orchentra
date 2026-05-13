@@ -14,10 +14,10 @@ import { MASCOT_EYE, MASCOT_WHITE, ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, 
 const PIXEL_ROWS: readonly string[] = [
   '  ########  ',
   '  ##W##W##  ',
-  '  #WW##WW#  ',
   '############',
   '  ########  ',
   '   ##  ##   ',
+  '  ##    ##  ',
 ]
 
 interface Pixel {
