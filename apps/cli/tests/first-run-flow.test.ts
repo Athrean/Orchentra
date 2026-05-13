@@ -58,4 +58,37 @@ describe('runFirstRunFlow', () => {
     expect(r).toEqual({ kind: 'saved', provider: 'anthropic' })
     expect(calls(d).saved[0]?.provider).toBe('anthropic')
   })
+
+  test('runs OAuth path when pickAuthMethod resolves to oauth', async () => {
+    let oauthCalled = false
+    const d = deps({
+      pickProvider: async () => 'anthropic',
+      pickAuthMethod: async () => 'oauth',
+      runOAuth: async () => {
+        oauthCalled = true
+        return { ok: true }
+      },
+    })
+    const r = await runFirstRunFlow(d)
+    expect(r).toEqual({ kind: 'saved', provider: 'anthropic' })
+    expect(oauthCalled).toBe(true)
+    expect(calls(d).saved).toEqual([])
+  })
+
+  test('returns cancelled when OAuth flow fails', async () => {
+    const d = deps({
+      pickProvider: async () => 'anthropic',
+      pickAuthMethod: async () => 'oauth',
+      runOAuth: async () => ({ ok: false, message: 'denied' }),
+    })
+    expect(await runFirstRunFlow(d)).toEqual({ kind: 'cancelled' })
+  })
+
+  test('returns cancelled when auth-method picker cancels', async () => {
+    const d = deps({
+      pickProvider: async () => 'anthropic',
+      pickAuthMethod: async () => null,
+    })
+    expect(await runFirstRunFlow(d)).toEqual({ kind: 'cancelled' })
+  })
 })
