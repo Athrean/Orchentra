@@ -10,8 +10,7 @@ import {
   recordSkillsReloadCallback,
   getLoadedSkills,
 } from './commands/builtin/skills-adapter'
-import { printWelcomeBanner } from './render/banner'
-import { printWelcomeTips } from './render/welcome-tips'
+import { renderBannerFrame } from './render/banner'
 import { isFirstRun, markWelcomed } from './render/first-run'
 import { runTui } from './tui'
 
@@ -78,7 +77,7 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   }
 
   const { branch, workspaceStatus } = readGitSummary(options.cwd)
-  await printWelcomeBanner({
+  const bannerFrame = await renderBannerFrame({
     cliName: CLI_NAME,
     cliVersion: CLI_VERSION,
     model: resolvedModel,
@@ -89,12 +88,12 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     sessionId,
     sessionPath,
     providerName,
+    username: process.env.USER,
   })
+  process.stdout.write(bannerFrame)
   process.stdout.write('\n')
 
   if (isFirstRun()) {
-    await printWelcomeTips({ cliName: CLI_NAME, username: process.env.USER })
-    process.stdout.write('\n')
     markWelcomed()
   }
 
@@ -105,6 +104,7 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     model: resolvedModel,
     mode: resolvedMode,
     branch,
+    bannerFrame,
   })
 
   await cliCtx.close()
