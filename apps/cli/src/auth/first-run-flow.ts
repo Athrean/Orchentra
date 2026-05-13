@@ -36,6 +36,7 @@ export type AuthMethod = 'oauth' | 'api-key'
 export type FirstRunResult = { readonly kind: 'saved'; readonly provider: ProviderKey } | { readonly kind: 'cancelled' }
 
 export interface FirstRunDeps {
+  onStart?(): Promise<void>
   pickProvider(): Promise<ProviderKey | null>
   pickAuthMethod?(provider: ProviderKey): Promise<AuthMethod | null>
   runOAuth?(provider: ProviderKey): Promise<{ ok: boolean; message?: string }>
@@ -45,6 +46,8 @@ export interface FirstRunDeps {
 }
 
 export async function runFirstRunFlow(deps: FirstRunDeps): Promise<FirstRunResult> {
+  await deps.onStart?.()
+
   const provider = await deps.pickProvider()
   if (!provider) return { kind: 'cancelled' }
 
@@ -74,6 +77,7 @@ export async function runFirstRunFlow(deps: FirstRunDeps): Promise<FirstRunResul
 
 export function makeDefaultFirstRunDeps(home?: string, shim?: KeychainShim | null): FirstRunDeps {
   return {
+    onStart: async () => renderFirstRunBanner(),
     pickProvider: async () => brandedPickProvider(),
     pickAuthMethod: async (provider) => brandedPickAuthMethod(provider),
     runOAuth: async (provider) => brandedRunOAuth(provider),
@@ -98,15 +102,12 @@ export function makeDefaultFirstRunDeps(home?: string, shim?: KeychainShim | nul
   }
 }
 
-function clearScreen(): void {
+// Render the full Orchentra welcome card exactly once at the top of the
+// first-run flow. Subsequent pickers and prompts stack below it without
+// clearing the screen, so the banner stays anchored and the user never
+// sees flicker between steps.
+async function renderFirstRunBanner(): Promise<void> {
   process.stdout.write('\x1b[2J\x1b[H')
-}
-
-async function renderHeader(subtitle: string): Promise<void> {
-  // Render the same welcome banner Orchentra shows post-sign-in so the
-  // first-run screen feels like a continuation of the CLI rather than a
-  // detached readline session. Model/provider are placeholders until the
-  // user picks; they get re-rendered with real values when the TUI mounts.
   const frame = await renderBannerFrame({
     cliName: CLI_NAME,
     cliVersion: CLI_VERSION,
@@ -115,16 +116,15 @@ async function renderHeader(subtitle: string): Promise<void> {
     cwd: process.cwd(),
     providerName: '—',
     username: process.env.USER,
+    forceBordered: true,
   })
   process.stdout.write(frame)
   process.stdout.write('\n')
   process.stdout.write(`  ${C.bold}${C.brand}Sign in to start${C.reset}\n`)
-  process.stdout.write(`  ${C.dim}${subtitle}${C.reset}\n\n`)
+  process.stdout.write(`  ${C.dim}Arrow keys + Enter, Esc to cancel.${C.reset}\n\n`)
 }
 
 async function brandedPickProvider(): Promise<ProviderKey | null> {
-  clearScreen()
-  await renderHeader('Pick an LLM provider. Arrow keys + Enter, Esc to cancel.')
   const result = await promptSelect<ProviderKey>({
     title: `  ${C.dim}Provider${C.reset}`,
     options: LLM_PROVIDERS.map((p) => ({
@@ -142,8 +142,6 @@ async function brandedPickAuthMethod(provider: ProviderKey): Promise<AuthMethod 
   // prompt so we don't surface a dead choice.
   if (provider !== 'anthropic') return 'api-key'
 
-  clearScreen()
-  await renderHeader('Choose how you sign in to Anthropic.')
   const result = await promptSelect<AuthMethod>({
     title: `  ${C.dim}Sign-in method${C.reset}`,
     options: [
@@ -159,14 +157,11 @@ async function brandedRunOAuth(provider: ProviderKey): Promise<{ ok: boolean; me
   if (provider !== 'anthropic') {
     return { ok: false, message: `OAuth is not wired up for ${provider} yet — use an API key.` }
   }
-  clearScreen()
   const result = await runAnthropicLoginFlow()
   return { ok: result.ok, message: result.message }
 }
 
 async function brandedPromptApiKey(provider: ProviderKey): Promise<string | null> {
-  clearScreen()
-  await renderHeader('Paste your API key. Stored in your OS keychain.')
   const label = PROVIDER_LABELS[provider] ?? provider
   process.stdout.write(`  ${C.dim}Provider:${C.reset} ${C.bold}${label}${C.reset}\n\n`)
   const rl = createInterface({ input: process.stdin, output: process.stdout })

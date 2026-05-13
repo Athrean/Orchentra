@@ -19,6 +19,13 @@ export interface BannerOptions {
   readonly sessionPath?: string
   readonly providerName?: string
   readonly username?: string
+  /**
+   * Force the full bordered welcome card with mascot + tips column even
+   * when running in an IDE-integrated terminal. Used by the first-run
+   * sign-in screen so the user sees the full Orchentra UX before
+   * configuring credentials, instead of the IDE-compact fallback.
+   */
+  readonly forceBordered?: boolean
 }
 
 const TIPS: ReadonlyArray<readonly [string, string]> = [
@@ -46,7 +53,7 @@ function isIdeTerminal(): boolean {
 }
 
 export function WelcomeBanner(props: BannerOptions): React.ReactElement {
-  if (isIdeTerminal()) return <IdeCompactBanner {...props} />
+  if (isIdeTerminal() && !props.forceBordered) return <IdeCompactBanner {...props} />
   return <BorderedBanner {...props} />
 }
 
