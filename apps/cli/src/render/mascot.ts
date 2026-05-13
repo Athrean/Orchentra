@@ -2,25 +2,21 @@ import type { ColorMode, Rgb } from './ansi'
 import { MASCOT_EYE, MASCOT_WHITE, ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, bg, fg } from './ansi'
 
 // Pixel encoding:
-//   '#' primary green body
-//   '+' shadow (darker green)
-//   'W' white bang / highlight
-//   'K' eye
-//   ' ' transparent
-// Design matches the "Wave" mascot: blocky body with left arm raised in a wave,
-// three motion ticks above the hand, two eyes, small right-arm tab, two feet.
+//   # = primary green body
+//   + = darker green shadow
+//   W = white highlight / eyes
+//   K = dark eye
+//   ' ' = transparent
+//
+// 12-column mascot sprite (uniform width required)
 const PIXEL_ROWS: readonly string[] = [
-  '      ####      ', // top curve
-  '    ########    ', // rounding out
-  '   ##########   ', // upper body
-  '   ##KK##KK##   ', // top of vertical eyes
-  ' ####KK##KK#### ', // arms stick out + middle of eyes
-  ' ####KK##KK#### ', // bottom of arms + bottom of eyes
-  '   ##########   ', // lower body
-  '    ########    ', // rounding in
-  '      ####      ', // bottom curve
-  '     ##  ##     ', // legs
-  '     ##  ##     ', // feet
+  '   ######   ',
+  '  ##W##W##  ',
+  '  #WW##WW#  ',
+  '############',
+  '  ########  ',
+  '    #  #    ',
+  '   ##  ##   ',
 ]
 
 interface Pixel {
@@ -28,59 +24,89 @@ interface Pixel {
   readonly color: Rgb | null
 }
 
-function decodeRow(row: string): Pixel[] {
-  const cells: Pixel[] = []
-  for (const ch of row) {
-    if (ch === '#') cells.push({ filled: true, color: ORCHENTRA_GREEN })
-    else if (ch === '+') cells.push({ filled: true, color: ORCHENTRA_GREEN_DIM })
-    else if (ch === 'W') cells.push({ filled: true, color: MASCOT_WHITE })
-    else if (ch === 'K') cells.push({ filled: true, color: MASCOT_EYE })
-    else cells.push({ filled: false, color: null })
-  }
-  return cells
+const EMPTY_PIXEL: Pixel = {
+  filled: false,
+  color: null,
 }
 
-export function renderMascot(mode: ColorMode): string[] {
-  const grid = PIXEL_ROWS.map(decodeRow)
-  const cols = grid[0].length
-  const lines: string[] = []
-  for (let y = 0; y < grid.length; y += 2) {
-    let line = ''
-    for (let x = 0; x < cols; x++) {
-      const top = grid[y][x]
-      const bot = y + 1 < grid.length ? grid[y + 1][x] : { filled: false, color: null }
-      line += renderCell(top, bot, mode)
-    }
-    lines.push(line)
+function decodePixel(ch: string): Pixel {
+  switch (ch) {
+    case '#':
+      return { filled: true, color: ORCHENTRA_GREEN }
+    case '+':
+      return { filled: true, color: ORCHENTRA_GREEN_DIM }
+    case 'W':
+      return { filled: true, color: MASCOT_WHITE }
+    case 'K':
+      return { filled: true, color: MASCOT_EYE }
+    default:
+      return EMPTY_PIXEL
   }
-  return lines
 }
 
-function renderCell(top: Pixel, bot: Pixel, mode: ColorMode): string {
-  if (mode === 'none') {
-    if (top.filled && bot.filled) return '█'
-    if (top.filled) return '▀'
-    if (bot.filled) return '▄'
-    return ' '
-  }
-  if (!top.filled && !bot.filled) return ' '
-  if (top.filled && bot.filled && top.color && bot.color) {
-    if (colorsEqual(top.color, bot.color)) return `${fg(top.color, mode)}█${RESET}`
-    return `${bg(top.color, mode)}${fg(bot.color, mode)}▄${RESET}`
-  }
-  if (top.filled && top.color) return `${fg(top.color, mode)}▀${RESET}`
-  if (bot.filled && bot.color) return `${fg(bot.color, mode)}▄${RESET}`
-  return ' '
+function decodeRow(row: string, width: number): Pixel[] {
+  return row.padEnd(width, ' ').split('').map(decodePixel)
 }
 
 function colorsEqual(a: Rgb, b: Rgb): boolean {
   return a.r === b.r && a.g === b.g && a.b === b.b
 }
 
+function renderCell(top: Pixel, bottom: Pixel, mode: ColorMode): string {
+  if (mode === 'none') {
+    if (top.filled && bottom.filled) return '█'
+    if (top.filled) return '▀'
+    if (bottom.filled) return '▄'
+    return ' '
+  }
+
+  if (!top.filled && !bottom.filled) {
+    return ' '
+  }
+
+  if (top.filled && bottom.filled && top.color && bottom.color) {
+    if (colorsEqual(top.color, bottom.color)) {
+      return `${fg(top.color, mode)}█${RESET}`
+    }
+
+    return `${bg(top.color, mode)}${fg(bottom.color, mode)}▄${RESET}`
+  }
+
+  if (top.filled && top.color) {
+    return `${fg(top.color, mode)}▀${RESET}`
+  }
+
+  if (bottom.filled && bottom.color) {
+    return `${fg(bottom.color, mode)}▄${RESET}`
+  }
+
+  return ' '
+}
+
 export function mascotWidthCols(): number {
-  return PIXEL_ROWS[0].length
+  return Math.max(...PIXEL_ROWS.map((row) => row.length))
 }
 
 export function mascotHeightRows(): number {
   return Math.ceil(PIXEL_ROWS.length / 2)
+}
+
+export function renderMascot(mode: ColorMode): string[] {
+  const width = mascotWidthCols()
+  const grid = PIXEL_ROWS.map((row) => decodeRow(row, width))
+  const lines: string[] = []
+
+  for (let y = 0; y < grid.length; y += 2) {
+    let line = ''
+
+    for (let x = 0; x < width; x++) {
+      const top = grid[y][x]
+      const bottom = grid[y + 1]?.[x] ?? EMPTY_PIXEL
+      line += renderCell(top, bottom, mode)
+    }
+
+    lines.push(line)
+  }
+
+  return lines
 }
