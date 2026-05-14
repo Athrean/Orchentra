@@ -17,6 +17,24 @@ describe('parseArgs — subcommands', () => {
     expect(result).toMatchObject({ kind: 'fix', spec: 'acme/api#9', title: 'fix: ci', base: 'develop' })
   })
 
+  test('fix --auto-merge defaults to false when not passed', () => {
+    const result = parseArgs(['bun', 'orchentra', 'fix', 'acme/api#9'])
+    expect(result).toMatchObject({ kind: 'fix', autoMerge: false })
+  })
+
+  test('fix --auto-merge sets the flag to true', () => {
+    const result = parseArgs(['bun', 'orchentra', 'fix', 'acme/api#9', '--auto-merge'])
+    expect(result).toMatchObject({ kind: 'fix', autoMerge: true })
+  })
+
+  test('investigate rejects --auto-merge', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'investigate', 'acme/api#9', '--auto-merge'])).toThrow(/--auto-merge/)
+  })
+
+  test('triage rejects --auto-merge', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'triage', 'acme/api#9', '--auto-merge'])).toThrow(/--auto-merge/)
+  })
+
   test('fix missing spec throws', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'fix'])).toThrow(/missing/)
   })
