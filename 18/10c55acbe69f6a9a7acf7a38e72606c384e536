@@ -1,0 +1,15 @@
+apps/cli/tests/args-subcommands.test.ts
+  ai_agent 20-37
+apps/cli/src/main.ts
+  ai_agent 90
+apps/cli/src/args.ts
+  ai_agent 26,206,222,241-243,254
+apps/cli/src/commands/run-fix.ts
+  ai_agent 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "1810c55acbe69f6a9a7acf7a38e72606c384e536",
+  "prompts": {}
+}
