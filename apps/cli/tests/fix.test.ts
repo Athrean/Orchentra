@@ -14,7 +14,10 @@ function mockCli(): LiveCli {
   return { runTurn: async (): Promise<void> => undefined } as unknown as LiveCli
 }
 
-function mockGit(opts: { beforeFiles?: string[]; afterFiles?: string[] }): { git: GitOps; calls: string[] } {
+function mockGit(opts: { beforeFiles?: string[]; afterFiles?: string[]; diff?: string }): {
+  git: GitOps
+  calls: string[]
+} {
   const calls: string[] = []
   let statusCallCount = 0
   const git: GitOps = {
@@ -30,6 +33,10 @@ function mockGit(opts: { beforeFiles?: string[]; afterFiles?: string[] }): { git
       const files = statusCallCount === 0 ? (opts.beforeFiles ?? []) : (opts.afterFiles ?? [])
       statusCallCount++
       return [...files]
+    },
+    diffFiles: (paths): string => {
+      calls.push(`diff:${paths.join(',')}`)
+      return opts.diff ?? `+ noop change in ${paths.join(', ')}\n`
     },
     add: (paths): void => {
       calls.push(`add:${paths.join(',')}`)
@@ -136,6 +143,7 @@ describe('fix', () => {
         git,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
+        confirmDiff: async (): Promise<boolean> => true,
       },
     )
 
@@ -183,6 +191,7 @@ describe('fix', () => {
         git,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
+        confirmDiff: async (): Promise<boolean> => true,
       },
     )
 
@@ -210,6 +219,7 @@ describe('fix', () => {
         git,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
+        confirmDiff: async (): Promise<boolean> => true,
       },
     )
 
@@ -253,11 +263,101 @@ describe('fix', () => {
         git,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
+        confirmDiff: async (): Promise<boolean> => true,
       },
     )
 
     expect(result.failingJobs).toHaveLength(0)
     expect(result.changedFiles).toBe(false)
     expect(calls.find((c) => c.startsWith('checkout:'))).toBeUndefined()
+  })
+
+  test('blocks push and PR when the user rejects the diff preview', async () => {
+    process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
+
+    const captured: MockCall[] = []
+    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const { git, calls } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'], diff: '+ tweak\n' })
+
+    let presentedDiff = ''
+    const result = await fix(
+      { owner: 'o', repo: 'r', runId: 42 },
+      {},
+      {
+        cli: mockCli(),
+        git,
+        clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
+        write: (): void => {},
+        confirmDiff: async (diff: string): Promise<boolean> => {
+          presentedDiff = diff
+          return false
+        },
+      },
+    )
+
+    expect(presentedDiff).toContain('tweak')
+    expect(result.changedFiles).toBe(true)
+    expect(result.userConfirmed).toBe(false)
+    expect(result.pullRequest).toBeNull()
+    expect(result.createdPullRequest).toBe(false)
+    expect(calls).toContain('diff:src/fix.ts')
+    expect(calls.find((c) => c.startsWith('add:'))).toBeUndefined()
+    expect(calls.find((c) => c.startsWith('commit:'))).toBeUndefined()
+    expect(calls.find((c) => c.startsWith('push:'))).toBeUndefined()
+    const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
+    expect(postPull).toBeUndefined()
+  })
+
+  test('records userConfirmed=true on the happy path', async () => {
+    process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
+
+    const captured: MockCall[] = []
+    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const { git } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
+
+    const result = await fix(
+      { owner: 'o', repo: 'r', runId: 42 },
+      {},
+      {
+        cli: mockCli(),
+        git,
+        clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
+        write: (): void => {},
+        confirmDiff: async (): Promise<boolean> => true,
+      },
+    )
+
+    expect(result.userConfirmed).toBe(true)
+  })
+
+  test('presents the diff produced by GitOps.diffFiles to confirmDiff', async () => {
+    process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
+
+    const captured: MockCall[] = []
+    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const { git } = mockGit({
+      beforeFiles: [],
+      afterFiles: ['src/fix.ts'],
+      diff: 'diff --git a/src/fix.ts b/src/fix.ts\n+ patched\n',
+    })
+
+    let received = ''
+    await fix(
+      { owner: 'o', repo: 'r', runId: 42 },
+      {},
+      {
+        cli: mockCli(),
+        git,
+        clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
+        write: (): void => {},
+        confirmDiff: async (diff: string): Promise<boolean> => {
+          received = diff
+          return true
+        },
+      },
+    )
+
+    expect(received).toContain('diff --git a/src/fix.ts')
+    expect(received).toContain('+ patched')
   })
 })

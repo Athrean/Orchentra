@@ -5,6 +5,8 @@ export interface GitOps {
   checkout(branch: string, fromBase?: string): void
   hasUncommittedChanges(): boolean
   listUncommittedFiles(): string[]
+  /** Unified diff for the given paths against HEAD, including untracked content. */
+  diffFiles(paths: string[]): string
   add(paths: string[]): void
   commit(message: string): void
   push(branch: string, remote?: string): void
@@ -73,6 +75,15 @@ export class ShellGitOps implements GitOps {
       if (renamed.length > 0) files.push(renamed)
     }
     return files
+  }
+
+  diffFiles(paths: string[]): string {
+    if (paths.length === 0) return ''
+    // Stage paths into the index so the diff covers both tracked and untracked
+    // content uniformly; reset the index back to leave the user's stage clean.
+    this.run(['add', '--intent-to-add', '--', ...paths])
+    const diff = this.runCapture(['diff', '--no-color', '--', ...paths])
+    return diff
   }
 
   add(paths: string[]): void {
