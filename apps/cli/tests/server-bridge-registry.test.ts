@@ -93,4 +93,23 @@ describe('builtin registry includes server-bridge commands', () => {
       expect(resolved.handler.spec.name).toBe(name)
     }
   })
+
+  test.each(['/incidents', '/inc'])('alias %s also routes through prereq middleware', async (alias) => {
+    const resolved = registry.resolve(alias)
+    if (!resolved || resolved instanceof Error) throw new Error(`expected handler for ${alias}`)
+    const events: UiOutput[] = []
+    const prevOrg = process.env.ORCHENTRA_ORG_ID
+    const prevKey = process.env.ORCHENTRA_API_KEY
+    delete process.env.ORCHENTRA_ORG_ID
+    delete process.env.ORCHENTRA_API_KEY
+    const ctx: CommandContext = { cwd: '/tmp', session: makeSession(), ui: (o) => events.push(o) }
+    try {
+      await resolved.handler.execute([], ctx)
+    } finally {
+      if (prevOrg !== undefined) process.env.ORCHENTRA_ORG_ID = prevOrg
+      if (prevKey !== undefined) process.env.ORCHENTRA_API_KEY = prevKey
+    }
+    const card = events.find((e): e is Extract<UiOutput, { kind: 'card' }> => e.kind === 'card')
+    expect(card).toBeDefined()
+  })
 })
