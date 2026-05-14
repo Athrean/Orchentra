@@ -9,15 +9,13 @@ import { MASCOT_EYE, MASCOT_WHITE, ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, 
 //   ' ' = transparent
 //
 // 12-column mascot sprite (uniform width required).
-// Six rows -> three rendered half-block lines so the mascot matches the
-// 3-line info column (title / model / cwd) in the IDE-compact banner.
 const PIXEL_ROWS: readonly string[] = [
-  '  ########  ',
+  '   ######   ',
   '  ##W##W##  ',
+  '  #W####W#  ',
   '############',
   '  ########  ',
-  '   ##  ##   ',
-  '  ##    ##  ',
+  '    #  #    ',
 ]
 
 interface Pixel {
