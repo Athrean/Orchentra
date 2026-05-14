@@ -12,6 +12,7 @@ export interface RunFixOptions {
   readonly cwd: string
   readonly title?: string
   readonly base?: string
+  readonly autoMerge?: boolean
 }
 
 export async function runFix(options: RunFixOptions): Promise<number> {
