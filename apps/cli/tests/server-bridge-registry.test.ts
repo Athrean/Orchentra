@@ -7,7 +7,9 @@ describe('builtin registry includes server-bridge commands', () => {
   const names = new Set(specs.map((s) => s.name))
 
   test.each([
-    ['incidents', '<filters>'],
+    // /incidents was renamed to /incident (singular) in Flow 2. `incidents`
+    // stays as a deprecated alias for one release.
+    ['incident', '<filters>'],
     // /triage was the server-bridged variant; Slice G replaced it with a
     // local handler that wraps runTriage, so the hint shape changed.
     ['triage', '<owner/repo#runId>'],
@@ -17,6 +19,18 @@ describe('builtin registry includes server-bridge commands', () => {
     expect(names.has(name)).toBe(true)
     const spec = specs.find((s) => s.name === name)!
     expect(spec.argumentHint).toBe(hint)
+  })
+
+  test('/incidents resolves as a compat alias of /incident', () => {
+    const resolved = registry.resolve('/incidents')
+    if (!resolved || resolved instanceof Error) throw new Error('expected handler')
+    expect(resolved.handler.spec.name).toBe('incident')
+  })
+
+  test('/inc still resolves to /incident', () => {
+    const resolved = registry.resolve('/inc')
+    if (!resolved || resolved instanceof Error) throw new Error('expected handler')
+    expect(resolved.handler.spec.name).toBe('incident')
   })
 
   test('/status remains the local session-info command (not collided)', () => {

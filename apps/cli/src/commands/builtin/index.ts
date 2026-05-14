@@ -72,11 +72,13 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(createWhyCommand())
 
   // Server-bridge: route to POST /api/orgs/:orgId/commands
+  // Flow 2: command renamed `incidents` -> `incident` (singular). The plural
+  // form stays as a compat alias for one release.
   registry.register(
     createServerCommand(
       {
-        name: 'incidents',
-        aliases: ['inc'],
+        name: 'incident',
+        aliases: ['incidents', 'inc'],
         summary: 'List incidents from the Orchentra server',
         argumentHint: '<filters>',
       },
