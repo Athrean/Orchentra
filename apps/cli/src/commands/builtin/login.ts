@@ -1,6 +1,12 @@
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
-import { loginGemini, loginWithDeviceFlow, saveCredential, type ProviderKey } from '@orchentra/cli-api'
+import {
+  loginGemini,
+  loginWithDeviceFlow,
+  saveCredentialAsync,
+  tryLoadKeytar,
+  type ProviderKey,
+} from '@orchentra/cli-api'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { authStateHint } from '../auth-state'
 import { promptSelect } from '../../ui/select'
@@ -56,11 +62,11 @@ export class LoginCommand implements CommandHandler {
     const apiKey = extractFlag(args, '--api-key')
     if (apiKey) {
       if (inTui) {
-        const path = saveCredential(provider as ProviderKey, { apiKey })
-        ctx.ui?.({ kind: 'note', tone: 'info', text: `✓ saved ${provider} API key → ${path}` })
+        await saveApiKeyToBackend(provider as ProviderKey, apiKey)
+        ctx.ui?.({ kind: 'note', tone: 'info', text: `✓ saved ${provider} API key to OS keychain` })
         return true
       }
-      return saveApiKey(provider as ProviderKey, apiKey)
+      return await saveApiKey(provider as ProviderKey, apiKey)
     }
 
     if (inTui) {
@@ -138,9 +144,14 @@ async function runProvider(provider: ProviderKey): Promise<boolean> {
   }
 }
 
-function saveApiKey(provider: ProviderKey, apiKey: string): boolean {
-  const path = saveCredential(provider, { apiKey })
-  process.stdout.write(`✓ saved ${provider} API key → ${path}\n`)
+async function saveApiKeyToBackend(provider: ProviderKey, apiKey: string): Promise<void> {
+  const shim = await tryLoadKeytar()
+  await saveCredentialAsync(provider, { apiKey }, undefined, shim)
+}
+
+async function saveApiKey(provider: ProviderKey, apiKey: string): Promise<boolean> {
+  await saveApiKeyToBackend(provider, apiKey)
+  process.stdout.write(`✓ saved ${provider} API key to OS keychain\n`)
   return true
 }
 
@@ -208,8 +219,8 @@ async function doApiKey(provider: ProviderKey): Promise<boolean> {
     process.stdout.write('\n  cancelled\n')
     return true
   }
-  const path = saveCredential(provider, { apiKey })
-  process.stdout.write(`\n\x1b[32m✓ Saved ${provider} API key\x1b[0m  \x1b[2m(${path})\x1b[0m\n`)
+  await saveApiKeyToBackend(provider, apiKey)
+  process.stdout.write(`\n\x1b[32m✓ Saved ${provider} API key\x1b[0m  \x1b[2m(OS keychain)\x1b[0m\n`)
   return true
 }
 

@@ -14,10 +14,11 @@ export interface InputBoxProps {
 const CHIP_RE = /\[Pasted #([a-z0-9]+) — (\d+) lines]/g
 
 /**
- * Rounded, brand-green input box. Renders the buffer with an inverse-character
- * cursor so we don't have to manage the real terminal cursor position. Paste
- * chips inside the buffer are rendered as a single dim/bold token instead of
- * the full pasted contents.
+ * Claude-Code-style input region: a dim horizontal rule above and below
+ * a bare prompt line. The `›` glyph and inverse-character cursor are
+ * brand-green; the rules are muted so they sit quietly without competing
+ * with content. Buffer text uses our paste-chip renderer so pasted blobs
+ * collapse to a single token.
  */
 export function InputBox(props: InputBoxProps): React.ReactElement {
   const { buffer, cursor, placeholder, disabled } = props
@@ -27,11 +28,21 @@ export function InputBox(props: InputBoxProps): React.ReactElement {
   // only when the user has produced a newline keeps idle frames quiet.
   const showMultilineHint = !disabled && buffer.includes('\n')
 
+  const promptColor = disabled ? THEME.muted : BRAND_GREEN
+
   return (
     <Box flexDirection="column">
-      <Box borderStyle="round" borderColor={disabled ? THEME.muted : BRAND_GREEN} paddingX={1} flexDirection="row">
-        <Text color={disabled ? THEME.muted : BRAND_GREEN} bold>
-          {'> '}
+      <Box
+        borderStyle="single"
+        borderColor={THEME.muted}
+        borderDimColor
+        borderLeft={false}
+        borderRight={false}
+        paddingX={1}
+        flexDirection="row"
+      >
+        <Text color={promptColor} bold>
+          {`${THEME.prompt} `}
         </Text>
         <Box flexDirection="column" flexGrow={1}>
           {showPlaceholder ? (

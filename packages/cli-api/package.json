@@ -14,6 +14,9 @@
   "dependencies": {
     "@orchentra/cli-core": "workspace:*"
   },
+  "optionalDependencies": {
+    "keytar": "^7.9.0"
+  },
   "devDependencies": {
     "@orchentra/eslint-config": "workspace:*",
     "@orchentra/typescript-config": "workspace:*",

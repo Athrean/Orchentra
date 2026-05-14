@@ -31,6 +31,7 @@ export type CliAction =
   | { kind: 'mcp'; sub: 'serve'; printToolsJson: boolean }
   | { kind: 'login'; provider?: string; apiKey?: string }
   | { kind: 'logout'; provider: string }
+  | { kind: 'reauth' }
   | { kind: 'auth-status' }
   | { kind: 'graph'; executionId: string; outputFormat: 'tree' | 'json' }
   | { kind: 'why'; nodeId: string; outputFormat: 'tree' | 'json' }
@@ -90,6 +91,10 @@ export function parseArgs(argv: string[]): CliAction {
     const provider = args[1]
     if (!provider) throw new Error('logout: missing <provider>')
     return { kind: 'logout', provider }
+  }
+
+  if (first === 'reauth') {
+    return { kind: 'reauth' }
   }
 
   if (first === 'whoami' || first === 'auth') {
@@ -183,6 +188,7 @@ USAGE
   orchentra mcp serve [--print-tools-json] Start the stdio MCP server (or print tool schemas)
   orchentra login <provider> [--api-key]   Sign in (anthropic|gemini|github|openai|xai|dashscope)
   orchentra logout <provider>             Remove stored credentials for a provider
+  orchentra reauth                        Re-run the first-run LLM provider setup
   orchentra whoami                        Show signed-in providers and credential sources
   orchentra why <nodeId> [--output-format tree|json]
                                           Trace a node's ancestors + inputs (tree default; --json for raw DTO)
