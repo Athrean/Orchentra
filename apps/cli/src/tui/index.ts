@@ -3,6 +3,7 @@ import { render } from 'ink'
 import type { PermissionMode } from '@orchentra/cli-core'
 import type { LiveCli } from '../live-cli'
 import type { CommandRegistry } from '../commands/builtin'
+import { isIdeTerminal, type BannerOptions } from '../render/banner'
 import { Tui } from './Tui'
 
 export interface RunTuiOptions {
@@ -13,12 +14,22 @@ export interface RunTuiOptions {
   readonly mode: PermissionMode
   readonly branch?: string
   /**
-   * Pre-rendered welcome banner string. Stashed inside Ink's
-   * `fullStaticOutput` so that the resize-driven `clearTerminal` re-emits the
-   * banner above the transcript scrollback, instead of wiping it.
+   * Welcome banner props. Banner renders as the first live child of the Ink
+   * tree so it reflows naturally when the terminal resizes, instead of being
+   * stamped into scrollback at the original column width.
    */
-  readonly bannerFrame?: string
+  readonly banner?: BannerOptions
 }
+
+// Ink's `clearTerminal` writes the byte sequence `\x1b[2J\x1b[3J\x1b[H`
+// (erase display + erase scrollback + cursor home). VSCode/Cursor integrated
+// terminals do not honor `\x1b[3J` — instead of wiping scrollback they shove
+// the prior frame *into* it, so a SIGWINCH burst during a panel drag piles
+// up phantom input rows. Stripping the scrollback-erase from outgoing writes
+// neutralizes that path while keeping the viewport clear (`\x1b[2J\x1b[H`)
+// working as intended on VSCode + Cursor.
+// eslint-disable-next-line no-control-regex
+const SCROLLBACK_ERASE = /\x1b\[3J/g
 
 /**
  * Wrap `process.stdout` in a Proxy whose `write` is permanently bound to the
@@ -29,44 +40,59 @@ export interface RunTuiOptions {
  *
  * Bind happens once at TUI mount, before any handler can swap the method,
  * so the proxy keeps writing to the real terminal regardless.
+ *
+ * When `stripScrollbackErase` is true, any `\x1b[3J` byte sequence is
+ * filtered out before reaching the real stdout. See SCROLLBACK_ERASE.
  */
-function inkStableStdout(): NodeJS.WriteStream {
+function inkStableStdout(stripScrollbackErase: boolean): NodeJS.WriteStream {
   const realWrite = process.stdout.write.bind(process.stdout)
+  const write = stripScrollbackErase
+    ? (chunk: unknown, ...rest: unknown[]): boolean => {
+        if (typeof chunk === 'string') {
+          return (realWrite as (c: string, ...r: unknown[]) => boolean)(chunk.replace(SCROLLBACK_ERASE, ''), ...rest)
+        }
+        if (Buffer.isBuffer(chunk)) {
+          const cleaned = chunk.toString('utf8').replace(SCROLLBACK_ERASE, '')
+          return (realWrite as (c: string, ...r: unknown[]) => boolean)(cleaned, ...rest)
+        }
+        return (realWrite as (c: unknown, ...r: unknown[]) => boolean)(chunk, ...rest)
+      }
+    : realWrite
   return new Proxy(process.stdout, {
     get(target, prop, receiver) {
-      if (prop === 'write') return realWrite
+      if (prop === 'write') return write
       return Reflect.get(target, prop, receiver)
     },
   }) as unknown as NodeJS.WriteStream
 }
 
 /**
- * Ink internals we poke on resize. The cast is fragile to Ink's private
- * layout but is the only way to (a) tell Ink the previous frame "overflowed"
- * — which forces its built-in `shouldClearTerminalForFrame` path to fire and
- * issue a full screen clear — and (b) stash the welcome banner in the static
- * region so that clear gets followed by a banner re-emit.
+ * Private Ink instance fields we poke on resize. Pinning `lastOutputHeight`
+ * above viewport rows guarantees Ink's `shouldClearTerminalForFrame` path
+ * fires on every SIGWINCH, which triggers a full `clearTerminal` + re-emit
+ * of `fullStaticOutput` (welcome banner committed via Transcript's
+ * `<Static>`) + the fresh dynamic frame. Without this hook Ink's default
+ * resize path only does cursor-up/erase by the stale `lastOutputHeight`,
+ * which on width change leaves residual input rows stacked above the live
+ * one because reflow geometry has shifted.
+ *
+ * The `\x1b[3J` byte that `clearTerminal` emits is dangerous in VSCode/Cursor
+ * (see SCROLLBACK_ERASE) — `inkStableStdout` strips it on IDE terminals so
+ * the forced clear path is safe everywhere.
  */
 interface InkInstanceInternals {
-  lastOutput?: string
-  lastOutputToRender?: string
   lastOutputHeight?: number
-  fullStaticOutput?: string
 }
 
 export async function runTui(opts: RunTuiOptions): Promise<void> {
-  // Register the resize listener BEFORE we mount Ink. VSCode-integrated
-  // terminals fire several SIGWINCH events while the panel finalizes its
-  // size; if we wait until after `render()` returns to attach the listener,
-  // those early events trigger Ink's own resize handler (which renders a
-  // fresh frame at slightly different `cols`) without our overflow-forge
-  // running first, and the input box stacks visibly before the user has
-  // typed anything. Using a closure for the instance reference lets us
-  // register the listener immediately and resolve the instance lazily.
+  const ide = isIdeTerminal()
+
   let inst: InkInstanceInternals | null = null
   const onResize = (): void => {
     if (inst) inst.lastOutputHeight = 9999
   }
+  // prependListener puts us at the head of the SIGWINCH chain so the height
+  // bump lands before Ink's own handler reads the field.
   process.stdout.prependListener('resize', onResize)
 
   const instance = render(
@@ -77,24 +103,16 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
       model: opts.model,
       mode: opts.mode,
       branch: opts.branch,
+      banner: opts.banner,
     }),
     {
-      stdout: inkStableStdout(),
+      stdout: inkStableStdout(ide),
       exitOnCtrlC: false,
       patchConsole: false,
     },
   )
 
   inst = instance as unknown as InkInstanceInternals
-
-  // Inject the captured banner into Ink's fullStaticOutput so that on the
-  // next clearTerminal-driven render Ink writes the sequence
-  //   clearTerminal + bannerFrame + transcript-static + liveOutput
-  // and the banner stays anchored at the top of the scrollback. We seed it
-  // after mount because Ink resets fullStaticOutput to '' during construction.
-  if (opts.bannerFrame) {
-    inst.fullStaticOutput = (inst.fullStaticOutput ?? '') + opts.bannerFrame
-  }
 
   try {
     await instance.waitUntilExit()

@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process'
+import { homedir } from 'node:os'
 import type { PermissionMode } from '@orchentra/cli-core'
 import { loadSkills } from '@orchentra/cli-core'
+import { tryLoadKeytar } from '@orchentra/cli-api'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { createCliContext } from './live-cli-factory'
 import { registry } from './commands'
@@ -10,9 +12,10 @@ import {
   recordSkillsReloadCallback,
   getLoadedSkills,
 } from './commands/builtin/skills-adapter'
-import { renderBannerFrame } from './render/banner'
 import { isFirstRun, markWelcomed } from './render/first-run'
 import { runTui } from './tui'
+import { hasAnyLlmCredential } from './auth/credential-check'
+import { runFirstRunFlow, makeDefaultFirstRunDeps } from './auth/first-run-flow'
 
 export interface ReplOptions {
   model: string
@@ -22,6 +25,34 @@ export interface ReplOptions {
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
+  // Slice F: -p is removed. Surface the slash-only hint before any other
+  // work — including the first-run credential gate — so a stale `-p`
+  // invocation never triggers the picker.
+  if (options.prompt) {
+    process.stderr.write(
+      'orchentra -p is removed. orchentra is a slash-command DevOps CLI; type /help in the REPL\n' +
+        'or run a specific verb like `orchentra <op_id> --owner ... --repo ...`. For free-form\n' +
+        'AI chat, use Claude Code or Cursor.\n',
+    )
+    return 1
+  }
+
+  const shim = await tryLoadKeytar()
+  if (!(await hasAnyLlmCredential(homedir(), shim))) {
+    const result = await runFirstRunFlow(makeDefaultFirstRunDeps(undefined, shim))
+    if (result.kind === 'cancelled') {
+      process.stderr.write(
+        'orchentra needs at least one LLM provider configured. Run `orchentra reauth` to try again.\n',
+      )
+      return 1
+    }
+    // Clear the first-run overlay before the regular banner renders so the
+    // user does not see two stacked welcome cards (the bordered first-run
+    // card in scrollback + the post-mount banner). The TUI re-anchors the
+    // banner inside its own static region from this point on.
+    process.stdout.write('\x1b[2J\x1b[H')
+  }
+
   const cliCtx = await createCliContext({
     model: options.model,
     permissionMode: options.permissionMode,
@@ -63,35 +94,7 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     process.stderr.write(`${notice}\n`)
   }
 
-  if (options.prompt) {
-    // Slice F: orchentra -p is no longer a free-form chat shortcut. The CLI
-    // is slash-only; general AI chat lives in Claude Code. Print the same
-    // hint the TUI surfaces and exit.
-    process.stderr.write(
-      'orchentra -p is removed. orchentra is a slash-command DevOps CLI; type /help in the REPL\n' +
-        'or run a specific verb like `orchentra <op_id> --owner ... --repo ...`. For free-form\n' +
-        'AI chat, use Claude Code or Cursor.\n',
-    )
-    await cliCtx.close()
-    return 1
-  }
-
   const { branch, workspaceStatus } = readGitSummary(options.cwd)
-  const bannerFrame = await renderBannerFrame({
-    cliName: CLI_NAME,
-    cliVersion: CLI_VERSION,
-    model: resolvedModel,
-    permissionMode: resolvedMode,
-    cwd: options.cwd,
-    branch,
-    workspaceStatus,
-    sessionId,
-    sessionPath,
-    providerName,
-    username: process.env.USER,
-  })
-  process.stdout.write(bannerFrame)
-  process.stdout.write('\n')
 
   if (isFirstRun()) {
     markWelcomed()
@@ -104,7 +107,19 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     model: resolvedModel,
     mode: resolvedMode,
     branch,
-    bannerFrame,
+    banner: {
+      cliName: CLI_NAME,
+      cliVersion: CLI_VERSION,
+      model: resolvedModel,
+      permissionMode: resolvedMode,
+      cwd: options.cwd,
+      branch,
+      workspaceStatus,
+      sessionId,
+      sessionPath,
+      providerName,
+      username: process.env.USER,
+    },
   })
 
   await cliCtx.close()

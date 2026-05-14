@@ -46,6 +46,7 @@ import {
 } from './renderer'
 import { readLine } from './input'
 import { createHeadlessAskToolUser } from './headless-tool-prompt'
+import { isProviderAuthError, friendlyAuthErrorMessage } from '@orchentra/cli-api'
 
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
 
@@ -375,7 +376,7 @@ export class LiveCli implements SessionControl {
         process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
       }
     } catch (err) {
-      const message = formatThrown(err)
+      const message = isProviderAuthError(err) ? friendlyAuthErrorMessage(err) : formatThrown(err)
       if (sink) {
         sink({ kind: 'error', message, retryable: false })
       } else {
