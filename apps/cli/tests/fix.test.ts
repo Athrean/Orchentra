@@ -364,4 +364,60 @@ describe('fix', () => {
     expect(received).toContain('diff --git a/src/fix.ts')
     expect(received).toContain('+ patched')
   })
+
+  test('--auto-merge polls CI when PR is opened and surfaces the outcome', async () => {
+    process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
+
+    const fetchImpl = routeFixFetch({ captured: [] })
+    const { git } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
+    const { gh } = mockGh({ existing: null })
+
+    const result = await fix(
+      { owner: 'o', repo: 'r', runId: 42 },
+      { autoMerge: true },
+      {
+        cli: mockCli(),
+        git,
+        gh,
+        clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
+        write: (): void => {},
+        confirmDiff: async (): Promise<boolean> => true,
+        pollCi: async (options) => {
+          expect(options.branch).toBe('orchentra/fix/run-42')
+          return { status: 'success', polls: 1, failingJobs: [] }
+        },
+      },
+    )
+
+    expect(result.pollOutcome).toEqual({ status: 'success', polls: 1, failingJobs: [] })
+  })
+
+  test('auto-merge is off by default and pollCi is not invoked', async () => {
+    process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
+
+    const fetchImpl = routeFixFetch({ captured: [] })
+    const { git } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
+    const { gh } = mockGh({ existing: null })
+
+    let pollCalls = 0
+    const result = await fix(
+      { owner: 'o', repo: 'r', runId: 42 },
+      {},
+      {
+        cli: mockCli(),
+        git,
+        gh,
+        clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
+        write: (): void => {},
+        confirmDiff: async (): Promise<boolean> => true,
+        pollCi: async () => {
+          pollCalls++
+          return { status: 'success', polls: 1, failingJobs: [] }
+        },
+      },
+    )
+
+    expect(pollCalls).toBe(0)
+    expect(result.pollOutcome).toBeUndefined()
+  })
 })

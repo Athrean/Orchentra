@@ -12,6 +12,14 @@ import type { LiveCli } from '../live-cli'
 import { assertOrgAllowed } from './org-guard'
 import { buildTriageBrief, shortSummary, type JobLogBundle, type TriageBrief } from './brief'
 import { defaultFixTitle, fixBranchName, idempotencyKey, renderFixBody } from './fix-branch'
+import {
+  defaultListFailingJobs,
+  defaultListRuns,
+  pollCiForBranch,
+  type PollCiDeps,
+  type PollCiOptions,
+  type PollOutcome,
+} from './fix-poll'
 import type { GhPrOps, GhPrViewResult } from './gh-pr-ops'
 import { ShellGhPrOps } from './gh-pr-ops'
 import type { GitOps } from './git-ops'
@@ -30,11 +38,19 @@ export interface FixDeps {
   readonly confirmDiff?: (diff: string) => Promise<boolean>
   /** PR I/O over `gh` CLI. Defaults to `ShellGhPrOps` invoking the real `gh` binary. */
   readonly gh?: GhPrOps
+  /**
+   * CI poll override. When omitted, `--auto-merge` runs the live GitHub poll
+   * built from the same `client`. Tests inject a deterministic implementation
+   * so the auto-merge path can be asserted without hitting the API.
+   */
+  readonly pollCi?: (options: PollCiOptions, deps: PollCiDeps) => Promise<PollOutcome>
 }
 
 export interface FixOptions {
   readonly base?: string
   readonly title?: string
+  /** When true, poll CI after the PR opens and surface failing checks. */
+  readonly autoMerge?: boolean
 }
 
 export interface FixResult {
@@ -47,6 +63,8 @@ export interface FixResult {
   readonly changedFiles: boolean
   /** True when the user (or test harness) approved the diff preview. */
   readonly userConfirmed: boolean
+  /** Populated only when `options.autoMerge` is true and a PR was opened. */
+  readonly pollOutcome?: PollOutcome
 }
 
 export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps): Promise<FixResult> {
@@ -131,6 +149,21 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
     createdPullRequest = true
   }
 
+  let pollOutcome: PollOutcome | undefined
+  if (options.autoMerge) {
+    write(`Polling CI for ${branch}...\n`)
+    const poll = deps.pollCi ?? pollCiForBranch
+    pollOutcome = await poll(
+      { branch },
+      {
+        listRuns: defaultListRuns(client, spec.owner, spec.repo),
+        listFailingJobs: defaultListFailingJobs(client, spec.owner, spec.repo),
+        sleep: (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms)),
+        write,
+      },
+    )
+  }
+
   return {
     run,
     failingJobs,
@@ -140,6 +173,7 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
     createdPullRequest,
     changedFiles: true,
     userConfirmed: true,
+    pollOutcome,
   }
 }
 
