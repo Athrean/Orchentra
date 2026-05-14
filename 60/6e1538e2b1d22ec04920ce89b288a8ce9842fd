@@ -1,0 +1,9 @@
+apps/cli/tests/scan-composite.test.ts
+  ai_agent 21-32,35-38,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "606e1538e2b1d22ec04920ce89b288a8ce9842fd",
+  "prompts": {}
+}
