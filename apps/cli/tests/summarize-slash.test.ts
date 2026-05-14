@@ -45,4 +45,12 @@ describe('/summarize slash command (Flow 3)', () => {
     expect(cmd.spec.summary.toLowerCase()).toContain('root cause')
     expect(cmd.spec.summary.toLowerCase()).toContain('fix')
   })
+
+  test('declares no aliases — single canonical /summarize entry point', () => {
+    // The spec is locked: callers reach this via /summarize, period. No
+    // /sum, /tldr, /summary, etc. — alias inflation makes the contract
+    // less obvious to readers of the slash menu.
+    const cmd = new SummarizeSlashCommand()
+    expect(cmd.spec.aliases).toEqual([])
+  })
 })
