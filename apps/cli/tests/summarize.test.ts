@@ -107,6 +107,16 @@ describe('buildSummarizePrompt', () => {
     expect(prompt).toContain('**Where**')
     expect(prompt).toContain('**Recommended fix**')
   })
+
+  test('orders the section headers Root cause → Where → Recommended fix', () => {
+    const prompt = buildSummarizePrompt(fakeRun, [{ job: fakeJob, tail: 'err' }])
+    const rootIdx = prompt.indexOf('**Root cause**')
+    const whereIdx = prompt.indexOf('**Where**')
+    const fixIdx = prompt.indexOf('**Recommended fix**')
+    expect(rootIdx).toBeGreaterThanOrEqual(0)
+    expect(whereIdx).toBeGreaterThan(rootIdx)
+    expect(fixIdx).toBeGreaterThan(whereIdx)
+  })
 })
 
 describe('summarize', () => {
