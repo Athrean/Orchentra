@@ -1,0 +1,9 @@
+apps/cli/tests/summarize.test.ts
+  ai_agent 110-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ee5c2abfeb80c874b486f6507159a9b86370e863",
+  "prompts": {}
+}
