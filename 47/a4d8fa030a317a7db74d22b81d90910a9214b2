@@ -1,0 +1,13 @@
+apps/cli/src/commands/fix.ts
+  ai_agent 27-32,48-49,89-103,133-142,154,158-186
+apps/cli/src/commands/git-ops.ts
+  ai_agent 8-9,80-86
+apps/cli/tests/fix.test.ts
+  ai_agent 17-20,37-40,146,194,222,266,274-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "47a4d8fa030a317a7db74d22b81d90910a9214b2",
+  "prompts": {}
+}
