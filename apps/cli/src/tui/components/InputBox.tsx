@@ -36,6 +36,7 @@ export function InputBox(props: InputBoxProps): React.ReactElement {
         borderStyle="single"
         borderColor={THEME.muted}
         borderDimColor
+        borderTop={false}
         borderLeft={false}
         borderRight={false}
         paddingX={1}
