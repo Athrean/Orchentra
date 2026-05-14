@@ -22,16 +22,21 @@ export function renderFixBody(args: {
   readonly runUrl: string
   readonly runId: number
   readonly idempotencyKey: string
-  readonly summary: string
+  readonly bug: string
+  readonly fix: string
+  readonly reasoning: string
 }): string {
   return [
-    `## Orchentra fix for run #${args.runId}`,
+    `**Bug.** ${oneLine(args.bug)}`,
     '',
-    args.summary,
+    `**Fix.** ${oneLine(args.fix)} See [run #${args.runId}](${args.runUrl}).`,
     '',
-    `- Failing run: ${args.runUrl}`,
-    `- Idempotency key: \`${args.idempotencyKey}\``,
+    `**Reasoning.** ${oneLine(args.reasoning)}`,
     '',
-    '<!-- orchentra:fix-pr -->',
+    `<!-- orchentra:fix-pr key=${args.idempotencyKey} -->`,
   ].join('\n')
+}
+
+function oneLine(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
 }
