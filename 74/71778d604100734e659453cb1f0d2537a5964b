@@ -1,0 +1,9 @@
+apps/cli/tests/summarize-slash.test.ts
+  ai_agent 48-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "7471778d604100734e659453cb1f0d2537a5964b",
+  "prompts": {}
+}
