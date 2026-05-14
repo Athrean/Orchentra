@@ -24,6 +24,12 @@ export interface FixDeps {
   readonly git: GitOps
   readonly clientFactory?: (token: string) => GitHubClient
   readonly write?: (text: string) => void
+  /**
+   * Diff preview gate. Receives the patch text and must return true to
+   * proceed with commit + push + PR. Defaults to an interactive y/N prompt;
+   * tests inject a deterministic implementation.
+   */
+  readonly confirmDiff?: (diff: string) => Promise<boolean>
 }
 
 export interface FixOptions {
@@ -39,6 +45,8 @@ export interface FixResult {
   readonly pullRequest: PullRequestRef | null
   readonly createdPullRequest: boolean
   readonly changedFiles: boolean
+  /** True when the user (or test harness) approved the diff preview. */
+  readonly userConfirmed: boolean
 }
 
 export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps): Promise<FixResult> {
@@ -78,7 +86,21 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
   const agentChangedFiles = filesAfter.filter((path) => !filesBefore.has(path))
   if (agentChangedFiles.length === 0) {
     write('Agent produced no file changes; not opening a PR.\n')
-    return { ...emptyResult(run, failingJobs, base), brief, branch, changedFiles: false }
+    return { ...emptyResult(run, failingJobs, base), brief, branch, changedFiles: false, userConfirmed: false }
+  }
+
+  const diff = deps.git.diffFiles(agentChangedFiles)
+  const confirm = deps.confirmDiff ?? defaultConfirmDiff(write)
+  const approved = await confirm(diff)
+  if (!approved) {
+    write('Patch rejected by user; not opening a PR.\n')
+    return {
+      ...emptyResult(run, failingJobs, base),
+      brief,
+      branch,
+      changedFiles: true,
+      userConfirmed: false,
+    }
   }
 
   deps.git.add(agentChangedFiles)
@@ -108,7 +130,16 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
     createdPullRequest = true
   }
 
-  return { run, failingJobs, brief, branch, pullRequest, createdPullRequest, changedFiles: true }
+  return {
+    run,
+    failingJobs,
+    brief,
+    branch,
+    pullRequest,
+    createdPullRequest,
+    changedFiles: true,
+    userConfirmed: true,
+  }
 }
 
 function emptyResult(run: WorkflowRun, jobs: WorkflowJob[], base = 'main'): FixResult {
@@ -120,7 +151,39 @@ function emptyResult(run: WorkflowRun, jobs: WorkflowJob[], base = 'main'): FixR
     pullRequest: null,
     createdPullRequest: false,
     changedFiles: false,
+    userConfirmed: false,
   }
+}
+
+function defaultConfirmDiff(write: (text: string) => void): (diff: string) => Promise<boolean> {
+  return async (diff: string): Promise<boolean> => {
+    write('\n--- Proposed patch ---\n')
+    write(diff || '(empty diff)\n')
+    write('--- End patch ---\n')
+
+    if (!process.stdin.isTTY) {
+      write('No TTY available to confirm; refusing to open PR. Re-run interactively to approve.\n')
+      return false
+    }
+
+    write('Open PR with this patch? (y/N) > ')
+    return await readLineYesNo()
+  }
+}
+
+function readLineYesNo(): Promise<boolean> {
+  return new Promise((resolve) => {
+    let buf = ''
+    const onData = (chunk: Buffer): void => {
+      buf += chunk.toString('utf8')
+      const nl = buf.indexOf('\n')
+      if (nl === -1) return
+      const line = buf.slice(0, nl).trim().toLowerCase()
+      process.stdin.off('data', onData)
+      resolve(line === 'y' || line === 'yes')
+    }
+    process.stdin.on('data', onData)
+  })
 }
 
 export function buildFixPrompt(run: WorkflowRun, brief: TriageBrief): string {
