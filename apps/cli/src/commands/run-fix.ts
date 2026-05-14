@@ -39,7 +39,7 @@ export async function runFix(options: RunFixOptions): Promise<number> {
       return 0
     }
     const verb = result.createdPullRequest ? 'Opened' : 'Updated'
-    process.stdout.write(`\n${verb} PR: ${result.pullRequest?.html_url ?? '(unknown)'}\n`)
+    process.stdout.write(`\n${verb} PR: ${result.pullRequest?.url ?? '(unknown)'}\n`)
     return 0
   } catch (err) {
     if (err instanceof OrgNotAllowedError) {

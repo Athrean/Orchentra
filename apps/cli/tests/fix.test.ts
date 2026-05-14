@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { GitHubClient } from '@orchentra/cli-api'
 import { fix } from '../src/commands/fix'
+import type { GhPrOps, GhPrCreateInput, GhPrUpdateInput, GhPrViewResult } from '../src/commands/gh-pr-ops'
 import type { GitOps } from '../src/commands/git-ops'
 import type { LiveCli } from '../src/live-cli'
 
@@ -54,6 +55,34 @@ function mockGit(opts: { beforeFiles?: string[]; afterFiles?: string[]; diff?: s
   return { git, calls }
 }
 
+function mockGh(opts: { existing?: GhPrViewResult | null } = {}): {
+  gh: GhPrOps
+  calls: { create: GhPrCreateInput[]; update: GhPrUpdateInput[]; findOpenByHead: string[] }
+} {
+  const createCalls: GhPrCreateInput[] = []
+  const updateCalls: GhPrUpdateInput[] = []
+  const findOpenByHeadCalls: string[] = []
+  const gh: GhPrOps = {
+    findOpenByHead: async (_owner, _repo, head): Promise<GhPrViewResult | null> => {
+      findOpenByHeadCalls.push(head)
+      return opts.existing ?? null
+    },
+    create: async (input): Promise<GhPrViewResult> => {
+      createCalls.push(input)
+      return { number: 77, url: `https://github.com/${input.owner}/${input.repo}/pull/77`, state: 'open' }
+    },
+    update: async (input): Promise<GhPrViewResult> => {
+      updateCalls.push(input)
+      return {
+        number: input.number,
+        url: `https://github.com/${input.owner}/${input.repo}/pull/${input.number}`,
+        state: 'open',
+      }
+    },
+  }
+  return { gh, calls: { create: createCalls, update: updateCalls, findOpenByHead: findOpenByHeadCalls } }
+}
+
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -61,7 +90,7 @@ function jsonResponse(data: unknown, status = 200): Response {
   })
 }
 
-function routeFixFetch(opts: { existingPulls: unknown[]; captured: MockCall[] }): typeof fetch {
+function routeFixFetch(opts: { captured: MockCall[] }): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input.toString()
     const method = init?.method ?? 'GET'
@@ -97,31 +126,6 @@ function routeFixFetch(opts: { existingPulls: unknown[]; captured: MockCall[] })
       })
     }
     if (url.includes('/actions/jobs/100/logs')) return new Response('##[error] boom', { status: 200 })
-    if (url.includes('/pulls') && method === 'GET') return jsonResponse(opts.existingPulls)
-    if (url.includes('/pulls') && method === 'POST') {
-      return jsonResponse(
-        {
-          number: 77,
-          title: body.title,
-          state: 'open',
-          html_url: 'https://github.com/o/r/pull/77',
-          head: { ref: body.head, sha: 'sha-head' },
-          base: { ref: body.base, sha: 'sha-base' },
-        },
-        201,
-      )
-    }
-    if (url.match(/\/pulls\/\d+$/) && method === 'PATCH') {
-      const number = Number(url.split('/').pop())
-      return jsonResponse({
-        number,
-        title: body.title,
-        state: 'open',
-        html_url: `https://github.com/o/r/pull/${number}`,
-        head: { ref: 'orchentra/fix/run-42', sha: 'sha-head' },
-        base: { ref: 'main', sha: 'sha-base' },
-      })
-    }
     return new Response('no route', { status: 404 })
   }) as typeof fetch
 }
@@ -132,8 +136,9 @@ describe('fix', () => {
     process.env.ORCHENTRA_ALLOWED_ORGS = ''
 
     const captured: MockCall[] = []
-    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const fetchImpl = routeFixFetch({ captured })
     const { git, calls } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
+    const { gh, calls: ghCalls } = mockGh({ existing: null })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 42 },
@@ -141,6 +146,7 @@ describe('fix', () => {
       {
         cli: mockCli(),
         git,
+        gh,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
         confirmDiff: async (): Promise<boolean> => true,
@@ -155,33 +161,24 @@ describe('fix', () => {
     expect(calls).toContain('add:src/fix.ts')
     expect(calls).toContain('push:orchentra/fix/run-42')
 
-    const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
-    expect(postPull).toBeDefined()
-    expect((postPull?.body as { head: string }).head).toBe('orchentra/fix/run-42')
-    expect((postPull?.body as { body: string }).body).toContain('<!-- orchentra:fix-pr key=')
-    expect((postPull?.body as { body: string }).body).toContain('**Bug.**')
-    expect((postPull?.body as { body: string }).body).toContain('**Fix.**')
-    expect((postPull?.body as { body: string }).body).toContain('**Reasoning.**')
+    expect(ghCalls.create).toHaveLength(1)
+    expect(ghCalls.create[0].head).toBe('orchentra/fix/run-42')
+    expect(ghCalls.create[0].base).toBe('main')
+    expect(ghCalls.create[0].body).toContain('<!-- orchentra:fix-pr key=')
+    expect(ghCalls.create[0].body).toContain('**Bug.**')
+    expect(ghCalls.create[0].body).toContain('**Fix.**')
+    expect(ghCalls.create[0].body).toContain('**Reasoning.**')
   })
 
-  test('updates existing PR when one is already open for the head branch (idempotent)', async () => {
+  test('updates existing PR via gh CLI when one is already open (idempotent)', async () => {
     process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
 
     const captured: MockCall[] = []
-    const fetchImpl = routeFixFetch({
-      existingPulls: [
-        {
-          number: 55,
-          title: 'old title',
-          state: 'open',
-          html_url: 'https://github.com/o/r/pull/55',
-          head: { ref: 'orchentra/fix/run-42', sha: 'sha-head' },
-          base: { ref: 'main', sha: 'sha-base' },
-        },
-      ],
-      captured,
-    })
+    const fetchImpl = routeFixFetch({ captured })
     const { git } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
+    const { gh, calls: ghCalls } = mockGh({
+      existing: { number: 55, url: 'https://github.com/o/r/pull/55', state: 'open' },
+    })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 42 },
@@ -189,6 +186,7 @@ describe('fix', () => {
       {
         cli: mockCli(),
         git,
+        gh,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
         confirmDiff: async (): Promise<boolean> => true,
@@ -197,19 +195,18 @@ describe('fix', () => {
 
     expect(result.createdPullRequest).toBe(false)
     expect(result.pullRequest?.number).toBe(55)
-
-    const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
-    expect(postPull).toBeUndefined()
-    const patchPull = captured.find((c) => c.method === 'PATCH' && c.url.includes('/pulls/55'))
-    expect(patchPull).toBeDefined()
+    expect(ghCalls.create).toHaveLength(0)
+    expect(ghCalls.update).toHaveLength(1)
+    expect(ghCalls.update[0].number).toBe(55)
   })
 
   test('does not push or open PR when agent makes no changes', async () => {
     process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
 
     const captured: MockCall[] = []
-    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const fetchImpl = routeFixFetch({ captured })
     const { git, calls } = mockGit({ beforeFiles: [], afterFiles: [] })
+    const { gh, calls: ghCalls } = mockGh({ existing: null })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 42 },
@@ -217,6 +214,7 @@ describe('fix', () => {
       {
         cli: mockCli(),
         git,
+        gh,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
         confirmDiff: async (): Promise<boolean> => true,
@@ -228,8 +226,8 @@ describe('fix', () => {
     expect(result.pullRequest).toBeNull()
     expect(calls.find((c) => c.startsWith('add:'))).toBeUndefined()
     expect(calls.find((c) => c.startsWith('push:'))).toBeUndefined()
-    const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
-    expect(postPull).toBeUndefined()
+    expect(ghCalls.create).toHaveLength(0)
+    expect(ghCalls.update).toHaveLength(0)
   })
 
   test('returns early when no failing jobs (nothing to fix)', async () => {
@@ -276,8 +274,9 @@ describe('fix', () => {
     process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
 
     const captured: MockCall[] = []
-    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const fetchImpl = routeFixFetch({ captured })
     const { git, calls } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'], diff: '+ tweak\n' })
+    const { gh, calls: ghCalls } = mockGh({ existing: null })
 
     let presentedDiff = ''
     const result = await fix(
@@ -286,6 +285,7 @@ describe('fix', () => {
       {
         cli: mockCli(),
         git,
+        gh,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
         confirmDiff: async (diff: string): Promise<boolean> => {
@@ -304,16 +304,17 @@ describe('fix', () => {
     expect(calls.find((c) => c.startsWith('add:'))).toBeUndefined()
     expect(calls.find((c) => c.startsWith('commit:'))).toBeUndefined()
     expect(calls.find((c) => c.startsWith('push:'))).toBeUndefined()
-    const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
-    expect(postPull).toBeUndefined()
+    expect(ghCalls.create).toHaveLength(0)
+    expect(ghCalls.update).toHaveLength(0)
   })
 
   test('records userConfirmed=true on the happy path', async () => {
     process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
 
     const captured: MockCall[] = []
-    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const fetchImpl = routeFixFetch({ captured })
     const { git } = mockGit({ beforeFiles: [], afterFiles: ['src/fix.ts'] })
+    const { gh } = mockGh({ existing: null })
 
     const result = await fix(
       { owner: 'o', repo: 'r', runId: 42 },
@@ -321,6 +322,7 @@ describe('fix', () => {
       {
         cli: mockCli(),
         git,
+        gh,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
         confirmDiff: async (): Promise<boolean> => true,
@@ -334,12 +336,13 @@ describe('fix', () => {
     process.env.ORCHENTRA_GITHUB_TOKEN = 'test-token'
 
     const captured: MockCall[] = []
-    const fetchImpl = routeFixFetch({ existingPulls: [], captured })
+    const fetchImpl = routeFixFetch({ captured })
     const { git } = mockGit({
       beforeFiles: [],
       afterFiles: ['src/fix.ts'],
       diff: 'diff --git a/src/fix.ts b/src/fix.ts\n+ patched\n',
     })
+    const { gh } = mockGh({ existing: null })
 
     let received = ''
     await fix(
@@ -348,6 +351,7 @@ describe('fix', () => {
       {
         cli: mockCli(),
         git,
+        gh,
         clientFactory: (token: string): GitHubClient => new GitHubClient({ token, fetchImpl }),
         write: (): void => {},
         confirmDiff: async (diff: string): Promise<boolean> => {

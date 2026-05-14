@@ -1,14 +1,10 @@
 import {
   GitHubClient,
-  createPullRequest,
-  findOpenPullByHead,
   getJobLogs,
   getWorkflowRun,
   isFailingJob,
   listWorkflowJobs,
   requireToken,
-  updatePullRequest,
-  type PullRequestRef,
   type WorkflowJob,
   type WorkflowRun,
 } from '@orchentra/cli-api'
@@ -16,6 +12,8 @@ import type { LiveCli } from '../live-cli'
 import { assertOrgAllowed } from './org-guard'
 import { buildTriageBrief, shortSummary, type JobLogBundle, type TriageBrief } from './brief'
 import { defaultFixTitle, fixBranchName, idempotencyKey, renderFixBody } from './fix-branch'
+import type { GhPrOps, GhPrViewResult } from './gh-pr-ops'
+import { ShellGhPrOps } from './gh-pr-ops'
 import type { GitOps } from './git-ops'
 import type { RepoRunSpec } from './spec'
 
@@ -30,6 +28,8 @@ export interface FixDeps {
    * tests inject a deterministic implementation.
    */
   readonly confirmDiff?: (diff: string) => Promise<boolean>
+  /** PR I/O over `gh` CLI. Defaults to `ShellGhPrOps` invoking the real `gh` binary. */
+  readonly gh?: GhPrOps
 }
 
 export interface FixOptions {
@@ -42,7 +42,7 @@ export interface FixResult {
   readonly failingJobs: WorkflowJob[]
   readonly brief: TriageBrief
   readonly branch: string
-  readonly pullRequest: PullRequestRef | null
+  readonly pullRequest: GhPrViewResult | null
   readonly createdPullRequest: boolean
   readonly changedFiles: boolean
   /** True when the user (or test harness) approved the diff preview. */
@@ -108,7 +108,8 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
   write(`Pushing ${branch}...\n`)
   deps.git.push(branch)
 
-  const existing = await findOpenPullByHead(client, spec.owner, spec.repo, branch)
+  const gh = deps.gh ?? new ShellGhPrOps()
+  const existing = await gh.findOpenByHead(spec.owner, spec.repo, branch)
   const key = idempotencyKey(branch, base, title)
   const body = renderFixBody({
     runUrl: run.html_url,
@@ -119,14 +120,14 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
     reasoning: 'Minimum delta to make the failing checks pass; no refactors or unrelated cleanup.',
   })
 
-  let pullRequest: PullRequestRef
+  let pullRequest: GhPrViewResult
   let createdPullRequest = false
   if (existing) {
     write(`Updating existing PR #${existing.number}...\n`)
-    pullRequest = await updatePullRequest(client, spec.owner, spec.repo, existing.number, { title, body })
+    pullRequest = await gh.update({ owner: spec.owner, repo: spec.repo, number: existing.number, title, body })
   } else {
-    write('Creating new PR...\n')
-    pullRequest = await createPullRequest(client, spec.owner, spec.repo, { title, head: branch, base, body })
+    write('Creating new PR via gh CLI...\n')
+    pullRequest = await gh.create({ owner: spec.owner, repo: spec.repo, head: branch, base, title, body })
     createdPullRequest = true
   }
 
