@@ -9,27 +9,19 @@ export interface InputBoxProps {
   readonly placeholder?: string
   readonly disabled?: boolean
   readonly pastes: Readonly<Record<string, PasteChip>>
-  /**
-   * When false, render as a bare `> ` line with no round border. Used inside
-   * IDE-integrated terminals (VSCode / Cursor) where the host treats the
-   * screen as an infinite-scrollback buffer — each SIGWINCH during a panel
-   * resize re-paints the border into scrollback instead of overwriting it
-   * in place, producing a column of stacked phantom boxes. A 1-line dynamic
-   * region avoids that entirely. Defaults to true (real terminals).
-   */
-  readonly bordered?: boolean
 }
 
 const CHIP_RE = /\[Pasted #([a-z0-9]+) — (\d+) lines]/g
 
 /**
- * Rounded, brand-green input box. Renders the buffer with an inverse-character
- * cursor so we don't have to manage the real terminal cursor position. Paste
- * chips inside the buffer are rendered as a single dim/bold token instead of
- * the full pasted contents.
+ * Claude-Code-style input region: a dim horizontal rule above and below
+ * a bare prompt line. The `›` glyph and inverse-character cursor are
+ * brand-green; the rules are muted so they sit quietly without competing
+ * with content. Buffer text uses our paste-chip renderer so pasted blobs
+ * collapse to a single token.
  */
 export function InputBox(props: InputBoxProps): React.ReactElement {
-  const { buffer, cursor, placeholder, disabled, bordered = true } = props
+  const { buffer, cursor, placeholder, disabled } = props
   const showPlaceholder = buffer.length === 0 && !!placeholder
   // Surface the multi-line affordance only once the buffer actually wraps.
   // Permanent hints belong behind `?` (per CLAUDE.md §8); a contextual hint
@@ -37,32 +29,29 @@ export function InputBox(props: InputBoxProps): React.ReactElement {
   const showMultilineHint = !disabled && buffer.includes('\n')
 
   const promptColor = disabled ? THEME.muted : BRAND_GREEN
-  const content = (
-    <>
-      <Text color={promptColor} bold>
-        {'> '}
-      </Text>
-      <Box flexDirection="column" flexGrow={1}>
-        {showPlaceholder ? (
-          <Text dimColor>{placeholder}</Text>
-        ) : (
-          <BufferText buffer={buffer} cursor={disabled ? -1 : cursor} />
-        )}
-      </Box>
-    </>
-  )
 
   return (
     <Box flexDirection="column">
-      {bordered ? (
-        <Box borderStyle="round" borderColor={promptColor} paddingX={1} flexDirection="row">
-          {content}
+      <Box
+        borderStyle="single"
+        borderColor={THEME.muted}
+        borderDimColor
+        borderLeft={false}
+        borderRight={false}
+        paddingX={1}
+        flexDirection="row"
+      >
+        <Text color={promptColor} bold>
+          {`${THEME.prompt} `}
+        </Text>
+        <Box flexDirection="column" flexGrow={1}>
+          {showPlaceholder ? (
+            <Text dimColor>{placeholder}</Text>
+          ) : (
+            <BufferText buffer={buffer} cursor={disabled ? -1 : cursor} />
+          )}
         </Box>
-      ) : (
-        <Box paddingX={1} flexDirection="row">
-          {content}
-        </Box>
-      )}
+      </Box>
       {showMultilineHint ? (
         <Box paddingX={1}>
           <Text dimColor>shift+enter for newline · enter to submit</Text>
