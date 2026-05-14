@@ -22,6 +22,8 @@ import { LogoutCommand } from './logout'
 import { ReauthCommand } from './reauth-slash'
 import { AuthStatusCommand } from './auth-status'
 import { createServerCommand } from './server-bridge'
+import { withIncidentPrereq } from './incident-prereq'
+import { defaultIncidentPrereq } from './incident-prereq-check'
 import { SkillsCommand } from './skills-adapter'
 import { RestartCommand } from './restart'
 import { createGraphCommand } from './graph'
@@ -73,16 +75,21 @@ export function createBuiltinRegistry(): CommandRegistry {
 
   // Server-bridge: route to POST /api/orgs/:orgId/commands
   // Flow 2: command renamed `incidents` -> `incident` (singular). The plural
-  // form stays as a compat alias for one release.
+  // form stays as a compat alias for one release. The prereq middleware is
+  // applied to `/incident` ONLY — `/retry` and `/explain` below keep their
+  // existing raw-streaming behaviour.
   registry.register(
-    createServerCommand(
-      {
-        name: 'incident',
-        aliases: ['incidents', 'inc'],
-        summary: 'List incidents from the Orchentra server',
-        argumentHint: '<filters>',
-      },
-      'status',
+    withIncidentPrereq(
+      createServerCommand(
+        {
+          name: 'incident',
+          aliases: ['incidents', 'inc'],
+          summary: 'List incidents from the Orchentra server',
+          argumentHint: '<filters>',
+        },
+        'status',
+      ),
+      defaultIncidentPrereq,
     ),
   )
   // Slice G: local /triage wraps runTriage. Replaces the server-bridged
