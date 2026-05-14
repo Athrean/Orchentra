@@ -25,6 +25,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   resume: 'Workspace',
   incidents: 'Server',
   triage: 'Server',
+  summarize: 'Server',
   retry: 'Server',
   explain: 'Server',
   graph: 'Server',
