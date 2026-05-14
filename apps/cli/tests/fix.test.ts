@@ -150,7 +150,10 @@ describe('fix', () => {
     const postPull = captured.find((c) => c.method === 'POST' && c.url.endsWith('/pulls'))
     expect(postPull).toBeDefined()
     expect((postPull?.body as { head: string }).head).toBe('orchentra/fix/run-42')
-    expect((postPull?.body as { body: string }).body).toContain('<!-- orchentra:fix-pr -->')
+    expect((postPull?.body as { body: string }).body).toContain('<!-- orchentra:fix-pr key=')
+    expect((postPull?.body as { body: string }).body).toContain('**Bug.**')
+    expect((postPull?.body as { body: string }).body).toContain('**Fix.**')
+    expect((postPull?.body as { body: string }).body).toContain('**Reasoning.**')
   })
 
   test('updates existing PR when one is already open for the head branch (idempotent)', async () => {
