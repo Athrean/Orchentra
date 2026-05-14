@@ -87,6 +87,26 @@ describe('buildSummarizePrompt', () => {
     // verbose scaffolding.
     expect(prompt.length).toBeLessThan(1200)
   })
+
+  test('explicitly forbids a fourth section', () => {
+    const prompt = buildSummarizePrompt(fakeRun, [{ job: fakeJob, tail: 'err' }])
+    expect(prompt).toMatch(/no fourth section/i)
+  })
+
+  test('frames the LLM as a senior engineer, not a summary generator', () => {
+    const prompt = buildSummarizePrompt(fakeRun, [{ job: fakeJob, tail: 'err' }])
+    expect(prompt).toMatch(/senior engineer/i)
+    // The output must read like a debugging note, not a generated summary.
+    expect(prompt).toMatch(/debugging note/i)
+  })
+
+  test('uses the three required section headers verbatim', () => {
+    const prompt = buildSummarizePrompt(fakeRun, [{ job: fakeJob, tail: 'err' }])
+    // The literal markdown bold-prefixed headers we want the LLM to echo back.
+    expect(prompt).toContain('**Root cause**')
+    expect(prompt).toContain('**Where**')
+    expect(prompt).toContain('**Recommended fix**')
+  })
 })
 
 describe('summarize', () => {

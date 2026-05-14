@@ -80,7 +80,8 @@ export function buildSummarizePrompt(run: WorkflowRun, excerpts: JobLogExcerpt[]
   })
 
   return [
-    'Output EXACTLY three sections in this order, no preamble, no closing remarks, no "Hope this helps".',
+    'You are a senior engineer leaving a debugging note for a teammate.',
+    'Output EXACTLY three sections in this order. No preamble. No fourth section. No closing remarks. No "Hope this helps".',
     '',
     '**Root cause** — 1–2 sentences.',
     '**Where** — file:line or job/step reference.',
