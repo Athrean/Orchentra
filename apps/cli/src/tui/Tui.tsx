@@ -19,7 +19,7 @@ import { ActiveCard } from './components/ActiveCard'
 import { AnthropicLoginCard } from './components/AnthropicLoginCard'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
-import type { BannerOptions } from '../render/banner'
+import { isIdeTerminal, type BannerOptions } from '../render/banner'
 import type { TuiAction, TuiState } from './types'
 
 export interface TuiProps {
@@ -571,6 +571,11 @@ export function Tui(props: TuiProps): React.ReactElement {
   const showSuggestions = state.suggestions.open && state.turn.state === 'idle'
   const inputDisabled = state.turn.state !== 'idle'
   const suggestionsWidth = useMemo(() => Math.max(40, Math.min(cols - 2, 100)), [cols])
+  // IDE-integrated terminals (VSCode / Cursor) keep an infinite scrollback
+  // and don't overwrite repainted regions in place. Render the input as a
+  // bare `> ` line there so SIGWINCHs during a panel resize don't stack
+  // phantom border boxes. Native terminals keep the bordered green box.
+  const inputBordered = useMemo(() => !isIdeTerminal(), [])
 
   return (
     <Box flexDirection="column">
@@ -632,6 +637,7 @@ export function Tui(props: TuiProps): React.ReactElement {
           pastes={state.pastes}
           placeholder="Type a message, /command, @file, or !shell"
           disabled={inputDisabled}
+          bordered={inputBordered}
         />
         <Footer
           model={state.model}

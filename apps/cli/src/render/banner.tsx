@@ -47,7 +47,7 @@ const COLUMN_GAP = 4
  * skip the bordered card and render the banner as a compact mascot+meta row,
  * matching how Claude Code presents itself in VSCode/Cursor terminals.
  */
-function isIdeTerminal(): boolean {
+export function isIdeTerminal(): boolean {
   const term = (process.env.TERM_PROGRAM ?? '').toLowerCase()
   return term === 'vscode' || term === 'cursor'
 }
