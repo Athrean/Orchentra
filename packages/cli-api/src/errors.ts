@@ -129,3 +129,15 @@ export function missingCredentialsError(): AnthropicApiError {
     failureClass: 'provider_auth',
   })
 }
+
+export function isProviderAuthError(err: unknown): err is AnthropicApiError {
+  return err instanceof AnthropicApiError && err.failureClass === 'provider_auth'
+}
+
+export function friendlyAuthErrorMessage(_err: AnthropicApiError): string {
+  return (
+    'Your LLM provider rejected the stored API key (401/403). ' +
+    'Run `orchentra reauth` to pick a provider and paste a fresh key, ' +
+    'or set the matching *_API_KEY env var before relaunching.'
+  )
+}
