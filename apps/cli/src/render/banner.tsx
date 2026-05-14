@@ -19,6 +19,13 @@ export interface BannerOptions {
   readonly sessionPath?: string
   readonly providerName?: string
   readonly username?: string
+  /**
+   * Force the full bordered welcome card with mascot + tips column even
+   * when running in an IDE-integrated terminal. Used by the first-run
+   * sign-in screen so the user sees the full Orchentra UX before
+   * configuring credentials, instead of the IDE-compact fallback.
+   */
+  readonly forceBordered?: boolean
 }
 
 const TIPS: ReadonlyArray<readonly [string, string]> = [
@@ -40,13 +47,13 @@ const COLUMN_GAP = 4
  * skip the bordered card and render the banner as a compact mascot+meta row,
  * matching how Claude Code presents itself in VSCode/Cursor terminals.
  */
-function isIdeTerminal(): boolean {
+export function isIdeTerminal(): boolean {
   const term = (process.env.TERM_PROGRAM ?? '').toLowerCase()
   return term === 'vscode' || term === 'cursor'
 }
 
 export function WelcomeBanner(props: BannerOptions): React.ReactElement {
-  if (isIdeTerminal()) return <IdeCompactBanner {...props} />
+  if (isIdeTerminal() && !props.forceBordered) return <IdeCompactBanner {...props} />
   return <BorderedBanner {...props} />
 }
 
@@ -65,7 +72,7 @@ function IdeCompactBanner(props: BannerOptions): React.ReactElement {
   const metaLine = `${props.model} · ${provider}`
 
   return (
-    <Box flexDirection="row" paddingX={1}>
+    <Box flexDirection="row" alignItems="center" paddingX={1} paddingTop={1}>
       {showMascot ? (
         <Box flexDirection="column" marginRight={2}>
           {mascotLines.map((line, i) => (

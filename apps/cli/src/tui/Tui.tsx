@@ -19,6 +19,7 @@ import { ActiveCard } from './components/ActiveCard'
 import { AnthropicLoginCard } from './components/AnthropicLoginCard'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
+import type { BannerOptions } from '../render/banner'
 import type { TuiAction, TuiState } from './types'
 
 export interface TuiProps {
@@ -28,6 +29,7 @@ export interface TuiProps {
   readonly model: string
   readonly mode: PermissionMode
   readonly branch?: string
+  readonly banner?: BannerOptions
 }
 
 export function Tui(props: TuiProps): React.ReactElement {
@@ -572,7 +574,7 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   return (
     <Box flexDirection="column">
-      <Transcript rows={state.transcript} streamingRowId={state.streamingRowId} />
+      <Transcript rows={state.transcript} streamingRowId={state.streamingRowId} banner={props.banner} />
       <Box flexDirection="column">
         {state.activeFlow?.kind === 'anthropic-login' ? (
           <AnthropicLoginCard

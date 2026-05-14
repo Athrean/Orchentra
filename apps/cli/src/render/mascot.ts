@@ -8,15 +8,17 @@ import { MASCOT_EYE, MASCOT_WHITE, ORCHENTRA_GREEN, ORCHENTRA_GREEN_DIM, RESET, 
 //   K = dark eye
 //   ' ' = transparent
 //
-// 12-column mascot sprite (uniform width required)
+// 12-column mascot sprite (uniform width required).
+// Eye pixels are vertically aligned across rows 1 and 2 so the half-block
+// renderer pairs them into solid white squares (top-half + bottom-half at the
+// same column) instead of the diagonal zigzag produced by offset columns.
 const PIXEL_ROWS: readonly string[] = [
   '   ######   ',
   '  ##W##W##  ',
-  '  #WW##WW#  ',
+  '  ##W##W##  ',
   '############',
   '  ########  ',
   '    #  #    ',
-  '   ##  ##   ',
 ]
 
 interface Pixel {
