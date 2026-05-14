@@ -9,6 +9,7 @@ import { DiffView, looksLikeDiff } from './DiffView'
 import { ReasoningBlock } from './ReasoningBlock'
 import { MarkdownView } from './MarkdownView'
 import { previewToolResult } from './tool-preview'
+import { WelcomeBanner, type BannerOptions } from '../../render/banner'
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -16,7 +17,17 @@ export interface TranscriptProps {
    * commits each row exactly once — we render the live one separately until
    * it stops streaming. */
   readonly streamingRowId: string | null
+  /**
+   * Welcome banner props. Rendered as the first static-committed item so it
+   * lands above the transcript in scrollback. Ink commits a Static item
+   * exactly once, so the banner does not flicker on subsequent renders.
+   */
+  readonly banner?: BannerOptions
 }
+
+type StaticItem =
+  | { readonly kind: 'banner'; readonly props: BannerOptions }
+  | { readonly kind: 'row'; readonly row: TranscriptRow }
 
 /**
  * Append-only transcript. Completed rows go through `<Static>` (Ink prints
@@ -24,18 +35,27 @@ export interface TranscriptProps {
  * streaming row, if any, renders as a normal child below so it can update.
  */
 export function Transcript(props: TranscriptProps): React.ReactElement {
-  const completed: TranscriptRow[] = []
+  const items: StaticItem[] = []
+  if (props.banner) items.push({ kind: 'banner', props: props.banner })
   let streaming: TranscriptRow | null = null
   for (const row of props.rows) {
     if (row.id === props.streamingRowId) {
       streaming = row
     } else {
-      completed.push(row)
+      items.push({ kind: 'row', row })
     }
   }
   return (
     <>
-      <Static items={completed}>{(row) => <TranscriptRowView key={row.id} row={row} />}</Static>
+      <Static items={items}>
+        {(item) =>
+          item.kind === 'banner' ? (
+            <WelcomeBanner key="__banner__" {...item.props} />
+          ) : (
+            <TranscriptRowView key={item.row.id} row={item.row} />
+          )
+        }
+      </Static>
       {streaming ? <TranscriptRowView row={streaming} streaming /> : null}
     </>
   )

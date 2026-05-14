@@ -12,7 +12,6 @@ import {
   recordSkillsReloadCallback,
   getLoadedSkills,
 } from './commands/builtin/skills-adapter'
-import { renderBannerFrame } from './render/banner'
 import { isFirstRun, markWelcomed } from './render/first-run'
 import { runTui } from './tui'
 import { hasAnyLlmCredential } from './auth/credential-check'
@@ -96,21 +95,6 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   }
 
   const { branch, workspaceStatus } = readGitSummary(options.cwd)
-  const bannerFrame = await renderBannerFrame({
-    cliName: CLI_NAME,
-    cliVersion: CLI_VERSION,
-    model: resolvedModel,
-    permissionMode: resolvedMode,
-    cwd: options.cwd,
-    branch,
-    workspaceStatus,
-    sessionId,
-    sessionPath,
-    providerName,
-    username: process.env.USER,
-  })
-  process.stdout.write(bannerFrame)
-  process.stdout.write('\n')
 
   if (isFirstRun()) {
     markWelcomed()
@@ -123,7 +107,19 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     model: resolvedModel,
     mode: resolvedMode,
     branch,
-    bannerFrame,
+    banner: {
+      cliName: CLI_NAME,
+      cliVersion: CLI_VERSION,
+      model: resolvedModel,
+      permissionMode: resolvedMode,
+      cwd: options.cwd,
+      branch,
+      workspaceStatus,
+      sessionId,
+      sessionPath,
+      providerName,
+      username: process.env.USER,
+    },
   })
 
   await cliCtx.close()
