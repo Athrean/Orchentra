@@ -14,7 +14,7 @@ import {
 } from '@orchentra/cli-api'
 import type { LiveCli } from '../live-cli'
 import { assertOrgAllowed } from './org-guard'
-import { buildTriageBrief, type JobLogBundle, type TriageBrief } from './brief'
+import { buildTriageBrief, shortSummary, type JobLogBundle, type TriageBrief } from './brief'
 import { defaultFixTitle, fixBranchName, idempotencyKey, renderFixBody } from './fix-branch'
 import type { GitOps } from './git-ops'
 import type { RepoRunSpec } from './spec'
@@ -88,7 +88,14 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
 
   const existing = await findOpenPullByHead(client, spec.owner, spec.repo, branch)
   const key = idempotencyKey(branch, base, title)
-  const body = renderFixBody({ runUrl: run.html_url, runId: run.id, idempotencyKey: key, summary: brief.summary })
+  const body = renderFixBody({
+    runUrl: run.html_url,
+    runId: run.id,
+    idempotencyKey: key,
+    bug: shortSummary(brief),
+    fix: `Patched ${agentChangedFiles.length} file${agentChangedFiles.length === 1 ? '' : 's'} on \`${branch}\`.`,
+    reasoning: 'Minimum delta to make the failing checks pass; no refactors or unrelated cleanup.',
+  })
 
   let pullRequest: PullRequestRef
   let createdPullRequest = false
