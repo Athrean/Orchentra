@@ -41,37 +41,7 @@ function inkStableStdout(): NodeJS.WriteStream {
   }) as unknown as NodeJS.WriteStream
 }
 
-/**
- * Ink internals we poke on resize. Cast is fragile to Ink's private layout
- * but is the cleanest way to force Ink's `shouldClearTerminalForFrame` path
- * to fire on every SIGWINCH. Ink's built-in handler only clears when the
- * terminal width *decreases* — on width increase (or oscillation during a
- * VSCode panel drag) it falls back to a cursor-up-erase of
- * `lastOutputHeight` lines, which is wrong at the new width and leaves
- * residual input-box rows stacked above the live one.
- *
- * Pinning `lastOutputHeight` to a value larger than viewport rows guarantees
- * `wasOverflowing === true` → full `clearTerminal` + re-emit of
- * `fullStaticOutput` (the welcome banner committed via Transcript's
- * `<Static>`) + the fresh dynamic frame. No residue, no banner loss.
- */
-interface InkInstanceInternals {
-  lastOutputHeight?: number
-}
-
 export async function runTui(opts: RunTuiOptions): Promise<void> {
-  // Register the resize listener BEFORE Ink mounts and BEFORE Ink's own
-  // listener — VSCode-integrated terminals fire several SIGWINCHs in a row
-  // during a panel resize. If Ink's handler runs first it will repaint with
-  // the stale (small) `lastOutputHeight`, leaving residue, before our hook
-  // ever gets to bump it. `prependListener` puts us at the head of the
-  // chain so the bump lands before Ink's repaint reads the field.
-  let inst: InkInstanceInternals | null = null
-  const onResize = (): void => {
-    if (inst) inst.lastOutputHeight = 9999
-  }
-  process.stdout.prependListener('resize', onResize)
-
   const instance = render(
     React.createElement(Tui, {
       cli: opts.cli,
@@ -89,11 +59,5 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
     },
   )
 
-  inst = instance as unknown as InkInstanceInternals
-
-  try {
-    await instance.waitUntilExit()
-  } finally {
-    process.stdout.off('resize', onResize)
-  }
+  await instance.waitUntilExit()
 }
