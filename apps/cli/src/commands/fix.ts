@@ -116,10 +116,21 @@ function emptyResult(run: WorkflowRun, jobs: WorkflowJob[], base = 'main'): FixR
   }
 }
 
-function buildFixPrompt(run: WorkflowRun, brief: TriageBrief): string {
+export function buildFixPrompt(run: WorkflowRun, brief: TriageBrief): string {
   return [
-    `You are fixing a CI failure. Produce a minimal code change that resolves the failing jobs.`,
-    `Do not edit lockfiles or generated artifacts. Use the edit tools to modify files.`,
+    `You are fixing a CI failure. Produce the MINIMUM code delta that resolves the failing jobs.`,
+    '',
+    `Hard constraints — the patch MUST satisfy all of these:`,
+    `- Do not rename symbols, files, variables, or functions.`,
+    `- Do not reorder imports, declarations, or members.`,
+    `- Do not add type hints, annotations, or generics that the failing job does not require.`,
+    `- Do not refactor working code adjacent to the bug.`,
+    `- Do not improve, restructure, or "clean up" code that is not the direct cause of the failure.`,
+    `- Do not add comments, docstrings, or formatting changes.`,
+    `- Do not introduce abstractions, helpers, or "future flexibility" indirection.`,
+    `- Do not edit lockfiles, build artifacts, generated files, or unrelated tests.`,
+    '',
+    `Every changed line must trace directly to the failing job's root cause. If a line is not strictly necessary to make the failing job pass, do not change it.`,
     '',
     `Workflow: ${run.name ?? '(unnamed)'}`,
     `Commit: ${run.head_sha}`,
