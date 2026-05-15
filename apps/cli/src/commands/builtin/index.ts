@@ -28,6 +28,7 @@ import { SkillsCommand } from './skills-adapter'
 import { RestartCommand } from './restart'
 import { createGraphCommand } from './graph'
 import { createWhyCommand } from './why'
+import { SummarizeSlashCommand } from './summarize-slash'
 import { TriageSlashCommand } from './triage-slash'
 import { CleanSlashCommand } from './clean-slash'
 import { EnvSlashCommand } from './env-slash'
@@ -95,6 +96,10 @@ export function createBuiltinRegistry(): CommandRegistry {
   // Slice G: local /triage wraps runTriage. Replaces the server-bridged
   // /triage so the slash form and the shell verb hit the same workflow.
   registry.register(new TriageSlashCommand())
+
+  // Flow 3: /summarize — root cause / where / fix from a failing run.
+  // Run-spec only (owner/repo#runId). Free-form text rejected by design.
+  registry.register(new SummarizeSlashCommand())
 
   // Slice I: /clean prunes expired Actions artifacts from old failed runs.
   registry.register(new CleanSlashCommand())
