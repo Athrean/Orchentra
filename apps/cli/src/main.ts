@@ -87,6 +87,7 @@ async function main(argv: string[]): Promise<number> {
         cwd: process.cwd(),
         title: action.title,
         base: action.base,
+        autoMerge: action.autoMerge,
       })
 
     case 'session-replay':
