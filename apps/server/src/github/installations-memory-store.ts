@@ -37,6 +37,13 @@ export function createMemoryInstallationStore(): InstallationStore {
       if (id === undefined) return null
       return byInstallationId.get(id) ?? null
     },
+    async fetchByOwnerCaseInsensitive(owner: string): Promise<InstallationRecord | null> {
+      const lower = owner.toLowerCase()
+      for (const record of byInstallationId.values()) {
+        if (record.orgId.toLowerCase() === lower) return record
+      }
+      return null
+    },
     async fetchByInstallationId(installationId: number): Promise<InstallationRecord | null> {
       return byInstallationId.get(installationId) ?? null
     },

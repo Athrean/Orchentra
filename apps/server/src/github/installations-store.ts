@@ -9,7 +9,7 @@
  * time but not persisted; the unique key is `installation_id`.
  */
 
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import { db, githubInstallations } from '../db/client'
 import type { InstallationRecord, InstallationStore, RecordInstallationInput } from './installations'
 
@@ -73,6 +73,15 @@ class DrizzleInstallationStore implements InstallationStore {
 
   async fetchByOrg(orgId: string): Promise<InstallationRecord | null> {
     const [row] = await db.select().from(githubInstallations).where(eq(githubInstallations.orgId, orgId)).limit(1)
+    return row ? rowToRecord(row) : null
+  }
+
+  async fetchByOwnerCaseInsensitive(owner: string): Promise<InstallationRecord | null> {
+    const [row] = await db
+      .select()
+      .from(githubInstallations)
+      .where(sql`lower(${githubInstallations.orgId}) = ${owner.toLowerCase()}`)
+      .limit(1)
     return row ? rowToRecord(row) : null
   }
 
