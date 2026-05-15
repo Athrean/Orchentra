@@ -23,6 +23,7 @@ export type CliAction =
       permissionMode: PermissionMode
       title?: string
       base?: string
+      autoMerge: boolean
     }
   | { kind: 'doctor' }
   | { kind: 'watch'; repo: string; intervalMs?: number }
@@ -202,6 +203,7 @@ FLAGS
       --resume <path>                 Resume a previous session
       --base <branch>                 Base branch for fix PRs (default: main)
       --title <text>                  PR title override for fix
+      --auto-merge                    After /fix PR opens, poll CI; surface failures (default: off)
   -h, --help                          Show this help
   -V, --version                       Print version
 `
@@ -217,6 +219,7 @@ function parseSubcommandArgs(sub: 'investigate' | 'triage' | 'fix', rest: string
   let permissionMode: PermissionMode = 'workspace-write'
   let title: string | undefined
   let base: string | undefined
+  let autoMerge = false
 
   let i = 0
   while (i < rest.length) {
@@ -235,6 +238,9 @@ function parseSubcommandArgs(sub: 'investigate' | 'triage' | 'fix', rest: string
       title = readSubcommandFlagValue(rest, ++i, arg, sub)
     } else if (arg === '--base') {
       base = readSubcommandFlagValue(rest, ++i, arg, sub)
+    } else if (arg === '--auto-merge') {
+      if (sub !== 'fix') throw new Error(`${sub}: unknown flag: --auto-merge`)
+      autoMerge = true
     } else if (!arg.startsWith('-') && spec === undefined) {
       spec = arg
     } else if (arg.startsWith('-')) {
@@ -245,7 +251,7 @@ function parseSubcommandArgs(sub: 'investigate' | 'triage' | 'fix', rest: string
 
   if (!spec) throw new Error(`${sub}: missing <owner/repo#run-id>`)
 
-  if (sub === 'fix') return { kind: 'fix', spec, model, permissionMode, title, base }
+  if (sub === 'fix') return { kind: 'fix', spec, model, permissionMode, title, base, autoMerge }
   if (sub === 'triage') return { kind: 'triage', spec, model, permissionMode }
   return { kind: 'investigate', spec, model, permissionMode }
 }
