@@ -4,6 +4,12 @@ import { loadAppCredentialsFromEnv, type AppCredentials } from '../github/octoki
 import { mintAppJwt } from '../github/app-jwt'
 import { recordInstallation, type RecordInstallationInput } from '../github/installations'
 import { resolveOrgIdForInstallation } from '../github/installation-handlers'
+import {
+  HandoffExpiredError,
+  HandoffNotFoundError,
+  type InstallHandoffStore,
+} from '../github/install-handoff-memory-store'
+import { mintApiKey, type MintedApiKey } from '../github/api-key-issuer'
 
 /**
  * Dependencies wired into the install-callback route. Exposed so tests can
@@ -18,6 +24,9 @@ export interface GithubAppCallbackDeps {
   recordInstallation(input: RecordInstallationInput): Promise<unknown>
   resolveOrgId(installationId: number): string
   frontendUrl(): string
+  handoffStore?: InstallHandoffStore
+  mintApiKey?(): MintedApiKey
+  now?(): Date
 }
 
 export interface InstallationApiResponse {
@@ -41,6 +50,8 @@ const defaultDeps: GithubAppCallbackDeps = {
   recordInstallation: (input) => recordInstallation(input),
   resolveOrgId: (id) => resolveOrgIdForInstallation(id),
   frontendUrl: () => process.env.FRONTEND_URL ?? 'http://localhost:3000',
+  mintApiKey: () => mintApiKey(),
+  now: () => new Date(),
 }
 
 function redirectWithError(deps: GithubAppCallbackDeps, message: string): Response {
@@ -54,6 +65,24 @@ function redirectWithSuccess(deps: GithubAppCallbackDeps, installationId: number
   url.searchParams.set('installed', String(installationId))
   url.searchParams.set('setup_action', setupAction)
   return Response.redirect(url.toString(), 302)
+}
+
+function redirectToLoopback(redirectUri: string, params: Record<string, string>): Response {
+  const url = new URL(redirectUri)
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
+  return Response.redirect(url.toString(), 302)
+}
+
+function resolveHandoffRedirect(deps: GithubAppCallbackDeps, state: string): string | null {
+  if (!deps.handoffStore) return null
+  const entry = deps.handoffStore.get(state)
+  if (!entry || entry.status !== 'pending') return null
+  return entry.redirectUri
+}
+
+function errorRedirect(deps: GithubAppCallbackDeps, handoffRedirect: string | null, code: string): Response {
+  if (handoffRedirect) return redirectToLoopback(handoffRedirect, { error: code })
+  return redirectWithError(deps, code)
 }
 
 /**
@@ -73,15 +102,23 @@ export function createGithubAppRouter(overrides: Partial<GithubAppCallbackDeps> 
   router.get('/callback', async (c) => {
     const installationIdStr = c.req.query('installation_id')
     const setupAction = c.req.query('setup_action') ?? 'install'
+    const state = c.req.query('state')
 
-    if (!installationIdStr) return redirectWithError(deps, 'missing_installation_id')
+    // Resolve the handoff entry up-front so failure paths on a state-bearing
+    // callback redirect to the CLI loopback (not the dashboard).
+    const handoffRedirect = state ? resolveHandoffRedirect(deps, state) : null
+
+    if (!installationIdStr) return errorRedirect(deps, handoffRedirect, 'missing_installation_id')
     const installationId = Number(installationIdStr)
     if (!Number.isInteger(installationId) || installationId <= 0) {
-      return redirectWithError(deps, 'invalid_installation_id')
+      return errorRedirect(deps, handoffRedirect, 'invalid_installation_id')
+    }
+    if (state && !handoffRedirect) {
+      return redirectWithError(deps, 'invalid_state')
     }
 
     const creds = deps.loadAppCredentials()
-    if (!creds) return redirectWithError(deps, 'app_credentials_unavailable')
+    if (!creds) return errorRedirect(deps, handoffRedirect, 'app_credentials_unavailable')
 
     let metadata: InstallationApiResponse
     try {
@@ -89,24 +126,52 @@ export function createGithubAppRouter(overrides: Partial<GithubAppCallbackDeps> 
       metadata = await deps.fetchInstallationMetadata(jwt, installationId)
     } catch (err) {
       console.error('github-app callback: install metadata fetch failed', err)
-      return redirectWithError(deps, 'metadata_fetch_failed')
+      return errorRedirect(deps, handoffRedirect, 'metadata_fetch_failed')
     }
 
-    if (!metadata.account) return redirectWithError(deps, 'installation_account_missing')
+    if (!metadata.account) return errorRedirect(deps, handoffRedirect, 'installation_account_missing')
+
+    const orgId = deps.resolveOrgId(metadata.id)
+    const minted = handoffRedirect && deps.mintApiKey ? deps.mintApiKey() : null
+    const issuedAt = minted && deps.now ? deps.now() : null
 
     try {
       await deps.recordInstallation({
         installationId: metadata.id,
-        orgId: deps.resolveOrgId(metadata.id),
+        orgId,
         account: metadata.account,
         repositorySelection: metadata.repository_selection,
         permissions: metadata.permissions ?? {},
         events: metadata.events ?? [],
         suspendedAt: null,
+        ...(minted ? { apiKeyHash: minted.hash, apiKeyIssuedAt: issuedAt } : {}),
       })
     } catch (err) {
       console.error('github-app callback: recordInstallation failed', err)
-      return redirectWithError(deps, 'persist_failed')
+      return errorRedirect(deps, handoffRedirect, 'persist_failed')
+    }
+
+    if (handoffRedirect && minted && state && deps.handoffStore) {
+      try {
+        deps.handoffStore.complete(state, {
+          orgId,
+          installationId: metadata.id,
+          apiKey: minted.plaintext,
+        })
+      } catch (err) {
+        if (err instanceof HandoffExpiredError) {
+          return errorRedirect(deps, handoffRedirect, 'state_expired')
+        }
+        if (err instanceof HandoffNotFoundError) {
+          return errorRedirect(deps, handoffRedirect, 'invalid_state')
+        }
+        throw err
+      }
+      return redirectToLoopback(handoffRedirect, {
+        orgId,
+        installationId: String(metadata.id),
+        apiKey: minted.plaintext,
+      })
     }
 
     return redirectWithSuccess(deps, installationId, setupAction)

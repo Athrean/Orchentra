@@ -25,6 +25,8 @@ export function createMemoryInstallationStore(): InstallationStore {
         installedAt: existing?.installedAt ?? now,
         updatedAt: now,
         suspendedAt: input.suspendedAt ?? null,
+        apiKeyHash: input.apiKeyHash ?? existing?.apiKeyHash ?? null,
+        apiKeyIssuedAt: input.apiKeyIssuedAt ?? existing?.apiKeyIssuedAt ?? null,
       }
       byInstallationId.set(record.installationId, record)
       orgIndex.set(record.orgId, record.installationId)
