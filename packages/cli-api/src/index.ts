@@ -173,3 +173,4 @@ export {
   type OrchentraConfig,
   type ResolveConfigOptions,
 } from './orchentra/config'
+export { writeProjectSettings, type WriteProjectSettingsInput } from './orchentra/write-project-settings'
