@@ -23,7 +23,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   issue: 'Workspace',
   session: 'Workspace',
   resume: 'Workspace',
-  incidents: 'Server',
+  incident: 'Server',
   triage: 'Server',
   retry: 'Server',
   explain: 'Server',
