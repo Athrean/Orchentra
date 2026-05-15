@@ -39,6 +39,8 @@ export interface InstallationRecord {
   installedAt: Date
   updatedAt: Date
   suspendedAt: Date | null
+  apiKeyHash: string | null
+  apiKeyIssuedAt: Date | null
 }
 
 export interface RecordInstallationInput {
@@ -49,6 +51,8 @@ export interface RecordInstallationInput {
   permissions?: Record<string, string>
   events?: string[]
   suspendedAt?: Date | null
+  apiKeyHash?: string | null
+  apiKeyIssuedAt?: Date | null
 }
 
 export interface InstallationStore {
@@ -103,5 +107,7 @@ export async function getDefaultInstallation(): Promise<InstallationRecord | nul
     installedAt: now,
     updatedAt: now,
     suspendedAt: null,
+    apiKeyHash: null,
+    apiKeyIssuedAt: null,
   }
 }
