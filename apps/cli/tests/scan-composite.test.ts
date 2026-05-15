@@ -18,14 +18,27 @@ function malformedLlm(text: string): LlmCaller {
   return async () => ({ text, model: 'fake-model', tokensIn: 1, tokensOut: 1 })
 }
 
+// Strip ambient GIT_* env so child `git` invocations only see `cwd` for
+// discovery. Without this, running these tests inside a `git commit` hook
+// (which exports GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE) makes `git init`
+// target the parent repo instead of the tmp dir, corrupting the host branch.
+function cleanEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {}
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v !== undefined && !k.startsWith('GIT_')) env[k] = v
+  }
+  return env
+}
+
 function makeRepo(): string {
   const d = mkdtempSync(join(tmpdir(), 'scan-'))
-  spawnSync('git', ['init', '-q'], { cwd: d })
-  spawnSync('git', ['config', 'user.email', 't@t'], { cwd: d })
-  spawnSync('git', ['config', 'user.name', 't'], { cwd: d })
+  const env = cleanEnv()
+  spawnSync('git', ['init', '-q'], { cwd: d, env })
+  spawnSync('git', ['config', 'user.email', 't@t'], { cwd: d, env })
+  spawnSync('git', ['config', 'user.name', 't'], { cwd: d, env })
   writeFileSync(join(d, 'a.ts'), 'export const x = 1\n')
-  spawnSync('git', ['add', '.'], { cwd: d })
-  spawnSync('git', ['commit', '-q', '-m', 'init'], { cwd: d })
+  spawnSync('git', ['add', '.'], { cwd: d, env })
+  spawnSync('git', ['commit', '-q', '-m', 'init'], { cwd: d, env })
   return d
 }
 
