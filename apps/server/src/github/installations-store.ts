@@ -27,6 +27,8 @@ function rowToRecord(row: typeof githubInstallations.$inferSelect): Installation
     installedAt: row.installedAt,
     updatedAt: row.updatedAt,
     suspendedAt: row.suspendedAt,
+    apiKeyHash: row.apiKeyHash ?? null,
+    apiKeyIssuedAt: row.apiKeyIssuedAt ?? null,
   }
 }
 
@@ -47,6 +49,8 @@ class DrizzleInstallationStore implements InstallationStore {
         installedAt: now,
         updatedAt: now,
         suspendedAt: input.suspendedAt ?? null,
+        apiKeyHash: input.apiKeyHash ?? null,
+        apiKeyIssuedAt: input.apiKeyIssuedAt ?? null,
       })
       .onConflictDoUpdate({
         target: githubInstallations.installationId,
@@ -59,6 +63,8 @@ class DrizzleInstallationStore implements InstallationStore {
           events: input.events ?? [],
           updatedAt: now,
           suspendedAt: input.suspendedAt ?? null,
+          ...(input.apiKeyHash !== undefined ? { apiKeyHash: input.apiKeyHash } : {}),
+          ...(input.apiKeyIssuedAt !== undefined ? { apiKeyIssuedAt: input.apiKeyIssuedAt } : {}),
         },
       })
       .returning()
