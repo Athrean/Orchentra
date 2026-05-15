@@ -1,21 +1,27 @@
 import {
   GitHubClient,
-  createPullRequest,
-  findOpenPullByHead,
   getJobLogs,
   getWorkflowRun,
   isFailingJob,
   listWorkflowJobs,
   requireToken,
-  updatePullRequest,
-  type PullRequestRef,
   type WorkflowJob,
   type WorkflowRun,
 } from '@orchentra/cli-api'
 import type { LiveCli } from '../live-cli'
 import { assertOrgAllowed } from './org-guard'
-import { buildTriageBrief, type JobLogBundle, type TriageBrief } from './brief'
+import { buildTriageBrief, shortSummary, type JobLogBundle, type TriageBrief } from './brief'
 import { defaultFixTitle, fixBranchName, idempotencyKey, renderFixBody } from './fix-branch'
+import {
+  defaultListFailingJobs,
+  defaultListRuns,
+  pollCiForBranch,
+  type PollCiDeps,
+  type PollCiOptions,
+  type PollOutcome,
+} from './fix-poll'
+import type { GhPrOps, GhPrViewResult } from './gh-pr-ops'
+import { ShellGhPrOps } from './gh-pr-ops'
 import type { GitOps } from './git-ops'
 import type { RepoRunSpec } from './spec'
 
@@ -24,11 +30,27 @@ export interface FixDeps {
   readonly git: GitOps
   readonly clientFactory?: (token: string) => GitHubClient
   readonly write?: (text: string) => void
+  /**
+   * Diff preview gate. Receives the patch text and must return true to
+   * proceed with commit + push + PR. Defaults to an interactive y/N prompt;
+   * tests inject a deterministic implementation.
+   */
+  readonly confirmDiff?: (diff: string) => Promise<boolean>
+  /** PR I/O over `gh` CLI. Defaults to `ShellGhPrOps` invoking the real `gh` binary. */
+  readonly gh?: GhPrOps
+  /**
+   * CI poll override. When omitted, `--auto-merge` runs the live GitHub poll
+   * built from the same `client`. Tests inject a deterministic implementation
+   * so the auto-merge path can be asserted without hitting the API.
+   */
+  readonly pollCi?: (options: PollCiOptions, deps: PollCiDeps) => Promise<PollOutcome>
 }
 
 export interface FixOptions {
   readonly base?: string
   readonly title?: string
+  /** When true, poll CI after the PR opens and surface failing checks. */
+  readonly autoMerge?: boolean
 }
 
 export interface FixResult {
@@ -36,9 +58,13 @@ export interface FixResult {
   readonly failingJobs: WorkflowJob[]
   readonly brief: TriageBrief
   readonly branch: string
-  readonly pullRequest: PullRequestRef | null
+  readonly pullRequest: GhPrViewResult | null
   readonly createdPullRequest: boolean
   readonly changedFiles: boolean
+  /** True when the user (or test harness) approved the diff preview. */
+  readonly userConfirmed: boolean
+  /** Populated only when `options.autoMerge` is true and a PR was opened. */
+  readonly pollOutcome?: PollOutcome
 }
 
 export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps): Promise<FixResult> {
@@ -78,7 +104,21 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
   const agentChangedFiles = filesAfter.filter((path) => !filesBefore.has(path))
   if (agentChangedFiles.length === 0) {
     write('Agent produced no file changes; not opening a PR.\n')
-    return { ...emptyResult(run, failingJobs, base), brief, branch, changedFiles: false }
+    return { ...emptyResult(run, failingJobs, base), brief, branch, changedFiles: false, userConfirmed: false }
+  }
+
+  const diff = deps.git.diffFiles(agentChangedFiles)
+  const confirm = deps.confirmDiff ?? defaultConfirmDiff(write)
+  const approved = await confirm(diff)
+  if (!approved) {
+    write('Patch rejected by user; not opening a PR.\n')
+    return {
+      ...emptyResult(run, failingJobs, base),
+      brief,
+      branch,
+      changedFiles: true,
+      userConfirmed: false,
+    }
   }
 
   deps.git.add(agentChangedFiles)
@@ -86,22 +126,55 @@ export async function fix(spec: RepoRunSpec, options: FixOptions, deps: FixDeps)
   write(`Pushing ${branch}...\n`)
   deps.git.push(branch)
 
-  const existing = await findOpenPullByHead(client, spec.owner, spec.repo, branch)
+  const gh = deps.gh ?? new ShellGhPrOps()
+  const existing = await gh.findOpenByHead(spec.owner, spec.repo, branch)
   const key = idempotencyKey(branch, base, title)
-  const body = renderFixBody({ runUrl: run.html_url, runId: run.id, idempotencyKey: key, summary: brief.summary })
+  const body = renderFixBody({
+    runUrl: run.html_url,
+    runId: run.id,
+    idempotencyKey: key,
+    bug: shortSummary(brief),
+    fix: `Patched ${agentChangedFiles.length} file${agentChangedFiles.length === 1 ? '' : 's'} on \`${branch}\`.`,
+    reasoning: 'Minimum delta to make the failing checks pass; no refactors or unrelated cleanup.',
+  })
 
-  let pullRequest: PullRequestRef
+  let pullRequest: GhPrViewResult
   let createdPullRequest = false
   if (existing) {
     write(`Updating existing PR #${existing.number}...\n`)
-    pullRequest = await updatePullRequest(client, spec.owner, spec.repo, existing.number, { title, body })
+    pullRequest = await gh.update({ owner: spec.owner, repo: spec.repo, number: existing.number, title, body })
   } else {
-    write('Creating new PR...\n')
-    pullRequest = await createPullRequest(client, spec.owner, spec.repo, { title, head: branch, base, body })
+    write('Creating new PR via gh CLI...\n')
+    pullRequest = await gh.create({ owner: spec.owner, repo: spec.repo, head: branch, base, title, body })
     createdPullRequest = true
   }
 
-  return { run, failingJobs, brief, branch, pullRequest, createdPullRequest, changedFiles: true }
+  let pollOutcome: PollOutcome | undefined
+  if (options.autoMerge) {
+    write(`Polling CI for ${branch}...\n`)
+    const poll = deps.pollCi ?? pollCiForBranch
+    pollOutcome = await poll(
+      { branch },
+      {
+        listRuns: defaultListRuns(client, spec.owner, spec.repo),
+        listFailingJobs: defaultListFailingJobs(client, spec.owner, spec.repo),
+        sleep: (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms)),
+        write,
+      },
+    )
+  }
+
+  return {
+    run,
+    failingJobs,
+    brief,
+    branch,
+    pullRequest,
+    createdPullRequest,
+    changedFiles: true,
+    userConfirmed: true,
+    pollOutcome,
+  }
 }
 
 function emptyResult(run: WorkflowRun, jobs: WorkflowJob[], base = 'main'): FixResult {
@@ -113,13 +186,56 @@ function emptyResult(run: WorkflowRun, jobs: WorkflowJob[], base = 'main'): FixR
     pullRequest: null,
     createdPullRequest: false,
     changedFiles: false,
+    userConfirmed: false,
   }
 }
 
-function buildFixPrompt(run: WorkflowRun, brief: TriageBrief): string {
+function defaultConfirmDiff(write: (text: string) => void): (diff: string) => Promise<boolean> {
+  return async (diff: string): Promise<boolean> => {
+    write('\n--- Proposed patch ---\n')
+    write(diff || '(empty diff)\n')
+    write('--- End patch ---\n')
+
+    if (!process.stdin.isTTY) {
+      write('No TTY available to confirm; refusing to open PR. Re-run interactively to approve.\n')
+      return false
+    }
+
+    write('Open PR with this patch? (y/N) > ')
+    return await readLineYesNo()
+  }
+}
+
+function readLineYesNo(): Promise<boolean> {
+  return new Promise((resolve) => {
+    let buf = ''
+    const onData = (chunk: Buffer): void => {
+      buf += chunk.toString('utf8')
+      const nl = buf.indexOf('\n')
+      if (nl === -1) return
+      const line = buf.slice(0, nl).trim().toLowerCase()
+      process.stdin.off('data', onData)
+      resolve(line === 'y' || line === 'yes')
+    }
+    process.stdin.on('data', onData)
+  })
+}
+
+export function buildFixPrompt(run: WorkflowRun, brief: TriageBrief): string {
   return [
-    `You are fixing a CI failure. Produce a minimal code change that resolves the failing jobs.`,
-    `Do not edit lockfiles or generated artifacts. Use the edit tools to modify files.`,
+    `You are fixing a CI failure. Produce the MINIMUM code delta that resolves the failing jobs.`,
+    '',
+    `Hard constraints — the patch MUST satisfy all of these:`,
+    `- Do not rename symbols, files, variables, or functions.`,
+    `- Do not reorder imports, declarations, or members.`,
+    `- Do not add type hints, annotations, or generics that the failing job does not require.`,
+    `- Do not refactor working code adjacent to the bug.`,
+    `- Do not improve, restructure, or "clean up" code that is not the direct cause of the failure.`,
+    `- Do not add comments, docstrings, or formatting changes.`,
+    `- Do not introduce abstractions, helpers, or "future flexibility" indirection.`,
+    `- Do not edit lockfiles, build artifacts, generated files, or unrelated tests.`,
+    '',
+    `Every changed line must trace directly to the failing job's root cause. If a line is not strictly necessary to make the failing job pass, do not change it.`,
     '',
     `Workflow: ${run.name ?? '(unnamed)'}`,
     `Commit: ${run.head_sha}`,
