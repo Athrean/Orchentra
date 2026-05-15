@@ -1,0 +1,19 @@
+apps/server/tests/api-key-issuer.test.ts
+  ai_agent 1-23
+apps/server/src/routes/install-handoff.ts
+  ai_agent 1-41
+apps/server/tests/install-handoff-routes.test.ts
+  ai_agent 1-83
+apps/server/tests/install-handoff-store.test.ts
+  ai_agent 1-89
+apps/server/src/github/install-handoff-memory-store.ts
+  ai_agent 1-102
+apps/server/src/github/api-key-issuer.ts
+  ai_agent 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "9936a5ec8b5716a520530e6bb930a30fb6fcdc67",
+  "prompts": {}
+}
