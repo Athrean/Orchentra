@@ -4,7 +4,7 @@ import { knownOpIds } from './op-commands/run-op-verb'
 export type CliAction =
   | { kind: 'version' }
   | { kind: 'help' }
-  | { kind: 'init' }
+  | { kind: 'init'; fresh: boolean; owner?: string; serverUrl?: string }
   | {
       kind: 'prompt'
       prompt: string
@@ -61,7 +61,7 @@ export function parseArgs(argv: string[]): CliAction {
     return { kind: 'help' }
   }
   if (first === 'init') {
-    return { kind: 'init' }
+    return parseInitArgs(args.slice(1))
   }
 
   if (first === 'investigate' || first === 'triage' || first === 'fix') {
@@ -304,6 +304,39 @@ function parseMcpArgs(rest: string[]): CliAction {
     return { kind: 'mcp', sub: 'serve', printToolsJson }
   }
   throw new Error(`mcp: unknown subcommand '${sub}'. expected 'list', 'test <name>', or 'serve'`)
+}
+
+function parseInitArgs(rest: string[]): CliAction {
+  let fresh = false
+  let owner: string | undefined
+  let serverUrl: string | undefined
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i]
+    if (arg === '--fresh') {
+      fresh = true
+      continue
+    }
+    if (arg.startsWith('--owner=')) {
+      owner = arg.slice('--owner='.length)
+      continue
+    }
+    if (arg === '--owner') {
+      owner = rest[++i]
+      if (!owner) throw new Error('init: --owner requires a value')
+      continue
+    }
+    if (arg.startsWith('--server-url=')) {
+      serverUrl = arg.slice('--server-url='.length)
+      continue
+    }
+    if (arg === '--server-url') {
+      serverUrl = rest[++i]
+      if (!serverUrl) throw new Error('init: --server-url requires a value')
+      continue
+    }
+    throw new Error(`init: unknown argument: ${arg}`)
+  }
+  return { kind: 'init', fresh, owner, serverUrl }
 }
 
 function parseLoginArgs(rest: string[]): CliAction {
