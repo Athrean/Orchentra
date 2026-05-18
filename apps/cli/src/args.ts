@@ -4,7 +4,7 @@ import { knownOpIds } from './op-commands/run-op-verb'
 export type CliAction =
   | { kind: 'version' }
   | { kind: 'help' }
-  | { kind: 'init'; fresh: boolean; owner?: string; serverUrl?: string }
+  | { kind: 'init'; owner?: string; serverUrl?: string }
   | {
       kind: 'prompt'
       prompt: string
@@ -307,15 +307,10 @@ function parseMcpArgs(rest: string[]): CliAction {
 }
 
 function parseInitArgs(rest: string[]): CliAction {
-  let fresh = false
   let owner: string | undefined
   let serverUrl: string | undefined
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]
-    if (arg === '--fresh') {
-      fresh = true
-      continue
-    }
     if (arg.startsWith('--owner=')) {
       owner = arg.slice('--owner='.length)
       continue
@@ -336,7 +331,7 @@ function parseInitArgs(rest: string[]): CliAction {
     }
     throw new Error(`init: unknown argument: ${arg}`)
   }
-  return { kind: 'init', fresh, owner, serverUrl }
+  return { kind: 'init', owner, serverUrl }
 }
 
 function parseLoginArgs(rest: string[]): CliAction {
