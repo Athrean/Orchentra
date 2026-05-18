@@ -2,7 +2,6 @@
 import { CLI_NAME, CLI_VERSION } from './version'
 import { parseArgs, renderHelp } from './args'
 import { runRepl } from './repl'
-import { initializeRepo } from './init'
 import { runInvestigate } from './commands/run-investigate'
 import { runTriage } from './commands/run-triage'
 import { runFix } from './commands/run-fix'
@@ -36,17 +35,8 @@ async function main(argv: string[]): Promise<number> {
       process.stdout.write(renderHelp())
       return 0
 
-    case 'init': {
-      if (action.fresh) {
-        return runInitBootstrap({ owner: action.owner, serverUrl: action.serverUrl })
-      }
-      const report = initializeRepo(process.cwd())
-      for (const artifact of report.artifacts) {
-        const label = artifact.status === 'created' ? '+' : artifact.status === 'updated' ? '~' : '.'
-        process.stdout.write(`  ${label} ${artifact.name} (${artifact.status})\n`)
-      }
-      return 0
-    }
+    case 'init':
+      return runInitBootstrap({ owner: action.owner, serverUrl: action.serverUrl })
 
     case 'prompt':
       return runRepl({
