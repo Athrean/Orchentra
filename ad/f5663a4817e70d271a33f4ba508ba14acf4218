@@ -1,0 +1,13 @@
+apps/server/src/index.ts
+  ai_agent 6-7,97-100,102
+apps/server/src/app.ts
+  ai_agent 1-86
+apps/server/tests/app-wiring-bootstrap.test.ts
+  ai_agent 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "adf5663a4817e70d271a33f4ba508ba14acf4218",
+  "prompts": {}
+}
