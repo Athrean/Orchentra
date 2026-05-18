@@ -48,21 +48,24 @@ export function ModelPickerCard(props: ModelPickerCardProps): React.ReactElement
         Switch model
       </Text>
       <Box height={1} />
-      {MODEL_CATALOG.map((m, i) => {
-        const active = i === index
-        const isCurrent = m.id === props.current
-        return (
-          <Box key={m.id} flexDirection="row">
-            <Text color={active ? THEME.brand : undefined}>{active ? '❯ ' : '  '}</Text>
-            <Text color={active ? THEME.brand : undefined} bold={active}>
-              {m.label}
-            </Text>
-            <Text dimColor>{`  ${m.provider}`}</Text>
-            {m.hint ? <Text dimColor>{` · ${m.hint}`}</Text> : null}
-            {isCurrent ? <Text color={THEME.brand}>{'  (current)'}</Text> : null}
-          </Box>
-        )
-      })}
+      {(() => {
+        const labelW = MODEL_CATALOG.reduce((m, opt) => Math.max(m, opt.label.length), 0)
+        return MODEL_CATALOG.map((m, i) => {
+          const active = i === index
+          const isCurrent = m.id === props.current
+          const detail = m.hint ? `${m.provider} · ${m.hint}` : m.provider
+          return (
+            <Box key={m.id} flexDirection="row">
+              <Text color={active ? THEME.brand : undefined}>{active ? '❯ ' : '  '}</Text>
+              <Text color={active ? THEME.brand : undefined} bold={active}>
+                {m.label.padEnd(labelW, ' ')}
+              </Text>
+              <Text dimColor>{`  ${detail}`}</Text>
+              {isCurrent ? <Text color={THEME.brand}>{'  (current)'}</Text> : null}
+            </Box>
+          )
+        })
+      })()}
       <Box height={1} />
       <Text dimColor>↑/↓ to move · Enter to select · Esc to cancel</Text>
     </Box>
