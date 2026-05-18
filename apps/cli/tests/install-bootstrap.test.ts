@@ -44,7 +44,13 @@ function makeDeps(overrides: Partial<BootstrapDeps> = {}): {
     },
     makeLoopback: async () => fakeLoopback({ orgId: 'Athrean', installationId: 12345, apiKey: 'plaintext-key' }),
     fetch: (async (url: string | URL, init?: RequestInit) => {
-      fetchCalls.push({ url: String(url), init })
+      const str = String(url)
+      fetchCalls.push({ url: str, init })
+      // Default: by-owner returns 404 (fresh path) so the happy-path
+      // test continues to exercise the install/new branch.
+      if (str.includes('/api/installations/by-owner/')) {
+        return new Response(JSON.stringify({ error: 'not_installed' }), { status: 404 })
+      }
       return new Response(JSON.stringify({ ok: true }), { status: 200 })
     }) as typeof fetch,
     writeSettings: (input) => {
@@ -70,9 +76,10 @@ describe('runInstallBootstrap', () => {
     expect(result.orgId).toBe('Athrean')
     expect(result.installationId).toBe(12345)
 
-    expect(fetchCalls.length).toBe(1)
-    expect(fetchCalls[0].url).toBe('http://localhost:3001/api/install-handoff/start')
-    const body = JSON.parse(String(fetchCalls[0].init?.body ?? '{}'))
+    expect(fetchCalls.length).toBe(2)
+    expect(fetchCalls[0].url).toBe('http://localhost:3001/api/installations/by-owner/Athrean')
+    expect(fetchCalls[1].url).toBe('http://localhost:3001/api/install-handoff/start')
+    const body = JSON.parse(String(fetchCalls[1].init?.body ?? '{}'))
     expect(body.state).toBe('a'.repeat(48))
     expect(body.redirectUri).toBe('http://127.0.0.1:49281/install-cb')
 
@@ -127,5 +134,82 @@ describe('runInstallBootstrap', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toContain('timeout')
+  })
+
+  test('already-installed branch: by-owner 200 → opens configure URL with installationId', async () => {
+    const fetchUrls: string[] = []
+    const browserUrls: string[] = []
+    const { deps } = makeDeps({
+      openBrowser: async (url) => {
+        browserUrls.push(url)
+      },
+      fetch: (async (url: string | URL, init?: RequestInit) => {
+        const str = String(url)
+        fetchUrls.push(str)
+        if (str.endsWith('/api/installations/by-owner/Athrean')) {
+          return new Response(
+            JSON.stringify({
+              orgId: 'Athrean',
+              installationId: 99999,
+              installedAt: '2026-05-01T00:00:00Z',
+              suspendedAt: null,
+            }),
+            { status: 200 },
+          )
+        }
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ ok: true }), { status: 200 })
+        }
+        return new Response('not found', { status: 404 })
+      }) as typeof fetch,
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(true)
+    expect(fetchUrls).toContain('http://localhost:3001/api/installations/by-owner/Athrean')
+    expect(browserUrls[0]).toBe(`https://github.com/apps/orchentra/installations/99999?state=${'a'.repeat(48)}`)
+  })
+
+  test('by-owner 404 falls through to fresh-install URL (install/new)', async () => {
+    const browserUrls: string[] = []
+    const { deps } = makeDeps({
+      openBrowser: async (url) => {
+        browserUrls.push(url)
+      },
+      fetch: (async (url: string | URL, init?: RequestInit) => {
+        const str = String(url)
+        if (str.includes('/api/installations/by-owner/')) {
+          return new Response(JSON.stringify({ error: 'not_installed' }), { status: 404 })
+        }
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ ok: true }), { status: 200 })
+        }
+        return new Response('not found', { status: 404 })
+      }) as typeof fetch,
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(true)
+    expect(browserUrls[0]).toContain('/installations/new?state=')
+  })
+
+  test('by-owner 5xx degrades to fresh-install URL', async () => {
+    const browserUrls: string[] = []
+    const { deps } = makeDeps({
+      openBrowser: async (url) => {
+        browserUrls.push(url)
+      },
+      fetch: (async (url: string | URL, init?: RequestInit) => {
+        const str = String(url)
+        if (str.includes('/api/installations/by-owner/')) {
+          return new Response('boom', { status: 500 })
+        }
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ ok: true }), { status: 200 })
+        }
+        return new Response('not found', { status: 404 })
+      }) as typeof fetch,
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(true)
+    expect(browserUrls[0]).toContain('/installations/new?state=')
   })
 })
