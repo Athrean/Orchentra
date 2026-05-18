@@ -293,6 +293,45 @@ describe('runInstallBootstrap', () => {
     expect(browserUrls).toEqual([])
   })
 
+  test('browser-open failure → printInstallUrl is called, loopback still completes', async () => {
+    const printed: string[] = []
+    const { deps } = makeDeps({
+      openBrowser: async () => {
+        throw new Error('no `xdg-open` on host')
+      },
+      printInstallUrl: (url: string) => {
+        printed.push(url)
+      },
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(true)
+    expect(printed.length).toBe(1)
+    expect(printed[0]).toContain('/installations/new?state=')
+  })
+
+  test('browser-open failure with no printInstallUrl → falls back to stdout, still succeeds', async () => {
+    const original = process.stdout.write.bind(process.stdout)
+    const chunks: string[] = []
+    process.stdout.write = ((c: string | Uint8Array): boolean => {
+      chunks.push(typeof c === 'string' ? c : new TextDecoder().decode(c))
+      return true
+    }) as typeof process.stdout.write
+    try {
+      const { deps } = makeDeps({
+        openBrowser: async () => {
+          throw new Error('no opener')
+        },
+      })
+      const result = await runInstallBootstrap(deps)
+      expect(result.ok).toBe(true)
+      const out = chunks.join('')
+      expect(out).toContain('/installations/new?state=')
+      expect(out).toMatch(/open this URL/i)
+    } finally {
+      process.stdout.write = original
+    }
+  })
+
   test('by-owner 5xx degrades to fresh-install URL', async () => {
     const browserUrls: string[] = []
     const { deps } = makeDeps({

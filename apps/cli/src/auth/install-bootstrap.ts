@@ -159,7 +159,17 @@ export async function runInstallBootstrap(deps: BootstrapDeps): Promise<Bootstra
     if (!started.ok) return { ok: false, error: started.error }
 
     const installUrl = buildInstallUrl(deps, state, existing)
-    await deps.openBrowser(installUrl)
+    try {
+      await deps.openBrowser(installUrl)
+    } catch {
+      // No `open` / `xdg-open` / `start` on this host. Surface the URL so
+      // the user can open it manually; the loopback keeps waiting.
+      if (deps.printInstallUrl) {
+        deps.printInstallUrl(installUrl)
+      } else {
+        process.stdout.write(`Could not open a browser. Open this URL manually:\n  ${installUrl}\n`)
+      }
+    }
 
     deps.onProgress?.('waiting for browser…')
     let payload: Awaited<ReturnType<LoopbackServer['waitForCallback']>>
