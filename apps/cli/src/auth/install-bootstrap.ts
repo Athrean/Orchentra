@@ -50,6 +50,23 @@ interface ExistingInstall {
   readonly suspendedAt: string | null
 }
 
+/**
+ * Map of server-side callback error codes to user-readable messages. Codes
+ * arrive in the `?error=<code>` query param the server adds when redirecting
+ * back to the loopback. Anything not in this table falls through to a
+ * pass-through preamble so the raw code is still visible.
+ */
+const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  app_credentials_unavailable:
+    'server has no GitHub App credentials — contact your Orchentra admin',
+  invalid_state: 'install link expired or stale — re-run `orchentra init`',
+  state_in_use: 'install link already consumed — re-run `orchentra init`',
+}
+
+function describeCallbackError(code: string): string {
+  return CALLBACK_ERROR_MESSAGES[code] ?? `callback error: ${code}`
+}
+
 async function probeByOwner(deps: BootstrapDeps): Promise<ExistingInstall | null> {
   try {
     const res = await deps.fetch(`${deps.serverUrl}/api/installations/by-owner/${deps.owner}`)
@@ -118,7 +135,7 @@ export async function runInstallBootstrap(deps: BootstrapDeps): Promise<Bootstra
     }
 
     if (payload.error) {
-      return { ok: false, error: `callback error: ${payload.error}` }
+      return { ok: false, error: describeCallbackError(payload.error) }
     }
     if (!payload.orgId || !payload.apiKey || !payload.installationId) {
       return { ok: false, error: 'callback payload missing fields' }

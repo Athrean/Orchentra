@@ -97,7 +97,7 @@ describe('runInstallBootstrap', () => {
     const result = await runInstallBootstrap(deps)
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error).toContain('invalid_state')
+    expect(result.error).toMatch(/install link|invalid_state/)
   })
 
   test('returns failure when /api/install-handoff/start returns 409', async () => {
@@ -189,6 +189,37 @@ describe('runInstallBootstrap', () => {
     const result = await runInstallBootstrap(deps)
     expect(result.ok).toBe(true)
     expect(browserUrls[0]).toContain('/installations/new?state=')
+  })
+
+  test('maps callback error `app_credentials_unavailable` to a friendly message', async () => {
+    const { deps } = makeDeps({
+      makeLoopback: async () => fakeLoopback({ error: 'app_credentials_unavailable' }),
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('server has no GitHub App credentials')
+    expect(result.error).toContain('contact your Orchentra admin')
+  })
+
+  test('maps callback error `invalid_state` to a friendly message', async () => {
+    const { deps } = makeDeps({
+      makeLoopback: async () => fakeLoopback({ error: 'invalid_state' }),
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toMatch(/expired|stale|re-run/i)
+  })
+
+  test('falls back to a generic message for unknown callback error codes', async () => {
+    const { deps } = makeDeps({
+      makeLoopback: async () => fakeLoopback({ error: 'something_brand_new' }),
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('something_brand_new')
   })
 
   test('by-owner 5xx degrades to fresh-install URL', async () => {
