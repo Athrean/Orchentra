@@ -1,0 +1,11 @@
+apps/server/tests/agent-prompt-kind.test.ts
+  ai_agent 39,47
+apps/server/src/agent/prompts.ts
+  ai_agent 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "b59f09369f04e2208ad24ec8dead4be3bbd3274e",
+  "prompts": {}
+}
