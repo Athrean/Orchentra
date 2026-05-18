@@ -1,28 +1,10 @@
-import { Hono } from 'hono'
-import { logger } from 'hono/logger'
-import { cors } from 'hono/cors'
 import './config' // Config loaded at import time — fails fast on bad orchentra.yml
 import { runMigrations, db, monitoredRepos, incidents, users } from './db/client'
 import { max, eq, inArray } from 'drizzle-orm'
 import { seedMonitoredRepos } from './lib/seed'
 import { backfillRepoIncidents, withConcurrency } from './lib/backfill'
-import { requireAuth, requireOrgMember } from './auth/middleware'
-import { authRouter } from './routes/auth'
-import { githubAppRouter } from './routes/github-app'
-import { webhooksRouter } from './routes/webhooks'
-import { apiRouter } from './routes/api'
-import { incidentsRouter } from './routes/incidents'
-import { apiKeysRouter } from './routes/api-keys'
-import { reposRouter } from './routes/repos'
-import { actionsRouter } from './routes/actions'
-import { orgsRouter } from './routes/orgs'
-import { chatRouter } from './routes/chat'
-import { commandsRouter } from './routes/commands'
-import { workflowsRouter } from './routes/workflows'
-import { analyticsRouter } from './routes/analytics'
-import { usageRouter } from './routes/usage'
-import { webhookEventsRouter } from './routes/webhook-events'
-import { approvalsRouter } from './routes/approvals'
+import { createApp } from './app'
+import { createMemoryInstallHandoffStore } from './github/install-handoff-memory-store'
 import { setJobQueue, startQueueWorker } from './lib/job-queue'
 import { PgJobQueue } from './lib/pg-job-queue'
 import { ensureServerBrainWired } from './agent/brain-adapter'
@@ -35,7 +17,6 @@ import {
   registerWsClient,
   unregisterWsClient,
   authenticateWsUpgrade,
-  getWsClientCount,
   startHeartbeat,
   handlePong,
   type WsData,
@@ -113,50 +94,12 @@ function scheduleSyncAllRepos(): void {
 }
 scheduleSyncAllRepos()
 
-const app = new Hono()
+// Shared install-handoff store: the CLI bootstrap start route writes
+// pending entries; the GitHub App callback resolves them after the user
+// finishes installing. Both must hit the same instance.
+const handoffStore = createMemoryInstallHandoffStore({ now: () => Date.now(), ttlMs: 5 * 60 * 1000 })
 
-app.use('*', logger())
-app.use(
-  '*',
-  cors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
-    credentials: true,
-  }),
-)
-
-// Health check — includes live WebSocket client count for observability
-app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString(), wsClients: getWsClientCount() }))
-
-// Public routes
-app.route('/auth', authRouter)
-app.route('/auth/github/app', githubAppRouter)
-app.route('/webhooks', webhooksRouter)
-
-// All /api/* routes require authentication
-app.use('/api/*', requireAuth)
-
-// Org-scoped routes additionally require org membership
-// requireOrgMember reads :orgId from the URL and verifies the user belongs to that org
-// Both patterns needed: wildcard covers /api/orgs/:orgId/anything, exact covers /api/orgs/:orgId itself
-app.use('/api/orgs/:orgId', requireOrgMember)
-app.use('/api/orgs/:orgId/*', requireOrgMember)
-
-// Non-org API routes
-app.route('/api', apiRouter) // GET /api/me
-app.route('/api/keys', apiKeysRouter)
-
-// Org-scoped API routes — all live under /api/orgs/:orgId/
-app.route('/api/orgs/:orgId', incidentsRouter) // incidents CRUD
-app.route('/api/orgs/:orgId', actionsRouter) // incident actions
-app.route('/api/orgs/:orgId/repos', reposRouter) // repo management
-app.route('/api/orgs/:orgId', orgsRouter) // org + member management
-app.route('/api/orgs/:orgId', chatRouter) // natural language chat
-app.route('/api/orgs/:orgId', commandsRouter) // slash command surface
-app.route('/api/orgs/:orgId', workflowsRouter) // CI/CD workflow management
-app.route('/api/orgs/:orgId', analyticsRouter) // CI/CD health analytics
-app.route('/api/orgs/:orgId', usageRouter) // token usage aggregates
-app.route('/api/orgs/:orgId', webhookEventsRouter) // webhook event replay
-app.route('/api/orgs/:orgId', approvalsRouter) // pending-approval ack + list
+const app = createApp({ handoffStore })
 
 const port = parseInt(process.env.PORT ?? '3001')
 

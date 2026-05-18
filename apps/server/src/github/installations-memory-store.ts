@@ -25,6 +25,8 @@ export function createMemoryInstallationStore(): InstallationStore {
         installedAt: existing?.installedAt ?? now,
         updatedAt: now,
         suspendedAt: input.suspendedAt ?? null,
+        apiKeyHash: input.apiKeyHash ?? existing?.apiKeyHash ?? null,
+        apiKeyIssuedAt: input.apiKeyIssuedAt ?? existing?.apiKeyIssuedAt ?? null,
       }
       byInstallationId.set(record.installationId, record)
       orgIndex.set(record.orgId, record.installationId)
@@ -37,6 +39,12 @@ export function createMemoryInstallationStore(): InstallationStore {
     },
     async fetchByInstallationId(installationId: number): Promise<InstallationRecord | null> {
       return byInstallationId.get(installationId) ?? null
+    },
+    async fetchByApiKeyHash(apiKeyHash: string): Promise<InstallationRecord | null> {
+      for (const record of byInstallationId.values()) {
+        if (record.apiKeyHash === apiKeyHash) return record
+      }
+      return null
     },
     async setSuspended(installationId: number, suspendedAt: Date | null): Promise<void> {
       const existing = byInstallationId.get(installationId)
