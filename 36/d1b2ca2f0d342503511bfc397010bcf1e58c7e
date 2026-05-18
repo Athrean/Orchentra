@@ -1,0 +1,9 @@
+apps/cli/src/commands/builtin/init-slash.ts
+  ai_agent 15,134-147,162-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "36d1b2ca2f0d342503511bfc397010bcf1e58c7e",
+  "prompts": {}
+}
