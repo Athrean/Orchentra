@@ -37,6 +37,15 @@ export function createMemoryInstallationStore(): InstallationStore {
       if (id === undefined) return null
       return byInstallationId.get(id) ?? null
     },
+    async fetchByOwnerCaseInsensitive(owner: string): Promise<InstallationRecord | null> {
+      const lower = owner.toLowerCase()
+      let latest: InstallationRecord | null = null
+      for (const record of byInstallationId.values()) {
+        if (record.account.login.toLowerCase() !== lower) continue
+        if (!latest || record.updatedAt > latest.updatedAt) latest = record
+      }
+      return latest
+    },
     async fetchByInstallationId(installationId: number): Promise<InstallationRecord | null> {
       return byInstallationId.get(installationId) ?? null
     },
