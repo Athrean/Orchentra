@@ -85,6 +85,15 @@ class DrizzleInstallationStore implements InstallationStore {
     return row ? rowToRecord(row) : null
   }
 
+  async fetchByApiKeyHash(apiKeyHash: string): Promise<InstallationRecord | null> {
+    const [row] = await db
+      .select()
+      .from(githubInstallations)
+      .where(eq(githubInstallations.apiKeyHash, apiKeyHash))
+      .limit(1)
+    return row ? rowToRecord(row) : null
+  }
+
   async setSuspended(installationId: number, suspendedAt: Date | null): Promise<void> {
     await db
       .update(githubInstallations)

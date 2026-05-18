@@ -1,11 +1,13 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { generateApiKey, hashApiKey as hashApiKeyShared } from '../auth/session'
 
 /**
- * Mints an Orchentra apiKey scoped to a single GitHub App installation. The
- * plaintext is 32 bytes of CSPRNG output, base64url-encoded for transport
- * (no padding to keep query-string handling simple). The SHA-256 hash is
- * what we persist on the installations row — the plaintext is returned
- * exactly once via the loopback redirect and never logged.
+ * Mints an Orchentra apiKey scoped to a single GitHub App installation.
+ *
+ * The plaintext shares the `orch_<hex>` format used by user-issued keys
+ * (see `auth/session.generateApiKey`) so `requireAuth` can recognize and
+ * validate both kinds through the same `Bearer orch_*` precondition. The
+ * SHA-256 hash is what we persist on the installations row — the plaintext
+ * is returned exactly once via the loopback redirect and never logged.
  */
 export interface MintedApiKey {
   readonly plaintext: string
@@ -13,10 +15,8 @@ export interface MintedApiKey {
 }
 
 export function mintApiKey(): MintedApiKey {
-  const plaintext = randomBytes(32).toString('base64url')
-  return { plaintext, hash: hashApiKey(plaintext) }
+  const plaintext = generateApiKey()
+  return { plaintext, hash: hashApiKeyShared(plaintext) }
 }
 
-export function hashApiKey(plaintext: string): string {
-  return createHash('sha256').update(plaintext).digest('hex')
-}
+export const hashApiKey = hashApiKeyShared

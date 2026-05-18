@@ -3,6 +3,7 @@ import { getCookie, deleteCookie } from 'hono/cookie'
 import { eq, and, gt, isNull, or } from 'drizzle-orm'
 import { db, apiKeys, orgMembers, users } from '../db/client'
 import { validateSession, SESSION_COOKIE_NAME, hashApiKey } from './session'
+import { getInstallationByApiKeyHash } from '../github/installations'
 import type { UserRow } from '../types'
 
 /** Require a valid session cookie. Returns 401 if missing/expired. */
@@ -37,9 +38,22 @@ export async function requireAuth(c: Context, next: Next): Promise<Response | vo
   const authHeader = c.req.header('Authorization')
   if (authHeader?.startsWith('Bearer orch_')) {
     const user = await resolveApiKeyUser(c)
-    if (!user) return c.json({ error: 'Invalid API key' }, 401)
-    c.set('user', user)
-    return next()
+    if (user) {
+      c.set('user', user)
+      return next()
+    }
+    // User-issued lookup missed — fall through to the installation-scoped
+    // key path. Bootstrap apiKeys minted at GitHub App install time aren't
+    // tied to a user row; they live on `github_installations.api_key_hash`
+    // and grant access only to their own org.
+    const key = authHeader.slice('Bearer '.length)
+    const installation = await resolveInstallationFromApiKey(key)
+    if (installation) {
+      c.set('installation', installation)
+      c.set('user', sentinelInstallationUser(installation.installationId))
+      return next()
+    }
+    return c.json({ error: 'Invalid API key' }, 401)
   }
 
   const sessionId = getCookie(c, SESSION_COOKIE_NAME)
@@ -83,11 +97,20 @@ export async function requireOrgAdmin(c: Context, next: Next): Promise<Response 
 }
 
 async function resolveOrgMembership(c: Context): Promise<{ orgId: string; role: string } | Response> {
-  const user = c.get('user')
-  if (!user) return c.json({ error: 'Authentication required' }, 401)
-
   const orgId = c.req.param('orgId')
   if (!orgId) return c.json({ error: 'Missing orgId' }, 400)
+
+  // Installation-scoped principals don't have an `org_members` row — they
+  // are authorized for their own installation's org and nothing else. The
+  // bootstrap apiKey minted at GitHub App install grants exactly this.
+  const installation = c.get('installation')
+  if (installation) {
+    if (installation.orgId !== orgId) return c.json({ error: 'Forbidden' }, 403)
+    return { orgId, role: 'installation' }
+  }
+
+  const user = c.get('user')
+  if (!user) return c.json({ error: 'Authentication required' }, 401)
 
   const [membership] = await db
     .select({ role: orgMembers.role })
@@ -98,6 +121,28 @@ async function resolveOrgMembership(c: Context): Promise<{ orgId: string; role: 
   if (!membership) return c.json({ error: 'Forbidden' }, 403)
 
   return { orgId, role: membership.role }
+}
+
+async function resolveInstallationFromApiKey(key: string): Promise<{ installationId: number; orgId: string } | null> {
+  if (!key.startsWith('orch_')) return null
+  const record = await getInstallationByApiKeyHash(hashApiKey(key))
+  if (!record || record.suspendedAt) return null
+  return { installationId: record.installationId, orgId: record.orgId }
+}
+
+function sentinelInstallationUser(installationId: number): UserRow {
+  const now = new Date()
+  return {
+    id: `installation:${installationId}`,
+    githubId: 0,
+    username: `installation:${installationId}`,
+    displayName: null,
+    avatarUrl: null,
+    email: null,
+    githubAccessToken: null,
+    createdAt: now,
+    updatedAt: now,
+  }
 }
 
 async function resolveApiKeyUser(c: Context): Promise<UserRow | null> {

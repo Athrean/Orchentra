@@ -40,6 +40,12 @@ export function createMemoryInstallationStore(): InstallationStore {
     async fetchByInstallationId(installationId: number): Promise<InstallationRecord | null> {
       return byInstallationId.get(installationId) ?? null
     },
+    async fetchByApiKeyHash(apiKeyHash: string): Promise<InstallationRecord | null> {
+      for (const record of byInstallationId.values()) {
+        if (record.apiKeyHash === apiKeyHash) return record
+      }
+      return null
+    },
     async setSuspended(installationId: number, suspendedAt: Date | null): Promise<void> {
       const existing = byInstallationId.get(installationId)
       if (!existing) return
