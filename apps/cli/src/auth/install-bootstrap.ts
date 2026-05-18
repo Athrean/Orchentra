@@ -30,6 +30,20 @@ export interface BootstrapDeps {
    * own banner; the `/init` slash routes events into a UI card.
    */
   onProgress?(step: string): void
+  /**
+   * Optional interactive prompt. Returns the user's typed answer. Used by
+   * the suspended-install branch to ask "Re-install to continue? [Y/n]"
+   * before re-routing to the install/new flow. Tests inject a deterministic
+   * answer; the shell verb wires this to stdin.
+   */
+  prompt?(question: string): Promise<string>
+  /**
+   * Optional fallback when `openBrowser` is unavailable on the host (e.g.
+   * `xdg-open` not installed in a container). The orchestrator surfaces the
+   * install URL via this callback so the user can copy it manually; the
+   * loopback continues waiting for the callback.
+   */
+  printInstallUrl?(url: string): void
 }
 
 export type BootstrapResult =
@@ -112,10 +126,31 @@ async function startHandoff(
   return { ok: false, error: body?.error ?? `handoff start failed: HTTP ${res.status}` }
 }
 
+function isAffirmative(answer: string): boolean {
+  const trimmed = answer.trim().toLowerCase()
+  // Default-Y prompt: empty / "y" / "yes" mean accept; anything else declines.
+  return trimmed === '' || trimmed === 'y' || trimmed === 'yes'
+}
+
 export async function runInstallBootstrap(deps: BootstrapDeps): Promise<BootstrapResult> {
   const state = deps.randomState()
   deps.onProgress?.('probing install state…')
-  const existing = await probeByOwner(deps)
+  let existing = await probeByOwner(deps)
+  if (existing && existing.suspendedAt) {
+    if (!deps.prompt) {
+      return {
+        ok: false,
+        error: 'install is suspended and no prompt is available to confirm re-install',
+      }
+    }
+    const answer = await deps.prompt('Install is suspended. Re-install to continue? [Y/n]')
+    if (!isAffirmative(answer)) {
+      return { ok: false, error: 'user declined to re-install (install is still suspended)' }
+    }
+    // Route to install/new — the existing record is rotated by the server
+    // callback once the user completes the fresh install flow.
+    existing = null
+  }
   const loopback = await deps.makeLoopback({ timeoutMs: deps.timeoutMs })
   const redirectUri = `http://127.0.0.1:${loopback.port}/install-cb`
 
