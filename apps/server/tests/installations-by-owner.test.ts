@@ -22,11 +22,14 @@ afterAll(() => {
   setInstallationStoreForTesting(null)
 })
 
-async function seed(orgId: string, opts: { suspendedAt?: Date } = {}): Promise<void> {
+async function seed(
+  orgId: string,
+  opts: { suspendedAt?: Date; installationId?: number; accountLogin?: string } = {},
+): Promise<void> {
   await recordInstallation({
-    installationId: 8675309,
+    installationId: opts.installationId ?? 8675309,
     orgId,
-    account: { login: orgId, type: 'Organization' },
+    account: { login: opts.accountLogin ?? orgId, type: 'Organization' },
     repositorySelection: 'selected',
     permissions: {},
     events: [],
@@ -71,6 +74,27 @@ describe('GET /api/installations/by-owner/:owner', () => {
     const res = await app.request('/api/installations/by-owner/athrean')
     expect(res.status).toBe(200)
     expect((await res.json()).orgId).toBe('Athrean')
+  })
+
+  test('matches on the GitHub account login, not on Orchentra orgId', async () => {
+    // orgId is an internal Orchentra identifier; the route receives a GitHub
+    // owner login from the CLI. Matching on orgId silently misses real
+    // installations whenever the two diverge.
+    await seed('internal-abc', { accountLogin: 'Athrean', installationId: 4242 })
+    const hit = await app.request('/api/installations/by-owner/Athrean')
+    expect(hit.status).toBe(200)
+    expect((await hit.json()).installationId).toBe(4242)
+    const miss = await app.request('/api/installations/by-owner/internal-abc')
+    expect(miss.status).toBe(404)
+  })
+
+  test('returns the most recently updated installation when an owner has multiple', async () => {
+    await seed('org_old', { accountLogin: 'Athrean', installationId: 1001 })
+    await new Promise((r) => setTimeout(r, 5))
+    await seed('org_new', { accountLogin: 'Athrean', installationId: 2002 })
+    const res = await app.request('/api/installations/by-owner/Athrean')
+    expect(res.status).toBe(200)
+    expect((await res.json()).installationId).toBe(2002)
   })
 
   test('rejects a malformed owner (chars/length) with 400', async () => {
