@@ -33,6 +33,7 @@ import { TriageSlashCommand } from './triage-slash'
 import { CleanSlashCommand } from './clean-slash'
 import { EnvSlashCommand } from './env-slash'
 import { ScanSlashCommand } from './scan-slash'
+import { InitSlashCommand } from './init-slash'
 import { registerAllOpsAsSlash } from '../../op-commands/wire'
 
 export function createBuiltinRegistry(): CommandRegistry {
@@ -109,6 +110,10 @@ export function createBuiltinRegistry(): CommandRegistry {
 
   // Slice K: /scan — LLM code review (BYOK).
   registry.register(new ScanSlashCommand())
+
+  // Bootstrap slice 4: /init wraps the install orchestrator inside the REPL
+  // so users don't need to exit and re-launch to onboard.
+  registry.register(new InitSlashCommand())
   registry.register(
     createServerCommand(
       {
