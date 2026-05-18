@@ -96,10 +96,10 @@ export type IncidentDetailResponse = z.infer<typeof IncidentDetailResponseSchema
 // human_review, patch, rollback). The aliases below let consumers adopt the
 // new names ahead of the schema-rename cleanup pass without churn.
 
-export const ExecutionKindSchema = z.enum(['ci_failure', 'alert', 'deploy', 'cron', 'manual'])
+export const ExecutionKindSchema = z.enum(['ci_failure', 'cron'])
 export type ExecutionKind = z.infer<typeof ExecutionKindSchema>
 
-export const NodeKindSchema = z.enum(['tool_call', 'decision', 'human_review', 'patch', 'rollback'])
+export const NodeKindSchema = z.enum(['tool_call'])
 export type NodeKind = z.infer<typeof NodeKindSchema>
 
 export const ExecutionStatusSchema = IncidentStatusSchema

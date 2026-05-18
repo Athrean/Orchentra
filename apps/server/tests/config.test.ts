@@ -84,28 +84,6 @@ llm:
     expect(config.llm.model).toBe('anthropic/claude-sonnet-4-5')
   })
 
-  test('accepts optional integrations section', () => {
-    const configPath = writeConfig(`
-github:
-  webhook_secret: "test-secret"
-  token: "ghp_test"
-  repos: ["org/repo"]
-
-llm:
-  api_key: "sk-ant-test"
-
-integrations:
-  sentry:
-    auth_token: "sntryu_test"
-    org: "my-org"
-`)
-    const config = loadConfigFromPath(configPath)
-
-    expect(config.integrations?.sentry?.auth_token).toBe('sntryu_test')
-    expect(config.integrations?.sentry?.org).toBe('my-org')
-    expect(config.integrations?.datadog).toBeUndefined()
-  })
-
   test('works without integrations section', () => {
     const configPath = writeConfig(`
 github:

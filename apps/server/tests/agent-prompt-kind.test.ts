@@ -29,12 +29,6 @@ describe('buildAgentSystemPrompt — branching on execution.kind', () => {
     expect(prompt).toContain('CI/CD failure')
   })
 
-  test('kind=alert renders an alert-triage persona, not the CI-failure one', () => {
-    const prompt = buildAgentSystemPrompt({ registry, kind: 'alert' })
-    expect(prompt).toContain('production alert')
-    expect(prompt).not.toContain('CI/CD failure')
-  })
-
   test('kind=cron renders a scheduled-task persona', () => {
     const prompt = buildAgentSystemPrompt({ registry, kind: 'cron' })
     expect(prompt).toContain('scheduled task')
@@ -42,7 +36,7 @@ describe('buildAgentSystemPrompt — branching on execution.kind', () => {
   })
 
   test('all kinds still render the tool catalog (deep-module contract)', () => {
-    for (const kind of ['ci_failure', 'alert', 'cron'] as const) {
+    for (const kind of ['ci_failure', 'cron'] as const) {
       const prompt = buildAgentSystemPrompt({ registry, kind })
       expect(prompt).toContain('Available tools:')
       expect(prompt).toContain('get_workflow_logs')
@@ -50,7 +44,7 @@ describe('buildAgentSystemPrompt — branching on execution.kind', () => {
   })
 
   test('all kinds still render the strategy/rules tail so caching still hits per-kind', () => {
-    for (const kind of ['ci_failure', 'alert', 'cron'] as const) {
+    for (const kind of ['ci_failure', 'cron'] as const) {
       const prompt = buildAgentSystemPrompt({ registry, kind })
       expect(prompt).toContain('Tool calling strategy')
       expect(prompt).toContain('Confidence scoring')

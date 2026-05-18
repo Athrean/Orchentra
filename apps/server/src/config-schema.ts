@@ -27,22 +27,6 @@ export const ConfigSchema = z.object({
     max_steps: z.number().int().min(1).max(20).default(10),
     compact_threshold: z.number().int().min(5000).default(80_000),
   }),
-  integrations: z
-    .object({
-      sentry: z
-        .object({
-          auth_token: z.string().min(1),
-          org: z.string().min(1),
-        })
-        .optional(),
-      datadog: z
-        .object({
-          api_key: z.string().min(1),
-          app_key: z.string().min(1),
-        })
-        .optional(),
-    })
-    .optional(),
 })
 
 export type Config = z.infer<typeof ConfigSchema>
