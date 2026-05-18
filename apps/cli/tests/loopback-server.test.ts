@@ -58,7 +58,53 @@ describe('startLoopback', () => {
 
   test('honors timeoutMs and rejects waitForCallback with a timeout error', async () => {
     const server = await startLoopback({ timeoutMs: 100 })
-    await expect(server.waitForCallback()).rejects.toThrow(/timeout/i)
+    await expect(server.waitForCallback()).rejects.toThrow(/timed out/i)
     server.stop()
+  })
+
+  test('timeout message instructs the user to re-run `orchentra init`', async () => {
+    const server = await startLoopback({ timeoutMs: 50 })
+    let caught: Error | null = null
+    try {
+      await server.waitForCallback()
+    } catch (err) {
+      caught = err as Error
+    }
+    expect(caught).not.toBeNull()
+    expect(caught!.message).toMatch(/bootstrap timed out/i)
+    expect(caught!.message).toMatch(/re-run `orchentra init`/)
+    server.stop()
+  })
+
+  test('retries on EADDRINUSE up to 3 times then binds', async () => {
+    // First two ports collide with a pre-bound listener; the third is free.
+    const blocker = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => new Response('x') })
+    const taken = blocker.port as number
+    const queue = [taken, taken, 0]
+    let calls = 0
+    const server = await startLoopback({
+      timeoutMs: 5_000,
+      pickPort: () => {
+        const p = queue[calls] ?? 0
+        calls++
+        return p
+      },
+    })
+    expect(calls).toBe(3)
+    expect(server.port).toBeGreaterThan(0)
+    server.stop()
+    blocker.stop(true)
+  })
+
+  test('fails after 3 EADDRINUSE retries', async () => {
+    const blocker = Bun.serve({ port: 0, hostname: '127.0.0.1', fetch: () => new Response('x') })
+    const taken = blocker.port as number
+    await expect(
+      startLoopback({
+        timeoutMs: 5_000,
+        pickPort: () => taken,
+      }),
+    ).rejects.toThrow(/could not bind/i)
+    blocker.stop(true)
   })
 })
