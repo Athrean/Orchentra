@@ -32,6 +32,12 @@ export function parseGitHubRemote(url: string): GitHubRepo | null {
 export function inferGitHubOwner(cwd: string): GitHubRepo | null {
   const res = Bun.spawnSync(['git', 'remote', 'get-url', 'origin'], {
     cwd,
+    // GIT_DIR / GIT_WORK_TREE in the inherited env override `cwd` for
+    // any child git process. That bites when orchentra is invoked from
+    // inside another git operation (e.g. a husky pre-commit hook for
+    // tests) — the probe would resolve the *outer* worktree's origin
+    // instead of `cwd`'s. Strip git env vars so `cwd` is authoritative.
+    env: gitFreeEnv(),
     stdout: 'pipe',
     stderr: 'pipe',
   })
@@ -39,4 +45,14 @@ export function inferGitHubOwner(cwd: string): GitHubRepo | null {
   const url = new TextDecoder().decode(res.stdout).trim()
   if (url.length === 0) return null
   return parseGitHubRemote(url)
+}
+
+function gitFreeEnv(): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value === undefined) continue
+    if (key.startsWith('GIT_')) continue
+    out[key] = value
+  }
+  return out
 }
