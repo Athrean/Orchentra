@@ -38,6 +38,31 @@ export type BootstrapResult =
       readonly error: string
     }
 
+interface ExistingInstall {
+  readonly installationId: number
+  readonly suspendedAt: string | null
+}
+
+async function probeByOwner(deps: BootstrapDeps): Promise<ExistingInstall | null> {
+  try {
+    const res = await deps.fetch(`${deps.serverUrl}/api/installations/by-owner/${deps.owner}`)
+    if (res.status !== 200) return null
+    const body = (await res.json()) as { installationId?: unknown; suspendedAt?: unknown }
+    if (typeof body.installationId !== 'number') return null
+    const suspendedAt = typeof body.suspendedAt === 'string' ? body.suspendedAt : null
+    return { installationId: body.installationId, suspendedAt }
+  } catch {
+    return null
+  }
+}
+
+function buildInstallUrl(deps: BootstrapDeps, state: string, existing: ExistingInstall | null): string {
+  if (existing) {
+    return `https://github.com/apps/${deps.appSlug}/installations/${existing.installationId}?state=${state}`
+  }
+  return `https://github.com/apps/${deps.appSlug}/installations/new?state=${state}`
+}
+
 async function startHandoff(
   deps: BootstrapDeps,
   state: string,
@@ -65,6 +90,7 @@ async function startHandoff(
 
 export async function runInstallBootstrap(deps: BootstrapDeps): Promise<BootstrapResult> {
   const state = deps.randomState()
+  const existing = await probeByOwner(deps)
   const loopback = await deps.makeLoopback({ timeoutMs: deps.timeoutMs })
   const redirectUri = `http://127.0.0.1:${loopback.port}/install-cb`
 
@@ -72,7 +98,7 @@ export async function runInstallBootstrap(deps: BootstrapDeps): Promise<Bootstra
     const started = await startHandoff(deps, state, redirectUri)
     if (!started.ok) return { ok: false, error: started.error }
 
-    const installUrl = `https://github.com/apps/${deps.appSlug}/installations/new?state=${state}`
+    const installUrl = buildInstallUrl(deps, state, existing)
     await deps.openBrowser(installUrl)
 
     let payload: Awaited<ReturnType<LoopbackServer['waitForCallback']>>

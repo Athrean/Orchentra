@@ -14,6 +14,7 @@ import { requireAuth, requireOrgMember } from './auth/middleware'
 import { authRouter } from './routes/auth'
 import { createGithubAppRouter, type GithubAppCallbackDeps } from './routes/github-app'
 import { createInstallHandoffRouter } from './routes/install-handoff'
+import { createInstallationsRouter } from './routes/installations'
 import { webhooksRouter } from './routes/webhooks'
 import { apiRouter } from './routes/api'
 import { incidentsRouter } from './routes/incidents'
@@ -60,9 +61,12 @@ export function createApp(deps: CreateAppDeps): Hono {
   app.route('/auth/github/app', createGithubAppRouter({ handoffStore: deps.handoffStore, ...deps.githubAppOverrides }))
   app.route('/webhooks', webhooksRouter)
 
-  // Anonymous bootstrap route — fresh CLI clients have no apiKey yet, so
-  // this must be mounted before the `/api/*` requireAuth guard.
+  // Anonymous bootstrap routes — fresh CLI clients have no apiKey yet,
+  // so these must be mounted before the `/api/*` requireAuth guard. The
+  // by-owner installation lookup is safe to expose anonymously (GitHub
+  // already publishes installation state for public orgs).
   app.route('/api/install-handoff', createInstallHandoffRouter({ store: deps.handoffStore }))
+  app.route('/api/installations', createInstallationsRouter())
 
   app.use('/api/*', requireAuth)
   app.use('/api/orgs/:orgId', requireOrgMember)
