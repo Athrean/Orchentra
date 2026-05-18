@@ -117,3 +117,117 @@ describe('GET /auth/github/app/callback', () => {
     expect(res.headers.get('location') ?? '').toContain('error=persist_failed')
   })
 })
+
+describe('GET /auth/github/app/callback — state-bearing CLI handoff', () => {
+  test('with a valid state: mints apiKey, persists hash, redirects to loopback', async () => {
+    const { createMemoryInstallHandoffStore } = await import('../src/github/install-handoff-memory-store')
+    const handoffStore = createMemoryInstallHandoffStore({
+      now: () => 1_700_000_000_000,
+      ttlMs: 5 * 60_000,
+    })
+    const stateNonce = 'a'.repeat(48)
+    handoffStore.start({ state: stateNonce, redirectUri: 'http://127.0.0.1:49281/install-cb' })
+
+    const minted = { plaintext: 'plaintext-key-1', hash: 'fakehash' }
+    const fixedNow = new Date('2026-05-15T00:00:00Z')
+
+    const deps: Partial<GithubAppCallbackDeps> = {
+      loadAppCredentials: () => state.loadCredsResult,
+      mintJwt: async () => 'fake-jwt-token',
+      fetchInstallationMetadata: async () => state.metadataResponse,
+      recordInstallation: async (input) => {
+        state.recordedInstallations.push(input)
+        return input
+      },
+      resolveOrgId: () => 'Athrean',
+      frontendUrl: () => 'http://localhost:3000',
+      handoffStore,
+      mintApiKey: () => minted,
+      now: () => fixedNow,
+    }
+    const app = new Hono()
+    app.route('/auth/github/app', createGithubAppRouter(deps))
+    const res = await app.request(
+      `/auth/github/app/callback?installation_id=8675309&setup_action=update&state=${stateNonce}`,
+    )
+
+    expect(res.status).toBe(302)
+    const location = res.headers.get('location') ?? ''
+    expect(location).toStartWith('http://127.0.0.1:49281/install-cb?')
+    expect(location).toContain('orgId=Athrean')
+    expect(location).toContain('installationId=8675309')
+    expect(location).toContain('apiKey=plaintext-key-1')
+
+    expect(state.recordedInstallations.length).toBe(1)
+    expect(state.recordedInstallations[0].apiKeyHash).toBe('fakehash')
+    expect(state.recordedInstallations[0].apiKeyIssuedAt).toBe(fixedNow)
+
+    const completed = handoffStore.get(stateNonce)
+    expect(completed?.status).toBe('complete')
+    expect(completed?.result?.apiKey).toBe('plaintext-key-1')
+  })
+
+  test('with an unknown state: falls back to dashboard error redirect (no plaintext leak)', async () => {
+    const { createMemoryInstallHandoffStore } = await import('../src/github/install-handoff-memory-store')
+    const handoffStore = createMemoryInstallHandoffStore({
+      now: () => 1_700_000_000_000,
+      ttlMs: 5 * 60_000,
+    })
+    const deps: Partial<GithubAppCallbackDeps> = {
+      loadAppCredentials: () => state.loadCredsResult,
+      mintJwt: async () => 'fake-jwt-token',
+      fetchInstallationMetadata: async () => state.metadataResponse,
+      recordInstallation: async (input) => {
+        state.recordedInstallations.push(input)
+        return input
+      },
+      resolveOrgId: () => 'Athrean',
+      frontendUrl: () => 'http://localhost:3000',
+      handoffStore,
+      mintApiKey: () => ({ plaintext: 'should-not-leak', hash: 'h' }),
+      now: () => new Date(),
+    }
+    const app = new Hono()
+    app.route('/auth/github/app', createGithubAppRouter(deps))
+    const res = await app.request(`/auth/github/app/callback?installation_id=8675309&state=${'z'.repeat(48)}`)
+
+    expect(res.status).toBe(302)
+    const location = res.headers.get('location') ?? ''
+    expect(location).toContain('/dashboard/integrations')
+    expect(location).toContain('error=invalid_state')
+    expect(location).not.toContain('should-not-leak')
+    expect(state.recordedInstallations.length).toBe(0)
+  })
+
+  test('with state + persist failure: redirects to loopback with ?error= (not dashboard)', async () => {
+    const { createMemoryInstallHandoffStore } = await import('../src/github/install-handoff-memory-store')
+    const handoffStore = createMemoryInstallHandoffStore({
+      now: () => 1_700_000_000_000,
+      ttlMs: 5 * 60_000,
+    })
+    const stateNonce = 'b'.repeat(48)
+    handoffStore.start({ state: stateNonce, redirectUri: 'http://127.0.0.1:50000/install-cb' })
+
+    const deps: Partial<GithubAppCallbackDeps> = {
+      loadAppCredentials: () => state.loadCredsResult,
+      mintJwt: async () => 'fake-jwt-token',
+      fetchInstallationMetadata: async () => state.metadataResponse,
+      recordInstallation: async () => {
+        throw new Error('boom')
+      },
+      resolveOrgId: () => 'Athrean',
+      frontendUrl: () => 'http://localhost:3000',
+      handoffStore,
+      mintApiKey: () => ({ plaintext: 'p', hash: 'h' }),
+      now: () => new Date(),
+    }
+    const app = new Hono()
+    app.route('/auth/github/app', createGithubAppRouter(deps))
+    const res = await app.request(`/auth/github/app/callback?installation_id=8675309&state=${stateNonce}`)
+
+    expect(res.status).toBe(302)
+    const location = res.headers.get('location') ?? ''
+    expect(location).toStartWith('http://127.0.0.1:50000/install-cb?')
+    expect(location).toContain('error=persist_failed')
+  })
+})

@@ -496,10 +496,13 @@ export const githubInstallations = pgTable(
     installedAt: timestamp('installed_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+    apiKeyHash: text('api_key_hash'),
+    apiKeyIssuedAt: timestamp('api_key_issued_at', { withTimezone: true }),
   },
   (table) => [
     uniqueIndex('github_installations_installation_id_unique').on(table.installationId),
     index('github_installations_org_id_idx').on(table.orgId),
+    index('github_installations_api_key_hash_idx').on(table.apiKeyHash),
   ],
 )
 
