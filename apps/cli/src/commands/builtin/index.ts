@@ -35,6 +35,7 @@ import { CleanSlashCommand } from './clean-slash'
 import { EnvSlashCommand } from './env-slash'
 import { ScanSlashCommand } from './scan-slash'
 import { InitSlashCommand } from './init-slash'
+import { ReposSlashCommand } from './repos-slash'
 import { registerAllOpsAsSlash } from '../../op-commands/wire'
 
 export function createBuiltinRegistry(): CommandRegistry {
@@ -116,6 +117,11 @@ export function createBuiltinRegistry(): CommandRegistry {
   // Bootstrap slice 4: /init wraps the install orchestrator inside the REPL
   // so users don't need to exit and re-launch to onboard.
   registry.register(new InitSlashCommand())
+
+  // Org-wide repo view: lists every repo the signed-in installation can
+  // see, tagged with installed/monitored flags so the user can pick a
+  // repo before running repo-scoped verbs.
+  registry.register(new ReposSlashCommand())
   registry.register(
     createServerCommand(
       {

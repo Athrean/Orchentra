@@ -3,6 +3,8 @@ import { Octokit } from '@octokit/rest'
 import { MonitorRepoRequestSchema } from '@orchentra/core'
 import { getAvailableRepos, invalidateMonitoredReposCache } from '../lib/repo-cache'
 import { getOrgMonitoredRepos, insertMonitoredRepo, deleteMonitoredRepo } from '../queries/repos'
+import { listInstalledOwnerLogins } from '../queries/installations'
+import { markRepoInstallation } from '../lib/repo-install-merge'
 import { backfillRepoIncidents } from '../lib/backfill'
 import { config } from '../config'
 import type { AppVariables } from '../types'
@@ -35,14 +37,15 @@ reposRouter.get('/available', async (c) => {
   const orgId = c.get('orgId')!
   const user = c.get('user')
 
-  const [available, orgMonitoredRows] = await Promise.all([
+  const [available, orgMonitoredRows, installedOwners] = await Promise.all([
     getAvailableRepos(user.githubAccessToken),
     getOrgMonitoredRepos(orgId),
+    listInstalledOwnerLogins(),
   ])
 
   const monitored = new Set(orgMonitoredRows.map((r) => r.repo.toLowerCase()))
 
-  const repos = available.map((repo) => ({
+  const repos = markRepoInstallation(available, installedOwners).map((repo) => ({
     ...repo,
     monitored: monitored.has(repo.fullName.toLowerCase()),
   }))
