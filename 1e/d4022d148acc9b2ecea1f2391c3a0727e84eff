@@ -1,0 +1,13 @@
+apps/server/src/github/installations-memory-store.ts
+  ai_agent 42,44-45,47
+apps/server/src/github/installations-store.ts
+  ai_agent 80-83,87-88
+apps/server/tests/installations-by-owner.test.ts
+  ai_agent 25-28,30,32,79-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "1ed4022d148acc9b2ecea1f2391c3a0727e84eff",
+  "prompts": {}
+}
