@@ -3,7 +3,7 @@ import * as barrel from '../src/index'
 
 /**
  * Lock the public surface of @orchentra/mcp-server. External consumers
- * (apps/server, apps/mcp-host, the docs site) import from the barrel; if a
+ * (apps/server, the docs site) import from the barrel; if a
  * future refactor renames or drops one of these names the test breaks
  * loudly instead of silently regressing the consumers.
  */
