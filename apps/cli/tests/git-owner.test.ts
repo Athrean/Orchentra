@@ -28,6 +28,20 @@ describe('parseGitHubRemote — string-level variants', () => {
     })
   })
 
+  test('ssh:// URL form with .git suffix', () => {
+    expect(parseGitHubRemote('ssh://git@github.com/Athrean/Orchentra.git')).toEqual({
+      owner: 'Athrean',
+      repo: 'Orchentra',
+    })
+  })
+
+  test('ssh:// URL form without .git suffix', () => {
+    expect(parseGitHubRemote('ssh://git@github.com/Athrean/Orchentra')).toEqual({
+      owner: 'Athrean',
+      repo: 'Orchentra',
+    })
+  })
+
   test('HTTPS with .git suffix', () => {
     expect(parseGitHubRemote('https://github.com/Athrean/Orchentra.git')).toEqual({
       owner: 'Athrean',

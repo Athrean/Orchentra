@@ -15,16 +15,17 @@ export interface GitHubRepo {
   readonly repo: string
 }
 
-const SSH_PATTERN = /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?\/?$/
+const SSH_SCP_PATTERN = /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?\/?$/
+const SSH_URL_PATTERN = /^ssh:\/\/git@github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/
 const HTTPS_PATTERN = /^https?:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/
 
 export function parseGitHubRemote(url: string): GitHubRepo | null {
   const trimmed = url.trim()
   if (trimmed.length === 0) return null
-  const ssh = trimmed.match(SSH_PATTERN)
-  if (ssh) return { owner: ssh[1], repo: ssh[2] }
-  const https = trimmed.match(HTTPS_PATTERN)
-  if (https) return { owner: https[1], repo: https[2] }
+  for (const pattern of [SSH_SCP_PATTERN, SSH_URL_PATTERN, HTTPS_PATTERN]) {
+    const match = trimmed.match(pattern)
+    if (match) return { owner: match[1], repo: match[2] }
+  }
   return null
 }
 

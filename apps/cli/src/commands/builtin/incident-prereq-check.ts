@@ -21,7 +21,7 @@ function buildInstallRow(originUrl: string | null): UiKVRow {
   }
   const parsed = parseGitHubRemote(originUrl)
   if (!parsed) {
-    return { key: 'GitHub App', value: 'not a github repo' }
+    return { key: 'GitHub App', value: 'not a GitHub repo' }
   }
   return {
     key: 'GitHub App',
