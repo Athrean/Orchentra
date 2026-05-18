@@ -2,6 +2,7 @@ import { MissingOrchentraConfigError, resolveOrchentraConfig, type OrchentraConf
 import type { CommandContext } from '../registry'
 import type { UiKVRow } from '../ui-output'
 import type { PrereqCheck, PrereqCheckResult } from './incident-prereq'
+import { parseGitHubRemote } from '../../util/git-owner'
 
 /**
  * Environment seam — kept narrow so tests can swap the side-effectful
@@ -14,20 +15,12 @@ export interface IncidentPrereqEnv {
 
 const APP_SLUG = 'orchentra'
 
-function parseGitHubOwner(originUrl: string): string | null {
-  const sshMatch = originUrl.match(/git@github\.com:([^/]+)\/(.+?)(?:\.git)?$/)
-  if (sshMatch) return sshMatch[1]
-  const httpsMatch = originUrl.match(/github\.com\/([^/]+)\/(.+?)(?:\.git)?$/)
-  if (httpsMatch) return httpsMatch[1]
-  return null
-}
-
 function buildInstallRow(originUrl: string | null): UiKVRow {
   if (!originUrl) {
     return { key: 'GitHub App', value: 'n/a — no git origin detected' }
   }
-  const owner = parseGitHubOwner(originUrl)
-  if (!owner) {
+  const parsed = parseGitHubRemote(originUrl)
+  if (!parsed) {
     return { key: 'GitHub App', value: 'not a github repo' }
   }
   return {
