@@ -23,6 +23,13 @@ export interface BootstrapDeps {
   fetch: typeof fetch
   writeSettings(input: { cwd: string; orgId: string; serverUrl?: string }): string
   saveApiKey(apiKey: string): string
+  /**
+   * Optional progress callback. Fired at coarse-grained orchestration
+   * milestones (probing existing install, registering handoff, awaiting
+   * browser callback). The shell verb leaves this unset and prints its
+   * own banner; the `/init` slash routes events into a UI card.
+   */
+  onProgress?(step: string): void
 }
 
 export type BootstrapResult =
@@ -90,6 +97,7 @@ async function startHandoff(
 
 export async function runInstallBootstrap(deps: BootstrapDeps): Promise<BootstrapResult> {
   const state = deps.randomState()
+  deps.onProgress?.('probing install state…')
   const existing = await probeByOwner(deps)
   const loopback = await deps.makeLoopback({ timeoutMs: deps.timeoutMs })
   const redirectUri = `http://127.0.0.1:${loopback.port}/install-cb`
@@ -101,6 +109,7 @@ export async function runInstallBootstrap(deps: BootstrapDeps): Promise<Bootstra
     const installUrl = buildInstallUrl(deps, state, existing)
     await deps.openBrowser(installUrl)
 
+    deps.onProgress?.('waiting for browser…')
     let payload: Awaited<ReturnType<LoopbackServer['waitForCallback']>>
     try {
       payload = await loopback.waitForCallback()
