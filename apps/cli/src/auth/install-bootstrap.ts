@@ -30,6 +30,20 @@ export interface BootstrapDeps {
    * own banner; the `/init` slash routes events into a UI card.
    */
   onProgress?(step: string): void
+  /**
+   * Optional interactive prompt. Returns the user's typed answer. Used by
+   * the suspended-install branch to ask "Re-install to continue? [Y/n]"
+   * before re-routing to the install/new flow. Tests inject a deterministic
+   * answer; the shell verb wires this to stdin.
+   */
+  prompt?(question: string): Promise<string>
+  /**
+   * Optional fallback when `openBrowser` is unavailable on the host (e.g.
+   * `xdg-open` not installed in a container). The orchestrator surfaces the
+   * install URL via this callback so the user can copy it manually; the
+   * loopback continues waiting for the callback.
+   */
+  printInstallUrl?(url: string): void
 }
 
 export type BootstrapResult =
@@ -48,6 +62,23 @@ export type BootstrapResult =
 interface ExistingInstall {
   readonly installationId: number
   readonly suspendedAt: string | null
+}
+
+/**
+ * Map of server-side callback error codes to user-readable messages. Codes
+ * arrive in the `?error=<code>` query param the server adds when redirecting
+ * back to the loopback. Anything not in this table falls through to a
+ * pass-through preamble so the raw code is still visible.
+ */
+const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  app_credentials_unavailable:
+    'server has no GitHub App credentials — contact your Orchentra admin',
+  invalid_state: 'install link expired or stale — re-run `orchentra init`',
+  state_in_use: 'install link already consumed — re-run `orchentra init`',
+}
+
+function describeCallbackError(code: string): string {
+  return CALLBACK_ERROR_MESSAGES[code] ?? `callback error: ${code}`
 }
 
 async function probeByOwner(deps: BootstrapDeps): Promise<ExistingInstall | null> {
@@ -95,10 +126,31 @@ async function startHandoff(
   return { ok: false, error: body?.error ?? `handoff start failed: HTTP ${res.status}` }
 }
 
+function isAffirmative(answer: string): boolean {
+  const trimmed = answer.trim().toLowerCase()
+  // Default-Y prompt: empty / "y" / "yes" mean accept; anything else declines.
+  return trimmed === '' || trimmed === 'y' || trimmed === 'yes'
+}
+
 export async function runInstallBootstrap(deps: BootstrapDeps): Promise<BootstrapResult> {
   const state = deps.randomState()
   deps.onProgress?.('probing install state…')
-  const existing = await probeByOwner(deps)
+  let existing = await probeByOwner(deps)
+  if (existing && existing.suspendedAt) {
+    if (!deps.prompt) {
+      return {
+        ok: false,
+        error: 'install is suspended and no prompt is available to confirm re-install',
+      }
+    }
+    const answer = await deps.prompt('Install is suspended. Re-install to continue? [Y/n]')
+    if (!isAffirmative(answer)) {
+      return { ok: false, error: 'user declined to re-install (install is still suspended)' }
+    }
+    // Route to install/new — the existing record is rotated by the server
+    // callback once the user completes the fresh install flow.
+    existing = null
+  }
   const loopback = await deps.makeLoopback({ timeoutMs: deps.timeoutMs })
   const redirectUri = `http://127.0.0.1:${loopback.port}/install-cb`
 
@@ -107,7 +159,17 @@ export async function runInstallBootstrap(deps: BootstrapDeps): Promise<Bootstra
     if (!started.ok) return { ok: false, error: started.error }
 
     const installUrl = buildInstallUrl(deps, state, existing)
-    await deps.openBrowser(installUrl)
+    try {
+      await deps.openBrowser(installUrl)
+    } catch {
+      // No `open` / `xdg-open` / `start` on this host. Surface the URL so
+      // the user can open it manually; the loopback keeps waiting.
+      if (deps.printInstallUrl) {
+        deps.printInstallUrl(installUrl)
+      } else {
+        process.stdout.write(`Could not open a browser. Open this URL manually:\n  ${installUrl}\n`)
+      }
+    }
 
     deps.onProgress?.('waiting for browser…')
     let payload: Awaited<ReturnType<LoopbackServer['waitForCallback']>>
@@ -118,7 +180,7 @@ export async function runInstallBootstrap(deps: BootstrapDeps): Promise<Bootstra
     }
 
     if (payload.error) {
-      return { ok: false, error: `callback error: ${payload.error}` }
+      return { ok: false, error: describeCallbackError(payload.error) }
     }
     if (!payload.orgId || !payload.apiKey || !payload.installationId) {
       return { ok: false, error: 'callback payload missing fields' }

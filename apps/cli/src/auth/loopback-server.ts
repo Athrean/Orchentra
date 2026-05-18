@@ -30,13 +30,19 @@ export interface LoopbackServer {
 export interface StartLoopbackOptions {
   readonly timeoutMs: number
   readonly host?: string
+  /**
+   * Optional port picker. Tests inject a deterministic sequence to exercise
+   * the EADDRINUSE retry loop. In production a random pick in the IANA
+   * dynamic range is used.
+   */
+  pickPort?(): number
 }
 
 const PORT_MIN = 49152
 const PORT_MAX = 65535
-const BIND_RETRIES = 5
+const BIND_RETRIES = 3
 
-function pickPort(): number {
+function defaultPickPort(): number {
   return PORT_MIN + Math.floor(Math.random() * (PORT_MAX - PORT_MIN + 1))
 }
 
@@ -59,6 +65,7 @@ const SUCCESS_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Or
 
 export async function startLoopback(opts: StartLoopbackOptions): Promise<LoopbackServer> {
   const host = opts.host ?? '127.0.0.1'
+  const pickPort = opts.pickPort ?? defaultPickPort
 
   let resolveWait: ((p: InstallCallbackPayload) => void) | null = null
   let rejectWait: ((e: Error) => void) | null = null
@@ -108,7 +115,7 @@ export async function startLoopback(opts: StartLoopbackOptions): Promise<Loopbac
   const timeout = setTimeout(() => {
     if (!settled && rejectWait) {
       settled = true
-      rejectWait(new Error(`loopback timeout after ${opts.timeoutMs}ms`))
+      rejectWait(new Error('bootstrap timed out — re-run `orchentra init`'))
     }
   }, opts.timeoutMs)
 

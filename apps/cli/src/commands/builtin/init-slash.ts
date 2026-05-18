@@ -12,6 +12,7 @@
 
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { createInterface } from 'node:readline'
 import { saveCredential, writeProjectSettings } from '@orchentra/cli-api'
 import { runInstallBootstrap, type BootstrapResult } from '../../auth/install-bootstrap'
 import { startLoopback } from '../../auth/loopback-server'
@@ -130,6 +131,20 @@ async function defaultOpenBrowser(url: string): Promise<void> {
   })
 }
 
+async function defaultPrompt(question: string): Promise<string> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise<string>((resolve) => {
+    rl.question(`${question} `, (answer) => {
+      rl.close()
+      resolve(answer)
+    })
+  })
+}
+
+function defaultPrintInstallUrl(url: string): void {
+  process.stdout.write(`Could not open a browser. Open this URL manually:\n  ${url}\n`)
+}
+
 const productionBootstrap: SlashBootstrapFn = (input) =>
   runInstallBootstrap({
     serverUrl: input.serverUrl ?? DEFAULT_SERVER_URL,
@@ -144,6 +159,8 @@ const productionBootstrap: SlashBootstrapFn = (input) =>
     writeSettings: (i) => writeProjectSettings(i),
     saveApiKey: (apiKey) => saveCredential('orchentra', { apiKey }),
     onProgress: input.onProgress,
+    prompt: defaultPrompt,
+    printInstallUrl: defaultPrintInstallUrl,
   })
 
 export class InitSlashCommand implements CommandHandler {
