@@ -6,6 +6,7 @@ import type { PermissionMode } from '@orchentra/cli-core'
 import { detectColorMode } from './ansi'
 import { mascotWidthCols, renderMascot } from './mascot'
 import { THEME } from '../tui/theme'
+import { humanizeModelId } from '../model-catalog'
 
 export interface BannerOptions {
   readonly cliName: string
@@ -69,7 +70,7 @@ function IdeCompactBanner(props: BannerOptions): React.ReactElement {
   const infoMaxWidth = showMascot ? Math.max(8, cols - mascotW - 4) : Math.max(8, cols - 2)
 
   const titleLine = `${capitalize(props.cliName)} v${props.cliVersion}`
-  const metaLine = `${props.model} · ${provider}`
+  const metaLine = `${humanizeModelId(props.model)} · ${provider}`
 
   return (
     <Box flexDirection="row" alignItems="center" paddingX={1} paddingTop={1}>
@@ -115,7 +116,7 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
   const dashesAfterTitle = Math.max(boxWidth - titleLabel.length - 3, 0)
   const topBorder = `╭─${titleLabel}${'─'.repeat(dashesAfterTitle)}╮`
 
-  const meta = `${props.model} · ${provider}`
+  const meta = `${humanizeModelId(props.model)} · ${provider}`
 
   if (!showTips) {
     return (
