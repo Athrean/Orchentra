@@ -16,11 +16,3 @@ llm:
   model: "anthropic/claude-sonnet-4-5"
   # Optional: point to any OpenAI-compatible endpoint instead (zai, Ollama, etc.)
   # base_url: "https://api.z.ai/api/paas/v4"
-
-integrations:
-  sentry:
-    auth_token: "sntryu_xxx"
-    org: "my-org"
-  # datadog:
-  #   api_key: "xxx"
-  #   app_key: "xxx"

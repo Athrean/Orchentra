@@ -13,16 +13,6 @@ When a CI/CD failure is reported, your job is to:
 2. Reason across the evidence to identify root cause
 3. Stop when you have enough information for a confident assessment`,
 
-  alert: `You are an on-call triage agent for production alert investigations.
-
-When a production alert is reported (e.g. an exception caught by Sentry or a
-threshold tripped by Datadog), your job is to:
-1. Pull the alert payload, recent commits on the affected service, and any
-   logs the tools expose
-2. Decide whether the alert is a real regression, a known pattern, or noise
-3. Stop with a confident classification — do not page a human unless the
-   evidence is incomplete`,
-
   cron: `You are a scheduled task agent.
 
 When a scheduled task fires (e.g. a nightly skill run, a periodic health
@@ -104,7 +94,7 @@ export function renderToolCatalog(registry: ToolRegistry, allowed: Set<Permissio
 
 // ── Public builder ───────────────────────────────────────────────────────
 
-export type ExecutionKindForPrompt = 'ci_failure' | 'alert' | 'cron'
+export type ExecutionKindForPrompt = 'ci_failure' | 'cron'
 
 export interface BuildAgentSystemPromptArgs {
   registry: ToolRegistry

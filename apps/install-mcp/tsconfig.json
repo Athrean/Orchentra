@@ -1,9 +1,0 @@
-{
-  "extends": "@orchentra/typescript-config/base.json",
-  "compilerOptions": {
-    "types": ["bun"],
-    "noEmit": true
-  },
-  "include": ["src", "tests"],
-  "exclude": ["node_modules", "dist"]
-}
