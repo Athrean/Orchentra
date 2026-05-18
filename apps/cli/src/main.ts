@@ -13,6 +13,7 @@ import { runMcpList, runMcpTest } from './commands/mcp'
 import { runMcpServe } from './commands/mcp-serve'
 import { runLogin, runLogout, runAuthStatus } from './commands/run-auth'
 import { runReauth } from './commands/run-reauth'
+import { runInitBootstrap } from './commands/run-init'
 import { runGraph } from './commands/run-graph'
 import { runWhy } from './commands/run-why'
 import { runOpVerb } from './op-commands/run-op-verb'
@@ -36,6 +37,9 @@ async function main(argv: string[]): Promise<number> {
       return 0
 
     case 'init': {
+      if (action.fresh) {
+        return runInitBootstrap({ owner: action.owner, serverUrl: action.serverUrl })
+      }
       const report = initializeRepo(process.cwd())
       for (const artifact of report.artifacts) {
         const label = artifact.status === 'created' ? '+' : artifact.status === 'updated' ? '~' : '.'
