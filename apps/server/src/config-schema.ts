@@ -29,12 +29,6 @@ export const ConfigSchema = z.object({
   }),
   integrations: z
     .object({
-      sentry: z
-        .object({
-          auth_token: z.string().min(1),
-          org: z.string().min(1),
-        })
-        .optional(),
       datadog: z
         .object({
           api_key: z.string().min(1),
