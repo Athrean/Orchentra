@@ -1,48 +1,39 @@
 import React from 'react'
 import { Box, Text } from 'ink'
-import { BRAND_GREEN, type SuggestionItem, type SuggestionState, type SuggestionTrigger } from '../types'
+import { BRAND_GREEN, type SuggestionItem, type SuggestionState } from '../types'
 
 export interface SuggestionsProps {
   readonly state: SuggestionState
-  /** Width to align the box to; falls back to ink's natural sizing. */
+  /** Width to align the row to; falls back to ink's natural sizing. */
   readonly width?: number
 }
 
-const TRIGGER_TITLE: Record<SuggestionTrigger, string> = {
-  '/': 'commands',
-  '@': 'files',
-  '!': 'shell',
-}
+const PREFIX = '  '
+const SELECTED = '› '
+const GUTTER = '  '
 
 /**
- * Dropdown rendered just above the input box. Brand-green selection bar.
- * Hidden when `state.open` is false; the parent should not render at all in
- * that case (this just no-ops defensively).
+ * Dropdown rendered just above the input box. Borderless, two-column:
+ * label (fixed-width, brand-green for selected row) and description
+ * (dim, truncated to terminal width).
  */
 export function Suggestions(props: SuggestionsProps): React.ReactElement | null {
   const { state, width } = props
   if (!state.open || state.items.length === 0 || state.trigger === null) return null
 
+  const labelW = state.items.reduce((m, it) => Math.max(m, it.label.length), 0)
+
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={BRAND_GREEN} paddingX={1} width={width}>
-      <Box>
-        <Text color={BRAND_GREEN} bold>
-          {state.trigger}
-        </Text>
-        <Text dimColor> {TRIGGER_TITLE[state.trigger]}</Text>
-        {state.query.length > 0 ? (
-          <>
-            <Text dimColor> · </Text>
-            <Text>{state.query}</Text>
-          </>
-        ) : null}
-      </Box>
+    <Box flexDirection="column" width={width}>
       {state.items.map((item, index) => (
-        <Row key={`${index}-${item.value}`} item={item} selected={index === state.selected} />
+        <Row
+          key={`${index}-${item.value}`}
+          item={item}
+          selected={index === state.selected}
+          labelW={labelW}
+          width={width}
+        />
       ))}
-      <Box>
-        <Text dimColor>↑↓ select · Tab/Enter accept · Esc close</Text>
-      </Box>
     </Box>
   )
 }
@@ -50,27 +41,36 @@ export function Suggestions(props: SuggestionsProps): React.ReactElement | null 
 interface RowProps {
   readonly item: SuggestionItem
   readonly selected: boolean
+  readonly labelW: number
+  readonly width: number | undefined
 }
 
 function Row(props: RowProps): React.ReactElement {
-  const { item, selected } = props
-  const arrow = selected ? '›' : ' '
-  const labelColor = selected ? BRAND_GREEN : undefined
+  const { item, selected, labelW, width } = props
+  const prefix = selected ? SELECTED : PREFIX
+  const label = item.label.padEnd(labelW, ' ')
+  const description = item.description ?? ''
+  const descBudget =
+    width !== undefined ? Math.max(0, width - prefix.length - labelW - GUTTER.length) : description.length
+  const desc = truncate(description, descBudget)
+
   return (
-    <Box>
-      <Text color={BRAND_GREEN} bold={selected}>
-        {arrow}{' '}
+    <Box flexDirection="row" width={width}>
+      <Text color={selected ? BRAND_GREEN : undefined} bold={selected}>
+        {prefix}
+        {label}
       </Text>
-      <Text bold={selected} color={labelColor}>
-        {item.label}
+      <Text dimColor>
+        {GUTTER}
+        {desc}
       </Text>
-      {item.hint ? <Text dimColor> {item.hint}</Text> : null}
-      {item.description ? (
-        <Text dimColor>
-          {'  '}
-          {item.description}
-        </Text>
-      ) : null}
     </Box>
   )
+}
+
+function truncate(text: string, max: number): string {
+  if (max <= 0) return ''
+  if (text.length <= max) return text
+  if (max === 1) return '…'
+  return `${text.slice(0, max - 1)}…`
 }

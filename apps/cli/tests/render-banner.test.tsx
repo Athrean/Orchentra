@@ -20,10 +20,18 @@ describe('WelcomeBanner', () => {
     expect(out).toContain('v0.1.0')
   })
 
-  test('shows the model and provider on the meta line', () => {
+  test('shows the human-readable model name and provider on the meta line', () => {
     const out = runWith({ NO_COLOR: '1' }, () => renderFrame({ ...baseOpts, providerName: 'anthropic' }))
-    expect(out).toContain('claude-sonnet-4-6')
+    expect(out).toContain('Claude Sonnet 4.6')
+    expect(out).not.toContain('claude-sonnet-4-6')
     expect(out).toContain('anthropic')
+  })
+
+  test('falls back to the raw id when the model is unknown', () => {
+    const out = runWith({ NO_COLOR: '1' }, () =>
+      renderFrame({ ...baseOpts, model: 'self-hosted-llama-7b', providerName: 'local' }),
+    )
+    expect(out).toContain('self-hosted-llama-7b')
   })
 
   test('shortens the home directory to ~ in the cwd line', () => {
