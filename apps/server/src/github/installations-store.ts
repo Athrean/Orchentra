@@ -77,10 +77,15 @@ class DrizzleInstallationStore implements InstallationStore {
   }
 
   async fetchByOwnerCaseInsensitive(owner: string): Promise<InstallationRecord | null> {
+    // Match on the GitHub account login (canonical owner identity from GH),
+    // not on Orchentra's internal orgId — the two can diverge. Order by
+    // updatedAt desc so when an owner has multiple rows (reinstall, repo
+    // re-selection) the freshest one wins.
     const [row] = await db
       .select()
       .from(githubInstallations)
-      .where(sql`lower(${githubInstallations.orgId}) = ${owner.toLowerCase()}`)
+      .where(sql`lower(${githubInstallations.accountLogin}) = ${owner.toLowerCase()}`)
+      .orderBy(desc(githubInstallations.updatedAt))
       .limit(1)
     return row ? rowToRecord(row) : null
   }
