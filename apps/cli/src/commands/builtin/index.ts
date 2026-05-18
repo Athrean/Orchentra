@@ -24,6 +24,7 @@ import { AuthStatusCommand } from './auth-status'
 import { createServerCommand } from './server-bridge'
 import { withIncidentPrereq } from './incident-prereq'
 import { defaultIncidentPrereq } from './incident-prereq-check'
+import { defaultIncidentBootstrapHook } from './incident-prereq-bootstrap'
 import { SkillsCommand } from './skills-adapter'
 import { RestartCommand } from './restart'
 import { createGraphCommand } from './graph'
@@ -92,6 +93,7 @@ export function createBuiltinRegistry(): CommandRegistry {
         'status',
       ),
       defaultIncidentPrereq,
+      defaultIncidentBootstrapHook,
     ),
   )
   // Slice G: local /triage wraps runTriage. Replaces the server-bridged
