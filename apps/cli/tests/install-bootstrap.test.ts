@@ -97,7 +97,7 @@ describe('runInstallBootstrap', () => {
     const result = await runInstallBootstrap(deps)
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error).toContain('invalid_state')
+    expect(result.error).toMatch(/install link|invalid_state/)
   })
 
   test('returns failure when /api/install-handoff/start returns 409', async () => {
@@ -189,6 +189,147 @@ describe('runInstallBootstrap', () => {
     const result = await runInstallBootstrap(deps)
     expect(result.ok).toBe(true)
     expect(browserUrls[0]).toContain('/installations/new?state=')
+  })
+
+  test('maps callback error `app_credentials_unavailable` to a friendly message', async () => {
+    const { deps } = makeDeps({
+      makeLoopback: async () => fakeLoopback({ error: 'app_credentials_unavailable' }),
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('server has no GitHub App credentials')
+    expect(result.error).toContain('contact your Orchentra admin')
+  })
+
+  test('maps callback error `invalid_state` to a friendly message', async () => {
+    const { deps } = makeDeps({
+      makeLoopback: async () => fakeLoopback({ error: 'invalid_state' }),
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toMatch(/expired|stale|re-run/i)
+  })
+
+  test('falls back to a generic message for unknown callback error codes', async () => {
+    const { deps } = makeDeps({
+      makeLoopback: async () => fakeLoopback({ error: 'something_brand_new' }),
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('something_brand_new')
+  })
+
+  test('suspended install + prompt accept (Y) → opens install/new and persists', async () => {
+    const promptCalls: string[] = []
+    const browserUrls: string[] = []
+    const { deps } = makeDeps({
+      prompt: async (q: string) => {
+        promptCalls.push(q)
+        return 'y'
+      },
+      openBrowser: async (url) => {
+        browserUrls.push(url)
+      },
+      fetch: (async (url: string | URL, init?: RequestInit) => {
+        const str = String(url)
+        if (str.includes('/api/installations/by-owner/')) {
+          return new Response(
+            JSON.stringify({
+              orgId: 'Athrean',
+              installationId: 42,
+              installedAt: '2026-04-01T00:00:00Z',
+              suspendedAt: '2026-04-15T00:00:00Z',
+            }),
+            { status: 200 },
+          )
+        }
+        if (init?.method === 'POST') {
+          return new Response(JSON.stringify({ ok: true }), { status: 200 })
+        }
+        return new Response('not found', { status: 404 })
+      }) as typeof fetch,
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(true)
+    expect(promptCalls.length).toBe(1)
+    expect(promptCalls[0]).toMatch(/suspended/i)
+    expect(browserUrls[0]).toContain('/installations/new?state=')
+  })
+
+  test('suspended install + prompt decline (n) → returns cancelled, no browser opened', async () => {
+    const promptCalls: string[] = []
+    const browserUrls: string[] = []
+    const { deps } = makeDeps({
+      prompt: async (q: string) => {
+        promptCalls.push(q)
+        return 'n'
+      },
+      openBrowser: async (url) => {
+        browserUrls.push(url)
+      },
+      fetch: (async (url: string | URL) => {
+        const str = String(url)
+        if (str.includes('/api/installations/by-owner/')) {
+          return new Response(
+            JSON.stringify({
+              orgId: 'Athrean',
+              installationId: 42,
+              installedAt: '2026-04-01T00:00:00Z',
+              suspendedAt: '2026-04-15T00:00:00Z',
+            }),
+            { status: 200 },
+          )
+        }
+        return new Response('not found', { status: 404 })
+      }) as typeof fetch,
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toMatch(/declined|cancelled/i)
+    expect(browserUrls).toEqual([])
+  })
+
+  test('browser-open failure → printInstallUrl is called, loopback still completes', async () => {
+    const printed: string[] = []
+    const { deps } = makeDeps({
+      openBrowser: async () => {
+        throw new Error('no `xdg-open` on host')
+      },
+      printInstallUrl: (url: string) => {
+        printed.push(url)
+      },
+    })
+    const result = await runInstallBootstrap(deps)
+    expect(result.ok).toBe(true)
+    expect(printed.length).toBe(1)
+    expect(printed[0]).toContain('/installations/new?state=')
+  })
+
+  test('browser-open failure with no printInstallUrl → falls back to stdout, still succeeds', async () => {
+    const original = process.stdout.write.bind(process.stdout)
+    const chunks: string[] = []
+    process.stdout.write = ((c: string | Uint8Array): boolean => {
+      chunks.push(typeof c === 'string' ? c : new TextDecoder().decode(c))
+      return true
+    }) as typeof process.stdout.write
+    try {
+      const { deps } = makeDeps({
+        openBrowser: async () => {
+          throw new Error('no opener')
+        },
+      })
+      const result = await runInstallBootstrap(deps)
+      expect(result.ok).toBe(true)
+      const out = chunks.join('')
+      expect(out).toContain('/installations/new?state=')
+      expect(out).toMatch(/open this URL/i)
+    } finally {
+      process.stdout.write = original
+    }
   })
 
   test('by-owner 5xx degrades to fresh-install URL', async () => {
