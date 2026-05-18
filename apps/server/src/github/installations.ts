@@ -59,6 +59,7 @@ export interface InstallationStore {
   upsert(input: RecordInstallationInput): Promise<InstallationRecord>
   fetchByOrg(orgId: string): Promise<InstallationRecord | null>
   fetchByInstallationId(installationId: number): Promise<InstallationRecord | null>
+  fetchByApiKeyHash(apiKeyHash: string): Promise<InstallationRecord | null>
   setSuspended(installationId: number, suspendedAt: Date | null): Promise<void>
   fetchMostRecent(): Promise<InstallationRecord | null>
   clear(): Promise<void>
@@ -76,6 +77,10 @@ export async function recordInstallation(input: RecordInstallationInput): Promis
 
 export async function getInstallationByOrg(orgId: string): Promise<InstallationRecord | null> {
   return activeStore.fetchByOrg(orgId)
+}
+
+export async function getInstallationByApiKeyHash(apiKeyHash: string): Promise<InstallationRecord | null> {
+  return activeStore.fetchByApiKeyHash(apiKeyHash)
 }
 
 export async function suspendInstallation(installationId: number, suspendedAt: Date = new Date()): Promise<void> {
