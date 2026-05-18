@@ -86,9 +86,27 @@ describe('inferGitHubOwner — real git remote lookup', () => {
     rmSync(tmp, { recursive: true, force: true })
   })
 
+  // Husky-invoked test runs inherit GIT_DIR / GIT_WORK_TREE from the
+  // outer commit, which would override `cwd` for these setup spawns.
+  // Strip git env so `git init` actually initializes inside `tmp`.
+  function cleanGitEnv(): Record<string, string> {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(process.env)) {
+      if (v === undefined || k.startsWith('GIT_')) continue
+      out[k] = v
+    }
+    return out
+  }
+  function gitInit(cwd: string): void {
+    Bun.spawnSync(['git', 'init', '-q'], { cwd, env: cleanGitEnv() })
+  }
+  function gitAddRemote(cwd: string, url: string): void {
+    Bun.spawnSync(['git', 'remote', 'add', 'origin', url], { cwd, env: cleanGitEnv() })
+  }
+
   test('returns owner+repo for a real git origin pointed at GitHub', () => {
-    Bun.spawnSync(['git', 'init', '-q'], { cwd: tmp })
-    Bun.spawnSync(['git', 'remote', 'add', 'origin', 'git@github.com:Athrean/Orchentra.git'], { cwd: tmp })
+    gitInit(tmp)
+    gitAddRemote(tmp, 'git@github.com:Athrean/Orchentra.git')
     expect(inferGitHubOwner(tmp)).toEqual({ owner: 'Athrean', repo: 'Orchentra' })
   })
 
@@ -97,13 +115,13 @@ describe('inferGitHubOwner — real git remote lookup', () => {
   })
 
   test('returns null when origin remote is missing', () => {
-    Bun.spawnSync(['git', 'init', '-q'], { cwd: tmp })
+    gitInit(tmp)
     expect(inferGitHubOwner(tmp)).toBeNull()
   })
 
   test('returns null when origin remote is not GitHub', () => {
-    Bun.spawnSync(['git', 'init', '-q'], { cwd: tmp })
-    Bun.spawnSync(['git', 'remote', 'add', 'origin', 'https://gitlab.com/Athrean/Orchentra.git'], { cwd: tmp })
+    gitInit(tmp)
+    gitAddRemote(tmp, 'https://gitlab.com/Athrean/Orchentra.git')
     expect(inferGitHubOwner(tmp)).toBeNull()
   })
 })

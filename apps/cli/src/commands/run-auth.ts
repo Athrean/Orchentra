@@ -15,7 +15,12 @@ import { authStateHint } from './auth-state'
 import { runAnthropicLoginFlow } from '../ui/anthropic-login-flow'
 
 const OAUTH_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'gemini', 'github']
-const API_KEY_PROVIDERS: readonly ProviderKey[] = ['openai', 'xai', 'dashscope']
+// `orchentra` is an api-key-only provider: the bootstrap orchestrator
+// mints the apiKey on the server side and the CLI persists it via the
+// same `saveCredential('orchentra', …)` path used by `/init`. Listing
+// it here lets `orchentra login orchentra --api-key <k>` accept the
+// manual-fallback path without erroring with "unknown provider".
+const API_KEY_PROVIDERS: readonly ProviderKey[] = ['openai', 'xai', 'dashscope', 'orchentra']
 const SUPPORTED: readonly ProviderKey[] = [...OAUTH_PROVIDERS, ...API_KEY_PROVIDERS]
 
 const GITHUB_OAUTH_CLIENT_ID = process.env['ORCHENTRA_GITHUB_OAUTH_CLIENT_ID'] ?? 'Iv1.b507a08c87ecfe98'
@@ -27,6 +32,7 @@ const PROVIDER_LABELS: Partial<Record<ProviderKey, string>> = {
   openai: 'OpenAI',
   xai: 'xAI (Grok)',
   dashscope: 'DashScope (Qwen)',
+  orchentra: 'Orchentra (bootstrap apiKey)',
 }
 
 export async function runLogin(provider?: string, apiKey?: string): Promise<number> {
