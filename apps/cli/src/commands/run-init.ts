@@ -1,8 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { createInterface } from 'node:readline/promises'
 import { saveCredential, writeProjectSettings } from '@orchentra/cli-api'
 import { runInstallBootstrap } from '../auth/install-bootstrap'
 import { startLoopback } from '../auth/loopback-server'
+import { inferGitHubOwner } from '../util/git-owner'
+import { resolveInitOwner } from './resolve-init-owner'
 
 const DEFAULT_SERVER_URL = process.env.ORCHENTRA_SERVER_URL ?? 'http://localhost:3001'
 const DEFAULT_APP_SLUG = 'orchentra'
@@ -13,16 +16,13 @@ export interface RunInitBootstrapOptions {
   readonly serverUrl?: string
 }
 
-function inferOwnerFromGit(cwd: string): string | null {
-  const res = Bun.spawnSync(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe', stderr: 'pipe' })
-  if (res.exitCode !== 0) return null
-  const out = new TextDecoder().decode(res.stdout).trim()
-  if (!out) return null
-  const ssh = out.match(/git@github\.com:([^/]+)\/(.+?)(?:\.git)?$/)
-  if (ssh) return ssh[1]
-  const https = out.match(/github\.com\/([^/]+)\/(.+?)(?:\.git)?$/)
-  if (https) return https[1]
-  return null
+async function promptForOwner(): Promise<string> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    return await rl.question('Enter GitHub owner: ')
+  } finally {
+    rl.close()
+  }
 }
 
 async function openInBrowser(url: string): Promise<void> {
@@ -46,9 +46,13 @@ async function openInBrowser(url: string): Promise<void> {
 
 export async function runInitBootstrap(opts: RunInitBootstrapOptions): Promise<number> {
   const cwd = process.cwd()
-  const owner = opts.owner ?? inferOwnerFromGit(cwd)
+  const owner = await resolveInitOwner({
+    explicitOwner: opts.owner,
+    infer: () => inferGitHubOwner(cwd),
+    prompt: () => promptForOwner(),
+  })
   if (!owner) {
-    process.stderr.write('init: --owner required (no GitHub origin detected on this repo).\n')
+    process.stderr.write('init: owner required.\n')
     return 1
   }
   const serverUrl = opts.serverUrl ?? DEFAULT_SERVER_URL
