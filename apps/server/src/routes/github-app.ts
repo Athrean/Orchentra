@@ -179,5 +179,3 @@ export function createGithubAppRouter(overrides: Partial<GithubAppCallbackDeps> 
 
   return router
 }
-
-export const githubAppRouter = createGithubAppRouter()
