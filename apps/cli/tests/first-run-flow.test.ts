@@ -91,4 +91,78 @@ describe('runFirstRunFlow', () => {
     })
     expect(await runFirstRunFlow(d)).toEqual({ kind: 'cancelled' })
   })
+
+  // Slice 5: after the LLM credential is saved, optionally prompt
+  // `Bootstrap GH App now? [Y/n]`. The prompt and the orchestrator are
+  // both injected through FirstRunDeps so tests don't touch stdin or
+  // the network. The flow still returns `{ kind: 'saved' }` either way
+  // — bootstrap is opportunistic, not blocking.
+  describe('bootstrap prompt after save', () => {
+    test('Y branch invokes runBootstrap once after save', async () => {
+      const order: string[] = []
+      const bootstrapCalls: number[] = []
+      const d: FirstRunDeps = {
+        pickProvider: async () => 'openai',
+        promptApiKey: async () => 'sk-test',
+        save: async () => {
+          order.push('save')
+        },
+        promptBootstrap: async () => {
+          order.push('prompt')
+          return true
+        },
+        runBootstrap: async () => {
+          order.push('bootstrap')
+          bootstrapCalls.push(1)
+        },
+      }
+      const result = await runFirstRunFlow(d)
+      expect(result).toEqual({ kind: 'saved', provider: 'openai' })
+      expect(bootstrapCalls).toEqual([1])
+      expect(order).toEqual(['save', 'prompt', 'bootstrap'])
+    })
+
+    test('n branch skips runBootstrap', async () => {
+      const bootstrapCalls: number[] = []
+      const d = deps({
+        promptBootstrap: async () => false,
+        runBootstrap: async () => {
+          bootstrapCalls.push(1)
+        },
+      })
+      const result = await runFirstRunFlow(d)
+      expect(result).toEqual({ kind: 'saved', provider: 'openai' })
+      expect(bootstrapCalls).toEqual([])
+    })
+
+    test('does not prompt when promptBootstrap is not provided', async () => {
+      // Existing first-run callers (reauth, tests, default flow before
+      // slice 5) leave both bootstrap hooks unset — the prompt must
+      // not fire so the legacy behaviour is preserved exactly.
+      let promptFired = false
+      const d = deps({
+        // No promptBootstrap; supply runBootstrap to prove it's not called.
+        runBootstrap: async () => {
+          promptFired = true
+        },
+      })
+      const result = await runFirstRunFlow(d)
+      expect(result).toEqual({ kind: 'saved', provider: 'openai' })
+      expect(promptFired).toBe(false)
+    })
+
+    test('does not prompt when the flow ends in cancelled', async () => {
+      let prompted = false
+      const d = deps({
+        promptApiKey: async () => null,
+        promptBootstrap: async () => {
+          prompted = true
+          return true
+        },
+      })
+      const result = await runFirstRunFlow(d)
+      expect(result).toEqual({ kind: 'cancelled' })
+      expect(prompted).toBe(false)
+    })
+  })
 })
