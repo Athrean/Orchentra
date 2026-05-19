@@ -116,6 +116,11 @@ export type ActiveFlowState =
   | { readonly kind: 'anthropic-login' }
   | { readonly kind: 'model-picker'; readonly current: string }
   | {
+      readonly kind: 'repo-picker'
+      readonly repos: readonly import('../commands/ui-output').RepoPickerItem[]
+      readonly current: string | null
+    }
+  | {
       readonly kind: 'confirmation-prompt'
       readonly request: import('./components/ConfirmationPrompt').PromptRequest
       readonly resolve: (choice: import('./components/ConfirmationPrompt').PromptChoice) => void

@@ -37,7 +37,7 @@ const baseConfig = {
 }
 
 describe('ReposSlashCommand', () => {
-  test('emits a card with Installed and All tabs', async () => {
+  test('emits a repo-picker UI output with all returned repos', async () => {
     const cmd = new ReposSlashCommand({
       loadConfig: () => baseConfig,
       fetch: fakeFetch([
@@ -45,35 +45,32 @@ describe('ReposSlashCommand', () => {
         { fullName: 'acme/web', installed: true, monitored: false },
         { fullName: 'other/lib', installed: false, monitored: false },
       ]),
+      getActiveRepo: () => null,
     })
     const { ctx, outputs } = makeCtx()
     const ok = await cmd.execute([], ctx)
     expect(ok).toBe(true)
 
-    const card = outputs.find((o) => o.kind === 'card')
-    expect(card).toBeDefined()
-    if (card?.kind !== 'card') throw new Error('expected card')
-    expect(card.tabs?.items).toEqual(['Installed', 'All'])
+    const picker = outputs.find((o) => o.kind === 'repo-picker')
+    expect(picker).toBeDefined()
+    if (picker?.kind !== 'repo-picker') throw new Error('expected repo-picker')
+    expect(picker.repos.map((r) => r.fullName)).toEqual(['acme/api', 'acme/web', 'other/lib'])
   })
 
-  test('Installed tab only contains repos with installed=true', async () => {
+  test('forwards the active repo as the initial selection', async () => {
     const cmd = new ReposSlashCommand({
       loadConfig: () => baseConfig,
       fetch: fakeFetch([
         { fullName: 'acme/api', installed: true, monitored: true },
-        { fullName: 'other/lib', installed: false, monitored: false },
+        { fullName: 'acme/web', installed: true, monitored: false },
       ]),
+      getActiveRepo: () => 'acme/web',
     })
     const { ctx, outputs } = makeCtx()
     await cmd.execute([], ctx)
-
-    const card = outputs.find((o) => o.kind === 'card')
-    if (card?.kind !== 'card' || !card.sectionsByTab) throw new Error('expected card with tabs')
-
-    const installedRows = card.sectionsByTab[0]!.flatMap((s) => s.rows.map((r) => r.key))
-    const allRows = card.sectionsByTab[1]!.flatMap((s) => s.rows.map((r) => r.key))
-    expect(installedRows).toEqual(['acme/api'])
-    expect(allRows).toEqual(['acme/api', 'other/lib'])
+    const picker = outputs.find((o) => o.kind === 'repo-picker')
+    if (picker?.kind !== 'repo-picker') throw new Error('expected repo-picker')
+    expect(picker.current).toBe('acme/web')
   })
 
   test('emits a note when the user has not signed in', async () => {
@@ -84,6 +81,7 @@ describe('ReposSlashCommand', () => {
         throw err
       },
       fetch: fakeFetch([]),
+      getActiveRepo: () => null,
     })
     const { ctx, outputs } = makeCtx()
     const ok = await cmd.execute([], ctx)
@@ -100,6 +98,7 @@ describe('ReposSlashCommand', () => {
     const cmd = new ReposSlashCommand({
       loadConfig: () => baseConfig,
       fetch: (async () => new Response('Forbidden', { status: 403 })) as unknown as typeof fetch,
+      getActiveRepo: () => null,
     })
     const { ctx, outputs } = makeCtx()
     await cmd.execute([], ctx)

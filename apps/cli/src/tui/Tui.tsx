@@ -19,6 +19,8 @@ import { ActiveCard } from './components/ActiveCard'
 import { AnthropicLoginCard } from './components/AnthropicLoginCard'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
+import { RepoPickerCard } from './components/RepoPickerCard'
+import { setActiveRepo } from '../session-config'
 import type { BannerOptions } from '../render/banner'
 import type { TuiAction, TuiState } from './types'
 
@@ -275,6 +277,12 @@ export function Tui(props: TuiProps): React.ReactElement {
                 return
               case 'model-picker':
                 dispatch({ type: 'flow/start', flow: { kind: 'model-picker', current: output.current } })
+                return
+              case 'repo-picker':
+                dispatch({
+                  type: 'flow/start',
+                  flow: { kind: 'repo-picker', repos: output.repos, current: output.current },
+                })
                 return
             }
           }
@@ -617,6 +625,23 @@ export function Tui(props: TuiProps): React.ReactElement {
               dispatch({
                 type: 'transcript/push',
                 row: { kind: 'system', id: randomUUID(), text: `✓ model → ${resolved}`, tone: 'info' },
+              })
+            }}
+            onCancel={() => {
+              dispatch({ type: 'flow/end' })
+            }}
+          />
+        ) : null}
+        {state.activeFlow?.kind === 'repo-picker' ? (
+          <RepoPickerCard
+            repos={state.activeFlow.repos}
+            current={state.activeFlow.current}
+            onPick={(fullName) => {
+              setActiveRepo(fullName)
+              dispatch({ type: 'flow/end' })
+              dispatch({
+                type: 'transcript/push',
+                row: { kind: 'system', id: randomUUID(), text: `✓ active repo → ${fullName}`, tone: 'info' },
               })
             }}
             onCancel={() => {
