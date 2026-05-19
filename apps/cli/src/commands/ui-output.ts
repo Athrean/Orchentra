@@ -86,6 +86,15 @@ export type UiOutput =
       readonly repos: readonly RepoPickerItem[]
       readonly current: string | null
     }
+  | {
+      /**
+       * Open the arrow-key theme picker. Live preview re-renders the
+       * overlay under each highlighted candidate; the active theme is
+       * persisted to `~/.config/orchentra/session.json#activeTheme` on
+       * commit.
+       */
+      readonly kind: 'theme-picker'
+    }
 
 export interface RepoPickerItem {
   readonly fullName: string
