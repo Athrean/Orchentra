@@ -5,6 +5,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync, renameSy
 export type ProviderKey =
   | 'anthropic'
   | 'openai'
+  | 'openrouter'
   | 'xai'
   | 'dashscope'
   | 'gemini'

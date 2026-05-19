@@ -20,6 +20,7 @@ import { AnthropicLoginCard } from './components/AnthropicLoginCard'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
 import { RepoPickerCard } from './components/RepoPickerCard'
+import { LoginPickerCard } from './components/LoginPickerCard'
 import { setActiveRepo } from '../session-config'
 import type { BannerOptions } from '../render/banner'
 import type { TuiAction, TuiState } from './types'
@@ -274,6 +275,9 @@ export function Tui(props: TuiProps): React.ReactElement {
                 if (output.provider === 'anthropic') {
                   dispatch({ type: 'flow/start', flow: { kind: 'anthropic-login' } })
                 }
+                return
+              case 'login-picker':
+                dispatch({ type: 'flow/start', flow: { kind: 'login-picker' } })
                 return
               case 'model-picker':
                 dispatch({ type: 'flow/start', flow: { kind: 'model-picker', current: output.current } })
@@ -593,6 +597,20 @@ export function Tui(props: TuiProps): React.ReactElement {
                 row: result.ok
                   ? { kind: 'system', id: randomUUID(), text: `✓ ${result.message}`, tone: 'info' }
                   : { kind: 'error', id: randomUUID(), message: `Anthropic login: ${result.message}` },
+              })
+            }}
+          />
+        ) : null}
+        {state.activeFlow?.kind === 'login-picker' ? (
+          <LoginPickerCard
+            onComplete={(result) => {
+              dispatch({ type: 'flow/end' })
+              if (result.message === 'cancelled') return
+              dispatch({
+                type: 'transcript/push',
+                row: result.ok
+                  ? { kind: 'system', id: randomUUID(), text: `✓ ${result.message}`, tone: 'info' }
+                  : { kind: 'system', id: randomUUID(), text: result.message, tone: 'info' },
               })
             }}
           />
