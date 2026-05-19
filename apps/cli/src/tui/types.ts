@@ -36,6 +36,12 @@ export type TranscriptRow =
        */
       input: string
       streaming?: boolean
+      /**
+       * Wall-clock timestamp when streaming flipped from true to false.
+       * Used by the Transcript renderer to dim rows older than 5s so the
+       * user's eye is drawn to the most recent active call.
+       */
+      completedAt?: number
     }
   | { kind: 'tool_result'; id: string; name?: string; preview: string; isError: boolean; expanded: boolean }
   | { kind: 'system'; id: string; text: string; tone?: 'info' | 'warn' }
