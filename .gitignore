@@ -54,9 +54,17 @@ UBIQUITOUS_LANGUAGE.md
 
 # Local reference copies of other CLIs — not part of this repo
 claw-code-main-3/
+claw-code-main/
+Clawde_Code-main/
 gemini-cli-main/
 codebuff-main/
 opencode-dev/
 gbrain-master/
 rowboat-main/
 supermemory-main/
+claude-code-main/
+Claude_Code-main/
+
+# Local agent state / scratch dirs — not part of this repo
+.claude/
+.entire/
