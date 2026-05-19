@@ -1,49 +1,16 @@
 import type { PermissionMode } from '@orchentra/cli-core'
+import { THEMES, type Theme } from './theme-registry'
 
 /**
  * Single source of truth for TUI styling. Every component should import
  * tokens from here rather than hard-coding colours, glyphs, or separators.
+ *
+ * `THEME` is a stable re-export of the `dark` theme from the registry so
+ * the 20+ existing consumers compile unchanged. Code that needs runtime
+ * switching (e.g. live preview in the picker) should call `useTheme()`
+ * instead.
  */
-export const THEME = {
-  // Brand
-  brand: '#156545',
-  brandDim: '#23A470',
-
-  // Semantic accents
-  fg: 'white',
-  muted: 'gray',
-  accent: 'cyan',
-  warn: 'yellow',
-  danger: 'red',
-
-  // Markdown / content palette.
-  // Brand stays for branding moments (banner, prompt glyph, list markers,
-  // headings level 1); the rest follow a high-contrast terminal palette.
-  heading: 'cyan',
-  headingAlt: 'white',
-  emphasis: 'magenta',
-  strong: 'yellow',
-  link: 'blue',
-  quote: 'gray',
-  codeBorder: 'gray',
-  inlineCode: '#23A470',
-
-  // Glyphs
-  prompt: '›',
-  bullet: '·',
-  arrowRight: '→',
-  arrowLeft: '←',
-  check: '✓',
-  cross: '✕',
-  dot: '●',
-
-  // Layout
-  separator: '·',
-  rule: '─',
-
-  // Status
-  spinner: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'] as const,
-} as const
+export const THEME: Theme = THEMES.dark
 
 export type ThemeColor = string
 
