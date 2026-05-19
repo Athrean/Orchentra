@@ -1,0 +1,4 @@
+# Compiled standalone binaries from `bun build --compile`
+# (Root .gitignore also covers dist/, this is a belt-and-suspenders entry
+# so any future relocation of the binaries still stays out of git.)
+dist/orchentra-*
