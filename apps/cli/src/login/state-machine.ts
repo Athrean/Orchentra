@@ -63,6 +63,27 @@ export function apiKeyProviderToCredentialKey(provider: ApiKeyProvider): string 
   return provider
 }
 
+export interface ThirdPartyProviderRow {
+  readonly provider: ThirdPartyProvider
+  readonly label: string
+  readonly docsUrl: string
+}
+
+export const THIRD_PARTY_PROVIDERS: readonly ThirdPartyProviderRow[] = [
+  { provider: 'bedrock', label: 'AWS Bedrock', docsUrl: 'https://docs.aws.amazon.com/bedrock/' },
+  {
+    provider: 'foundry',
+    label: 'Microsoft Foundry',
+    docsUrl: 'https://learn.microsoft.com/en-us/azure/ai-foundry/',
+  },
+  { provider: 'vertex', label: 'Google Vertex AI', docsUrl: 'https://cloud.google.com/vertex-ai/docs' },
+  {
+    provider: 'azure',
+    label: 'Azure OpenAI',
+    docsUrl: 'https://learn.microsoft.com/en-us/azure/ai-services/openai/',
+  },
+]
+
 export function initialLoginState(): LoginState {
   return { kind: 'top', cursor: 0 }
 }
@@ -85,7 +106,26 @@ export function loginReducer(state: LoginState, event: LoginEvent): LoginState {
     if (event.type === 'select') {
       if (state.cursor === 0) return { kind: 'oauth', provider: 'anthropic' }
       if (state.cursor === 1) return { kind: 'apiKeyPicker', cursor: 0 }
-      if (state.cursor === 2) return { kind: 'done', ok: false, message: '3rd-party sign-in: coming soon' }
+      if (state.cursor === 2) return { kind: 'thirdPartyPicker', cursor: 0 }
+    }
+    return state
+  }
+
+  if (state.kind === 'thirdPartyPicker') {
+    if (event.type === 'cursor-down') {
+      return { kind: 'thirdPartyPicker', cursor: (state.cursor + 1) % THIRD_PARTY_PROVIDERS.length }
+    }
+    if (event.type === 'cursor-up') {
+      return {
+        kind: 'thirdPartyPicker',
+        cursor: (state.cursor + THIRD_PARTY_PROVIDERS.length - 1) % THIRD_PARTY_PROVIDERS.length,
+      }
+    }
+    if (event.type === 'back') return { kind: 'top', cursor: 2 }
+    if (event.type === 'select') {
+      const row = THIRD_PARTY_PROVIDERS[state.cursor]
+      if (!row) return state
+      return { kind: 'done', ok: true, message: `Opened docs for ${row.label}: ${row.docsUrl}` }
     }
     return state
   }

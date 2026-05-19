@@ -129,15 +129,49 @@ describe('login state machine', () => {
     expect(s.kind).toBe('apiKeyPicker')
   })
 
-  test('top + select with cursor 2 stubs third-party tier as coming-soon done', () => {
+  test('top + select with cursor 2 opens the third-party drilldown', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
     s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
+    expect(s.kind).toBe('thirdPartyPicker')
+    if (s.kind === 'thirdPartyPicker') expect(s.cursor).toBe(0)
+  })
+
+  test('thirdPartyPicker cursor-down wraps over registry', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    let lastCursor = -1
+    for (let i = 0; i < 6; i += 1) {
+      s = loginReducer(s, { type: 'cursor-down' })
+      if (s.kind !== 'thirdPartyPicker') throw new Error('exited thirdPartyPicker')
+      expect(s.cursor).not.toBe(lastCursor)
+      lastCursor = s.cursor
+    }
+  })
+
+  test('thirdPartyPicker + back returns to top with cursor on 3rd-party row', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'back' })
+    expect(s.kind).toBe('top')
+    if (s.kind === 'top') expect(s.cursor).toBe(2)
+  })
+
+  test('thirdPartyPicker + select transitions to done with the docs URL in the message', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'select' })
     expect(s.kind).toBe('done')
     if (s.kind === 'done') {
-      expect(s.ok).toBe(false)
-      expect(s.message.toLowerCase()).toContain('coming soon')
+      expect(s.ok).toBe(true)
+      expect(s.message.toLowerCase()).toContain('http')
     }
   })
 

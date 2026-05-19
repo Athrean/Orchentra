@@ -5,10 +5,13 @@ import { THEME } from '../theme'
 import { AnthropicLoginCard } from './AnthropicLoginCard'
 import { ApiKeyPickerCard } from './ApiKeyPickerCard'
 import { ApiKeyInputCard } from './ApiKeyInputCard'
+import { ThirdPartyPickerCard } from './ThirdPartyPickerCard'
+import { spawn } from 'node:child_process'
 import {
   apiKeyProviderToCredentialKey,
   initialLoginState,
   loginReducer,
+  THIRD_PARTY_PROVIDERS,
   type ApiKeyProvider,
   type LoginState,
 } from '../../login/state-machine'
@@ -71,6 +74,23 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
         dispatch(event)
         return
       }
+      if (state.kind === 'thirdPartyPicker') {
+        if (key.upArrow) {
+          dispatch({ type: 'cursor-up' })
+          return
+        }
+        if (key.downArrow) {
+          dispatch({ type: 'cursor-down' })
+          return
+        }
+        if (key.return) {
+          const row = THIRD_PARTY_PROVIDERS[state.cursor]
+          if (row) openInBrowser(row.docsUrl)
+          dispatch({ type: 'select' })
+          return
+        }
+        return
+      }
       if (state.kind === 'apiKeyInput') {
         if (key.return) {
           if (state.buffer.trim().length > 0) void saveApiKey(state.provider, state.buffer.trim())
@@ -120,6 +140,10 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
     return <ApiKeyInputCard provider={state.provider} buffer={state.buffer} error={state.error} saving={saving} />
   }
 
+  if (state.kind === 'thirdPartyPicker') {
+    return <ThirdPartyPickerCard cursor={state.cursor} />
+  }
+
   // Top tier is the only renderable picker state in Slice 1; api-key + 3rd-party
   // transition straight to `done` and the parent dismisses the overlay.
   return (
@@ -134,6 +158,24 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
       <Text dimColor>↑/↓ to move · Enter to select · Esc to cancel</Text>
     </Box>
   )
+}
+
+function openInBrowser(url: string): void {
+  const platform = process.platform
+  const cmd = platform === 'darwin' ? 'open' : platform === 'win32' ? 'start' : 'xdg-open'
+  try {
+    const child = spawn(cmd, platform === 'win32' ? ['', url] : [url], {
+      stdio: 'ignore',
+      detached: true,
+      shell: platform === 'win32',
+    })
+    child.on('error', () => {
+      /* docs URL still surfaces in the transcript note so the user can copy */
+    })
+    child.unref()
+  } catch {
+    /* ignore */
+  }
 }
 
 function renderTop(state: LoginState): React.ReactElement | null {
