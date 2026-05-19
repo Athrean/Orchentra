@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { writeFileSync } from 'node:fs'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
+import { getSessionsDirForWorkspace } from '../../session-config'
 
 export class ExportCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -16,7 +17,7 @@ export class ExportCommand implements CommandHandler {
     const outputPath = extractFlag(args, '--output') ?? extractFlag(args, '-o')
 
     const sessionId = ctx.session.getSessionId()
-    const dir = join(ctx.cwd, '.orchentra', 'sessions')
+    const dir = getSessionsDirForWorkspace(ctx.cwd)
 
     // Find session file
     let files: string[]

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { THEME } from '../../tui/theme'
 import type { UiKVRow } from '../ui-output'
+import { getSessionsDirForWorkspace } from '../../session-config'
 
 export class SessionCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -29,7 +30,7 @@ export class SessionCommand implements CommandHandler {
   }
 
   private async handleList(ctx: CommandContext): Promise<boolean> {
-    const dir = join(ctx.cwd, '.orchentra', 'sessions')
+    const dir = getSessionsDirForWorkspace(ctx.cwd)
     let files: string[]
     try {
       files = await readdir(dir)
@@ -75,7 +76,7 @@ export class SessionCommand implements CommandHandler {
   }
 
   private async handleShow(ctx: CommandContext, idPrefix: string): Promise<boolean> {
-    const dir = join(ctx.cwd, '.orchentra', 'sessions')
+    const dir = getSessionsDirForWorkspace(ctx.cwd)
     let files: string[]
     try {
       files = await readdir(dir)
@@ -116,7 +117,7 @@ export class SessionCommand implements CommandHandler {
   }
 
   private async handleDelete(ctx: CommandContext, idPrefix: string): Promise<boolean> {
-    const dir = join(ctx.cwd, '.orchentra', 'sessions')
+    const dir = getSessionsDirForWorkspace(ctx.cwd)
     let files: string[]
     try {
       files = await readdir(dir)

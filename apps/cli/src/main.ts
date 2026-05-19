@@ -83,7 +83,11 @@ async function main(argv: string[]): Promise<number> {
 
     case 'session-replay': {
       const { runSessionReplay } = await import('./commands/session-replay')
-      return runSessionReplay({ idOrLatest: action.idOrLatest })
+      const { getSessionsDirForWorkspace } = await import('./session-config')
+      return runSessionReplay({
+        idOrLatest: action.idOrLatest,
+        rootDir: getSessionsDirForWorkspace(process.cwd()),
+      })
     }
 
     case 'doctor': {
