@@ -1,0 +1,11 @@
+apps/cli/src/tui/components/ThemePicker.tsx
+  ai_agent 1-111
+apps/cli/tests/tui/theme-picker.test.tsx
+  ai_agent 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "af161d653415c2cd0c8bf0eeed04102cacf8dd41",
+  "prompts": {}
+}
