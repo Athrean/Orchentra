@@ -24,6 +24,7 @@ const PROVIDER_LABELS: Record<ProviderKey, string> = {
   gemini: 'Gemini (Google)',
   github: 'GitHub',
   openai: 'OpenAI',
+  openrouter: 'OpenRouter',
   xai: 'xAI (Grok)',
   dashscope: 'DashScope (Qwen)',
   aws: 'AWS',
@@ -45,7 +46,7 @@ export class LoginCommand implements CommandHandler {
 
     if (args.length === 0) {
       if (inTui) {
-        emitTuiLoginInstructions(ctx)
+        ctx.ui?.({ kind: 'login-picker' })
         return true
       }
       const provider = await pickProvider()
