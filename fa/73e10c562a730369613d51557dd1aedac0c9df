@@ -1,0 +1,11 @@
+apps/cli/tests/sessions/migrate-legacy.test.ts
+  ai_agent 1-100
+apps/cli/src/sessions/migrate-legacy.ts
+  ai_agent 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "fa73e10c562a730369613d51557dd1aedac0c9df",
+  "prompts": {}
+}
