@@ -4,6 +4,7 @@ import { StatusCommand } from './status'
 import { CostCommand } from './cost'
 import { ClearCommand } from './clear'
 import { ModelCommand } from './model'
+import { ThemeCommand } from './theme'
 import { CompactCommand } from './compact'
 import { DiffCommand } from './diff'
 import { VersionCommand } from './version'
@@ -47,6 +48,7 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new CostCommand())
   registry.register(new ClearCommand())
   registry.register(new ModelCommand())
+  registry.register(new ThemeCommand())
   registry.register(new CompactCommand())
   registry.register(new DiffCommand())
   registry.register(new VersionCommand())
