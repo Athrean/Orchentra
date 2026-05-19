@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import { Text } from 'ink'
 import { render } from 'ink-testing-library'
-import { useShimmer } from '../../src/tui/hooks/use-shimmer'
+import { pickShimmer, useShimmer } from '../../src/tui/hooks/use-shimmer'
 
 function Probe(props: { readonly active: boolean; readonly intervalMs: number }): React.ReactElement {
   const tick = useShimmer({ active: props.active, intervalMs: props.intervalMs })
@@ -35,5 +35,19 @@ describe('useShimmer', () => {
     await Bun.sleep(80)
     rerender(<Probe active={false} intervalMs={20} />)
     expect(lastFrame()).toBe(frozen)
+  })
+})
+
+describe('pickShimmer', () => {
+  test('cycles through the palette deterministically', () => {
+    const palette = ['a', 'b'] as const
+    expect(pickShimmer(palette, 0)).toBe('a')
+    expect(pickShimmer(palette, 1)).toBe('b')
+    expect(pickShimmer(palette, 2)).toBe('a')
+    expect(pickShimmer(palette, 3)).toBe('b')
+  })
+
+  test('throws on an empty palette', () => {
+    expect(() => pickShimmer([], 0)).toThrow()
   })
 })
