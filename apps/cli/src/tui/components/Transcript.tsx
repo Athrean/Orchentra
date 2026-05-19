@@ -37,10 +37,15 @@ type StaticItem =
 export function Transcript(props: TranscriptProps): React.ReactElement {
   const items: StaticItem[] = []
   if (props.banner) items.push({ kind: 'banner', props: props.banner })
-  let streaming: TranscriptRow | null = null
+  // Tool-call rows that are still streaming partial JSON live in the bottom
+  // (mutable) region until they finalize — otherwise Static commits the
+  // partial text once and the user never sees the args fill in.
+  const live: TranscriptRow[] = []
   for (const row of props.rows) {
     if (row.id === props.streamingRowId) {
-      streaming = row
+      live.push(row)
+    } else if (row.kind === 'tool_call' && row.streaming) {
+      live.push(row)
     } else {
       items.push({ kind: 'row', row })
     }
@@ -56,7 +61,9 @@ export function Transcript(props: TranscriptProps): React.ReactElement {
           )
         }
       </Static>
-      {streaming ? <TranscriptRowView row={streaming} streaming /> : null}
+      {live.map((row) => (
+        <TranscriptRowView key={row.id} row={row} streaming />
+      ))}
     </>
   )
 }
@@ -96,7 +103,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
             ⏺{' '}
           </Text>
           <Text bold>{row.name}</Text>
-          <Text dimColor>{`(${summarizeToolArgs(row.input)})`}</Text>
+          <Text dimColor>{`(${summarizeToolArgs(row.input)}${row.streaming ? '…' : ''})`}</Text>
         </Box>
       )
     case 'tool_result': {
