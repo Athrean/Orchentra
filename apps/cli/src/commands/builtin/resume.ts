@@ -1,46 +1,55 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
+import { getSessionsDirForWorkspace, getSessionsRootDir } from '../../session-config'
+
+const CROSS_PREFIX = 'cross:'
 
 export class ResumeCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'resume',
     aliases: [],
     summary: 'Show a previous session summary',
-    argumentHint: '[<id>|latest]',
+    argumentHint: '[<id>|latest|cross:<id>|cross:latest]',
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    const idArg = args[0] ?? 'latest'
-    const dir = join(ctx.cwd, '.orchentra', 'sessions')
+    const rawArg = args[0] ?? 'latest'
+    const crossWorkspace = rawArg.startsWith(CROSS_PREFIX)
+    const idArg = crossWorkspace ? rawArg.slice(CROSS_PREFIX.length) || 'latest' : rawArg
 
-    let files: string[]
-    try {
-      files = await readdir(dir)
-    } catch {
-      return note(ctx, 'No sessions found.', 'warn')
-    }
+    const buckets: string[] = crossWorkspace ? await listBucketDirs() : [getSessionsDirForWorkspace(ctx.cwd)]
 
-    const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'))
-    if (jsonlFiles.length === 0) return note(ctx, 'No sessions found.', 'warn')
-
-    let targetFile: string | undefined
-    if (idArg === 'latest') {
-      let latestTime = 0
-      for (const f of jsonlFiles) {
-        const s = await stat(join(dir, f))
-        if (s.mtimeMs > latestTime) {
-          latestTime = s.mtimeMs
-          targetFile = f
+    const candidates: Array<{ dir: string; file: string; mtimeMs: number }> = []
+    for (const dir of buckets) {
+      let files: string[]
+      try {
+        files = await readdir(dir)
+      } catch {
+        continue
+      }
+      for (const f of files) {
+        if (!f.endsWith('.jsonl')) continue
+        if (idArg !== 'latest' && !f.startsWith(idArg)) continue
+        try {
+          const s = await stat(join(dir, f))
+          if (!s.isFile()) continue
+          candidates.push({ dir, file: f, mtimeMs: s.mtimeMs })
+        } catch {
+          /* skip */
         }
       }
-    } else {
-      targetFile = jsonlFiles.find((f) => f.startsWith(idArg))
     }
 
-    if (!targetFile) return note(ctx, `Session not found: ${idArg}`, 'warn')
+    if (candidates.length === 0) {
+      const where = crossWorkspace ? 'across workspaces' : 'in this workspace'
+      return note(ctx, `No sessions found ${where}.`, 'warn')
+    }
 
-    const raw = await readFile(join(dir, targetFile), 'utf8')
+    candidates.sort((a, b) => b.mtimeMs - a.mtimeMs)
+    const target = candidates[0]!
+
+    const raw = await readFile(join(target.dir, target.file), 'utf8')
     const lines = raw
       .trim()
       .split('\n')
@@ -66,7 +75,7 @@ export class ResumeCommand implements CommandHandler {
       ctx.ui({
         kind: 'card',
         title: 'Resume',
-        subtitle: targetFile,
+        subtitle: target.file,
         sections: [
           {
             rows: [
@@ -78,11 +87,31 @@ export class ResumeCommand implements CommandHandler {
       })
       if (preview.trim().length > 0) ctx.ui({ kind: 'text', text: preview })
     } else {
-      process.stdout.write(`Session: ${targetFile}\n`)
+      process.stdout.write(`Session: ${target.file}\n`)
       process.stdout.write(`Events: ${lines.length}, Tool calls: ${toolCallCount}\n---\n${preview}\n`)
     }
     return true
   }
+}
+
+async function listBucketDirs(): Promise<string[]> {
+  const root = getSessionsRootDir()
+  let entries: string[]
+  try {
+    entries = await readdir(root)
+  } catch {
+    return []
+  }
+  const out: string[] = []
+  for (const name of entries) {
+    try {
+      const s = await stat(join(root, name))
+      if (s.isDirectory()) out.push(join(root, name))
+    } catch {
+      /* skip */
+    }
+  }
+  return out
 }
 
 function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {
