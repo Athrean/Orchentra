@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { Box, useApp, useInput, useStdout } from 'ink'
+import { Box, useApp, useInput, useStdin, useStdout } from 'ink'
 import { randomUUID } from 'node:crypto'
 import type { PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
 import type { LiveCli } from '../live-cli'
@@ -11,6 +11,8 @@ import { computeSuggestions } from './suggestions'
 import { evaluatePaste, expandPastes } from './paste'
 import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from './word-boundary'
 import { appendHistory, loadHistory } from './hooks/useHistory'
+import { useChord } from './hooks/use-chord'
+import { openInEditor } from './external-editor'
 import { InputBox } from './components/InputBox'
 import { Suggestions } from './components/Suggestions'
 import { Footer } from './components/Footer'
@@ -351,12 +353,52 @@ export function Tui(props: TuiProps): React.ReactElement {
     [cli, cwd, registry, exit],
   )
 
+  // Ctrl+x ctrl+e — open the current buffer in $EDITOR. The chord state
+  // lives outside `useInput` because the action half spawns a blocking
+  // subprocess and we need access to Ink's setRawMode + the latest buffer.
+  const { setRawMode } = useStdin()
+  const openExternalEditor = useCallback(() => {
+    const initial = stateRef.current.buffer
+    // Hand the terminal back to the editor: stop reading raw keys, drop the
+    // hidden-cursor mode we set on mount, then restore both after exit.
+    try {
+      setRawMode(false)
+    } catch {
+      /* setRawMode may throw in non-TTY envs; safe to ignore */
+    }
+    process.stdout.write('[?25h')
+    void openInEditor(initial)
+      .then((next) => {
+        if (next === null) return // editor exited non-zero — keep original buffer
+        dispatch({ type: 'buffer/set', buffer: next, cursor: next.length })
+      })
+      .finally(() => {
+        process.stdout.write('[?25l')
+        try {
+          setRawMode(true)
+        } catch {
+          /* see above */
+        }
+      })
+  }, [setRawMode])
+
+  const chordEditor = useChord(
+    (input, key) => key.ctrl && input === 'x',
+    (input, key) => key.ctrl && input === 'e',
+    1500,
+    openExternalEditor,
+  )
+
   // Keyboard handler — single useInput owns all keys so we can branch on
   // suggestion-open / turn-running state cleanly. Disabled while an
   // interactive flow (e.g. Anthropic login overlay) owns input.
   useInput(
     (input, key) => {
       const cur = stateRef.current
+
+      // Chord interception (ctrl+x ctrl+e → open in $EDITOR). Runs only while
+      // a turn is idle — mid-turn the buffer is not the active surface.
+      if (cur.turn.state === 'idle' && chordEditor(input, key)) return
 
       // While a turn is running, only Esc/Ctrl+C can do anything useful.
       if (cur.turn.state !== 'idle') {
