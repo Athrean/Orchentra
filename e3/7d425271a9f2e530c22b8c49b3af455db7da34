@@ -1,0 +1,13 @@
+apps/cli/src/tui/theme.ts
+  ai_agent 2,7-11,13
+apps/cli/tests/tui/theme-registry.test.ts
+  ai_agent 1-114
+apps/cli/src/tui/theme-registry.ts
+  ai_agent 1-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "e37d425271a9f2e530c22b8c49b3af455db7da34",
+  "prompts": {}
+}
