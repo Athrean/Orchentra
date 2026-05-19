@@ -9,11 +9,11 @@ export interface WelcomeTipsOptions {
 }
 
 const TIPS: ReadonlyArray<readonly [string, string]> = [
+  ['type a message', 'ask anything — free-form prompts run an AI turn against the current model'],
+  ['paste a log', 'drop a failing CI log to start an investigation'],
   ['/help', 'list every command grouped by category · /help <op> for parameter detail'],
   ['/triage', 'debug a failing GitHub Actions run in one slash'],
-  ['/clean', 'prune old workflow runs and expired artifacts (approval-gated)'],
-  ['/env', 'list, set, or sync GitHub Actions secrets'],
-  ['/login', 'connect Anthropic, OpenAI, or Gemini (only needed for /scan, /triage)'],
+  ['/login', 'connect Anthropic, OpenAI, OpenRouter, or another provider'],
 ]
 
 function capitalize(value: string): string {
