@@ -1,0 +1,21 @@
+apps/cli/src/commands/builtin/login.ts
+  ai_agent 48
+apps/cli/src/tui/components/LoginPickerCard.tsx
+  ai_agent 1-111
+apps/cli/src/tui/types.ts
+  ai_agent 131
+apps/cli/src/commands/ui-output.ts
+  ai_agent 63-68
+apps/cli/src/tui/Tui.tsx
+  ai_agent 23,279-281,604-613
+apps/cli/tests/login/login-picker-card.test.tsx
+  ai_agent 1-21
+apps/cli/tests/login/login-slash.test.ts
+  ai_agent 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "b65bee9d8a2ec2fb38819c97d1b9db18605184e3",
+  "prompts": {}
+}
