@@ -2,6 +2,7 @@ import type {
   ChatMessage,
   ConversationConfig,
   ConversationDeps,
+  HookRunner,
   MemoryFeatureConfig,
   PermissionMode,
   Provider,
@@ -69,6 +70,7 @@ export class LiveCli implements SessionControl {
   private readonly spinner: Spinner
   private readonly sharedState: SharedToolState
   private readonly memoryConfig: MemoryFeatureConfig | null
+  private readonly hookRunner: HookRunner | null
 
   private messages: ChatMessage[] = []
   private session: SessionWriter | null = null
@@ -95,6 +97,7 @@ export class LiveCli implements SessionControl {
     sessionId: string
     sharedState: SharedToolState
     memoryConfig?: MemoryFeatureConfig
+    hookRunner?: HookRunner
   }) {
     this.model = deps.model
     this.permissionMode = deps.permissionMode
@@ -105,6 +108,7 @@ export class LiveCli implements SessionControl {
     this.sessionId = deps.sessionId
     this.sharedState = deps.sharedState
     this.memoryConfig = deps.memoryConfig ?? null
+    this.hookRunner = deps.hookRunner ?? null
     this.tracker = new UsageTracker()
     this.spinner = new Spinner()
     this.permissionStore = createPermissionStore({
@@ -346,6 +350,7 @@ export class LiveCli implements SessionControl {
       },
       permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,
+      hookRunner: this.hookRunner ?? undefined,
     }
 
     this.runtime = new ConversationRuntime(config, deps)
