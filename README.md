@@ -47,7 +47,7 @@ An HTTP transport behind bearer auth (Phase 1B, shipped) makes the same operatio
 | 4     | Web becomes read-only projection + cross-execution diff            | shipped (#235–#240) |
 | 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future              |
 
-Side-shipped: per-org LLM config (multi-provider), live agent investigation timeline, CLI Pro/Max OAuth on macOS (Keychain auto-detect), in-TUI login + model picker.
+Side-shipped: per-org LLM config (multi-provider), live agent investigation timeline, CLI Pro/Max OAuth on macOS (Keychain auto-detect), in-TUI login + model picker, theme registry (6 built-in palettes incl. solarized + WCAG-AAA high-contrast), pre/post tool-use hooks (drop-in `.orchentra/hooks.json`), multi-line input modal, per-workspace fingerprinted sessions, slash-command aliases.
 
 ## How it works
 
@@ -75,7 +75,7 @@ Cross-execution diff (`/dashboard/diff`) lines up two executions for postmortems
 
 ## Surfaces
 
-**CLI (primary).** Interactive Ink TUI — REPL, slash commands (`/login`, `/doctor`, `/graph`, `/why`, `/issue`, `/pr`, `/model`, `/skills`, …), arrow-key model picker, in-TUI Anthropic OAuth login, native `--output-format json` for diagnostic verbs, resume model.
+**CLI (primary).** Interactive Ink TUI — REPL, slash commands (`/login`, `/doctor`, `/graph`, `/why`, `/issue`, `/pr`, `/model`, `/theme`, `/skills`, …), short aliases (`/t`, `/sum`, `/h`, `/cls`, …), arrow-key model + theme + repo pickers, in-TUI Anthropic OAuth login, multi-line input modal that activates at ≥5 wrapped rows, `ctrl+x ctrl+e` to edit current input in `$EDITOR`, native `--output-format json` for diagnostic verbs, resume model, per-workspace fingerprinted sessions, optional pre/post tool-use hooks via `.orchentra/hooks.json`.
 
 **MCP server.** `orchentra mcp serve` exposes the operations registry to external MCP clients (Claude Desktop, Cursor, Windsurf) over stdio. Same operations the CLI verbs hit, validated by the same Zod schemas, with trust-class enforcement at dispatch. An HTTP transport + bearer auth + hosted Cloudflare Worker scaffold ship as Phase 1B.
 
@@ -164,6 +164,32 @@ orchentra graph <executionId> --output-format json
 orchentra why <nodeId>                          # walk parent chain, print inputs + rationale
 orchentra why <nodeId> --output-format json
 ```
+
+### REPL slash commands
+
+Core: `/help` (`/h`, `/?`), `/status` (`/st`), `/clear` (`/cls`), `/exit` (`/q`), `/model` (`/m`), `/theme` (`/th`), `/cost`, `/compact`, `/diff` (`/d`), `/version` (`/v`), `/restart`, `/config` (`/cfg`).
+
+Workspace: `/init`, `/repos` (`/repo`), `/triage` (`/t`), `/summarize` (`/sum`, `/summary`), `/clean` (`/cleanup`), `/scan`, `/commit`, `/pr`, `/issue` (`/iss`), `/graph`, `/why`.
+
+Auth: `/login` (`/li`), `/logout` (`/lo`), `/auth` (`/whoami`), `/reauth`.
+
+Tools: `/skills`, `/mcp`, `/doctor` (`/doc`), `/session`, `/resume`, `/export`, `/env`.
+
+### Pre/post tool-use hooks
+
+Drop a `.orchentra/hooks.json` into a repo to fire shell hooks around every tool call inside that workspace's REPL session:
+
+```json
+{
+  "version": 1,
+  "hooks": [
+    { "event": "pre_tool_use", "tools": ["Bash"], "command": "./scripts/audit-bash.sh" },
+    { "event": "post_tool_use", "tools": ["*"], "command": "./scripts/log-tool.sh" }
+  ]
+}
+```
+
+Pre-hook non-zero exit blocks the tool call with stderr surfaced to the user as the reason. Post-hook stdout becomes a user-visible annotation. Hooks reload only on CLI restart by design.
 
 - **Anthropic auth:** Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting. <!-- TODO: link once docs/cli/anthropic-auth.md lands -->
 - **Skills:** frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload. <!-- TODO: link once docs/cli/skills.md lands -->
