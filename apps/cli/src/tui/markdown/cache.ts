@@ -35,4 +35,8 @@ export class LruCache<K, V> {
     }
     this.store.set(key, value)
   }
+
+  clear(): void {
+    this.store.clear()
+  }
 }

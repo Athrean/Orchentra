@@ -4,6 +4,16 @@
 // Block-level: fenced code blocks (```lang …```), ATX headers (# …),
 // bullet/number lists (- *  + or 1. ), blockquotes (> …), and paragraphs.
 // Inline parsing is handled separately in `inline.ts`.
+//
+// Performance: streaming assistant turns re-call the parser on every
+// delta. To keep that cheap we (1) short-circuit prose without any
+// markdown markers in the first window, (2) cache results in a small
+// LRU keyed by content, and (3) normalize nested fences so the
+// `here is markdown showing markdown` pattern doesn't corrupt the lex.
+
+import { LruCache } from './cache'
+import { isPlainText } from './short-circuit'
+import { normalizeNestedFences } from './normalize-fences'
 
 export interface CodeBlock {
   readonly kind: 'code'
@@ -35,13 +45,73 @@ export interface Quote {
 
 export type Block = CodeBlock | Heading | Paragraph | ListBlock | Quote
 
-const FENCE_RE = /^```([A-Za-z0-9_+-]*)\s*$/
+const FENCE_RE = /^([`~]{3,})([A-Za-z0-9_+-]*)\s*$/
 const HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/
 const ULIST_RE = /^[-*+]\s+(.+)$/
 const OLIST_RE = /^\d+[.)]\s+(.+)$/
 const QUOTE_RE = /^>\s?(.*)$/
 
+interface FenceOpen {
+  readonly ch: '`' | '~'
+  readonly run: number
+  readonly lang: string
+}
+
+function parseFenceOpen(line: string): FenceOpen | null {
+  const m = FENCE_RE.exec(line)
+  if (!m) return null
+  const run = m[1].length
+  const ch = m[1][0] as '`' | '~'
+  return { ch, run, lang: m[2] ?? '' }
+}
+
+function isFenceClose(line: string, open: FenceOpen): boolean {
+  // A fence is closed by a run of the SAME char of length >= the opening run
+  // and nothing but whitespace on the rest of the line.
+  let n = 0
+  while (n < line.length && line[n] === open.ch) n++
+  if (n < open.run) return false
+  return line.slice(n).trim().length === 0
+}
+
+const CACHE_CAPACITY = 500
+const tokenCache = new LruCache<string, Block[]>(CACHE_CAPACITY)
+let lexerSpy: (() => void) | null = null
+
+/** Test-only: clear the parse cache between cases. */
+export function resetParseMarkdownCache(): void {
+  tokenCache.clear()
+}
+
+/** Test-only: read the current cache size. */
+export function getParseMarkdownCacheSize(): number {
+  return tokenCache.size
+}
+
+/** Test-only: install a hook that is invoked exactly when the lexer runs. */
+export function setParseMarkdownLexerSpy(fn: (() => void) | null): void {
+  lexerSpy = fn
+}
+
 export function parseMarkdown(input: string): Block[] {
+  const cached = tokenCache.get(input)
+  if (cached) return cached
+  // Short-circuit only when (a) no markdown markers appear in the first
+  // 500 chars AND (b) no blank-line paragraph split is present. The
+  // blank-line check preserves multi-paragraph behaviour for the lexer.
+  if (isPlainText(input) && !input.includes('\n\n')) {
+    const blocks: Block[] = input.length === 0 ? [] : [{ kind: 'paragraph', text: input }]
+    tokenCache.set(input, blocks)
+    return blocks
+  }
+  if (lexerSpy) lexerSpy()
+  const normalized = normalizeNestedFences(input)
+  const blocks = lex(normalized)
+  tokenCache.set(input, blocks)
+  return blocks
+}
+
+function lex(input: string): Block[] {
   const lines = input.split('\n')
   const blocks: Block[] = []
   let i = 0
@@ -49,19 +119,19 @@ export function parseMarkdown(input: string): Block[] {
   while (i < lines.length) {
     const line = lines[i]
 
-    // Fenced code
-    const fence = FENCE_RE.exec(line)
-    if (fence) {
-      const lang = fence[1] ?? ''
+    // Fenced code (backtick or tilde, any run length >= 3). A fence is
+    // closed only by a same-char run of length >= the opener's run, so
+    // inner fence sequences of shorter length are preserved as content.
+    const fenceOpen = parseFenceOpen(line)
+    if (fenceOpen) {
       const codeLines: string[] = []
       i++
-      while (i < lines.length && !FENCE_RE.test(lines[i])) {
+      while (i < lines.length && !isFenceClose(lines[i], fenceOpen)) {
         codeLines.push(lines[i])
         i++
       }
-      // Skip the closing fence if present
       if (i < lines.length) i++
-      blocks.push({ kind: 'code', lang, text: codeLines.join('\n') })
+      blocks.push({ kind: 'code', lang: fenceOpen.lang, text: codeLines.join('\n') })
       continue
     }
 
