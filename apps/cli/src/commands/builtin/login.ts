@@ -45,7 +45,7 @@ export class LoginCommand implements CommandHandler {
 
     if (args.length === 0) {
       if (inTui) {
-        emitTuiLoginInstructions(ctx)
+        ctx.ui?.({ kind: 'login-picker' })
         return true
       }
       const provider = await pickProvider()
