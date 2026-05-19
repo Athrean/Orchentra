@@ -255,6 +255,15 @@ export class AnthropicProvider implements Provider {
                 const pending = pendingTools.get(event.index)
                 if (pending) {
                   pending.input += delta.partial_json
+                  // Emit a live preview chunk before the finalized tool-use
+                  // event. Consumers must treat partial_json as opaque text —
+                  // it is NOT guaranteed to parse as JSON mid-stream.
+                  yield {
+                    kind: 'tool-args-delta',
+                    toolUseId: pending.id,
+                    toolName: pending.name,
+                    partialJson: delta.partial_json,
+                  }
                 }
               }
               break
