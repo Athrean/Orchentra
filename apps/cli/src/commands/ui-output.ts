@@ -67,5 +67,22 @@ export type UiOutput =
       readonly kind: 'model-picker'
       readonly current: string
     }
+  | {
+      /**
+       * Open the arrow-key repo picker. The TUI takes over input until
+       * the user selects a repo or escapes. The selection is persisted
+       * to `~/.config/orchentra/session.json` so subsequent repo-scoped
+       * verbs default to it.
+       */
+      readonly kind: 'repo-picker'
+      readonly repos: readonly RepoPickerItem[]
+      readonly current: string | null
+    }
+
+export interface RepoPickerItem {
+  readonly fullName: string
+  readonly installed: boolean
+  readonly monitored: boolean
+}
 
 export type UiSink = (output: UiOutput) => void
