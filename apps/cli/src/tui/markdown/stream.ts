@@ -10,38 +10,54 @@
  * plain prose until the next safe block completes.
  *
  * Safe boundaries are the byte offsets right after:
- *   - a closed fenced code block (matching ``` line),
+ *   - a closed fenced code block (matching ``` or ~~~ line),
  *   - a blank line that terminates a paragraph / list / quote.
  *
  * If the trailing content is mid-fence (an opening fence without a
  * matching closer) or mid-paragraph (no trailing blank), the boundary
- * sits at the start of that pending region.
+ * sits at the start of that pending region. Content inside an open
+ * fence is treated as opaque — blank lines or fences of the other
+ * char inside an open fence never advance the boundary.
  *
  * Returns `text.length` when the entire input is already safe.
  */
 
-const FENCE_RE = /^```/
+const BACKTICK_FENCE_RE = /^```/
+const TILDE_FENCE_RE = /^~~~/
 
 export function findStreamSafeBoundary(text: string): number {
   if (text.length === 0) return 0
   const lines = text.split('\n')
-  let inFence = false
+  let openFence: '`' | '~' | null = null
   let lastSafeLineIdx = -1
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    if (FENCE_RE.test(line)) {
-      if (inFence) {
-        inFence = false
+    if (openFence === null) {
+      if (BACKTICK_FENCE_RE.test(line)) {
+        openFence = '`'
+        continue
+      }
+      if (TILDE_FENCE_RE.test(line)) {
+        openFence = '~'
+        continue
+      }
+      if (line.trim().length === 0) {
         lastSafeLineIdx = i
-      } else {
-        inFence = true
       }
       continue
     }
-    if (inFence) continue
-    if (line.trim().length === 0) {
+    // Inside a fence; only a matching-char fence line closes it.
+    if (openFence === '`' && BACKTICK_FENCE_RE.test(line)) {
+      openFence = null
       lastSafeLineIdx = i
+      continue
     }
+    if (openFence === '~' && TILDE_FENCE_RE.test(line)) {
+      openFence = null
+      lastSafeLineIdx = i
+      continue
+    }
+    // Otherwise opaque — including blank lines and fences of the other char.
   }
   if (lastSafeLineIdx === -1) return 0
   // Compute byte offset = sum of line lengths + the newlines through lastSafeLineIdx.
