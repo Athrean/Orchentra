@@ -1,4 +1,3 @@
-import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import {
   ConfigLoader,
@@ -10,6 +9,7 @@ import {
   type SharedToolState,
   type ToolRegistry,
 } from '@orchentra/cli-core'
+import { getSessionsDirForWorkspace } from './session-config'
 import {
   AnthropicProvider,
   OpenAiCompatProvider,
@@ -104,7 +104,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   })
 
   const session = await SessionWriter.open({
-    rootDir: join(options.cwd, '.orchentra', 'sessions'),
+    rootDir: getSessionsDirForWorkspace(options.cwd),
     id: sessionId,
     meta: { cwd: options.cwd, model: initial.model },
   })
