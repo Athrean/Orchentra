@@ -14,6 +14,8 @@ import { appendHistory, loadHistory } from './hooks/useHistory'
 import { useChord } from './hooks/use-chord'
 import { openInEditor } from './external-editor'
 import { InputBox } from './components/InputBox'
+import { InputModal } from './components/InputModal'
+import { countWrappedLines } from './use-line-count'
 import { Suggestions } from './components/Suggestions'
 import { Footer } from './components/Footer'
 import { Transcript } from './components/Transcript'
@@ -59,6 +61,18 @@ export function Tui(props: TuiProps): React.ReactElement {
   stateRef.current = state
 
   const shellHistoryRef = useRef<string[]>([])
+
+  // Buffer ≥ 5 wrapped rows swaps the inline input for a modal overlay.
+  // Esc collapses the modal back to inline while preserving the buffer;
+  // the flag resets whenever the buffer shrinks under the threshold so a
+  // subsequent expansion re-opens the modal cleanly.
+  const MULTILINE_THRESHOLD = 5
+  const wrappedLines = countWrappedLines(state.buffer, cols)
+  const [modalCollapsed, setModalCollapsed] = useState(false)
+  useEffect(() => {
+    if (wrappedLines < MULTILINE_THRESHOLD && modalCollapsed) setModalCollapsed(false)
+  }, [wrappedLines, modalCollapsed])
+  const isMultilineModal = wrappedLines >= MULTILINE_THRESHOLD && !modalCollapsed
 
   const wireEvents = useCallback(() => {
     const sink = (event: RuntimeEvent): void => {
@@ -593,6 +607,13 @@ export function Tui(props: TuiProps): React.ReactElement {
       }
 
       if (key.escape) {
+        // When the modal overlay is up, esc collapses it (preserving the
+        // buffer) instead of clearing — gives the user a way to dismiss
+        // the chrome without losing what they typed.
+        if (isMultilineModal) {
+          setModalCollapsed(true)
+          return
+        }
         if (cur.buffer.length > 0) {
           return dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
         }
@@ -723,13 +744,23 @@ export function Tui(props: TuiProps): React.ReactElement {
         ) : null}
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
         {showSuggestions ? <Suggestions state={state.suggestions} width={suggestionsWidth} /> : null}
-        <InputBox
-          buffer={state.buffer}
-          cursor={state.cursor}
-          pastes={state.pastes}
-          placeholder="Type a message, /command, @file, or !shell"
-          disabled={inputDisabled}
-        />
+        {isMultilineModal ? (
+          <InputModal
+            buffer={state.buffer}
+            cursor={state.cursor}
+            pastes={state.pastes}
+            placeholder="Type a message, /command, @file, or !shell"
+            disabled={inputDisabled}
+          />
+        ) : (
+          <InputBox
+            buffer={state.buffer}
+            cursor={state.cursor}
+            pastes={state.pastes}
+            placeholder="Type a message, /command, @file, or !shell"
+            disabled={inputDisabled}
+          />
+        )}
         <Footer
           model={state.model}
           mode={state.mode}
