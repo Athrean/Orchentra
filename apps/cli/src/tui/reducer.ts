@@ -167,6 +167,7 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
 
     case 'transcript/tool-args-finalize': {
       const existingIdx = findToolCallByUseId(state.transcript, action.toolUseId)
+      const completedAt = Date.now()
       if (existingIdx === -1) {
         if (!action.input || !action.toolName) return state
         const row: TranscriptRow = {
@@ -176,6 +177,7 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
           name: action.toolName,
           input: action.input,
           streaming: false,
+          completedAt,
         }
         return { ...state, transcript: [...state.transcript, row] }
       }
@@ -185,6 +187,7 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
           ...row,
           input: action.input ?? row.input,
           streaming: false,
+          completedAt,
         }
       })
       return { ...state, transcript: next }
