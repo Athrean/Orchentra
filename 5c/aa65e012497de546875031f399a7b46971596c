@@ -1,0 +1,11 @@
+apps/cli/tests/tui/use-theme.test.tsx
+  ai_agent 1-28
+apps/cli/src/tui/use-theme.ts
+  ai_agent 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "5caa65e012497de546875031f399a7b46971596c",
+  "prompts": {}
+}
