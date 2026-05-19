@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { THEMES, loadActiveTheme, saveActiveTheme, themeNames, isThemeName } from '../../src/tui/theme-registry'
 
-const BUILTIN_NAMES = ['dark', 'light', 'dark-ansi'] as const
+const BUILTIN_NAMES = ['dark', 'light', 'dark-ansi', 'solarized-dark', 'solarized-light', 'high-contrast'] as const
 
 describe('theme registry', () => {
   let tempHome: string
@@ -72,7 +72,40 @@ describe('theme registry', () => {
     expect(isThemeName('dark')).toBe(true)
     expect(isThemeName('light')).toBe(true)
     expect(isThemeName('dark-ansi')).toBe(true)
+    expect(isThemeName('solarized-dark')).toBe(true)
+    expect(isThemeName('solarized-light')).toBe(true)
+    expect(isThemeName('high-contrast')).toBe(true)
     expect(isThemeName('garbage')).toBe(false)
+  })
+
+  test('solarized-dark uses Schoonover base palette', () => {
+    const t = THEMES['solarized-dark']
+    expect(t.fg).toBe('#839496')
+    expect(t.accent).toBe('#2aa198')
+    expect(t.heading).toBe('#268bd2')
+  })
+
+  test('solarized-light uses lighter foreground over paper canvas', () => {
+    const t = THEMES['solarized-light']
+    expect(t.fg).toBe('#657b83')
+    expect(t.muted).toBe('#93a1a1')
+  })
+
+  test('high-contrast uses pure RGB primaries for WCAG AAA', () => {
+    const t = THEMES['high-contrast']
+    expect(t.fg).toBe('#ffffff')
+    expect(t.danger).toBe('#ff0000')
+    expect(t.brand).toBe('#00ff00')
+    expect(t.accent).toBe('#00ffff')
+  })
+
+  test('saveActiveTheme round-trips for each new built-in', () => {
+    saveActiveTheme('solarized-dark')
+    expect(loadActiveTheme()).toBe('solarized-dark')
+    saveActiveTheme('solarized-light')
+    expect(loadActiveTheme()).toBe('solarized-light')
+    saveActiveTheme('high-contrast')
+    expect(loadActiveTheme()).toBe('high-contrast')
   })
 
   test('loadActiveTheme returns dark when no config exists', () => {
