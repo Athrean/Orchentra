@@ -25,18 +25,6 @@ export interface ReplOptions {
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
-  // Slice F: -p is removed. Surface the slash-only hint before any other
-  // work — including the first-run credential gate — so a stale `-p`
-  // invocation never triggers the picker.
-  if (options.prompt) {
-    process.stderr.write(
-      'orchentra -p is removed. orchentra is a slash-command DevOps CLI; type /help in the REPL\n' +
-        'or run a specific verb like `orchentra <op_id> --owner ... --repo ...`. For free-form\n' +
-        'AI chat, use Claude Code or Cursor.\n',
-    )
-    return 1
-  }
-
   const shim = await tryLoadKeytar()
   if (!(await hasAnyLlmCredential(homedir(), shim))) {
     const result = await runFirstRunFlow(makeDefaultFirstRunDeps(undefined, shim, { cwd: options.cwd }))
@@ -92,6 +80,12 @@ export async function runRepl(options: ReplOptions): Promise<number> {
 
   for (const notice of cli.consumeStartupNotices()) {
     process.stderr.write(`${notice}\n`)
+  }
+
+  if (options.prompt) {
+    await cli.runTurn(options.prompt)
+    await cliCtx.close()
+    return 0
   }
 
   const { branch, workspaceStatus } = readGitSummary(options.cwd)

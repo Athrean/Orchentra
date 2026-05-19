@@ -338,24 +338,15 @@ export function Tui(props: TuiProps): React.ReactElement {
         return
       }
 
-      // Free-form text is not a chat surface. Orchentra is a slash-command
-      // DevOps tool; general AI chat lives in Claude Code or Cursor. Print a
-      // hint that names the closest slash command instead of forwarding to
-      // the LLM. Composite handlers like /triage and /scan still invoke the
-      // LLM internally — they are reachable as named commands, not from
-      // free-form text.
-      dispatch({
-        type: 'transcript/push',
-        row: {
-          kind: 'system',
-          id: randomUUID(),
-          text:
-            'orchentra is a slash-command DevOps CLI — free-form text does not run an AI turn.\n' +
-            'Type /help to list commands, /help <op> for parameter detail.\n' +
-            'For general AI chat, use Claude Code or Cursor.',
-          tone: 'info',
-        },
-      })
+      streamingIdRef.current = null
+      dispatch({ type: 'turn/start' })
+      try {
+        await cli.runTurn(text)
+      } finally {
+        streamingIdRef.current = null
+        dispatch({ type: 'transcript/stream-end' })
+        dispatch({ type: 'turn/end' })
+      }
     },
     [cli, cwd, registry, exit],
   )
