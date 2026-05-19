@@ -20,6 +20,7 @@ import {
 } from '@orchentra/cli-api'
 import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
+import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
 
 const BUILTIN_MODEL_ALIASES: Record<string, string> = {
   opus: 'claude-opus-4-20250514',
@@ -91,6 +92,8 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     planMode: false,
   }
 
+  const hookRunner = new CliCoreHookAdapter(options.cwd)
+
   const cli = new LiveCli({
     model: initial.model,
     permissionMode: resolvedPermissionMode,
@@ -101,6 +104,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     sessionId,
     sharedState,
     memoryConfig: config.featureConfig.memory,
+    hookRunner,
   })
 
   const session = await SessionWriter.open({
