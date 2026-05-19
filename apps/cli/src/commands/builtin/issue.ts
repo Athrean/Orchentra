@@ -5,7 +5,7 @@ import type { UiKVRow } from '../ui-output'
 export class IssueCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'issue',
-    aliases: [],
+    aliases: ['iss'],
     summary: 'List or create GitHub issues',
     argumentHint: '[list | create --title <t> --body <b>]',
   }

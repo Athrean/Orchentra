@@ -6,7 +6,7 @@ import type { UiKVRow } from '../ui-output'
 export class DoctorCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'doctor',
-    aliases: [],
+    aliases: ['doc'],
     summary: 'Run health checks on your setup',
   }
 

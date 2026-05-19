@@ -36,7 +36,7 @@ const PROVIDER_LABELS: Record<ProviderKey, string> = {
 export class LoginCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'login',
-    aliases: [],
+    aliases: ['li'],
     summary: 'Sign in to a provider — picker when no args, or /login <provider>',
     argumentHint: '[<provider>] [--api-key <key>]',
   }

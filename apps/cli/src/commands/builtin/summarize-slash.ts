@@ -11,7 +11,7 @@ export interface SummarizeSlashDeps {
 export class SummarizeSlashCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'summarize',
-    aliases: [],
+    aliases: ['sum', 'summary'],
     summary: 'Extract root cause / where / fix from a failing GitHub Actions run',
     argumentHint: '<owner/repo#runId>',
   }
