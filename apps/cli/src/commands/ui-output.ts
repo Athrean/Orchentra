@@ -60,6 +60,14 @@ export type UiOutput =
     }
   | {
       /**
+       * Open the nested in-TUI /login picker overlay. Three top-level
+       * tiers: Pro/Max OAuth, API-key drilldown, and a 3rd-party docs
+       * gateway. The TUI takes over input until the overlay dismisses.
+       */
+      readonly kind: 'login-picker'
+    }
+  | {
+      /**
        * Open the arrow-key model picker. The TUI takes over input until
        * the user selects a model or escapes. Non-TUI surfaces ignore
        * this and the command falls back to its text path.
