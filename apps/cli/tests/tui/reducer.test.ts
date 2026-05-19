@@ -104,4 +104,89 @@ describe('tui reducer', () => {
     expect(s.turn.state).toBe('idle')
     expect(s.turn.verb).toBeNull()
   })
+
+  test('tool-args-append creates a pending tool_call row on first delta', () => {
+    const s = reducer(base(), {
+      type: 'transcript/tool-args-append',
+      toolUseId: 'tool-1',
+      toolName: 'read_file',
+      delta: '{"path',
+    })
+    expect(s.transcript).toHaveLength(1)
+    const row = s.transcript[0]
+    expect(row.kind).toBe('tool_call')
+    if (row.kind === 'tool_call') {
+      expect(row.toolUseId).toBe('tool-1')
+      expect(row.name).toBe('read_file')
+      expect(row.input).toBe('{"path')
+      expect(row.streaming).toBe(true)
+    }
+  })
+
+  test('tool-args-append appends concatenated partial JSON to the same row', () => {
+    let s = reducer(base(), {
+      type: 'transcript/tool-args-append',
+      toolUseId: 'tool-1',
+      toolName: 'read_file',
+      delta: '{"path',
+    })
+    s = reducer(s, {
+      type: 'transcript/tool-args-append',
+      toolUseId: 'tool-1',
+      toolName: 'read_file',
+      delta: '":"/tmp/',
+    })
+    s = reducer(s, {
+      type: 'transcript/tool-args-append',
+      toolUseId: 'tool-1',
+      toolName: 'read_file',
+      delta: 'f.txt"}',
+    })
+    expect(s.transcript).toHaveLength(1)
+    const row = s.transcript[0]
+    expect(row.kind).toBe('tool_call')
+    if (row.kind === 'tool_call') {
+      expect(row.input).toBe('{"path":"/tmp/f.txt"}')
+      expect(row.streaming).toBe(true)
+    }
+  })
+
+  test('tool-args-finalize replaces partial input with finalized JSON and clears streaming', () => {
+    let s = reducer(base(), {
+      type: 'transcript/tool-args-append',
+      toolUseId: 'tool-1',
+      toolName: 'read_file',
+      delta: '{"path":"/tmp/f.txt',
+    })
+    s = reducer(s, {
+      type: 'transcript/tool-args-finalize',
+      toolUseId: 'tool-1',
+      input: '{"path":"/tmp/f.txt"}',
+    })
+    expect(s.transcript).toHaveLength(1)
+    const row = s.transcript[0]
+    expect(row.kind).toBe('tool_call')
+    if (row.kind === 'tool_call') {
+      expect(row.input).toBe('{"path":"/tmp/f.txt"}')
+      expect(row.streaming).toBe(false)
+    }
+  })
+
+  test('tool-args-finalize without a prior partial creates a finalized row', () => {
+    const s = reducer(base(), {
+      type: 'transcript/tool-args-finalize',
+      toolUseId: 'tool-2',
+      toolName: 'write_file',
+      input: '{"path":"a"}',
+    })
+    expect(s.transcript).toHaveLength(1)
+    const row = s.transcript[0]
+    expect(row.kind).toBe('tool_call')
+    if (row.kind === 'tool_call') {
+      expect(row.toolUseId).toBe('tool-2')
+      expect(row.name).toBe('write_file')
+      expect(row.input).toBe('{"path":"a"}')
+      expect(row.streaming).toBe(false)
+    }
+  })
 })
