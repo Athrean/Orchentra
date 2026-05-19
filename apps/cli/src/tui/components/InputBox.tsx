@@ -54,7 +54,7 @@ export function InputBox(props: InputBoxProps): React.ReactElement {
       </Box>
       {showMultilineHint ? (
         <Box paddingX={1}>
-          <Text dimColor>shift+enter for newline · enter to submit</Text>
+          <Text dimColor>shift+enter / alt+enter for newline · enter to submit</Text>
         </Box>
       ) : null}
     </Box>
