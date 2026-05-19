@@ -1,6 +1,8 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { fingerprintWorkspace } from './sessions/workspace-fingerprint'
+import { LEGACY_FINGERPRINT, migrateLegacySessions } from './sessions/migrate-legacy'
 
 /**
  * Persistent CLI session state. Survives between invocations so the user
@@ -24,6 +26,50 @@ export function sessionConfigPath(): string {
   if (override && override.length > 0) return join(override, 'session.json')
   return join(homedir(), '.config', 'orchentra', 'session.json')
 }
+
+/**
+ * Root directory for all session JSONLs across every workspace this user
+ * has invoked the CLI in. `ORCHENTRA_HOME` overrides the home directory
+ * (used by tests and container setups).
+ */
+export function getSessionsRootDir(): string {
+  const override = process.env['ORCHENTRA_HOME']
+  const base = override && override.length > 0 ? override : homedir()
+  return join(base, '.orchentra', 'sessions')
+}
+
+const legacyMigrated = new Set<string>()
+
+/**
+ * Bucket directory that holds session JSONLs written from `workspaceRoot`.
+ *
+ * Each workspace gets its own bucket keyed by a stable hash of its absolute
+ * path, so two REPLs running in different worktrees of the same repo never
+ * race on session ids. The first call in a process also drains the original
+ * flat-dir layout into a `legacy/` bucket so existing users keep their
+ * history (cross-workspace resume can still find it).
+ *
+ * The directory is not created — callers (`SessionWriter`, slash commands)
+ * are responsible for `mkdir({ recursive: true })` when they actually need
+ * to write. That keeps read-only lookups from littering disk with empty
+ * dirs for every workspace ever queried.
+ */
+export function getSessionsDirForWorkspace(workspaceRoot: string): string {
+  const override = process.env['ORCHENTRA_HOME']
+  const base = override && override.length > 0 ? override : homedir()
+  if (!legacyMigrated.has(base)) {
+    legacyMigrated.add(base)
+    try {
+      migrateLegacySessions(base)
+    } catch {
+      // Migration failure should never block session writes; if a user's
+      // legacy/ couldn't be created we'll just leave the flat files alone.
+    }
+  }
+  return join(getSessionsRootDir(), fingerprintWorkspace(workspaceRoot))
+}
+
+export { LEGACY_FINGERPRINT }
 
 function load(): SessionConfigFile {
   const path = sessionConfigPath()
