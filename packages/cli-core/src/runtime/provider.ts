@@ -42,6 +42,21 @@ export interface ToolUseDelta {
   call: ToolCall
 }
 
+/**
+ * Streaming chunk of partial JSON for a tool call's arguments. Emitted as the
+ * model produces the tool's input, before the finalized `tool-use` event.
+ * Consumers should treat `partialJson` as opaque text — it is NOT guaranteed
+ * to parse as JSON mid-stream. Concatenate the chunks for a given
+ * `toolUseId` and only attempt parsing after the matching `tool-use` event
+ * arrives, or render the raw text as a live preview.
+ */
+export interface ToolArgsDelta {
+  kind: 'tool-args-delta'
+  toolUseId: string
+  toolName: string
+  partialJson: string
+}
+
 export interface UsageDelta {
   kind: 'usage'
   usage: UsageTotals
@@ -59,6 +74,7 @@ export type ProviderStreamEvent =
   | ThinkingDelta
   | ThinkingSignature
   | ToolUseDelta
+  | ToolArgsDelta
   | UsageDelta
   | FinishDelta
 

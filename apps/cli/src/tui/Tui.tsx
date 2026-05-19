@@ -743,6 +743,23 @@ function handleRuntimeEvent(
       dispatch({ type: 'transcript/reasoning-append', rowId: id, delta: event.delta })
       break
     }
+    case 'tool_args_delta': {
+      if (reasoningIdRef.current !== null) {
+        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
+        reasoningIdRef.current = null
+      }
+      if (streamingIdRef.current !== null) {
+        streamingIdRef.current = null
+        dispatch({ type: 'transcript/stream-end' })
+      }
+      dispatch({
+        type: 'transcript/tool-args-append',
+        toolUseId: event.toolUseId,
+        toolName: event.toolName,
+        delta: event.partialJson,
+      })
+      break
+    }
     case 'tool_use':
       if (reasoningIdRef.current !== null) {
         dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
@@ -752,13 +769,10 @@ function handleRuntimeEvent(
       dispatch({ type: 'transcript/stream-end' })
       toolCallNamesRef.current.set(event.call.id, event.call.name)
       dispatch({
-        type: 'transcript/push',
-        row: {
-          kind: 'tool_call',
-          id: randomUUID(),
-          name: event.call.name,
-          input: typeof event.call.input === 'string' ? event.call.input : JSON.stringify(event.call.input),
-        },
+        type: 'transcript/tool-args-finalize',
+        toolUseId: event.call.id,
+        toolName: event.call.name,
+        input: typeof event.call.input === 'string' ? event.call.input : JSON.stringify(event.call.input),
       })
       break
     case 'tool_result': {

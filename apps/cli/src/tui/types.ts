@@ -22,7 +22,21 @@ export interface ReasoningRow {
 export type TranscriptRow =
   | { kind: 'user'; id: string; text: string }
   | { kind: 'assistant'; id: string; text: string }
-  | { kind: 'tool_call'; id: string; name: string; input: string }
+  | {
+      kind: 'tool_call'
+      id: string
+      /** Anthropic `tool_use_id`. Used to match incoming arg-deltas to the row. */
+      toolUseId?: string
+      name: string
+      /**
+       * When `streaming` is true, this is raw partial JSON streamed from the
+       * provider — not guaranteed to parse. Once the finalize action lands the
+       * value is replaced with the canonical JSON-encoded args string used by
+       * the existing `summarizeToolArgs` render path.
+       */
+      input: string
+      streaming?: boolean
+    }
   | { kind: 'tool_result'; id: string; name?: string; preview: string; isError: boolean; expanded: boolean }
   | { kind: 'system'; id: string; text: string; tone?: 'info' | 'warn' }
   | { kind: 'stream'; id: string; text: string; label?: string }
@@ -146,6 +160,20 @@ export type TuiAction =
   | { type: 'transcript/reasoning-begin'; rowId: string; startedAt: number }
   | { type: 'transcript/reasoning-append'; rowId: string; delta: string }
   | { type: 'transcript/reasoning-end'; rowId: string; endedAt: number }
+  | {
+      type: 'transcript/tool-args-append'
+      toolUseId: string
+      toolName: string
+      delta: string
+    }
+  | {
+      type: 'transcript/tool-args-finalize'
+      toolUseId: string
+      /** Canonical JSON-encoded args (used by `summarizeToolArgs`). */
+      input?: string
+      /** Optional; only needed when the finalize lands without a prior partial. */
+      toolName?: string
+    }
   | { type: 'reasoning/toggle-last' }
   | { type: 'reasoning/toggle'; rowId: string }
   | { type: 'tool_result/toggle-last' }

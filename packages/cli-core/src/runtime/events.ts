@@ -34,6 +34,18 @@ export interface ToolUseEvent {
   call: ToolCall
 }
 
+/**
+ * Streaming chunk of partial JSON for a tool call's arguments. Forwarded from
+ * the provider so UIs can render a live preview before the call is finalized.
+ * `partialJson` is opaque text; do not JSON.parse mid-stream.
+ */
+export interface ToolArgsDeltaEvent {
+  kind: 'tool_args_delta'
+  toolUseId: string
+  toolName: string
+  partialJson: string
+}
+
 export interface ToolResultEvent {
   kind: 'tool_result'
   result: ToolResultPayload
@@ -90,6 +102,7 @@ export type RuntimeEvent =
   | TextEvent
   | ReasoningEvent
   | ToolUseEvent
+  | ToolArgsDeltaEvent
   | ToolResultEvent
   | UsageEvent
   | CompactedEvent

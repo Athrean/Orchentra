@@ -160,6 +160,48 @@ describe('ConversationRuntime', () => {
     expect(done).toMatchObject({ kind: 'done', reason: 'stop' })
   })
 
+  test('forwards provider tool-args-delta chunks as tool_args_delta runtime events', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-args-delta', toolUseId: 'tc1', toolName: 'read', partialJson: '{"path' },
+        { kind: 'tool-args-delta', toolUseId: 'tc1', toolName: 'read', partialJson: '":"/a"}' },
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: { path: '/a' } } },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read', description: 'read', inputSchema: {} }],
+      has: (n) => n === 'read',
+      execute: async () => ({ content: 'file content', isError: false }),
+    }
+
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    const events = await collect(rt, 'read file')
+
+    const deltas = events.filter((e) => e.kind === 'tool_args_delta')
+    expect(deltas).toEqual([
+      { kind: 'tool_args_delta', toolUseId: 'tc1', toolName: 'read', partialJson: '{"path' },
+      { kind: 'tool_args_delta', toolUseId: 'tc1', toolName: 'read', partialJson: '":"/a"}' },
+    ])
+
+    // Deltas precede tool_use finalization within the same turn.
+    const lastDeltaIdx =
+      events
+        .map((e, i) => ({ e, i }))
+        .filter((p) => p.e.kind === 'tool_args_delta')
+        .pop()?.i ?? -1
+    const toolUseIdx = events.findIndex((e) => e.kind === 'tool_use')
+    expect(lastDeltaIdx).toBeGreaterThan(-1)
+    expect(toolUseIdx).toBeGreaterThan(lastDeltaIdx)
+  })
+
   test('provider error emits error event and stops', async () => {
     const provider: Provider = {
       stream(): AsyncIterable<ProviderStreamEvent> {
