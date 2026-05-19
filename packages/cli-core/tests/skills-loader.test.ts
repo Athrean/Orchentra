@@ -6,15 +6,25 @@ import { loadSkills } from '../src/runtime/skills/loader'
 
 let workspaceRoot: string
 let configHome: string
+let cacheHome: string
+let originalCacheHome: string | undefined
 
 beforeEach(() => {
   workspaceRoot = mkdtempSync(join(tmpdir(), 'orchentra-skills-ws-'))
   configHome = mkdtempSync(join(tmpdir(), 'orchentra-skills-home-'))
+  // Isolate the skill index file so these tests don't write to the real
+  // `~/.config/orchentra/skills.idx` on the developer's box.
+  cacheHome = mkdtempSync(join(tmpdir(), 'orchentra-skills-cache-'))
+  originalCacheHome = process.env.ORCHENTRA_CONFIG_HOME
+  process.env.ORCHENTRA_CONFIG_HOME = cacheHome
 })
 
 afterEach(() => {
+  if (originalCacheHome === undefined) delete process.env.ORCHENTRA_CONFIG_HOME
+  else process.env.ORCHENTRA_CONFIG_HOME = originalCacheHome
   rmSync(workspaceRoot, { recursive: true, force: true })
   rmSync(configHome, { recursive: true, force: true })
+  rmSync(cacheHome, { recursive: true, force: true })
 })
 
 function writeSkill(name: string, content: string): void {
