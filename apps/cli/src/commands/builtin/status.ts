@@ -12,7 +12,7 @@ type TabName = (typeof TABS)[number]
 export class StatusCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'status',
-    aliases: [],
+    aliases: ['st'],
     summary: 'Inspect session — status, config, usage, stats',
     argumentHint: '[status|config|usage|stats]',
   }

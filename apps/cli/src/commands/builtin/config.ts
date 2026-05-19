@@ -4,7 +4,7 @@ import { ConfigLoader } from '@orchentra/cli-core'
 export class ConfigCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'config',
-    aliases: [],
+    aliases: ['cfg'],
     summary: 'Show current configuration',
     argumentHint: '[get <key>]',
   }

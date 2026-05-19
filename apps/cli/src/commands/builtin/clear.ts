@@ -3,7 +3,7 @@ import type { CommandHandler, CommandContext, SlashCommandSpec } from '../regist
 export class ClearCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'clear',
-    aliases: [],
+    aliases: ['cls'],
     summary: 'Clear conversation history',
   }
 
