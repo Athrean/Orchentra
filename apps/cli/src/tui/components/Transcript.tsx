@@ -10,6 +10,9 @@ import { ReasoningBlock } from './ReasoningBlock'
 import { MarkdownView } from './MarkdownView'
 import { previewToolResult } from './tool-preview'
 import { WelcomeBanner, type BannerOptions } from '../../render/banner'
+import { useNow } from '../use-now'
+
+export const TOOL_ROW_DIM_AFTER_MS = 5_000
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
@@ -35,16 +38,23 @@ type StaticItem =
  * streaming row, if any, renders as a normal child below so it can update.
  */
 export function Transcript(props: TranscriptProps): React.ReactElement {
+  // useNow drives time-based visual transitions (e.g. tool-row dimming
+  // 5s after completion). Static rows are committed once, so we keep
+  // recently-completed tool_call rows in the live region until they age
+  // past the dim threshold; after that they commit to Static with the
+  // dim flag baked in and stop re-rendering.
+  const now = useNow()
   const items: StaticItem[] = []
   if (props.banner) items.push({ kind: 'banner', props: props.banner })
-  // Tool-call rows that are still streaming partial JSON live in the bottom
-  // (mutable) region until they finalize — otherwise Static commits the
-  // partial text once and the user never sees the args fill in.
   const live: TranscriptRow[] = []
   for (const row of props.rows) {
     if (row.id === props.streamingRowId) {
       live.push(row)
     } else if (row.kind === 'tool_call' && row.streaming) {
+      live.push(row)
+    } else if (row.kind === 'tool_call' && !isOldTool(row, now)) {
+      // Recently finalized — keep in live so its color can flip to dim
+      // when it ages past the threshold on the next clock tick.
       live.push(row)
     } else {
       items.push({ kind: 'row', row })
@@ -57,24 +67,38 @@ export function Transcript(props: TranscriptProps): React.ReactElement {
           item.kind === 'banner' ? (
             <WelcomeBanner key="__banner__" {...item.props} />
           ) : (
-            <TranscriptRowView key={item.row.id} row={item.row} />
+            <TranscriptRowView key={item.row.id} row={item.row} dim={isOldTool(item.row, now)} />
           )
         }
       </Static>
       {live.map((row) => (
-        <TranscriptRowView key={row.id} row={row} streaming />
+        <TranscriptRowView key={row.id} row={row} streaming dim={isOldTool(row, now)} />
       ))}
     </>
   )
 }
 
+function isOldTool(row: TranscriptRow, now: number): boolean {
+  if (row.kind !== 'tool_call') return false
+  if (row.streaming) return false
+  if (!row.completedAt) return false
+  return now - row.completedAt > TOOL_ROW_DIM_AFTER_MS
+}
+
 interface RowProps {
   readonly row: TranscriptRow
   readonly streaming?: boolean
+  /**
+   * When true, the row renders in `mutedText` color regardless of its
+   * normal palette. Used for completed tool-call rows older than
+   * `TOOL_ROW_DIM_AFTER_MS` so the user's eye is drawn to the most
+   * recent active call.
+   */
+  readonly dim?: boolean
 }
 
 export function TranscriptRowView(props: RowProps): React.ReactElement {
-  const { row } = props
+  const { row, dim } = props
   switch (row.kind) {
     case 'user':
       return (
@@ -99,10 +123,12 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
     case 'tool_call':
       return (
         <Box paddingX={1} flexDirection="row">
-          <Text color={THEME.brand} bold>
+          <Text color={dim ? THEME.muted : THEME.brand} bold={!dim}>
             ⏺{' '}
           </Text>
-          <Text bold>{row.name}</Text>
+          <Text color={dim ? THEME.muted : undefined} bold={!dim}>
+            {row.name}
+          </Text>
           <Text dimColor>{`(${summarizeToolArgs(row.input)}${row.streaming ? '…' : ''})`}</Text>
         </Box>
       )
