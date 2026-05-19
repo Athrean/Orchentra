@@ -2,7 +2,7 @@
 
 This is the only doc that defines **what we're building** and **how to build it**. Read it before starting any new feature. Update it intentionally when the plan changes — do not let it rot.
 
-Last refresh: 2026-05-18.
+Last refresh: 2026-05-19.
 
 ---
 
@@ -44,7 +44,7 @@ Every new feature must answer: **what `Operation` does it add (or extend), and w
 | 4     | Web becomes read-only projection + cross-execution diff                                                                                                          | shipped        | PRs #235–#240       |
 | 5     | Pick next adapter from real usage data                                                                                                                           | gated on usage | —                   |
 
-Side-shipped (outside the phase plan but landed): per-org LLM config (#226), test architecture refactor (#220–#224, mock-github-service / mock-openrouter-service / JobQueue DI), live agent investigation timeline (#225).
+Side-shipped (outside the phase plan but landed): per-org LLM config (#226), test architecture refactor (#220–#224, mock-github-service / mock-openrouter-service / JobQueue DI), live agent investigation timeline (#225), CLI parity sweep Tier 1 (#406–#414) — error boundary, reasoning shimmer, markdown LRU cache, alt+enter, external editor, theme registry, fingerprinted sessions, hooks system — and Tier 2 (#415–#418) — solarized + high-contrast themes, slash aliases, multi-line input modal, tool-row dim.
 
 ### Next up — Phase 5 (gated on usage)
 
@@ -158,11 +158,15 @@ The CLI is the product surface. These patterns come from studying `claw-code-mai
 - **`--output-format json` on every diagnostic verb.** Machine-readable structured output (`created[]` / `updated[]` / `skipped[]` arrays). Idempotent operations report what they did per-artifact, not via prose substring matching.
 - **`orchentra init` scaffolds local config.** Creates `.orchentra/` config dir, optional CLAUDE.md guidance, `.gitignore` entries. Idempotent — second run reports `skipped`, never overwrites.
 - **`orchentra mcp serve` exposes the operations registry as an MCP server over stdio.** External MCP clients (Claude Desktop, Cursor, Windsurf) wire it in via their `mcpServers` config. Same operations registry the CLI verbs hit. Phase 1B adds an HTTP transport behind bearer auth.
-- **Resume model.** Sessions persist at `~/.config/orchentra/sessions/`. `--resume latest` re-enters the most recent session. Same session id can stream across CLI + web.
-- **Slash commands as the primary verb surface.** `/login`, `/help`, `/doctor`, `/<skill>` (auto-registered from `.orchentra/skills/`), `/graph`, `/why`. The same registry powers terminal + future web + future Slack.
+- **Resume model.** Sessions persist at `~/.config/orchentra/sessions/<cwd-hash>/` (per-workspace fingerprint). `--resume latest` re-enters the most recent session for the current cwd. Same session id can stream across CLI + web.
+- **Slash commands as the primary verb surface.** `/login`, `/help`, `/doctor`, `/theme`, `/<skill>` (auto-registered from `.orchentra/skills/`), `/graph`, `/why`. Short aliases (`/t`, `/sum`, `/h`, `/cls`, …) registered via `CommandRegistry.register` with a registry-wide collision guard. The same registry powers terminal + future web + future Slack.
 - **Streaming everywhere.** Long-running output uses `live-cli-factory.ts`. Phase headers, tool indicators, summary block. `esc` interrupts; `ctrl+c` twice exits.
 - **Reasoning is collapsible.** `ctrl+r` toggles. Default collapsed. Lifted directly from Claude Code.
-- **Tool calls render as `⏺ name(args)` with `⎿`-tree results.** Diff results auto-detected and syntax-coloured. Borderless cards, pill-style tabs. Mascot stays in the welcome banner.
+- **Tool calls render as `⏺ name(args)` with `⎿`-tree results.** Diff results auto-detected and syntax-coloured. Borderless cards, pill-style tabs. Mascot stays in the welcome banner. Completed tool rows dim to `mutedText` after 5 seconds so the eye is drawn to the most recent active call.
+- **Multi-line input modal.** Inline input below 5 wrapped rows; swaps to a bordered modal overlay (`✦ multi-line edit · ctrl+x ctrl+e for $EDITOR · esc to collapse`) at the threshold. Esc collapses without losing the buffer.
+- **`ctrl+x ctrl+e` opens current input in `$EDITOR`.** Two-key chord (single key conflicts). Tempfile round-trip preserves edits.
+- **`/theme` picker with 6 built-in palettes.** `dark`, `light`, `dark-ansi`, `solarized-dark`, `solarized-light`, `high-contrast`. Selection persists to `~/.config/orchentra/session.json`. High-contrast passes WCAG AAA against black terminals.
+- **Pre/post tool-use hooks.** Drop a `.orchentra/hooks.json` into a repo; shell commands fire around every tool call in that workspace's REPL. Pre-hook non-zero exit blocks the tool with stderr as the reason. Reload on CLI restart only — no mid-session re-read.
 
 ### Patterns we deliberately reject
 
@@ -216,7 +220,9 @@ Anchored to Claude Code's aesthetic. Borderless cards. Pill-style active tab. In
 - ZITADEL / SCIM / SAML enterprise auth.
 - Server-side MCP catalog promotion (partial in `packages/cli-tools` — promote when ≥1 customer asks).
 - GreptimeDB / NATS / OTel Collector adoption — observability is a derivative of the graph, not a separate stack.
-- Theme picker first-run flow — separate CLI polish track.
+- Theme picker first-run flow — separate CLI polish track. The picker itself ships (`/theme`) but a guided first-run prompt does not.
+- User-defined themes via `~/.config/orchentra/themes/<name>.json` — built-in registry ships 6 themes; JSON drop-ins gated on demand.
+- Hook hot-reload + timeout policy — hooks today reload only on CLI restart and have no timeout; revisit when an operator hits the friction.
 
 If a request lands in this list, reply with the policy + offer the smallest valid path forward (e.g., "out of plan; the closest in-plan move is X").
 
