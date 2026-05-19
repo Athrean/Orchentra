@@ -11,7 +11,7 @@ export interface CleanSlashDeps {
 export class CleanSlashCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'clean',
-    aliases: [],
+    aliases: ['cleanup'],
     summary: 'Prune expired GitHub Actions artifacts from old failed runs (approval-gated)',
     argumentHint: '<owner/repo> [--dry-run] [--older-than-days <N>]',
   }

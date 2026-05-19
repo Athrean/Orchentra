@@ -11,7 +11,7 @@ export interface TriageSlashDeps {
 export class TriageSlashCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'triage',
-    aliases: [],
+    aliases: ['t'],
     summary: 'Triage a failing GitHub Actions run end-to-end (post check + PR comment)',
     argumentHint: '<owner/repo#runId>',
   }

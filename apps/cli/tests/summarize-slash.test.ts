@@ -46,11 +46,12 @@ describe('/summarize slash command (Flow 3)', () => {
     expect(cmd.spec.summary.toLowerCase()).toContain('fix')
   })
 
-  test('declares no aliases — single canonical /summarize entry point', () => {
-    // The spec is locked: callers reach this via /summarize, period. No
-    // /sum, /tldr, /summary, etc. — alias inflation makes the contract
-    // less obvious to readers of the slash menu.
+  test('declares /sum and /summary as aliases', () => {
+    // Two short aliases for the most-typed verb. /sum is the keyboard win
+    // and /summary covers users who reach for the noun form. New aliases
+    // should be added cautiously — see registry-aliases.test for the
+    // collision guard that runs across every builtin.
     const cmd = new SummarizeSlashCommand()
-    expect(cmd.spec.aliases).toEqual([])
+    expect(cmd.spec.aliases).toEqual(['sum', 'summary'])
   })
 })
