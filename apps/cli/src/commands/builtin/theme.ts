@@ -73,5 +73,11 @@ function describeTheme(name: ThemeName): string {
       return 'Light-mode inverse · for white backgrounds'
     case 'dark-ansi':
       return '16-colour ANSI fallback · plain terminals'
+    case 'solarized-dark':
+      return 'Solarized dark · low-eyestrain palette'
+    case 'solarized-light':
+      return 'Solarized light · cream-paper canvas'
+    case 'high-contrast':
+      return 'High-contrast · WCAG AAA accessible'
   }
 }

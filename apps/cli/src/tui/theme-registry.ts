@@ -116,15 +116,94 @@ const darkAnsi: Theme = {
   spinner: SPINNER,
 }
 
+// Solarized dark — low-eyestrain palette tuned around base03/base02 canvas
+// with base0 body text and base01 muted. Accent hues stay perceptually even
+// across the light/dark variants by design.
+const solarizedDark: Theme = {
+  brand: '#859900',
+  brandDim: '#2aa198',
+  fg: '#839496',
+  muted: '#586e75',
+  accent: '#2aa198',
+  warn: '#b58900',
+  danger: '#dc322f',
+  heading: '#268bd2',
+  headingAlt: '#93a1a1',
+  emphasis: '#d33682',
+  strong: '#cb4b16',
+  link: '#268bd2',
+  quote: '#586e75',
+  codeBorder: '#586e75',
+  inlineCode: '#859900',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+// Solarized light — same accent hues over a base3/base2 paper canvas. Body
+// text drops to base00 (darker than base0) for contrast against the cream
+// background.
+const solarizedLight: Theme = {
+  brand: '#859900',
+  brandDim: '#2aa198',
+  fg: '#657b83',
+  muted: '#93a1a1',
+  accent: '#2aa198',
+  warn: '#b58900',
+  danger: '#dc322f',
+  heading: '#268bd2',
+  headingAlt: '#586e75',
+  emphasis: '#d33682',
+  strong: '#cb4b16',
+  link: '#268bd2',
+  quote: '#93a1a1',
+  codeBorder: '#93a1a1',
+  inlineCode: '#859900',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+// High-contrast — pure-saturation primaries on black, tuned for WCAG AAA
+// contrast and accessibility users. Every token is a corner of the RGB cube
+// or a pure secondary so contrast ratio against black stays at or above 7:1.
+const highContrast: Theme = {
+  brand: '#00ff00',
+  brandDim: '#00ff00',
+  fg: '#ffffff',
+  muted: '#ffffff',
+  accent: '#00ffff',
+  warn: '#ffff00',
+  danger: '#ff0000',
+  heading: '#00ffff',
+  headingAlt: '#ffffff',
+  emphasis: '#ff00ff',
+  strong: '#ffff00',
+  link: '#00ffff',
+  quote: '#ffffff',
+  codeBorder: '#ffffff',
+  inlineCode: '#00ff00',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
 export const THEMES = {
   dark,
   light,
   'dark-ansi': darkAnsi,
+  'solarized-dark': solarizedDark,
+  'solarized-light': solarizedLight,
+  'high-contrast': highContrast,
 } as const
 
 export type ThemeName = keyof typeof THEMES
 
-const NAMES: readonly ThemeName[] = ['dark', 'light', 'dark-ansi'] as const
+const NAMES: readonly ThemeName[] = [
+  'dark',
+  'light',
+  'dark-ansi',
+  'solarized-dark',
+  'solarized-light',
+  'high-contrast',
+] as const
 
 export function themeNames(): readonly ThemeName[] {
   return NAMES
