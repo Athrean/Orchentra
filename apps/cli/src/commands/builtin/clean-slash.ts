@@ -1,5 +1,12 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
-import { clean, type CleanSummary } from '../../composites/clean'
+import { clean as defaultClean, type CleanOptions, type CleanResult, type CleanSummary } from '../../composites/clean'
+import { expandSpec } from '../expand-spec'
+import { getActiveRepo as defaultGetActiveRepo } from '../../session-config'
+
+export interface CleanSlashDeps {
+  readonly clean?: (opts: CleanOptions) => Promise<CleanResult>
+  readonly getActiveRepo?: () => string | null
+}
 
 export class CleanSlashCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -9,24 +16,36 @@ export class CleanSlashCommand implements CommandHandler {
     argumentHint: '<owner/repo> [--dry-run] [--older-than-days <N>]',
   }
 
+  private readonly cleanFn: (opts: CleanOptions) => Promise<CleanResult>
+  private readonly getActive: () => string | null
+
+  constructor(deps: CleanSlashDeps = {}) {
+    this.cleanFn = deps.clean ?? defaultClean
+    this.getActive = deps.getActiveRepo ?? defaultGetActiveRepo
+  }
+
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    const spec = args[0]
-    if (!spec || !spec.includes('/')) {
-      const msg = 'usage: /clean <owner/repo> [--dry-run] [--older-than-days <N>]'
+    const firstPositional = args.find((a) => !a.startsWith('-'))
+    const expanded = expandSpec(firstPositional, this.getActive())
+
+    if (!expanded || !expanded.includes('/')) {
+      const msg =
+        'usage: /clean <owner/repo> [--dry-run] [--older-than-days <N>]. Tip: run /repos to set an active repo so the positional arg becomes optional.'
       if (ctx.ui) ctx.ui({ kind: 'note', tone: 'warn', text: msg })
       else process.stderr.write(msg + '\n')
       return false
     }
-    const [owner, repo] = spec.split('/', 2)
+
+    const [owner, repo] = expanded.split('/', 2)
     let dryRun = false
     let olderThanDays = 14
-    for (let i = 1; i < args.length; i++) {
+    for (let i = 0; i < args.length; i++) {
       const tok = args[i]
       if (tok === '--dry-run') dryRun = true
       else if (tok === '--older-than-days') olderThanDays = Number(args[++i])
     }
 
-    const result = await clean({
+    const result = await this.cleanFn({
       owner,
       repo,
       dryRun,
