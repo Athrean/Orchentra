@@ -261,6 +261,13 @@ export class ConversationRuntime {
         } else if (ev.kind === 'tool-use') {
           toolCalls.push(ev.call)
           events.push({ kind: 'tool_use', call: ev.call })
+        } else if (ev.kind === 'tool-args-delta') {
+          events.push({
+            kind: 'tool_args_delta',
+            toolUseId: ev.toolUseId,
+            toolName: ev.toolName,
+            partialJson: ev.partialJson,
+          })
         } else if (ev.kind === 'usage') {
           usage = addUsage(usage, ev.usage)
         } else if (ev.kind === 'finish') {
