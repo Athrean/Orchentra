@@ -3,7 +3,7 @@ import { SseParser } from '../sse'
 import { AnthropicApiError, classifyError, enrichAuthError, missingCredentialsError } from '../errors'
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
 import { injectCacheBoundary } from './cache'
-import type { ContentBlock, MessageRequest, StreamEvent, Usage } from './types'
+import type { ContentBlock, MessageRequest, StreamEvent, ToolDefinition, Usage } from './types'
 import { resolveAnthropicAuthToken } from './oauth'
 import { parseToolArguments } from '../tool-arguments'
 
@@ -97,11 +97,23 @@ export class AnthropicProvider implements Provider {
     }
 
     if (request.tools.length > 0) {
-      body.tools = request.tools.map((t) => ({
-        name: t.name,
-        description: t.description,
-        input_schema: t.inputSchema,
-      }))
+      // Tool definitions are static within a session — the wire format
+      // renders them before `system`, so a cache_control marker on the LAST
+      // tool caches the entire tools block (every preceding tool is part of
+      // the same prefix). This works alongside the cache breakpoint on the
+      // static system block (see injectCacheBoundary) within Anthropic's
+      // 4-breakpoint cap.
+      body.tools = request.tools.map((t, i) => {
+        const def: ToolDefinition = {
+          name: t.name,
+          description: t.description,
+          input_schema: t.inputSchema,
+        }
+        if (i === request.tools.length - 1) {
+          def.cache_control = { type: 'ephemeral' }
+        }
+        return def
+      })
     }
 
     // Subscription OAuth tokens require the agentic beta + Claude-Code UA;

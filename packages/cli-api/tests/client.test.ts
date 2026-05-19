@@ -539,6 +539,75 @@ describe('AnthropicProvider', () => {
     const system = lastRequest().body.system as { text: string }[]
     expect(system[0]?.text ?? '').not.toContain('You are Claude Code')
   })
+
+  // Tool definitions are static across a session — every turn pays for the
+  // entire tools array unless we attach a cache breakpoint. Anthropic
+  // semantics: a cache_control marker on the LAST tool in the array caches
+  // the entire tool block (rendered before `system`). With 4-breakpoint cap
+  // we want one on the tools array and one on the static system block; the
+  // existing system breakpoint is preserved by injectCacheBoundary.
+  test('tools: last tool has cache_control when tools are present (api-key path)', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(
+      provider,
+      buildRequest({
+        tools: [
+          { name: 'read_file', description: 'read', inputSchema: { type: 'object' } },
+          { name: 'write_file', description: 'write', inputSchema: { type: 'object' } },
+        ],
+      }),
+    )
+
+    const tools = lastRequest().body.tools as { name: string; cache_control?: unknown }[]
+    expect(Array.isArray(tools)).toBe(true)
+    expect(tools).toHaveLength(2)
+    expect(tools[0]?.cache_control).toBeUndefined()
+    expect(tools[1]?.cache_control).toEqual({ type: 'ephemeral' })
+  })
+
+  test('tools: single tool gets cache_control on it (last == first)', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(
+      provider,
+      buildRequest({
+        tools: [{ name: 'only_tool', description: 'only', inputSchema: { type: 'object' } }],
+      }),
+    )
+
+    const tools = lastRequest().body.tools as { name: string; cache_control?: unknown }[]
+    expect(tools).toHaveLength(1)
+    expect(tools[0]?.cache_control).toEqual({ type: 'ephemeral' })
+  })
+
+  test('tools: empty tools array omits tools field entirely (no breakpoint to set)', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ tools: [] }))
+
+    const body = lastRequest().body as { tools?: unknown }
+    expect(body.tools).toBeUndefined()
+  })
+
+  test('tools: OAuth path also attaches cache_control to last tool', async () => {
+    delete process.env['ANTHROPIC_API_KEY']
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test-bearer'
+
+    mockServer([{ body: successSseFrame() }])
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(
+      provider,
+      buildRequest({
+        tools: [{ name: 'only_tool', description: 'only', inputSchema: { type: 'object' } }],
+      }),
+    )
+
+    const tools = lastRequest().body.tools as { cache_control?: unknown }[]
+    expect(tools[0]?.cache_control).toEqual({ type: 'ephemeral' })
+
+    delete process.env['ANTHROPIC_AUTH_TOKEN']
+  })
 })
 
 // Anthropic only accepts `user` and `assistant` roles. The internal
