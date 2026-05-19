@@ -51,3 +51,7 @@ UBIQUITOUS_LANGUAGE.md
 
 # Local session state
 .orchentra/
+
+# Local agent state / scratch dirs — not part of this repo
+.claude/
+.entire/
