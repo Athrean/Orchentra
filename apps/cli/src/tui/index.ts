@@ -5,6 +5,7 @@ import type { LiveCli } from '../live-cli'
 import type { CommandRegistry } from '../commands/builtin'
 import { isIdeTerminal, type BannerOptions } from '../render/banner'
 import { Tui } from './Tui'
+import { TuiErrorBoundary } from './components/TuiErrorBoundary'
 
 export interface RunTuiOptions {
   readonly cli: LiveCli
@@ -95,22 +96,31 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
   // bump lands before Ink's own handler reads the field.
   process.stdout.prependListener('resize', onResize)
 
+  const instanceRef: { current: { cleanup: () => void } | null } = { current: null }
   const instance = render(
-    React.createElement(Tui, {
-      cli: opts.cli,
-      registry: opts.registry,
-      cwd: opts.cwd,
-      model: opts.model,
-      mode: opts.mode,
-      branch: opts.branch,
-      banner: opts.banner,
-    }),
+    React.createElement(
+      TuiErrorBoundary,
+      {
+        sessionId: opts.cli.getSessionId(),
+        onCleanup: (): void => instanceRef.current?.cleanup(),
+      },
+      React.createElement(Tui, {
+        cli: opts.cli,
+        registry: opts.registry,
+        cwd: opts.cwd,
+        model: opts.model,
+        mode: opts.mode,
+        branch: opts.branch,
+        banner: opts.banner,
+      }),
+    ),
     {
       stdout: inkStableStdout(ide),
       exitOnCtrlC: false,
       patchConsole: false,
     },
   )
+  instanceRef.current = instance
 
   inst = instance as unknown as InkInstanceInternals
 
