@@ -38,7 +38,7 @@ export interface ReposSlashDeps {
 export class ReposSlashCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'repos',
-    aliases: [],
+    aliases: ['repo'],
     summary: 'Pick an active repo (installed App + monitored markers)',
   }
 

@@ -48,7 +48,7 @@ function categoryFor(name: string): TabName | null {
 export class HelpCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'help',
-    aliases: ['?'],
+    aliases: ['?', 'h'],
     summary: 'List slash commands grouped by category',
     argumentHint: '[all|core|workspace|server|auth|tools]',
   }

@@ -3,7 +3,7 @@ import type { CommandHandler, CommandContext, SlashCommandSpec } from '../regist
 export class DiffCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'diff',
-    aliases: [],
+    aliases: ['d'],
     summary: 'Show uncommitted changes',
   }
 
