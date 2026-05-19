@@ -186,6 +186,7 @@ function describe(provider: ProviderKey, hasStored: boolean): string {
     anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
     gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_OAUTH_TOKEN'],
     openai: ['OPENAI_API_KEY'],
+    openrouter: ['OPENROUTER_API_KEY'],
     xai: ['XAI_API_KEY'],
     dashscope: ['DASHSCOPE_API_KEY'],
     github: ['ORCHENTRA_GITHUB_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN'],

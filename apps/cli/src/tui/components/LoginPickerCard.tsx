@@ -1,8 +1,17 @@
 import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
+import { saveCredentialAsync, tryLoadKeytar, type ProviderKey } from '@orchentra/cli-api'
 import { THEME } from '../theme'
 import { AnthropicLoginCard } from './AnthropicLoginCard'
-import { initialLoginState, loginReducer, type LoginState } from '../../login/state-machine'
+import { ApiKeyPickerCard } from './ApiKeyPickerCard'
+import { ApiKeyInputCard } from './ApiKeyInputCard'
+import {
+  apiKeyProviderToCredentialKey,
+  initialLoginState,
+  loginReducer,
+  type ApiKeyProvider,
+  type LoginState,
+} from '../../login/state-machine'
 
 export interface LoginPickerResult {
   readonly ok: boolean
@@ -26,33 +35,67 @@ const TOP_ROWS: readonly TopRow[] = [
 
 export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement {
   const [state, setState] = useState<LoginState>(initialLoginState())
+  const [saving, setSaving] = useState(false)
+
+  function dispatch(event: Parameters<typeof loginReducer>[1]): LoginState {
+    const next = loginReducer(state, event)
+    setState(next)
+    if (next.kind === 'closed') props.onComplete({ ok: false, message: 'cancelled' })
+    if (next.kind === 'done') props.onComplete({ ok: next.ok, message: next.message })
+    return next
+  }
+
+  async function saveApiKey(provider: ApiKeyProvider, key: string): Promise<void> {
+    setSaving(true)
+    try {
+      const shim = await tryLoadKeytar()
+      const credKey = apiKeyProviderToCredentialKey(provider) as ProviderKey
+      await saveCredentialAsync(credKey, { apiKey: key }, undefined, shim)
+      setSaving(false)
+      dispatch({ type: 'success', message: `saved ${credKey} API key` })
+    } catch (err) {
+      setSaving(false)
+      dispatch({ type: 'fail', error: err instanceof Error ? err.message : String(err) })
+    }
+  }
 
   useInput(
-    (_input, key) => {
+    (input, key) => {
       if (state.kind === 'oauth' || state.kind === 'done' || state.kind === 'closed') {
-        // Child cards / terminal states own their own input.
+        // Child OAuth card / terminal states own their own input.
         return
       }
-      if (key.escape || (key.ctrl && _input === 'c')) {
-        const next = loginReducer(state, { type: 'cancel' })
-        setState(next)
-        if (next.kind === 'closed') props.onComplete({ ok: false, message: 'cancelled' })
+      if (saving) return
+      if (key.escape || (key.ctrl && input === 'c')) {
+        const event = state.kind === 'top' ? { type: 'cancel' as const } : { type: 'back' as const }
+        dispatch(event)
+        return
+      }
+      if (state.kind === 'apiKeyInput') {
+        if (key.return) {
+          if (state.buffer.trim().length > 0) void saveApiKey(state.provider, state.buffer.trim())
+          return
+        }
+        if (key.backspace || key.delete) {
+          dispatch({ type: 'set-buffer', buffer: state.buffer.slice(0, -1) })
+          return
+        }
+        if (input && !key.ctrl && !key.meta) {
+          dispatch({ type: 'set-buffer', buffer: state.buffer + input })
+          return
+        }
         return
       }
       if (key.upArrow) {
-        setState(loginReducer(state, { type: 'cursor-up' }))
+        dispatch({ type: 'cursor-up' })
         return
       }
       if (key.downArrow) {
-        setState(loginReducer(state, { type: 'cursor-down' }))
+        dispatch({ type: 'cursor-down' })
         return
       }
       if (key.return) {
-        const next = loginReducer(state, { type: 'select' })
-        setState(next)
-        if (next.kind === 'done') {
-          props.onComplete({ ok: next.ok, message: next.message })
-        }
+        dispatch({ type: 'select' })
         return
       }
     },
@@ -63,14 +106,18 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
     return (
       <AnthropicLoginCard
         onComplete={(result) => {
-          const next = result.ok
-            ? loginReducer(state, { type: 'success', message: result.message })
-            : loginReducer(state, { type: 'fail', error: result.message })
-          setState(next)
-          if (next.kind === 'done') props.onComplete({ ok: next.ok, message: next.message })
+          dispatch(result.ok ? { type: 'success', message: result.message } : { type: 'fail', error: result.message })
         }}
       />
     )
+  }
+
+  if (state.kind === 'apiKeyPicker') {
+    return <ApiKeyPickerCard cursor={state.cursor} signedIn={new Set()} />
+  }
+
+  if (state.kind === 'apiKeyInput') {
+    return <ApiKeyInputCard provider={state.provider} buffer={state.buffer} error={state.error} saving={saving} />
   }
 
   // Top tier is the only renderable picker state in Slice 1; api-key + 3rd-party

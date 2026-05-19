@@ -24,6 +24,7 @@ const PROVIDER_LABELS: Record<ProviderKey, string> = {
   gemini: 'Gemini (Google)',
   github: 'GitHub',
   openai: 'OpenAI',
+  openrouter: 'OpenRouter',
   xai: 'xAI (Grok)',
   dashscope: 'DashScope (Qwen)',
   aws: 'AWS',

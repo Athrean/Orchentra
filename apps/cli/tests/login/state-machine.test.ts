@@ -36,15 +36,97 @@ describe('login state machine', () => {
     expect(s.kind === 'top' && s.cursor).toBe(1)
   })
 
-  test('top + select with cursor 1 stubs api-key tier as coming-soon done', () => {
+  test('top + select with cursor 1 opens the api-key drilldown', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
     s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
+    expect(s.kind).toBe('apiKeyPicker')
+    if (s.kind === 'apiKeyPicker') expect(s.cursor).toBe(0)
+  })
+
+  test('apiKeyPicker cursor-down wraps over all registry rows', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    expect(s.kind).toBe('apiKeyPicker')
+    let lastCursor = -1
+    for (let i = 0; i < 8; i += 1) {
+      s = loginReducer(s, { type: 'cursor-down' })
+      if (s.kind !== 'apiKeyPicker') throw new Error('exited apiKeyPicker')
+      expect(s.cursor).not.toBe(lastCursor)
+      lastCursor = s.cursor
+    }
+  })
+
+  test('apiKeyPicker + back returns to top with cursor on api-key row', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'back' })
+    expect(s.kind).toBe('top')
+    if (s.kind === 'top') expect(s.cursor).toBe(1)
+  })
+
+  test('apiKeyPicker + select opens apiKeyInput for the cursor row', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'select' })
+    expect(s.kind).toBe('apiKeyInput')
+    if (s.kind === 'apiKeyInput') {
+      expect(s.provider).toBe('anthropic-console')
+      expect(s.buffer).toBe('')
+      expect(s.error).toBe(null)
+    }
+  })
+
+  test('apiKeyInput + set-buffer replaces buffer and clears error', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'fail', error: 'bad key' })
+    expect(s.kind === 'apiKeyInput' && s.error).toBe('bad key')
+    s = loginReducer(s, { type: 'set-buffer', buffer: 'sk-abc' })
+    if (s.kind !== 'apiKeyInput') throw new Error('left apiKeyInput')
+    expect(s.buffer).toBe('sk-abc')
+    expect(s.error).toBe(null)
+  })
+
+  test('apiKeyInput + success transitions to done(ok=true)', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'success', message: 'saved openai key' })
     expect(s.kind).toBe('done')
     if (s.kind === 'done') {
-      expect(s.ok).toBe(false)
-      expect(s.message.toLowerCase()).toContain('coming soon')
+      expect(s.ok).toBe(true)
+      expect(s.message).toBe('saved openai key')
     }
+  })
+
+  test('apiKeyInput + fail keeps user in input with error preserved', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'set-buffer', buffer: 'sk-abc' })
+    s = loginReducer(s, { type: 'fail', error: 'keychain locked' })
+    expect(s.kind).toBe('apiKeyInput')
+    if (s.kind === 'apiKeyInput') {
+      expect(s.error).toBe('keychain locked')
+      expect(s.buffer).toBe('sk-abc')
+    }
+  })
+
+  test('apiKeyInput + back returns to apiKeyPicker', () => {
+    let s: ReturnType<typeof initialLoginState> = initialLoginState()
+    s = loginReducer(s, { type: 'cursor-down' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'select' })
+    s = loginReducer(s, { type: 'back' })
+    expect(s.kind).toBe('apiKeyPicker')
   })
 
   test('top + select with cursor 2 stubs third-party tier as coming-soon done', () => {
