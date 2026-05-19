@@ -17,7 +17,7 @@ const PROVIDER_LABELS: Partial<Record<ProviderKey, string>> = {
 export class LogoutCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'logout',
-    aliases: [],
+    aliases: ['lo'],
     summary: 'Remove stored credentials — picker when no args, or /logout <provider>',
     argumentHint: '[<provider>]',
   }

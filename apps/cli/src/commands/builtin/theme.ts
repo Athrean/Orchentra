@@ -12,7 +12,7 @@ import { isThemeName, loadActiveTheme, saveActiveTheme, themeNames, type ThemeNa
 export class ThemeCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'theme',
-    aliases: [],
+    aliases: ['th'],
     summary: 'Switch the TUI colour theme — picker when no args',
     argumentHint: '[name|list]',
   }

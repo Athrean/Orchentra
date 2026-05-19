@@ -3,7 +3,7 @@ import type { CommandHandler, CommandContext, SlashCommandSpec } from '../regist
 export class ModelCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'model',
-    aliases: [],
+    aliases: ['m'],
     summary: 'Show or switch model',
     argumentHint: '[name]',
   }
