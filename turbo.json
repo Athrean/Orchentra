@@ -60,7 +60,11 @@
     "LLM_CONFIG_SECRET",
     "VAULT_SECRET",
     "PORT",
-    "USER"
+    "USER",
+    "EDITOR",
+    "VISUAL",
+    "STUB_EDITOR_CONTENT",
+    "STUB_EDITOR_EXIT"
   ],
   "tasks": {
     "build": {
