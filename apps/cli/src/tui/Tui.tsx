@@ -517,7 +517,7 @@ export function Tui(props: TuiProps): React.ReactElement {
       }
 
       if (key.return) {
-        if (key.shift || endsWithBackslashLine(cur.buffer, cur.cursor)) {
+        if (key.shift || key.meta || endsWithBackslashLine(cur.buffer, cur.cursor)) {
           // Insert newline; if backslash-EOL, replace the backslash with newline.
           if (endsWithBackslashLine(cur.buffer, cur.cursor)) {
             const next = cur.buffer.slice(0, cur.cursor - 1) + '\n' + cur.buffer.slice(cur.cursor)
@@ -686,7 +686,7 @@ const SHORTCUT_SECTIONS = [
     title: 'Editing',
     rows: [
       { key: 'enter', value: 'submit' },
-      { key: 'shift+enter', value: 'newline' },
+      { key: 'shift+enter / alt+enter', value: 'newline (alt is a fallback for terminals that swallow shift+enter)' },
       { key: 'ctrl+u', value: 'delete to start of line' },
       { key: 'ctrl+k', value: 'delete to end of line' },
       { key: 'ctrl+w', value: 'delete previous word' },
