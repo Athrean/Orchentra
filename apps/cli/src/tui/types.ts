@@ -128,6 +128,7 @@ export interface TuiState {
 
 export type ActiveFlowState =
   | { readonly kind: 'anthropic-login' }
+  | { readonly kind: 'login-picker' }
   | { readonly kind: 'model-picker'; readonly current: string }
   | {
       readonly kind: 'repo-picker'
