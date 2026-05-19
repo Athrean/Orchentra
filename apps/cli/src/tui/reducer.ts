@@ -145,6 +145,51 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, transcript: next, streamingRowId: null }
     }
 
+    case 'transcript/tool-args-append': {
+      const existingIdx = findToolCallByUseId(state.transcript, action.toolUseId)
+      if (existingIdx === -1) {
+        const row: TranscriptRow = {
+          kind: 'tool_call',
+          id: action.toolUseId,
+          toolUseId: action.toolUseId,
+          name: action.toolName,
+          input: action.delta,
+          streaming: true,
+        }
+        return { ...state, transcript: [...state.transcript, row] }
+      }
+      const next = state.transcript.map((row, i) => {
+        if (i !== existingIdx || row.kind !== 'tool_call') return row
+        return { ...row, input: row.input + action.delta, streaming: true }
+      })
+      return { ...state, transcript: next }
+    }
+
+    case 'transcript/tool-args-finalize': {
+      const existingIdx = findToolCallByUseId(state.transcript, action.toolUseId)
+      if (existingIdx === -1) {
+        if (!action.input || !action.toolName) return state
+        const row: TranscriptRow = {
+          kind: 'tool_call',
+          id: action.toolUseId,
+          toolUseId: action.toolUseId,
+          name: action.toolName,
+          input: action.input,
+          streaming: false,
+        }
+        return { ...state, transcript: [...state.transcript, row] }
+      }
+      const next = state.transcript.map((row, i) => {
+        if (i !== existingIdx || row.kind !== 'tool_call') return row
+        return {
+          ...row,
+          input: action.input ?? row.input,
+          streaming: false,
+        }
+      })
+      return { ...state, transcript: next }
+    }
+
     case 'reasoning/toggle': {
       const next = state.transcript.map((row) => {
         if (row.id !== action.rowId || row.kind !== 'reasoning') return row
@@ -305,4 +350,15 @@ function clampCursor(cursor: number, buffer: string): number {
   if (cursor < 0) return 0
   if (cursor > buffer.length) return buffer.length
   return cursor
+}
+
+// Locate the streaming `tool_call` row that matches the Anthropic `tool_use_id`
+// arriving on each delta. Scans backward because the live one is almost
+// always near the tail of the transcript.
+function findToolCallByUseId(rows: readonly TranscriptRow[], toolUseId: string): number {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]
+    if (row.kind === 'tool_call' && row.toolUseId === toolUseId) return i
+  }
+  return -1
 }
