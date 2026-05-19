@@ -8,6 +8,8 @@
   "scripts": {
     "start": "bun run src/main.ts",
     "build": "bun build src/main.ts --outdir dist --target bun --external react-devtools-core",
+    "build:binaries": "./scripts/build-binaries.sh",
+    "build:binaries:host": "./scripts/build-binaries.sh host",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
@@ -29,6 +31,7 @@
     "@types/react": "^19",
     "eslint": "^8.57.0",
     "ink-testing-library": "^4.0.0",
+    "react-devtools-core": "^7.0.1",
     "typescript": "^5.9.3"
   }
 }
