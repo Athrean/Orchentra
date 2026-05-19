@@ -208,6 +208,58 @@ describe('AnthropicProvider', () => {
     expect(finish).toMatchObject({ kind: 'finish', stopReason: 'tool_use' })
   })
 
+  test('streams tool-args-delta events for each input_json_delta chunk', async () => {
+    const sseStream = [
+      sseFrame('message_start', { type: 'message_start', message: { usage: { input_tokens: 5, output_tokens: 0 } } }),
+      sseFrame('content_block_start', {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'tool_use', id: 'tool-1', name: 'read_file', input: {} },
+      }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'input_json_delta', partial_json: '{"path' },
+      }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'input_json_delta', partial_json: '":"/tmp/' },
+      }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'input_json_delta', partial_json: 'f.txt"}' },
+      }),
+      sseFrame('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      sseFrame('message_delta', {
+        type: 'message_delta',
+        delta: { stop_reason: 'tool_use' },
+        usage: { output_tokens: 10 },
+      }),
+      sseFrame('message_stop', { type: 'message_stop' }),
+    ].join('')
+
+    mockServer([{ body: sseStream }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    const events = await collectEvents(provider, buildRequest())
+
+    const deltas = events.filter((e) => e.kind === 'tool-args-delta')
+    expect(deltas).toEqual([
+      { kind: 'tool-args-delta', toolUseId: 'tool-1', toolName: 'read_file', partialJson: '{"path' },
+      { kind: 'tool-args-delta', toolUseId: 'tool-1', toolName: 'read_file', partialJson: '":"/tmp/' },
+      { kind: 'tool-args-delta', toolUseId: 'tool-1', toolName: 'read_file', partialJson: 'f.txt"}' },
+    ])
+
+    // Deltas must precede the finalized tool-use event so the TUI can paint a
+    // partial preview before parsing.
+    const deltaIndex = events.findIndex((e) => e.kind === 'tool-args-delta')
+    const toolUseIndex = events.findIndex((e) => e.kind === 'tool-use')
+    expect(deltaIndex).toBeGreaterThan(-1)
+    expect(toolUseIndex).toBeGreaterThan(deltaIndex)
+  })
+
   test('throws on permanent error without retry', async () => {
     mockServer([{ status: 401, body: '{"error":{"message":"invalid key","type":"authentication_error"}}' }])
 

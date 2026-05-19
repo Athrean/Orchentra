@@ -50,6 +50,47 @@ describe('TranscriptRowView — tool_result', () => {
   })
 })
 
+describe('TranscriptRowView — tool_call streaming', () => {
+  test('renders partial JSON args with an ellipsis while streaming', () => {
+    const { lastFrame } = render(
+      <TranscriptRowView
+        row={{
+          kind: 'tool_call',
+          id: 'tc-1',
+          toolUseId: 'tc-1',
+          name: 'read_file',
+          input: '{"path":"/tmp/f',
+          streaming: true,
+        }}
+        streaming
+      />,
+    )
+    const frame = lastFrame() ?? ''
+    expect(frame).toContain('read_file')
+    expect(frame).toContain('/tmp/f')
+    expect(frame).toContain('…')
+  })
+
+  test('renders finalized args without the streaming ellipsis', () => {
+    const { lastFrame } = render(
+      <TranscriptRowView
+        row={{
+          kind: 'tool_call',
+          id: 'tc-2',
+          toolUseId: 'tc-2',
+          name: 'read_file',
+          input: '{"path":"/tmp/f.txt"}',
+          streaming: false,
+        }}
+      />,
+    )
+    const frame = lastFrame() ?? ''
+    expect(frame).toContain('read_file')
+    expect(frame).toContain('/tmp/f.txt')
+    expect(frame).not.toContain('…)')
+  })
+})
+
 // emptyUsage is imported only to ensure the module resolves; assistant/tool
 // rows do not need it but keeps test bundles consistent with the wider suite.
 void emptyUsage
