@@ -135,6 +135,7 @@ export type ActiveFlowState =
       readonly repos: readonly import('../commands/ui-output').RepoPickerItem[]
       readonly current: string | null
     }
+  | { readonly kind: 'theme-picker' }
   | {
       readonly kind: 'confirmation-prompt'
       readonly request: import('./components/ConfirmationPrompt').PromptRequest
