@@ -1,0 +1,11 @@
+docker-compose.yml
+  ai_agent 1-2,6,21-22,26,36-37,41-45
+.env.example
+  ai_agent 4-8,11-16,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "143d96667ec0128aec6d9eaccf7a68bc717e1ff3",
+  "prompts": {}
+}
