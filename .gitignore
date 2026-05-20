@@ -55,3 +55,6 @@ UBIQUITOUS_LANGUAGE.md
 # Local agent state / scratch dirs — not part of this repo
 .claude/
 .entire/
+.agents/
+skills-lock.json
+.charlie/
