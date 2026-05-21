@@ -7,7 +7,7 @@ import { NodePanel } from './NodePanel'
 import { StatusPill } from './StatusPill'
 
 export function ExecutionDetail({ executionId }: { executionId: string }) {
-  const { data, isLoading, error } = useExecutionGraph(executionId)
+  const { data, isPending, error } = useExecutionGraph(executionId)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function ExecutionDetail({ executionId }: { executionId: string }) {
     }
   }, [])
 
-  if (isLoading) return <div className="px-8 py-6 font-mono text-sm text-[var(--color-pg-text-mute)]">loading…</div>
+  if (isPending) return <div className="px-8 py-6 font-mono text-sm text-[var(--color-pg-text-mute)]">loading…</div>
   if (error)
     return (
       <div className="px-8 py-6 font-mono text-sm text-[var(--color-status-error)]">{(error as Error).message}</div>
