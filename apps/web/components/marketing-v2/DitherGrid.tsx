@@ -1,4 +1,6 @@
 // apps/web/components/marketing-v2/DitherGrid.tsx
+
+/** Mount exactly once per page — the SVG pattern id `pg-dots` is global. */
 export function DitherGrid() {
   return (
     <svg
