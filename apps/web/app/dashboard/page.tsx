@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Shell } from '../../components/dashboard-v2'
+import { ExecutionsList, Shell } from '../../components/dashboard-v2'
 import { getApiBase, getLoginUrl } from '../lib/get-login-url'
 
 export default async function Page(): Promise<React.ReactNode> {
@@ -19,7 +19,7 @@ export default async function Page(): Promise<React.ReactNode> {
 
   return (
     <Shell orgName={orgName}>
-      <div className="px-8 py-6 font-mono text-sm text-[var(--color-pg-text-mute)]">executions list — slice 8</div>
+      <ExecutionsList />
     </Shell>
   )
 }
