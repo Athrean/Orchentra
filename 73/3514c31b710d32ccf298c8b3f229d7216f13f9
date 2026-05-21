@@ -1,0 +1,13 @@
+apps/web/components/dashboard-v2/index.ts
+  ai_agent 1
+apps/web/app/dashboard/diff/page.tsx
+  ai_agent 1-4,10,16-17,19-20,22,24-25,28-43
+apps/web/components/dashboard-v2/CrossExecDiff.tsx
+  ai_agent 1-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "733514c31b710d32ccf298c8b3f229d7216f13f9",
+  "prompts": {}
+}
