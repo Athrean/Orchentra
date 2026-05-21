@@ -1,0 +1,15 @@
+apps/web/app/dashboard/page.tsx
+  ai_agent 1-25
+apps/web/components/dashboard-v2/Shell.tsx
+  ai_agent 1-11
+apps/web/components/dashboard-v2/index.ts
+  ai_agent 1-2
+apps/web/components/dashboard-v2/SidebarNav.tsx
+  ai_agent 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "15146cf08ceb6253ba2c2a49bf6c98b6bbb97d18",
+  "prompts": {}
+}
