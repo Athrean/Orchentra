@@ -40,7 +40,7 @@ export function GraphView({
                 width={W}
                 height={H}
                 fill="var(--color-pg-surface-2)"
-                stroke={selected ? 'var(--color-pg-accent-coral)' : 'var(--color-pg-hairline)'}
+                stroke={selected ? 'var(--color-pg-accent-green)' : 'var(--color-pg-hairline)'}
                 strokeWidth={selected ? 2 : 1}
               />
               <text x={x + 12} y={y + 22} fontSize="11" fontFamily="ui-monospace" fill="var(--color-pg-text-0)">

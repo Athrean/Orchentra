@@ -82,7 +82,7 @@ export function ExecutionGraphDemo() {
               <path
                 key={i}
                 d={path}
-                stroke="var(--color-pg-accent-coral)"
+                stroke="var(--color-pg-accent-green)"
                 strokeWidth="1"
                 fill="none"
                 strokeDasharray="240"
