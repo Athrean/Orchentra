@@ -1,7 +1,15 @@
 // apps/web/app/page.tsx
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ASCIIBackground, CliDemo, ExecutionGraphDemo, FeatureTriptych, Footer, Hero } from '../components/marketing-v2'
+import {
+  ASCIIBackground,
+  CliDemo,
+  ExecutionGraphDemo,
+  FeatureTriptych,
+  Footer,
+  Hero,
+  NavBar,
+} from '../components/marketing-v2'
 import { getApiBase, getLoginUrl } from './lib/get-login-url'
 import pkg from '../package.json'
 
@@ -32,6 +40,7 @@ export default async function Page(): Promise<React.ReactNode> {
   return (
     <main className="relative min-h-screen text-[var(--color-pg-text-0)] font-mono">
       <ASCIIBackground />
+      <NavBar loginHref={loginUrl} />
       <Hero loginHref={loginUrl} />
       <ExecutionGraphDemo />
       <FeatureTriptych />
