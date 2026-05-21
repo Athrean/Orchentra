@@ -1,69 +1,66 @@
-// apps/web/components/marketing-v2/Hero.tsx
+import Image from 'next/image'
 import Link from 'next/link'
+import { ASCIIMascot } from './ASCIIMascot'
 
 export function Hero({ loginHref }: { loginHref: string }) {
   return (
-    <section className="mx-auto flex max-w-6xl flex-col items-start gap-10 px-6 pt-24 pb-20 md:flex-row md:items-center md:justify-between md:pt-32">
-      <div className="max-w-2xl">
-        <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-tight text-[var(--color-pg-text-0)] md:text-[3.25rem]">
-          the DevOps runtime that remembers every execution
-        </h1>
-        <p className="mt-5 text-base text-[var(--color-pg-text-mute)] md:text-lg">
-          one operations registry. CLI, MCP, and a graph that survives the incident.
-        </p>
-
-        <div
-          className="mt-8 inline-flex items-center gap-3 border border-[var(--color-pg-hairline)] bg-[var(--color-pg-surface-1)] px-4 py-3 text-sm"
-          aria-label="install command"
-        >
-          <span className="text-[var(--color-pg-text-mute)]">$</span>
-          <code className="text-[var(--color-pg-text-0)]">pnpm i -g @orchentra/cli</code>
-        </div>
-
-        <div className="mt-8 flex items-center gap-3">
-          <Link
-            href={loginHref}
-            className="border border-[var(--color-pg-accent-coral)] bg-[var(--color-pg-accent-coral)] px-5 py-2.5 text-sm font-medium text-black transition-colors hover:bg-[var(--color-pg-accent-coral-2)] hover:border-[var(--color-pg-accent-coral-2)]"
-          >
-            sign in
-          </Link>
-          <Link
-            href="/docs"
-            className="border border-[var(--color-pg-hairline)] px-5 py-2.5 text-sm text-[var(--color-pg-text-0)] transition-colors hover:border-[var(--color-pg-text-mute)]"
-          >
-            docs
-          </Link>
-        </div>
+    <section className="mx-auto max-w-6xl px-6 pt-14 pb-20">
+      {/* tabular header strip */}
+      <div className="flex items-center justify-between border-y border-[var(--color-pg-hairline)] py-2 text-[10px] uppercase tracking-[0.18em] text-[var(--color-pg-text-mute)]">
+        <span>visual identity</span>
+        <span className="hidden md:block">follow us · x, github</span>
+        <span>[01]</span>
+        <span>↳ next</span>
       </div>
 
-      <DitheredMascot />
-    </section>
-  )
-}
+      <div className="mt-10 grid grid-cols-1 gap-12 md:grid-cols-[1.1fr_1fr] md:items-center">
+        <div>
+          <div className="flex items-center gap-4">
+            <Image src="/athrean.png" alt="Athrean" width={56} height={56} className="h-14 w-14" priority />
+            <span className="text-xs uppercase tracking-[0.22em] text-[var(--color-pg-text-mute)]">
+              athrean · orchentra
+            </span>
+          </div>
 
-function DitheredMascot() {
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      className="h-48 w-48 shrink-0 text-[var(--color-pg-accent-coral)] md:h-64 md:w-64"
-      aria-hidden="true"
-    >
-      <defs>
-        <pattern id="pg-mascot-dither" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
-          <circle cx="1" cy="1" r="0.9" fill="currentColor" />
-        </pattern>
-      </defs>
-      <circle cx="100" cy="100" r="80" fill="url(#pg-mascot-dither)" opacity="0.9" />
-      <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.4" />
-      <circle cx="80" cy="92" r="4" fill="var(--color-pg-surface-0)" />
-      <circle cx="120" cy="92" r="4" fill="var(--color-pg-surface-0)" />
-      <path
-        d="M 80 120 Q 100 130 120 120"
-        stroke="var(--color-pg-surface-0)"
-        strokeWidth="2"
-        fill="none"
-        strokeLinecap="round"
-      />
-    </svg>
+          <h1 className="mt-10 text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-[var(--color-pg-text-0)] md:text-[3.6rem]">
+            the DevOps runtime
+            <br />
+            that remembers every
+            <br />
+            execution.
+          </h1>
+          <p className="mt-6 max-w-xl text-base text-[var(--color-pg-text-mute)] md:text-lg">
+            one operations registry. CLI, MCP, and a graph that survives the incident.
+          </p>
+
+          <div
+            className="mt-8 inline-flex items-center gap-3 border border-[var(--color-pg-hairline)] bg-[var(--color-pg-surface-1)] px-4 py-3 text-sm"
+            aria-label="install command"
+          >
+            <span className="text-[var(--color-pg-text-mute)]">$</span>
+            <code className="text-[var(--color-pg-text-0)]">pnpm i -g @orchentra/cli</code>
+          </div>
+
+          <div className="mt-8 flex items-center gap-3">
+            <Link
+              href={loginHref}
+              className="border border-[var(--color-pg-accent-coral)] bg-[var(--color-pg-accent-coral)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-pg-accent-coral-2)] hover:border-[var(--color-pg-accent-coral-2)]"
+            >
+              sign in
+            </Link>
+            <Link
+              href="/docs"
+              className="border border-[var(--color-pg-text-0)] px-5 py-2.5 text-sm text-[var(--color-pg-text-0)] transition-colors hover:bg-[var(--color-pg-text-0)] hover:text-[var(--color-pg-surface-0)]"
+            >
+              docs
+            </Link>
+          </div>
+        </div>
+
+        <div className="overflow-hidden">
+          <ASCIIMascot />
+        </div>
+      </div>
+    </section>
   )
 }
