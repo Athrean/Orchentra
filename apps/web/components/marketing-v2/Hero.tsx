@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
-import { ASCIIMascot } from './ASCIIMascot'
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -13,7 +12,7 @@ export function Hero({ loginHref }: { loginHref: string }) {
   const reduce = useReducedMotion()
 
   return (
-    <section className="relative mx-auto flex max-w-4xl flex-col items-center px-6 pt-32 pb-40 text-center">
+    <section className="relative mx-auto flex max-w-4xl flex-col items-center px-6 pt-24 pb-40 text-center">
       <motion.div
         initial={reduce ? false : 'hidden'}
         animate={reduce ? undefined : 'show'}
@@ -77,15 +76,6 @@ export function Hero({ loginHref }: { loginHref: string }) {
           >
             Or read the documentation
           </Link>
-        </motion.div>
-
-        <motion.div
-          initial={reduce ? false : { opacity: 0, scale: 0.94 }}
-          animate={reduce ? undefined : { opacity: 0.8, scale: 1 }}
-          transition={{ duration: 1.4, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="pointer-events-none mt-24 w-full max-w-2xl"
-        >
-          <ASCIIMascot className="mx-auto opacity-90" />
         </motion.div>
       </motion.div>
     </section>
