@@ -1,7 +1,7 @@
 // apps/web/app/page.tsx
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { DitherGrid, ExecutionGraphDemo, Hero } from '../components/marketing-v2'
+import { DitherGrid, ExecutionGraphDemo, FeatureTriptych, Hero } from '../components/marketing-v2'
 import { getApiBase, getLoginUrl } from './lib/get-login-url'
 
 export default async function Page(): Promise<React.ReactNode> {
@@ -33,6 +33,7 @@ export default async function Page(): Promise<React.ReactNode> {
       <DitherGrid />
       <Hero loginHref={loginUrl} />
       <ExecutionGraphDemo />
+      <FeatureTriptych />
     </main>
   )
 }
