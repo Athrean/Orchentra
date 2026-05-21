@@ -2,11 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Activity, GitBranch, Layers, Settings } from 'lucide-react'
+import { Activity, Layers, Settings } from 'lucide-react'
 
 const ITEMS = [
   { href: '/dashboard', label: 'executions', icon: Activity },
-  { href: '/dashboard/exec', label: 'graph', icon: GitBranch },
   { href: '/dashboard/diff', label: 'diff', icon: Layers },
   { href: '/dashboard/settings', label: 'settings', icon: Settings },
 ]

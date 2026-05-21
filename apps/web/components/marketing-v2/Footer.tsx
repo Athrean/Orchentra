@@ -6,7 +6,7 @@ const SECTIONS = [
     label: 'product',
     links: [
       { href: '/docs', label: 'docs' },
-      { href: 'https://github.com/anthropics/orchentra', label: 'github' },
+      { href: 'https://github.com/Athrean/Orchentra', label: 'github' },
       { href: '/docs/mcp', label: 'mcp' },
     ],
   },
