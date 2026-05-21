@@ -25,7 +25,7 @@ export function ExecutionsList() {
     return (
       <div className="px-8 py-6 font-mono text-sm text-[var(--color-pg-text-mute)]">
         no monitored repos.{' '}
-        <Link href="/onboarding" className="text-[var(--color-pg-accent-coral)]">
+        <Link href="/onboarding" className="text-[var(--color-pg-accent-green)]">
           connect a repo →
         </Link>
       </div>

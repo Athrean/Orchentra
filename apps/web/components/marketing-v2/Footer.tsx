@@ -38,7 +38,7 @@ export function Footer({ loginHref, version }: { loginHref: string; version: str
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="text-sm text-[var(--color-pg-text-0)] hover:text-[var(--color-pg-accent-coral)]"
+                    className="text-sm text-[var(--color-pg-text-0)] hover:text-[var(--color-pg-accent-green)]"
                   >
                     {l.label}
                   </Link>

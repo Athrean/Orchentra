@@ -16,7 +16,7 @@ export function SidebarNav({ orgName }: { orgName: string }) {
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-[var(--color-pg-hairline)] bg-[var(--color-pg-surface-1)] font-mono">
       <div className="border-b border-[var(--color-pg-hairline)] px-4 py-4">
         <div className="flex items-center gap-2 text-sm">
-          <span className="inline-block h-5 w-5 bg-[var(--color-pg-accent-coral)]" aria-hidden />
+          <span className="inline-block h-5 w-5 bg-[var(--color-pg-accent-green)]" aria-hidden />
           <span className="truncate text-[var(--color-pg-text-0)]">{orgName || 'orchentra'}</span>
         </div>
       </div>
@@ -33,7 +33,7 @@ export function SidebarNav({ orgName }: { orgName: string }) {
                   : 'text-[var(--color-pg-text-mute)] hover:text-[var(--color-pg-text-0)]'
               }`}
             >
-              {active && <span className="absolute left-0 top-0 h-full w-[2px] bg-[var(--color-pg-accent-coral)]" />}
+              {active && <span className="absolute left-0 top-0 h-full w-[2px] bg-[var(--color-pg-accent-green)]" />}
               <Icon className="h-4 w-4" />
               <span>{label}</span>
             </Link>
