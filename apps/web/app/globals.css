@@ -125,6 +125,17 @@
   --shadow-onboard-rail: 0 4px 12px rgba(17, 17, 26, 0.08);
   --shadow-onboard-pill: 0 6px 16px rgba(17, 17, 26, 0.1);
   --shadow-onboard-row: 0 4px 12px rgba(17, 17, 26, 0.1);
+
+  /* ── Pixel-grid web redesign (apps/web/docs/specs/2026-05-21-web-redesign-design.md §4) ── */
+  --color-pg-surface-0: #0b0c0e;
+  --color-pg-surface-1: #111317;
+  --color-pg-surface-2: #16181d;
+  --color-pg-text-0: #e6e7ea;
+  --color-pg-text-mute: #7a7e87;
+  --color-pg-grid-dot: #1a1d22;
+  --color-pg-hairline: #23262d;
+  --color-pg-accent-coral: #ff6b5b;
+  --color-pg-accent-coral-2: #ff8a7e;
 }
 
 @custom-variant dark (&:is(.dark *));
