@@ -1,0 +1,13 @@
+apps/web/components/marketing-v2/Hero.tsx
+  ai_agent 1-69
+apps/web/components/marketing-v2/index.ts
+  ai_agent 3
+apps/web/app/page.tsx
+  ai_agent 4,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "9a2f8a6bf3d4deb23f02731bee6ff3fc938e9dc7",
+  "prompts": {}
+}
