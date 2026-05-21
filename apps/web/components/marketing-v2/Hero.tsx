@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { ASCIIMascot } from './ASCIIMascot'
 
@@ -13,16 +12,13 @@ export function Hero({ loginHref }: { loginHref: string }) {
         <span>↳ next</span>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-12 md:grid-cols-[1.1fr_1fr] md:items-center">
+      <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-[1fr_1.1fr] md:items-center">
         <div>
-          <div className="flex items-center gap-4">
-            <Image src="/athrean.png" alt="Athrean" width={56} height={56} className="h-14 w-14" priority />
-            <span className="text-xs uppercase tracking-[0.22em] text-[var(--color-pg-text-mute)]">
-              athrean · orchentra
-            </span>
+          <div className="text-xs uppercase tracking-[0.22em] text-[var(--color-pg-text-mute)]">
+            athrean · orchentra
           </div>
 
-          <h1 className="mt-10 text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-[var(--color-pg-text-0)] md:text-[3.6rem]">
+          <h1 className="mt-8 text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-[var(--color-pg-text-0)] md:text-[3.6rem]">
             the DevOps runtime
             <br />
             that remembers every
