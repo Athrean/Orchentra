@@ -1,3 +1,4 @@
+export { CrossExecDiff } from './CrossExecDiff'
 export { ExecutionDetail } from './ExecutionDetail'
 export { ExecutionsList } from './ExecutionsList'
 export { GraphView } from './GraphView'
