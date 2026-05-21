@@ -9,7 +9,7 @@
 
 ## 1. Vision
 
-Replace the existing `apps/web` landing and dashboard with a pixel-grid technical aesthetic — dotted-grid background, dithered imagery, 1px hairline rules, monospace-heavy typography, coral accent. Inspired by the supermemory.ai rebuild ethos (Claude-driven, high iteration velocity, no agency churn). Keeps Orchentra's CLI-first identity (CLAUDE.md §6) and the Phase-4 contract that the web is a read-only projection of the same execution graph the CLI and MCP server hit.
+Replace the existing `apps/web` landing and dashboard with a pixel-grid technical aesthetic — dotted-grid background, dithered imagery, 1px hairline rules, monospace-heavy typography, coral accent. Follows a recent wave of Claude-driven landing rebuilds (high iteration velocity, no agency churn). Keeps Orchentra's CLI-first identity (CLAUDE.md §6) and the Phase-4 contract that the web is a read-only projection of the same execution graph the CLI and MCP server hit.
 
 This is a **UI-only refactor**. No new API endpoints, no auth changes, no schema changes. Existing projection endpoints in `apps/server` are untouched.
 
@@ -202,7 +202,7 @@ No new unit tests. UI-only refactor; behavior preserved through reused data shap
 ## 11. Performance budget
 
 - Landing first-paint ≤ 1.5s on cold network (no client-side hydration cost for static sections).
-- Lighthouse mobile performance ≥ 90 (per supermemory thread anchor).
+- Lighthouse mobile performance ≥ 90 (industry baseline for content-led landings).
 - No new client-side JS deps. Framer-motion already in graph; reuse it.
 - Images: SVG mascot inline (no network round-trip).
 
