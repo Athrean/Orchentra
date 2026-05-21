@@ -1,0 +1,9 @@
+apps/web/components/marketing-v2/DitherGrid.tsx
+  ai_agent 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "b1e7d20aa2b3daad6f32ed9c55a96a7d3991ff18",
+  "prompts": {}
+}
