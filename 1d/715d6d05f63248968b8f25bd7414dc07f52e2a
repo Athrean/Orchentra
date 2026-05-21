@@ -1,0 +1,9 @@
+apps/web/docs/specs/2026-05-21-web-redesign-design.md
+  ai_agent 1-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "1d715d6d05f63248968b8f25bd7414dc07f52e2a",
+  "prompts": {}
+}
