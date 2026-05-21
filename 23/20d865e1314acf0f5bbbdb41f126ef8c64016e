@@ -1,0 +1,9 @@
+apps/web/app/dashboard/settings/page.tsx
+  ai_agent 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "2320d865e1314acf0f5bbbdb41f126ef8c64016e",
+  "prompts": {}
+}
