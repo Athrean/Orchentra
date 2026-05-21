@@ -1,8 +1,9 @@
 // apps/web/app/page.tsx
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { CliDemo, DitherGrid, ExecutionGraphDemo, FeatureTriptych, Hero } from '../components/marketing-v2'
+import { CliDemo, DitherGrid, ExecutionGraphDemo, FeatureTriptych, Footer, Hero } from '../components/marketing-v2'
 import { getApiBase, getLoginUrl } from './lib/get-login-url'
+import pkg from '../package.json'
 
 export default async function Page(): Promise<React.ReactNode> {
   const cookieStore = await cookies()
@@ -35,6 +36,7 @@ export default async function Page(): Promise<React.ReactNode> {
       <ExecutionGraphDemo />
       <FeatureTriptych />
       <CliDemo />
+      <Footer loginHref={loginUrl} version={pkg.version} />
     </main>
   )
 }
