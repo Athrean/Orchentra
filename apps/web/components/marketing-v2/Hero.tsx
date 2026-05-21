@@ -40,7 +40,7 @@ export function Hero({ loginHref }: { loginHref: string }) {
           <div className="mt-8 flex items-center gap-3">
             <Link
               href={loginHref}
-              className="border border-[var(--color-pg-accent-coral)] bg-[var(--color-pg-accent-coral)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-pg-accent-coral-2)] hover:border-[var(--color-pg-accent-coral-2)]"
+              className="border border-[var(--color-pg-accent-green)] bg-[var(--color-pg-accent-green)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-pg-accent-green-2)] hover:border-[var(--color-pg-accent-green-2)]"
             >
               sign in
             </Link>

@@ -1,7 +1,11 @@
 // apps/web/components/marketing-v2/FeatureTriptych.tsx
 import type { ReactNode } from 'react'
 
-interface Feature { title: string; body: string; icon: ReactNode }
+interface Feature {
+  title: string
+  body: string
+  icon: ReactNode
+}
 
 const FEATURES: Feature[] = [
   {
@@ -27,7 +31,7 @@ export function FeatureTriptych() {
       <div className="grid grid-cols-1 md:grid-cols-3">
         {FEATURES.map((f, i) => (
           <div key={f.title} className={`px-6 py-8 ${i > 0 ? 'md:border-l border-[var(--color-pg-hairline)]' : ''}`}>
-            <div className="text-[var(--color-pg-accent-coral)]">{f.icon}</div>
+            <div className="text-[var(--color-pg-accent-green)]">{f.icon}</div>
             <h3 className="mt-4 text-base font-semibold text-[var(--color-pg-text-0)]">{f.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-[var(--color-pg-text-mute)]">{f.body}</p>
           </div>
