@@ -1,7 +1,7 @@
 // apps/web/app/page.tsx
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { DitherGrid } from '../components/marketing-v2'
+import { DitherGrid, Hero } from '../components/marketing-v2'
 import { getApiBase, getLoginUrl } from './lib/get-login-url'
 
 export default async function Page(): Promise<React.ReactNode> {
@@ -27,12 +27,11 @@ export default async function Page(): Promise<React.ReactNode> {
   if (authed) redirect('/onboarding')
 
   const loginUrl = getLoginUrl()
-  void loginUrl // wired in Task 2
 
   return (
     <main className="relative min-h-screen text-[var(--color-pg-text-0)] font-mono">
       <DitherGrid />
-      <div className="mx-auto max-w-6xl px-6 py-20">stub — slice 1</div>
+      <Hero loginHref={loginUrl} />
     </main>
   )
 }
