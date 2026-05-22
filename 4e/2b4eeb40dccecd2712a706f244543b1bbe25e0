@@ -1,0 +1,19 @@
+apps/web/package.json
+  ai_agent 10-11
+package.json
+  ai_agent 17
+apps/web/components/marketing-v2/Hero.tsx
+  ai_agent 3,6-29,36-199,211-213,219,230-232,234-235
+apps/web/components/marketing-v2/typewriter.ts
+  ai_agent 1-38
+apps/web/tests/typewriter.test.ts
+  ai_agent 1-71
+apps/web/tsconfig.json
+  ai_agent 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "4e2b4eeb40dccecd2712a706f244543b1bbe25e0",
+  "prompts": {}
+}
