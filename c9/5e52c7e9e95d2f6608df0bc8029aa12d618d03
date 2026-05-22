@@ -1,0 +1,23 @@
+apps/web/components/marketing-v2/Testimonials.tsx
+  ai_agent 57,59
+apps/web/components/marketing-v2/ExecutionsTable.tsx
+  ai_agent 64,66
+apps/web/components/marketing-v2/Footer.tsx
+  ai_agent 79,85
+apps/web/components/marketing-v2/PillarFeatures.tsx
+  ai_agent 62,128
+apps/web/components/marketing-v2/FAQ.tsx
+  ai_agent 81
+apps/web/components/marketing-v2/LiveGraphCard.tsx
+  ai_agent 55,57
+apps/web/components/marketing-v2/BuildingBlocks.tsx
+  ai_agent 87
+apps/web/components/marketing-v2/NavBar.tsx
+  ai_agent 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "c95e52c7e9e95d2f6608df0bc8029aa12d618d03",
+  "prompts": {}
+}
