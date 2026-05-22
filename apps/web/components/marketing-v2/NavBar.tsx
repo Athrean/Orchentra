@@ -55,7 +55,7 @@ export function NavBar({ loginHref }: { loginHref: string }) {
           </Link>
           <Link
             href={loginHref}
-            className="rounded-full bg-[var(--color-pg-accent-green)] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-6px_rgba(21,101,69,0.5)] transition-all hover:bg-[var(--color-pg-accent-green-2)] hover:shadow-[0_8px_20px_-8px_rgba(21,101,69,0.6)]"
+            className="rounded-lg bg-[var(--color-pg-accent-green)] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-6px_rgba(21,101,69,0.5)] transition-all hover:bg-[var(--color-pg-accent-green-2)] hover:shadow-[0_8px_20px_-8px_rgba(21,101,69,0.6)]"
           >
             Get Orchentra
           </Link>

@@ -54,9 +54,9 @@ export function Testimonials() {
             <motion.div
               key={q.org}
               variants={fadeUp}
-              className="flex flex-col rounded-3xl bg-[var(--color-pg-surface-1)]/70 p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.15)] backdrop-blur-sm md:p-10"
+              className="flex flex-col rounded-xl bg-[var(--color-pg-surface-1)]/70 p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.15)] backdrop-blur-sm md:p-10"
             >
-              <span className="inline-flex w-fit items-center gap-2 rounded-full bg-[var(--color-pg-surface-0)] px-3 py-1 font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-pg-text-mute)]">
+              <span className="inline-flex w-fit items-center gap-2 rounded-md bg-[var(--color-pg-surface-0)] px-3 py-1 font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-pg-text-mute)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-pg-accent-green)]" />
                 {q.org}
               </span>

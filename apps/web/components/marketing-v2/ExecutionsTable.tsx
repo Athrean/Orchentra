@@ -61,9 +61,9 @@ export function ExecutionsTable() {
 
         <motion.div
           variants={fadeUp}
-          className="relative mt-14 overflow-hidden rounded-3xl bg-[var(--color-pg-text-0)] p-6 shadow-[0_40px_100px_-40px_rgba(20,20,19,0.5)] md:p-8"
+          className="relative mt-14 overflow-hidden rounded-xl bg-[var(--color-pg-text-0)] p-6 shadow-[0_40px_100px_-40px_rgba(20,20,19,0.5)] md:p-8"
         >
-          <div className="rounded-2xl bg-[#1f1e1d] p-1">
+          <div className="rounded-lg bg-[#1f1e1d] p-1">
             <div className="grid grid-cols-[1.5fr_1.4fr_0.8fr_1fr] gap-4 px-5 py-4 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.18em] text-[var(--color-pg-surface-2)]/60">
               <span>Execution</span>
               <span>Kind</span>

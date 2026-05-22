@@ -84,7 +84,7 @@ export function BuildingBlocks() {
               variants={fadeUp}
               whileHover={reduce ? undefined : { y: -4 }}
               transition={{ duration: 0.3 }}
-              className="group relative overflow-hidden rounded-3xl bg-[var(--color-pg-surface-1)]/60 p-7 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.1)] backdrop-blur-sm transition-shadow hover:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)]"
+              className="group relative overflow-hidden rounded-xl bg-[var(--color-pg-surface-1)]/60 p-7 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.1)] backdrop-blur-sm transition-shadow hover:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)]"
             >
               <div className="flex items-start justify-between">
                 <div className="text-[var(--color-pg-accent-green)]">{b.icon}</div>
