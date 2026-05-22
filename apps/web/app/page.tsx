@@ -1,7 +1,20 @@
+// apps/web/app/page.tsx
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ConnectorGrid, CoralCTA, FeatureGrid, Footer, Hero, HowItWorks, TopNav } from '../components/marketing'
+import {
+  ASCIIBackground,
+  BuildingBlocks,
+  ExecutionsTable,
+  FAQ,
+  Footer,
+  Hero,
+  LiveGraphCard,
+  NavBar,
+  PillarFeatures,
+  Testimonials,
+} from '../components/marketing-v2'
 import { getApiBase, getLoginUrl } from './lib/get-login-url'
+import pkg from '../package.json'
 
 export default async function Page(): Promise<React.ReactNode> {
   const cookieStore = await cookies()
@@ -28,14 +41,17 @@ export default async function Page(): Promise<React.ReactNode> {
   const loginUrl = getLoginUrl()
 
   return (
-    <main className="mk-canvas min-h-screen">
-      <TopNav loginHref={loginUrl} />
+    <main className="relative min-h-screen text-[var(--color-pg-text-0)]">
+      <ASCIIBackground />
+      <NavBar loginHref={loginUrl} />
       <Hero loginHref={loginUrl} />
-      <FeatureGrid />
-      <HowItWorks />
-      <ConnectorGrid />
-      <CoralCTA loginHref={loginUrl} />
-      <Footer />
+      <PillarFeatures />
+      <LiveGraphCard />
+      <ExecutionsTable />
+      <BuildingBlocks />
+      <Testimonials />
+      <FAQ />
+      <Footer loginHref={loginUrl} version={pkg.version} />
     </main>
   )
 }

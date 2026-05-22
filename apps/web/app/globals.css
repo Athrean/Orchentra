@@ -125,6 +125,17 @@
   --shadow-onboard-rail: 0 4px 12px rgba(17, 17, 26, 0.08);
   --shadow-onboard-pill: 0 6px 16px rgba(17, 17, 26, 0.1);
   --shadow-onboard-row: 0 4px 12px rgba(17, 17, 26, 0.1);
+
+  /* ── Pixel-grid web redesign (cream + green, ASCII-mascot) ── */
+  --color-pg-surface-0: #f4ede2;
+  --color-pg-surface-1: #ede4d4;
+  --color-pg-surface-2: #e0d6c1;
+  --color-pg-text-0: #141413;
+  --color-pg-text-mute: #6c6a64;
+  --color-pg-grid-dot: #c9c2b7;
+  --color-pg-hairline: #c9c2b7;
+  --color-pg-accent-green: #156545;
+  --color-pg-accent-green-2: #23a470;
 }
 
 @custom-variant dark (&:is(.dark *));
