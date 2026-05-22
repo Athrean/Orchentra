@@ -76,13 +76,13 @@ export function Footer({ loginHref, version }: { loginHref: string; version: str
         <motion.div variants={fadeUp} className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
             href={loginHref}
-            className="rounded-full bg-[var(--color-pg-accent-green)] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_24px_-12px_rgba(21,101,69,0.6)] transition-all hover:bg-[var(--color-pg-accent-green-2)] hover:shadow-[0_12px_32px_-12px_rgba(21,101,69,0.7)]"
+            className="rounded-lg bg-[var(--color-pg-accent-green)] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_24px_-12px_rgba(21,101,69,0.6)] transition-all hover:bg-[var(--color-pg-accent-green-2)] hover:shadow-[0_12px_32px_-12px_rgba(21,101,69,0.7)]"
           >
             Get Orchentra
           </Link>
           <Link
             href="/docs"
-            className="rounded-full bg-[var(--color-pg-surface-1)] px-6 py-3 text-sm font-medium text-[var(--color-pg-text-0)] shadow-[0_4px_14px_-6px_rgba(0,0,0,0.1)] transition-all hover:bg-[var(--color-pg-surface-2)]"
+            className="rounded-lg bg-[var(--color-pg-surface-1)] px-6 py-3 text-sm font-medium text-[var(--color-pg-text-0)] shadow-[0_4px_14px_-6px_rgba(0,0,0,0.1)] transition-all hover:bg-[var(--color-pg-surface-2)]"
           >
             Read the docs
           </Link>

@@ -52,9 +52,9 @@ export function LiveGraphCard() {
 
         <motion.div
           variants={fadeUp}
-          className="relative mt-14 overflow-hidden rounded-3xl bg-[var(--color-pg-surface-1)]/70 p-6 shadow-[0_30px_80px_-30px_rgba(20,20,19,0.25)] backdrop-blur-sm md:p-10"
+          className="relative mt-14 overflow-hidden rounded-xl bg-[var(--color-pg-surface-1)]/70 p-6 shadow-[0_30px_80px_-30px_rgba(20,20,19,0.25)] backdrop-blur-sm md:p-10"
         >
-          <div className="rounded-2xl bg-[var(--color-pg-surface-0)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
+          <div className="rounded-lg bg-[var(--color-pg-surface-0)] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
             <div className="flex items-baseline justify-between">
               <span className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-wider text-[var(--color-pg-text-mute)]">
                 Execution latency

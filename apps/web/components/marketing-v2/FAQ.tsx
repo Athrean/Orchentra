@@ -78,7 +78,7 @@ export function FAQ() {
                   <motion.span
                     animate={{ rotate: isOpen ? 45 : 0 }}
                     transition={{ duration: 0.3 }}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-pg-surface-1)] text-[var(--color-pg-text-0)]"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--color-pg-surface-1)] text-[var(--color-pg-text-0)]"
                     aria-hidden="true"
                   >
                     +
