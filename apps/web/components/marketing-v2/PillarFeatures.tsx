@@ -59,7 +59,7 @@ export function PillarFeatures() {
                     type="button"
                     onMouseEnter={() => setActive(p.key)}
                     onFocus={() => setActive(p.key)}
-                    className={`group relative w-full rounded-2xl px-5 py-5 text-left transition-all ${
+                    className={`group relative w-full rounded-lg px-5 py-5 text-left transition-all ${
                       isActive
                         ? 'bg-[var(--color-pg-surface-1)]/70 shadow-[0_8px_24px_-16px_rgba(0,0,0,0.15)]'
                         : 'hover:bg-[var(--color-pg-surface-1)]/40'
@@ -125,7 +125,7 @@ function ConcentricRings({ activeIndex }: { activeIndex: number }) {
             }}
           >
             <span
-              className={`absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--color-pg-surface-0)] px-3 py-0.5 text-[10px] uppercase tracking-wider ${
+              className={`absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-md bg-[var(--color-pg-surface-0)] px-3 py-0.5 text-[10px] uppercase tracking-wider ${
                 isActive ? 'text-[var(--color-pg-accent-green)]' : 'text-[var(--color-pg-text-mute)]'
               }`}
             >
