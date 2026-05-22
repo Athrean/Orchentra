@@ -16,7 +16,7 @@ export function useIncidents(repo: string, from?: string, to?: string) {
       if (to) params.set('to', to)
       return api<{ incidents: Incident[]; total: number }>(`/api/orgs/${orgId}/incidents?${params}`)
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !!repo,
     // SSE handles real-time updates; poll at 5m as a safety net only
     refetchInterval: 5 * 60_000,
     refetchOnWindowFocus: true,
