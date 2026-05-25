@@ -1,0 +1,9 @@
+apps/web/lib/db/schema.ts
+  ai_agent 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "f3c9139f692fa9db4d1f437df6af9efa89faf2b6",
+  "prompts": {}
+}
