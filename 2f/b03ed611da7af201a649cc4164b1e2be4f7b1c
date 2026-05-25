@@ -1,0 +1,19 @@
+apps/web/components/pd/account/LlmKeyForm.tsx
+  ai_agent 1-117
+apps/web/app/(app)/account/actions.ts
+  ai_agent 1-49
+apps/web/app/(app)/account/page.tsx
+  ai_agent 1-56
+apps/web/app/layout.tsx
+  ai_agent 3,49-61
+apps/web/app/(app)/account/devices/page.tsx
+  ai_agent 1-68
+apps/web/components/pd/account/ProfileForm.tsx
+  ai_agent 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "2fb03ed611da7af201a649cc4164b1e2be4f7b1c",
+  "prompts": {}
+}
