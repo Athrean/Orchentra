@@ -20,8 +20,8 @@ export default async function AccountPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-tight text-[var(--color-pd-text)]">Account</h2>
-        <p className="text-sm text-[var(--color-pd-text-muted)]">Signed in as {user.email}</p>
+        <h2 className="text-xl font-semibold tracking-tight text-light">Account</h2>
+        <p className="text-sm text-light/70">Signed in as {user.email}</p>
       </div>
 
       <Card>

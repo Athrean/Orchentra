@@ -53,8 +53,8 @@ export function LoginForm() {
   return (
     <div className="flex w-full max-w-sm flex-col gap-6">
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-pd-text)]">Welcome back</h1>
-        <p className="text-sm text-[var(--color-pd-text-muted)]">Sign in to your Orchentra workspace</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-light">Welcome back</h1>
+        <p className="text-sm text-light/70">Sign in to your Orchentra workspace</p>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -82,7 +82,7 @@ export function LoginForm() {
 
       <div className="relative flex items-center">
         <Separator className="flex-1" />
-        <span className="px-3 text-[10px] uppercase tracking-wider text-[var(--color-pd-text-subtle)]">or</span>
+        <span className="px-3 text-[10px] uppercase tracking-wider text-light/40">or</span>
         <Separator className="flex-1" />
       </div>
 
@@ -118,9 +118,9 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="text-center text-xs text-[var(--color-pd-text-muted)]">
+      <p className="text-center text-xs text-light/70">
         No account?{' '}
-        <Link href="/signup" className="text-[var(--color-pd-primary)] underline-offset-4 hover:underline">
+        <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
           Create one
         </Link>
       </p>

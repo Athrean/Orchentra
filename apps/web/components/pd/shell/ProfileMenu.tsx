@@ -32,9 +32,9 @@ export function ProfileMenu({ email, fullName, avatarUrl }: Props) {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
         className={cn(
-          'flex h-8 items-center gap-2 rounded-[4px] border border-[var(--color-pd-border)] bg-[var(--color-pd-surface)] px-2 text-xs tracking-wide text-[var(--color-pd-text-muted)] outline-none transition-colors',
-          'hover:border-[var(--color-pd-border-hover)] hover:text-[var(--color-pd-text)]',
-          'data-[state=open]:border-[var(--color-pd-border-hover)]',
+          'flex h-8 items-center gap-2 rounded-[4px] border border-neutral-800 bg-darker px-2 text-xs tracking-wide text-light/70 outline-none transition-colors',
+          'hover:border-neutral-700 hover:text-light',
+          'data-[state=open]:border-neutral-700',
         )}
       >
         {avatarUrl ? (
@@ -47,7 +47,7 @@ export function ProfileMenu({ email, fullName, avatarUrl }: Props) {
             unoptimized
           />
         ) : (
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-pd-primary-dim)] text-[10px] font-semibold text-[var(--color-pd-primary)]">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/12 text-[10px] font-semibold text-primary">
             {initial}
           </span>
         )}
@@ -58,14 +58,14 @@ export function ProfileMenu({ email, fullName, avatarUrl }: Props) {
           align="end"
           sideOffset={6}
           className={cn(
-            'min-w-44 rounded-[4px] border border-[var(--color-pd-border)] bg-[var(--color-pd-surface)] p-1 shadow-lg',
+            'min-w-44 rounded-[4px] border border-neutral-800 bg-darker p-1 shadow-lg',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
           )}
         >
           <DropdownMenu.Item asChild>
             <Link
               href="/account"
-              className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-[var(--color-pd-text-muted)] outline-none data-[highlighted]:bg-[var(--color-pd-elevated)] data-[highlighted]:text-[var(--color-pd-text)]"
+              className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-light/70 outline-none data-[highlighted]:bg-dark data-[highlighted]:text-light"
             >
               <User className="h-3.5 w-3.5" />
               Account
@@ -74,16 +74,16 @@ export function ProfileMenu({ email, fullName, avatarUrl }: Props) {
           <DropdownMenu.Item asChild>
             <Link
               href="/account/devices"
-              className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-[var(--color-pd-text-muted)] outline-none data-[highlighted]:bg-[var(--color-pd-elevated)] data-[highlighted]:text-[var(--color-pd-text)]"
+              className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-light/70 outline-none data-[highlighted]:bg-dark data-[highlighted]:text-light"
             >
               <Settings className="h-3.5 w-3.5" />
               CLI devices
             </Link>
           </DropdownMenu.Item>
-          <DropdownMenu.Separator className="my-1 h-px bg-[var(--color-pd-border)]" />
+          <DropdownMenu.Separator className="my-1 h-px bg-[rgb(38 38 38)]" />
           <DropdownMenu.Item
             onSelect={signOut}
-            className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-[var(--color-pd-text-muted)] outline-none data-[highlighted]:bg-[var(--color-pd-elevated)] data-[highlighted]:text-red-300"
+            className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-light/70 outline-none data-[highlighted]:bg-dark data-[highlighted]:text-red-300"
           >
             <LogOut className="h-3.5 w-3.5" />
             Sign out

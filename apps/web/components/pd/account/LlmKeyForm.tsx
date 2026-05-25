@@ -55,7 +55,7 @@ export function LlmKeyForm({ provider: initialProvider, hasKey }: Props) {
     <form onSubmit={onSave} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label>Provider</Label>
-        <div className="inline-flex rounded-[4px] border border-[var(--color-pd-border)] p-0.5">
+        <div className="inline-flex rounded-[4px] border border-neutral-800 p-0.5">
           {(['anthropic', 'openai'] as const).map((p) => (
             <button
               key={p}
@@ -63,8 +63,8 @@ export function LlmKeyForm({ provider: initialProvider, hasKey }: Props) {
               onClick={() => setProvider(p)}
               className={
                 provider === p
-                  ? 'rounded-[3px] bg-[var(--color-pd-elevated)] px-3 py-1 text-xs font-medium tracking-wide text-[var(--color-pd-text)]'
-                  : 'rounded-[3px] px-3 py-1 text-xs tracking-wide text-[var(--color-pd-text-muted)] hover:text-[var(--color-pd-text)]'
+                  ? 'rounded-[3px] bg-dark px-3 py-1 text-xs font-medium tracking-wide text-light'
+                  : 'rounded-[3px] px-3 py-1 text-xs tracking-wide text-light/70 hover:text-light'
               }
             >
               {p}
@@ -84,15 +84,15 @@ export function LlmKeyForm({ provider: initialProvider, hasKey }: Props) {
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={provider === 'anthropic' ? 'sk-ant-…' : 'sk-…'}
         />
-        <p className="text-[11px] text-[var(--color-pd-text-subtle)]">
+        <p className="text-[11px] text-light/40">
           Encrypted with AES-256-GCM before it touches the database. We never log plaintext.
         </p>
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="text-xs text-[var(--color-pd-text-muted)]">
+        <div className="text-xs text-light/70">
           {hasKey ? (
-            <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--color-pd-border)] px-2 py-1">
+            <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-neutral-800 px-2 py-1">
               <KeyRound className="h-3 w-3 text-emerald-400" />
               Key on file
             </span>
