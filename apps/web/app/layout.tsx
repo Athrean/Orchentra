@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Source_Serif_4, Inter, JetBrains_Mono, Cormorant_Garamond } from 'next/font/google'
+import { Toaster } from 'sonner'
 import { QueryProvider } from '../lib/query-provider'
 import './globals.css'
 
@@ -45,6 +46,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
     <html lang="en" className={`${sourceSerif.variable} ${cormorant.variable} ${inter.variable} ${jetbrains.variable}`}>
       <body>
         <QueryProvider>{children}</QueryProvider>
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'var(--color-pd-surface)',
+              border: '1px solid var(--color-pd-border)',
+              color: 'var(--color-pd-text)',
+              borderRadius: '4px',
+              fontSize: '12px',
+            },
+          }}
+        />
       </body>
     </html>
   )
