@@ -1,0 +1,101 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { Composer } from './Composer'
+import { EmptyComposer } from './EmptyComposer'
+import { MessageRow } from './MessageRow'
+import { useFakeStream } from './useFakeStream'
+import type { ChatMessage } from './types'
+
+interface ChatThreadProps {
+  initialMessages?: ChatMessage[]
+  userAvatarUrl?: string | null
+}
+
+function makeId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function ChatThread({ initialMessages = [], userAvatarUrl }: ChatThreadProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [streamingContent, setStreamingContent] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const streamFn = useFakeStream()
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length, streamingContent])
+
+  const handleSubmit = async (prompt: string) => {
+    if (isStreaming) return
+    const userMsg: ChatMessage = {
+      id: makeId(),
+      role: 'user',
+      content: prompt,
+      createdAt: new Date(),
+    }
+    setMessages((m) => [...m, userMsg])
+    setIsStreaming(true)
+    setStreamingContent('')
+
+    let accumulated = ''
+    await streamFn(prompt, (chunk) => {
+      accumulated += chunk
+      setStreamingContent(accumulated)
+    })
+
+    const assistantMsg: ChatMessage = {
+      id: makeId(),
+      role: 'assistant',
+      content: accumulated,
+      createdAt: new Date(),
+    }
+    setMessages((m) => [...m, assistantMsg])
+    setStreamingContent('')
+    setIsStreaming(false)
+  }
+
+  const isEmpty = messages.length === 0 && !isStreaming
+
+  return (
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-darkest">
+      {isEmpty ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-4">
+          <div className="w-full max-w-3xl">
+            <EmptyComposer />
+            <Composer onSubmit={handleSubmit} disabled={isStreaming} />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto px-4 pb-4 pt-6">
+            <div className="mx-auto max-w-3xl">
+              {messages.map((m) => (
+                <MessageRow key={m.id} message={m} userAvatarUrl={userAvatarUrl} />
+              ))}
+              {isStreaming && (
+                <MessageRow
+                  message={{
+                    id: 'streaming',
+                    role: 'assistant',
+                    content: streamingContent,
+                    createdAt: new Date(),
+                  }}
+                  isStreaming
+                  userAvatarUrl={userAvatarUrl}
+                />
+              )}
+              <div ref={bottomRef} />
+            </div>
+          </div>
+          <div className="border-t border-neutral-800 px-4 py-3">
+            <div className="mx-auto max-w-3xl">
+              <Composer onSubmit={handleSubmit} disabled={isStreaming} />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
