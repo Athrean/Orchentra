@@ -1,0 +1,13 @@
+apps/web/components/pd/shell/AppSidebar.tsx
+  ai_agent 5-6,9,23-24
+apps/web/lib/nav.ts
+  ai_agent 1-12
+apps/web/lib/supabase/middleware.ts
+  ai_agent 3,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "35a33ff3121526df4c70fae1bf7cc2a1e28bbef7",
+  "prompts": {}
+}
