@@ -61,8 +61,8 @@ export function SignupForm() {
   return (
     <div className="flex w-full max-w-sm flex-col gap-6">
       <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-pd-text)]">Create your account</h1>
-        <p className="text-sm text-[var(--color-pd-text-muted)]">Identify yourself, link a repo, ship faster</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-light">Create your account</h1>
+        <p className="text-sm text-light/70">Identify yourself, link a repo, ship faster</p>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -78,7 +78,7 @@ export function SignupForm() {
 
       <div className="relative flex items-center">
         <Separator className="flex-1" />
-        <span className="px-3 text-[10px] uppercase tracking-wider text-[var(--color-pd-text-subtle)]">or</span>
+        <span className="px-3 text-[10px] uppercase tracking-wider text-light/40">or</span>
         <Separator className="flex-1" />
       </div>
 
@@ -115,9 +115,9 @@ export function SignupForm() {
         </Button>
       </form>
 
-      <p className="text-center text-xs text-[var(--color-pd-text-muted)]">
+      <p className="text-center text-xs text-light/70">
         Already have one?{' '}
-        <Link href="/login" className="text-[var(--color-pd-primary)] underline-offset-4 hover:underline">
+        <Link href="/login" className="text-primary underline-offset-4 hover:underline">
           Sign in
         </Link>
       </p>
