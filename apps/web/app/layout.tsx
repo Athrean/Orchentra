@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Source_Serif_4, Inter, JetBrains_Mono, Cormorant_Garamond } from 'next/font/google'
 import { Toaster } from 'sonner'
-import { QueryProvider } from '../lib/query-provider'
 import './globals.css'
 
 const sourceSerif = Source_Serif_4({
@@ -45,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
   return (
     <html lang="en" className={`${sourceSerif.variable} ${cormorant.variable} ${inter.variable} ${jetbrains.variable}`}>
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        {children}
         <Toaster
           theme="dark"
           position="bottom-right"
