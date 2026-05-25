@@ -1,0 +1,28 @@
+import type { ReactNode } from 'react'
+import { redirect } from 'next/navigation'
+import { createClient } from '../../lib/supabase/server'
+import { AppSidebar } from '../../components/pd/shell/AppSidebar'
+import { Topbar } from '../../components/pd/shell/Topbar'
+import { getProfile } from '../../lib/db/queries/profile'
+
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const profile = await getProfile(user.id).catch(() => null)
+  const fullName = profile?.fullName ?? (user.user_metadata?.full_name as string | undefined) ?? null
+  const avatarUrl = profile?.avatarUrl ?? (user.user_metadata?.avatar_url as string | undefined) ?? null
+
+  return (
+    <div className="pd-bg flex min-h-screen text-[var(--color-pd-text)]">
+      <AppSidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar email={user.email} fullName={fullName} avatarUrl={avatarUrl} />
+        <main className="flex-1 overflow-auto px-8 py-6">{children}</main>
+      </div>
+    </div>
+  )
+}
