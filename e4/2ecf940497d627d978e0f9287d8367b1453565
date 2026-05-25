@@ -1,0 +1,17 @@
+apps/web/app/(app)/dashboard/page.tsx
+  ai_agent 1-52
+apps/web/components/pd/shell/Topbar.tsx
+  ai_agent 1-19
+apps/web/components/pd/shell/AppSidebar.tsx
+  ai_agent 1-71
+apps/web/components/pd/shell/ProfileMenu.tsx
+  ai_agent 1-95
+apps/web/app/(app)/layout.tsx
+  ai_agent 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "e42ecf940497d627d978e0f9287d8367b1453565",
+  "prompts": {}
+}
