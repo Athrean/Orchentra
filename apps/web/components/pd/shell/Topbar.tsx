@@ -1,19 +1,20 @@
+import Link from 'next/link'
 import { ProfileMenu } from './ProfileMenu'
 
 interface Props {
-  title?: string
   email: string | null | undefined
   fullName: string | null | undefined
   avatarUrl: string | null | undefined
 }
 
-export function Topbar({ title, email, fullName, avatarUrl }: Props) {
+export function Topbar({ email, fullName, avatarUrl }: Props) {
   return (
-    <header className="flex h-14 items-center justify-between border-b border-neutral-800 bg-darkest px-6">
-      <h1 className="text-sm font-medium tracking-wide text-light">{title ?? ''}</h1>
-      <div className="flex items-center gap-2">
-        <ProfileMenu email={email} fullName={fullName} avatarUrl={avatarUrl} />
-      </div>
+    <header className="flex min-h-[3.5rem] items-center justify-between bg-darkest px-5">
+      <Link href="/" className="flex items-center gap-3">
+        <span className="h-5 w-5 rounded-[4px] bg-primary" />
+        <span className="text-[17px] font-semibold tracking-[0.5rem] text-[#C3C3C3]">ORCHENTRA</span>
+      </Link>
+      <ProfileMenu email={email} fullName={fullName} avatarUrl={avatarUrl} />
     </header>
   )
 }
