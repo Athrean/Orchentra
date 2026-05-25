@@ -1,0 +1,35 @@
+apps/web/app/(auth)/signup/page.tsx
+  ai_agent 1,3-6
+apps/web/components/pd/ui/label.tsx
+  ai_agent 3-5,7-17
+apps/web/components/pd/ui/button.tsx
+  ai_agent 1,3-7,9-31,33-36,38-57
+apps/web/app/auth/callback/route.ts
+  ai_agent 1-2,4-7,9-10,13-17,20
+apps/web/components/pd/auth/SignupForm.tsx
+  ai_agent 3-11,13-20,22-32,34,36-59,62-95,98-108,110-123
+apps/web/app/(auth)/login/page.tsx
+  ai_agent 1-2,4,6,8-10
+apps/web/app/(auth)/layout.tsx
+  ai_agent 3,5-7
+apps/web/components/pd/ui/input.tsx
+  ai_agent 1-2,4-20
+apps/web/components/pd/ui/separator.tsx
+  ai_agent 3-5,7-23
+apps/web/package.json
+  ai_agent 35
+apps/web/components/pd/ui/card.tsx
+  ai_agent 1-54
+bun.lock
+  ai_agent 106,1301
+apps/web/app/page.tsx
+  ai_agent 14,18-22,24
+apps/web/components/pd/auth/LoginForm.tsx
+  ai_agent 3-4,6-11,13,15-23,25-37,39-50,53-57,60-80,83-87,89-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "4cc64279c01ac0d40139720eaaedf34adde37fbf",
+  "prompts": {}
+}
