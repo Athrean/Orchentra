@@ -6,6 +6,7 @@
 export const PRODUCT_ROUTES = [
   { href: '/dashboard', label: 'Overview', icon: 'LayoutDashboard' as const },
   { href: '/account', label: 'Account', icon: 'Settings' as const },
+  { href: '/help', label: 'Help', icon: 'HelpCircle' as const },
 ] as const
 
 export const PROTECTED_PREFIXES = PRODUCT_ROUTES.map((r) => r.href)
