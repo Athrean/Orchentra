@@ -5,6 +5,7 @@
  */
 export const PRODUCT_ROUTES = [
   { href: '/dashboard', label: 'Overview', icon: 'LayoutDashboard' as const },
+  { href: '/workspace', label: 'Workspace', icon: 'MessageSquare' as const },
   { href: '/account', label: 'Account', icon: 'Settings' as const },
 ] as const
 
