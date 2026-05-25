@@ -1,0 +1,23 @@
+apps/web/lib/db/queries/profile.ts
+  ai_agent 1-18
+apps/web/lib/db/schema.ts
+  ai_agent 1-113
+apps/web/lib/crypto.ts
+  ai_agent 1-28
+apps/web/lib/validators/execution.ts
+  ai_agent 1-21
+apps/web/lib/db/client.ts
+  ai_agent 1-13
+apps/web/lib/validators/repo.ts
+  ai_agent 1-17
+apps/web/tests/crypto.test.ts
+  ai_agent 1-37
+apps/web/lib/validators/profile.ts
+  ai_agent 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "69cc364a49189caa3002b0cc55b87a2103835ef3",
+  "prompts": {}
+}
