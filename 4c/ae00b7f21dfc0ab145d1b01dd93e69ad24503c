@@ -1,0 +1,9 @@
+apps/web/app/globals.css
+  ai_agent 4,27-32,39-40,46,51-54,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "4cae00b7f21dfc0ab145d1b01dd93e69ad24503c",
+  "prompts": {}
+}
