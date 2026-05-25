@@ -7,19 +7,20 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[4px] text-sm font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-pd-primary)] disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[4px] text-sm font-medium tracking-wider transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-[var(--color-pd-primary)] text-white hover:bg-[var(--color-pd-primary)]/90',
-        outline:
-          'border border-[var(--color-pd-border)] text-[var(--color-pd-text)] hover:bg-[var(--color-pd-elevated)] hover:border-[var(--color-pd-border-hover)]',
-        ghost:
-          'text-[var(--color-pd-text-muted)] hover:bg-[var(--color-pd-elevated)] hover:text-[var(--color-pd-text)]',
-        destructive: 'bg-[#dc2626] text-white hover:bg-[#b91c1c]',
-        link: 'text-[var(--color-pd-primary)] underline-offset-4 hover:underline',
+        default: 'bg-light text-darkest hover:-translate-y-0.5 font-semibold',
+        exec: 'exec-button-dark hover:-translate-y-0.5',
+        primary: 'bg-primary text-light hover:bg-primary/90',
+        outline: 'border border-neutral-800 text-light hover:bg-dark hover:border-neutral-700',
+        ghost: 'text-light/70 hover:bg-dark hover:text-light',
+        destructive: 'text-red-500 hover:bg-red-500/10',
+        link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
+        xs: 'h-7 px-2 text-xs gap-1',
         sm: 'h-8 px-3 text-xs',
         md: 'h-9 px-4',
         lg: 'h-10 px-6',

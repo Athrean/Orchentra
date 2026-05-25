@@ -15,8 +15,8 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-tight text-[var(--color-pd-text)]">Overview</h2>
-        <p className="text-sm text-[var(--color-pd-text-muted)]">Signed in as {user.email}</p>
+        <h2 className="text-xl font-semibold tracking-tight text-light">Overview</h2>
+        <p className="text-sm text-light/70">Signed in as {user.email}</p>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard icon={<Activity className="h-4 w-4" />} label="Executions" value="0" />
@@ -27,7 +27,7 @@ export default async function DashboardPage() {
         <CardHeader>
           <CardTitle>Recent activity</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-[var(--color-pd-text-muted)]">
+        <CardContent className="text-sm text-light/70">
           Nothing yet. Connect a repo to start observing pipeline failures.
         </CardContent>
       </Card>
@@ -39,13 +39,11 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-xs font-medium uppercase tracking-wider text-[var(--color-pd-text-muted)]">
-          {label}
-        </CardTitle>
-        <span className="text-[var(--color-pd-text-subtle)]">{icon}</span>
+        <CardTitle className="text-xs font-medium uppercase tracking-wider text-light/70">{label}</CardTitle>
+        <span className="text-light/40">{icon}</span>
       </CardHeader>
       <CardContent className="pt-1">
-        <div className="text-2xl font-semibold tracking-tight text-[var(--color-pd-text)]">{value}</div>
+        <div className="text-2xl font-semibold tracking-tight text-light">{value}</div>
       </CardContent>
     </Card>
   )
