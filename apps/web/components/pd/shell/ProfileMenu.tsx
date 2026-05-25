@@ -2,12 +2,11 @@
 
 import * as React from 'react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { LogOut, Settings, User } from 'lucide-react'
+import { Cpu, LogOut, Settings } from 'lucide-react'
 import { createClient } from '../../../lib/supabase/client'
-import { cn } from '../../../lib/utils'
 
 interface Props {
   email: string | null | undefined
@@ -25,68 +24,60 @@ export function ProfileMenu({ email, fullName, avatarUrl }: Props) {
     router.refresh()
   }
 
-  const label = fullName || email || 'Account'
-  const initial = (label[0] ?? 'O').toUpperCase()
+  const initial = ((email ?? fullName ?? 'O')[0] ?? 'O').toUpperCase()
 
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        className={cn(
-          'flex h-8 items-center gap-2 rounded-[4px] border border-neutral-800 bg-darker px-2 text-xs tracking-wide text-light/70 outline-none transition-colors',
-          'hover:border-neutral-700 hover:text-light',
-          'data-[state=open]:border-neutral-700',
-        )}
+        aria-label="Account menu"
+        className="h-7 w-7 cursor-pointer overflow-hidden rounded-full outline-none transition hover:ring-2 hover:ring-primary"
       >
         {avatarUrl ? (
           <Image
             src={avatarUrl}
             alt=""
-            width={20}
-            height={20}
-            className="h-5 w-5 rounded-full object-cover"
+            width={28}
+            height={28}
             unoptimized
+            className="h-7 w-7 rounded-full object-cover"
           />
         ) : (
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/12 text-[10px] font-semibold text-primary">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-dark text-xs font-semibold text-light/70">
             {initial}
           </span>
         )}
-        <span className="max-w-[140px] truncate">{label}</span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
           sideOffset={6}
-          className={cn(
-            'min-w-44 rounded-[4px] border border-neutral-800 bg-darker p-1 shadow-lg',
-            'data-[state=open]:animate-in data-[state=closed]:animate-out',
-          )}
+          className="w-[9rem] overflow-hidden rounded-[4px] border border-neutral-800 bg-dark shadow-md"
         >
           <DropdownMenu.Item asChild>
             <Link
               href="/account"
-              className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-light/70 outline-none data-[highlighted]:bg-dark data-[highlighted]:text-light"
+              className="flex cursor-pointer items-center justify-between px-4 py-[11px] text-xs tracking-wide text-light outline-none hover:bg-darker"
             >
-              <User className="h-3.5 w-3.5" />
               Account
+              <Settings size={12} />
             </Link>
           </DropdownMenu.Item>
           <DropdownMenu.Item asChild>
             <Link
               href="/account/devices"
-              className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-light/70 outline-none data-[highlighted]:bg-dark data-[highlighted]:text-light"
+              className="flex cursor-pointer items-center justify-between px-4 py-[11px] text-xs tracking-wide text-light outline-none hover:bg-darker"
             >
-              <Settings className="h-3.5 w-3.5" />
               CLI devices
+              <Cpu size={12} />
             </Link>
           </DropdownMenu.Item>
-          <DropdownMenu.Separator className="my-1 h-px bg-[rgb(38 38 38)]" />
+          <DropdownMenu.Separator className="border-b border-neutral-800" />
           <DropdownMenu.Item
             onSelect={signOut}
-            className="flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-xs text-light/70 outline-none data-[highlighted]:bg-dark data-[highlighted]:text-red-300"
+            className="flex cursor-pointer items-center justify-between px-4 py-[11px] text-xs tracking-wide text-red-500 outline-none hover:bg-darker"
           >
-            <LogOut className="h-3.5 w-3.5" />
             Sign out
+            <LogOut size={12} />
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
