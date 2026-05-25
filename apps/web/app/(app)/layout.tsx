@@ -5,6 +5,8 @@ import { AppSidebar } from '../../components/pd/shell/AppSidebar'
 import { Topbar } from '../../components/pd/shell/Topbar'
 import { getProfile } from '../../lib/db/queries/profile'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient()
   const {
