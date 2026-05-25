@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, Settings } from 'lucide-react'
+import { HelpCircle, LayoutDashboard, MessageSquare, Settings } from 'lucide-react'
 import { PRODUCT_ROUTES } from '../../../lib/nav'
 import { cn } from '../../../lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
-const ICONS = { LayoutDashboard, MessageSquare, Settings } as const
+const ICONS = { LayoutDashboard, MessageSquare, Settings, HelpCircle } as const
 
 export function AppSidebar() {
   const pathname = usePathname()
