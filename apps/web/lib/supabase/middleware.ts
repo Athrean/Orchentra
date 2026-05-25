@@ -1,17 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-
-const PROTECTED_PREFIXES = [
-  '/dashboard',
-  '/executions',
-  '/actions',
-  '/pipelines',
-  '/graphs',
-  '/chat',
-  '/repos',
-  '/account',
-]
-const AUTH_PAGES = ['/login', '/signup']
+import { AUTH_PAGES, PROTECTED_PREFIXES } from '../nav'
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -39,7 +28,7 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-  const isAuthPage = AUTH_PAGES.includes(pathname)
+  const isAuthPage = AUTH_PAGES.includes(pathname as (typeof AUTH_PAGES)[number])
 
   if (!user && isProtected) {
     const redirect = request.nextUrl.clone()

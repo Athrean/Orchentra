@@ -1,36 +1,12 @@
 'use client'
 
-import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  Activity,
-  BarChart3,
-  CircuitBoard,
-  GitBranch,
-  LayoutDashboard,
-  MessageSquare,
-  Settings,
-  Workflow,
-} from 'lucide-react'
+import { LayoutDashboard, Settings } from 'lucide-react'
+import { PRODUCT_ROUTES } from '../../../lib/nav'
 import { cn } from '../../../lib/utils'
 
-interface NavItem {
-  href: string
-  label: string
-  icon: React.ComponentType<{ className?: string }>
-}
-
-const NAV: NavItem[] = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/executions', label: 'Executions', icon: Activity },
-  { href: '/actions', label: 'Actions', icon: Workflow },
-  { href: '/pipelines', label: 'Pipelines', icon: GitBranch },
-  { href: '/graphs', label: 'Graphs', icon: BarChart3 },
-  { href: '/chat', label: 'Chat', icon: MessageSquare },
-  { href: '/repos', label: 'Repos', icon: CircuitBoard },
-  { href: '/account', label: 'Account', icon: Settings },
-]
+const ICONS = { LayoutDashboard, Settings } as const
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -44,7 +20,8 @@ export function AppSidebar() {
         </Link>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {PRODUCT_ROUTES.map(({ href, label, icon }) => {
+          const Icon = ICONS[icon]
           const active = pathname === href || pathname.startsWith(`${href}/`)
           return (
             <Link
