@@ -136,6 +136,20 @@
   --color-pg-hairline: #c9c2b7;
   --color-pg-accent-green: #156545;
   --color-pg-accent-green-2: #23a470;
+
+  /* ── Product surface (dark-first, winterfell-inspired) ── */
+  --color-pd-bg: #0e0f10;
+  --color-pd-surface: #121314;
+  --color-pd-elevated: #171819;
+  --color-pd-text: #fdf9f0;
+  --color-pd-text-muted: rgb(253 249 240 / 0.6);
+  --color-pd-text-subtle: rgb(253 249 240 / 0.4);
+  --color-pd-border: rgb(38 38 38);
+  --color-pd-border-hover: rgb(64 64 64);
+  --color-pd-primary: #6c44fc;
+  --color-pd-primary-dim: rgb(108 68 252 / 0.12);
+  --radius-pd: 4px;
+  --radius-pd-md: 8px;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -309,6 +323,24 @@
 .app-bg { background-color: var(--color-app-bg); }
 .app-panel { background-color: var(--color-app-panel); }
 .app-border { border-color: var(--color-app-border); }
+
+/* ── Product surface utilities (dashboard / authed routes) ── */
+.pd-bg { background-color: var(--color-pd-bg); color: var(--color-pd-text); }
+.pd-surface { background-color: var(--color-pd-surface); }
+.pd-elevated { background-color: var(--color-pd-elevated); }
+.pd-text { color: var(--color-pd-text); }
+.pd-text-muted { color: var(--color-pd-text-muted); }
+.pd-text-subtle { color: var(--color-pd-text-subtle); }
+.pd-border { border-color: var(--color-pd-border); }
+.pd-border-hover:hover { border-color: var(--color-pd-border-hover); }
+.pd-primary { color: var(--color-pd-primary); }
+.pd-bg-primary { background-color: var(--color-pd-primary); }
+.pd-bg-primary-dim { background-color: var(--color-pd-primary-dim); }
+.pd-card {
+  background-color: var(--color-pd-surface);
+  border: 1px solid var(--color-pd-border);
+  border-radius: var(--radius-pd);
+}
 .hero-bg { background-color: var(--color-hero-bg); }
 .hero-text { color: var(--color-hero-text); }
 .hero-text-secondary { color: var(--color-hero-text-secondary); }
