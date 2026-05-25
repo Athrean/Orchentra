@@ -1,0 +1,19 @@
+apps/web/middleware.ts
+  ai_agent 2,4-5,9
+apps/web/lib/supabase/middleware.ts
+  ai_agent 1-59
+apps/web/app/globals.css
+  ai_agent 139-152,326-343
+apps/web/lib/supabase/server.ts
+  ai_agent 1-27
+turbo.json
+  ai_agent 63-69
+apps/web/lib/supabase/client.ts
+  ai_agent 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "5d708b1d9323e186d9e9f973907b79e7881c6f25",
+  "prompts": {}
+}
