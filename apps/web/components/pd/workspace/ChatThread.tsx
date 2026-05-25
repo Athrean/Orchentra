@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { Composer } from './Composer'
 import { EmptyComposer } from './EmptyComposer'
 import { MessageRow } from './MessageRow'
-import { useFakeStream } from './useFakeStream'
+import { streamChat } from './useChatStream'
 import type { ChatMessage } from './types'
 
 interface ChatThreadProps {
@@ -21,7 +22,6 @@ export function ChatThread({ initialMessages = [], userAvatarUrl }: ChatThreadPr
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
-  const streamFn = useFakeStream()
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -35,23 +35,34 @@ export function ChatThread({ initialMessages = [], userAvatarUrl }: ChatThreadPr
       content: prompt,
       createdAt: new Date(),
     }
-    setMessages((m) => [...m, userMsg])
+    const nextMessages = [...messages, userMsg]
+    setMessages(nextMessages)
     setIsStreaming(true)
     setStreamingContent('')
 
     let accumulated = ''
-    await streamFn(prompt, (chunk) => {
-      accumulated += chunk
-      setStreamingContent(accumulated)
+    let errored = false
+    await streamChat({
+      messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+      onToken: (text) => {
+        accumulated += text
+        setStreamingContent(accumulated)
+      },
+      onError: (err) => {
+        errored = true
+        toast.error(err)
+      },
     })
 
-    const assistantMsg: ChatMessage = {
-      id: makeId(),
-      role: 'assistant',
-      content: accumulated,
-      createdAt: new Date(),
+    if (!errored && accumulated) {
+      const assistantMsg: ChatMessage = {
+        id: makeId(),
+        role: 'assistant',
+        content: accumulated,
+        createdAt: new Date(),
+      }
+      setMessages((m) => [...m, assistantMsg])
     }
-    setMessages((m) => [...m, assistantMsg])
     setStreamingContent('')
     setIsStreaming(false)
   }
