@@ -120,7 +120,7 @@ function CyclingNoun() {
   )
 }
 
-function InstallBar({ loginHref }: { loginHref: string }) {
+function InstallBar({ loginHref, onLogin }: { loginHref: string; onLogin?: () => void }) {
   const [copied, setCopied] = useState(false)
   const cmd = 'npm i -g @orchentra/cli'
 
@@ -130,17 +130,27 @@ function InstallBar({ loginHref }: { loginHref: string }) {
     setTimeout(() => setCopied(false), 1600)
   }
 
+  const ctaClass =
+    'inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-pg-text-0)] px-5 py-2.5 text-sm font-medium text-[var(--color-pg-surface-0)] shadow-[0_4px_14px_-6px_rgba(20,20,19,0.4)] transition-all hover:bg-[#3a3a38]'
+  const arrow = (
+    <svg viewBox="0 0 12 12" className="h-3 w-3 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M3 4.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+
   return (
     <div className="flex items-center gap-2 rounded-xl bg-[var(--color-pg-surface-1)]/80 p-1.5 shadow-[0_4px_16px_-8px_rgba(0,0,0,0.1)] backdrop-blur-sm">
-      <Link
-        href={loginHref}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-pg-text-0)] px-5 py-2.5 text-sm font-medium text-[var(--color-pg-surface-0)] shadow-[0_4px_14px_-6px_rgba(20,20,19,0.4)] transition-all hover:bg-[#3a3a38]"
-      >
-        Get Orchentra
-        <svg viewBox="0 0 12 12" className="h-3 w-3 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M3 4.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
+      {onLogin ? (
+        <button type="button" onClick={onLogin} className={ctaClass}>
+          Get Orchentra
+          {arrow}
+        </button>
+      ) : (
+        <Link href={loginHref} className={ctaClass}>
+          Get Orchentra
+          {arrow}
+        </Link>
+      )}
       <div className="flex items-center gap-2 pl-2 pr-3">
         <code className="font-[family-name:var(--font-mono)] text-[13px] whitespace-nowrap text-[var(--color-pg-text-0)]">
           <span className="text-[var(--color-pg-accent-green)]">$</span> {cmd}
@@ -197,7 +207,12 @@ function TabNav() {
   )
 }
 
-export function Hero({ loginHref }: { loginHref: string }) {
+interface HeroProps {
+  loginHref: string
+  onLogin?: () => void
+}
+
+export function Hero({ loginHref, onLogin }: HeroProps) {
   const reduce = useReducedMotion()
 
   return (
@@ -228,7 +243,7 @@ export function Hero({ loginHref }: { loginHref: string }) {
         </motion.p>
 
         <motion.div variants={fadeUp} className="mt-12">
-          <InstallBar loginHref={loginHref} />
+          <InstallBar loginHref={loginHref} onLogin={onLogin} />
         </motion.div>
 
         <motion.div variants={fadeUp} className="mt-6">

@@ -1,0 +1,6 @@
+# Supabase local artifacts
+.branches
+.temp
+
+# Local-only env captured from `supabase start`
+.env

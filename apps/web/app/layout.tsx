@@ -1,32 +1,6 @@
 import type { Metadata } from 'next'
-import { Source_Serif_4, Inter, JetBrains_Mono, Cormorant_Garamond } from 'next/font/google'
-import { QueryProvider } from '../lib/query-provider'
+import { Toaster } from 'sonner'
 import './globals.css'
-
-const sourceSerif = Source_Serif_4({
-  subsets: ['latin'],
-  variable: '--font-serif',
-  display: 'swap',
-})
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-display',
-  display: 'swap',
-})
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-body',
-  display: 'swap',
-})
-
-const jetbrains = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'Orchentra — AI incident triage for engineering teams',
@@ -42,9 +16,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
-    <html lang="en" className={`${sourceSerif.variable} ${cormorant.variable} ${inter.variable} ${jetbrains.variable}`}>
+    <html lang="en">
       <body>
-        <QueryProvider>{children}</QueryProvider>
+        {children}
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'var(--color-darker)',
+              border: '1px solid rgb(38 38 38)',
+              color: 'var(--color-light)',
+              borderRadius: '4px',
+              fontSize: '12px',
+            },
+          }}
+        />
       </body>
     </html>
   )
