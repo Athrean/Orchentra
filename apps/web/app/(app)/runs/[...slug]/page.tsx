@@ -30,5 +30,5 @@ export default async function RunDetailPage({ params }: { params: Promise<{ slug
   const detail = await getRunDetail(installationId, repoFullName, runId)
   if (!detail) notFound()
 
-  return <RunDetailView detail={detail} />
+  return <RunDetailView detail={detail} installationId={installationId} />
 }
