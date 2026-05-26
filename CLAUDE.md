@@ -142,7 +142,7 @@ These rules come from incidents on this repo. Honor them.
 - **New work → new branch.** Always. Naming: `feat/<area>-<short-name>`, `fix/<area>-<short-name>`, `cleanup/<area>`.
 - **5–10+ atomic commits per branch is the goal.** Each commit does one thing and is independently revertable.
 - **Commit message style**: conventional (`feat(server): …`, `fix(cli-api): …`, `test-arch(server): …`). Subject ≤ 70 chars. No emoji. No "Generated with Claude Code." No `Co-Authored-By: Claude` line. Reference issue numbers (`(#218)`) when merging via PR.
-- **Never commit**: reference codebases (`claw-code-main-3/` etc.), `.claude/*.md` planning notes, lockfile churn unrelated to dependency changes, `.tsbuildinfo` artifacts, `.env`, credentials.
+- **Never commit**: reference codebases (study material we vendor in locally), `.claude/*.md` planning notes, lockfile churn unrelated to dependency changes, `.tsbuildinfo` artifacts, `.env`, credentials.
 - **Pre-commit hook failures are signals, not noise.** If lint/typecheck/test fails, fix the underlying issue. Never `--no-verify`.
 - **`git push`, `reset --hard`, `clean -f`, `branch -D` are blocked by the guardrails hook.** That is intentional. Ask the human before bypassing.
 
@@ -150,7 +150,7 @@ These rules come from incidents on this repo. Honor them.
 
 ## 6. CLI design north star
 
-The CLI is the product surface. These patterns come from studying `claw-code-main-3/rust/crates/rusty-claude-cli/`, our own existing surface, and the Claude Code aesthetic the user explicitly anchored to.
+The CLI is the product surface. These patterns come from studying a reference open-source Rust CLI, our own existing surface, and the Claude Code aesthetic the user explicitly anchored to.
 
 ### Patterns we follow
 
