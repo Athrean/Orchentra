@@ -10,5 +10,5 @@ export const PRODUCT_ROUTES = [
   { href: '/help', label: 'Help', icon: 'HelpCircle' as const },
 ] as const
 
-export const PROTECTED_PREFIXES = PRODUCT_ROUTES.map((r) => r.href)
+export const PROTECTED_PREFIXES = [...PRODUCT_ROUTES.map((r) => r.href), '/onboarding']
 export const AUTH_PAGES = ['/login', '/signup'] as const
