@@ -2,7 +2,7 @@
 
 This is the only doc that defines **what we're building** and **how to build it**. Read it before starting any new feature. Update it intentionally when the plan changes — do not let it rot.
 
-Last refresh: 2026-05-19.
+Last refresh: 2026-05-26.
 
 ---
 
@@ -10,7 +10,7 @@ Last refresh: 2026-05-19.
 
 **Orchentra is a contract-first DevOps operations runtime.** Every capability we ship is an `Operation` — a typed, schema-validated unit of work — exposed over two surfaces from the same registry: a CLI for humans, and an MCP server for external agents (Claude Desktop, Cursor, Windsurf). The execution graph (`executions` + `nodes`) records every invocation regardless of which surface called it. Trust-boundary enforcement (org/repo scoping, approval gates) lives in the runtime, not in any individual caller.
 
-We are **not** a "PR fixer," not a Datadog/Grafana replacement, and not a SaaS-only tool. The wedge is open-source, terminal-native UX plus a portable MCP server so the same DevOps operations show up wherever the engineer already works. The web is a read-only projection of the same execution graph.
+We are **not** a "PR fixer," not a Datadog/Grafana replacement, and not a SaaS-only tool. The wedge is open-source, terminal-native UX plus a portable MCP server so the same DevOps operations show up wherever the engineer already works. The web is a **standalone product surface** — its own auth, onboarding, GitHub App install, and dashboards, with its own write paths — that owns user-scoped tables in the shared Postgres and reads the execution graph as a projection. It is well-connected to the CLI/MCP (same database), not dependent on them.
 
 ### What a daily surface looks like
 
@@ -44,7 +44,7 @@ Every new feature must answer: **what `Operation` does it add (or extend), and w
 | 4     | Web becomes read-only projection + cross-execution diff                                                                                                          | shipped        | PRs #235–#240       |
 | 5     | Pick next adapter from real usage data                                                                                                                           | gated on usage | —                   |
 
-Side-shipped (outside the phase plan but landed): per-org LLM config (#226), test architecture refactor (#220–#224, mock-github-service / mock-openrouter-service / JobQueue DI), live agent investigation timeline (#225), CLI parity sweep Tier 1 (#406–#414) — error boundary, reasoning shimmer, markdown LRU cache, alt+enter, external editor, theme registry, fingerprinted sessions, hooks system — and Tier 2 (#415–#418) — solarized + high-contrast themes, slash aliases, multi-line input modal, tool-row dim.
+Side-shipped (outside the phase plan but landed): per-org LLM config (#226), test architecture refactor (#220–#224, mock-github-service / mock-openrouter-service / JobQueue DI), live agent investigation timeline (#225), CLI parity sweep Tier 1 (#406–#414) — error boundary, reasoning shimmer, markdown LRU cache, alt+enter, external editor, theme registry, fingerprinted sessions, hooks system — and Tier 2 (#415–#418) — solarized + high-contrast themes, slash aliases, multi-line input modal, tool-row dim. Web product surface (#422) — standalone marketing → login modal → onboarding (GitHub App install + repo selection) → repo-insights dashboard, on a local Supabase stack with Supabase-native migrations.
 
 ### Next up — Phase 5 (gated on usage)
 
@@ -142,7 +142,7 @@ These rules come from incidents on this repo. Honor them.
 - **New work → new branch.** Always. Naming: `feat/<area>-<short-name>`, `fix/<area>-<short-name>`, `cleanup/<area>`.
 - **5–10+ atomic commits per branch is the goal.** Each commit does one thing and is independently revertable.
 - **Commit message style**: conventional (`feat(server): …`, `fix(cli-api): …`, `test-arch(server): …`). Subject ≤ 70 chars. No emoji. No "Generated with Claude Code." No `Co-Authored-By: Claude` line. Reference issue numbers (`(#218)`) when merging via PR.
-- **Never commit**: reference codebases (`claw-code-main-3/` etc.), `.claude/*.md` planning notes, lockfile churn unrelated to dependency changes, `.tsbuildinfo` artifacts, `.env`, credentials.
+- **Never commit**: reference codebases (study material we vendor in locally), `.claude/*.md` planning notes, lockfile churn unrelated to dependency changes, `.tsbuildinfo` artifacts, `.env`, credentials.
 - **Pre-commit hook failures are signals, not noise.** If lint/typecheck/test fails, fix the underlying issue. Never `--no-verify`.
 - **`git push`, `reset --hard`, `clean -f`, `branch -D` are blocked by the guardrails hook.** That is intentional. Ask the human before bypassing.
 
@@ -150,7 +150,7 @@ These rules come from incidents on this repo. Honor them.
 
 ## 6. CLI design north star
 
-The CLI is the product surface. These patterns come from studying `claw-code-main-3/rust/crates/rusty-claude-cli/`, our own existing surface, and the Claude Code aesthetic the user explicitly anchored to.
+The CLI is the product surface. These patterns come from studying a reference open-source Rust CLI, our own existing surface, and the Claude Code aesthetic the user explicitly anchored to.
 
 ### Patterns we follow
 
@@ -174,22 +174,22 @@ The CLI is the product surface. These patterns come from studying `claw-code-mai
 - Renaming the binary to `orch`. Gratuitous churn.
 - Embedding observability infra (GreptimeDB, NATS, OTel Collector, MCP catalog) ahead of customer demand.
 - Inventing a new query DSL. PromQL + SQL when we get there.
-- Web write-paths. The web is read-only over the execution graph.
+- Coupling the web to the CLI/server packages. The web is a standalone product (its own auth, onboarding, GitHub App install + write paths) connected only through the shared Postgres — never an import dependency on `apps/cli` or `apps/server`.
 
 ---
 
 ## 7. Module map
 
-| Module                  | Lives in                                                         | Notes                                                                                                                                                                             |
-| ----------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Operations Contract     | `packages/operations` (`@orchentra/operations`)                  | single typed `Operation` shape (Zod input/output, trust class, handler). Source of truth for every CLI verb and MCP tool.                                                         |
-| MCP Server              | `packages/mcp-server` (`@orchentra/mcp-server`)                  | stdio + HTTP transports; exposes the operations registry as MCP tools. Bearer auth + `x-orchentra-org` enforced on HTTP. Hosted Worker scaffold was removed in the cleanup audit. |
-| Execution Engine        | `apps/server/src/agent/runner.ts`, `agent-event-bus.ts`          | LLM-loop today; needs node-typed dispatch beyond tool_calls                                                                                                                       |
-| Decision Engine         | `apps/server/src/agent/{prompts,tool-registry}.ts`               | branches on `execution.kind`; rationale is logged to `nodes.argsJson`                                                                                                             |
-| Observability Substrate | `apps/server/src/db/`, `nodes` table                             | event-tied; future `query(filter) → events` API                                                                                                                                   |
-| CLI Surface             | `apps/cli/src/commands/*`                                        | rich (triage, investigate, fix, brief, watch, login, `mcp serve`, `graph`, `why`).                                                                                                |
-| Web Surface             | `apps/web/app/`                                                  | constrain to read-only projection (Phase 4)                                                                                                                                       |
-| Integration Adapters    | `apps/server/src/routes/webhooks.ts`, `apps/server/src/github/*` | one adapter = one webhook source = one `kind`. GitHub is the only adapter today.                                                                                                  |
+| Module                  | Lives in                                                         | Notes                                                                                                                                                                                                                                                                  |
+| ----------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operations Contract     | `packages/operations` (`@orchentra/operations`)                  | single typed `Operation` shape (Zod input/output, trust class, handler). Source of truth for every CLI verb and MCP tool.                                                                                                                                              |
+| MCP Server              | `packages/mcp-server` (`@orchentra/mcp-server`)                  | stdio + HTTP transports; exposes the operations registry as MCP tools. Bearer auth + `x-orchentra-org` enforced on HTTP. Hosted Worker scaffold was removed in the cleanup audit.                                                                                      |
+| Execution Engine        | `apps/server/src/agent/runner.ts`, `agent-event-bus.ts`          | LLM-loop today; needs node-typed dispatch beyond tool_calls                                                                                                                                                                                                            |
+| Decision Engine         | `apps/server/src/agent/{prompts,tool-registry}.ts`               | branches on `execution.kind`; rationale is logged to `nodes.argsJson`                                                                                                                                                                                                  |
+| Observability Substrate | `apps/server/src/db/`, `nodes` table                             | event-tied; future `query(filter) → events` API                                                                                                                                                                                                                        |
+| CLI Surface             | `apps/cli/src/commands/*`                                        | rich (triage, investigate, fix, brief, watch, login, `mcp serve`, `graph`, `why`).                                                                                                                                                                                     |
+| Web Surface             | `apps/web/app/`, `apps/web/supabase/`                            | standalone product: marketing, auth, onboarding (GitHub App install), repo-insights dashboard. Owns user-scoped tables (Supabase auth + RLS); dashboard reads the execution graph as a projection. Local Supabase stack; migrations in `apps/web/supabase/migrations`. |
+| Integration Adapters    | `apps/server/src/routes/webhooks.ts`, `apps/server/src/github/*` | one adapter = one webhook source = one `kind`. GitHub is the only adapter today.                                                                                                                                                                                       |
 
 ### Module design rule
 
@@ -231,7 +231,8 @@ If a request lands in this list, reply with the policy + offer the smallest vali
 ## 10. Decisions worth remembering
 
 - **Schema migration is real, aliases are temporary.** `incidents` and `toolCalls` re-export `executions` and `nodes` for one release. Drop the aliases when no caller imports them.
-- **Web ships in parallel, not after.** It is a projection of the graph. No write paths.
+- **Web is a standalone product, not a CLI dependency.** It ships its own auth, onboarding, GitHub App install, repo subscriptions, and dashboards — with its own write paths. It connects to the CLI/server only through the shared Supabase Postgres, never by importing their packages. The dashboard still reads the execution graph as a projection.
+- **Web DB = Supabase-native migrations + Drizzle query layer.** `apps/web/supabase/migrations/*.sql` (RLS, triggers on `auth.users`) is the source of truth; Drizzle (`lib/db/schema.ts`) is the typed query layer, not a migration generator. Local dev runs the full Supabase stack in Docker (`bun db:start`); `bun db:push` forwards migrations to the remote. Web-owned tables (`profiles`, `cli_installs`, `user_installations`, `repo_subscriptions`, `onboarding_state`) are separate from the server's org-keyed `github_installations`.
 - **`why` audit ships against existing data.** `nodes.argsJson` + `resultJson` already store inputs and rationale. No new instrumentation required.
 - **Adapter expansion is usage-gated.** Phase 5 has no scheduled deliverable. It opens when usage data exists.
 - **The CLI binary stays `orchentra`.** Already published. Renames to `orch` are rejected.
