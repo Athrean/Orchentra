@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'bun:test'
-import { mapRunDetail, type OctokitJob, type OctokitRunDetail } from '../lib/github/run-detail'
+import {
+  mapAnnotations,
+  mapRunDetail,
+  type OctokitAnnotation,
+  type OctokitJob,
+  type OctokitRunDetail,
+} from '../lib/github/run-detail'
 
 const baseRun: OctokitRunDetail = {
   id: 42,
@@ -109,5 +115,34 @@ describe('mapRunDetail', () => {
     ]
     const detail = mapRunDetail(baseRun, jobs, 'acme/app')
     expect(detail.jobs.map((j) => j.name)).toEqual(['b-fail', 'd-timeout', 'a-pass', 'c-pass'])
+  })
+})
+
+describe('mapAnnotations', () => {
+  const raw: OctokitAnnotation[] = [
+    { message: 'boom', path: 'src/a.ts', start_line: 12, annotation_level: 'failure' },
+    { message: 'careful', path: 'src/b.ts', start_line: 3, annotation_level: 'warning' },
+  ]
+
+  it('maps annotation fields to the typed shape', () => {
+    const out = mapAnnotations(raw, 10)
+    expect(out).toEqual([
+      { message: 'boom', path: 'src/a.ts', startLine: 12, level: 'failure' },
+      { message: 'careful', path: 'src/b.ts', startLine: 3, level: 'warning' },
+    ])
+  })
+
+  it('caps the list at the given per-job limit', () => {
+    const many: OctokitAnnotation[] = Array.from({ length: 25 }, (_, i) => ({
+      message: `m${i}`,
+      path: 'src/x.ts',
+      start_line: i,
+      annotation_level: 'failure',
+    }))
+    expect(mapAnnotations(many, 10)).toHaveLength(10)
+  })
+
+  it('returns an empty list for no annotations', () => {
+    expect(mapAnnotations([], 10)).toEqual([])
   })
 })
