@@ -11,7 +11,12 @@ const NAV_LINKS = [
   { href: '/pricing', label: 'Pricing' },
 ] as const
 
-export function NavBar({ loginHref }: { loginHref: string }) {
+interface NavBarProps {
+  loginHref: string
+  onLogin?: () => void
+}
+
+export function NavBar({ loginHref, onLogin }: NavBarProps) {
   return (
     <motion.header
       initial={{ opacity: 0, y: -8 }}
@@ -47,18 +52,39 @@ export function NavBar({ loginHref }: { loginHref: string }) {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            href={loginHref}
-            className="hidden text-sm text-[var(--color-pg-text-mute)] transition-colors hover:text-[var(--color-pg-text-0)] sm:inline"
-          >
-            Login
-          </Link>
-          <Link
-            href={loginHref}
-            className="rounded-lg bg-[var(--color-pg-accent-green)] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-6px_rgba(21,101,69,0.5)] transition-all hover:bg-[var(--color-pg-accent-green-2)] hover:shadow-[0_8px_20px_-8px_rgba(21,101,69,0.6)]"
-          >
-            Get Orchentra
-          </Link>
+          {onLogin ? (
+            <>
+              <button
+                type="button"
+                onClick={onLogin}
+                className="hidden text-sm text-[var(--color-pg-text-mute)] transition-colors hover:text-[var(--color-pg-text-0)] sm:inline"
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={onLogin}
+                className="rounded-lg bg-[var(--color-pg-accent-green)] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-6px_rgba(21,101,69,0.5)] transition-all hover:bg-[var(--color-pg-accent-green-2)] hover:shadow-[0_8px_20px_-8px_rgba(21,101,69,0.6)]"
+              >
+                Get Orchentra
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href={loginHref}
+                className="hidden text-sm text-[var(--color-pg-text-mute)] transition-colors hover:text-[var(--color-pg-text-0)] sm:inline"
+              >
+                Login
+              </Link>
+              <Link
+                href={loginHref}
+                className="rounded-lg bg-[var(--color-pg-accent-green)] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-6px_rgba(21,101,69,0.5)] transition-all hover:bg-[var(--color-pg-accent-green-2)] hover:shadow-[0_8px_20px_-8px_rgba(21,101,69,0.6)]"
+              >
+                Get Orchentra
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </motion.header>
