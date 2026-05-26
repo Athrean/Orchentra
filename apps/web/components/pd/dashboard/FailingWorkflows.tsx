@@ -1,10 +1,13 @@
 import { AlertOctagon, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 
 export interface FailingWorkflowRow {
   repo: string
   workflow: string
   failures: number
   total: number
+  installationId: number
+  runId: number
   htmlUrl: string
 }
 
@@ -23,19 +26,24 @@ export function FailingWorkflows({ rows }: { rows: FailingWorkflowRow[] }) {
           const ratePct = r.total > 0 ? Math.round((r.failures / r.total) * 100) : 0
           return (
             <li key={`${r.repo}/${r.workflow}`} className="flex items-center gap-4 px-4 py-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-400/10 text-red-400">
-                <AlertOctagon className="h-3.5 w-3.5" />
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm text-light">{r.workflow}</span>
-                <span className="truncate text-xs text-light/55">{r.repo}</span>
-              </div>
-              <div className="flex flex-col items-end gap-0.5 text-right">
-                <span className="text-sm font-medium text-red-400">{ratePct}%</span>
-                <span className="text-xs text-light/45">
-                  {r.failures}/{r.total} runs
+              <Link
+                href={`/runs/${r.installationId}/${r.repo}/${r.runId}`}
+                className="flex min-w-0 flex-1 items-center gap-4 transition-opacity hover:opacity-80"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-400/10 text-red-400">
+                  <AlertOctagon className="h-3.5 w-3.5" />
                 </span>
-              </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-sm text-light">{r.workflow}</span>
+                  <span className="truncate text-xs text-light/55">{r.repo}</span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5 text-right">
+                  <span className="text-sm font-medium text-red-400">{ratePct}%</span>
+                  <span className="text-xs text-light/45">
+                    {r.failures}/{r.total} runs
+                  </span>
+                </div>
+              </Link>
               <a
                 href={r.htmlUrl}
                 target="_blank"

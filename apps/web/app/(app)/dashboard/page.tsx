@@ -71,20 +71,36 @@ function topRuns(insights: RepoInsights[], n: number): WorkflowRunSummary[] {
   return all.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, n)
 }
 
-function topFailingWorkflows(insights: RepoInsights[], n: number): FailingWorkflowRow[] {
-  const stats = new Map<string, { repo: string; workflow: string; failures: number; total: number; htmlUrl: string }>()
+function topFailingWorkflows(
+  insights: RepoInsights[],
+  instByRepo: Map<string, number>,
+  n: number,
+): FailingWorkflowRow[] {
+  type Stat = FailingWorkflowRow & { latestFailAt: number }
+  const stats = new Map<string, Stat>()
   for (const ins of insights) {
     for (const run of ins.runs) {
       const key = `${run.repoFullName}::${run.name}`
-      const existing = stats.get(key) ?? {
+      const existing: Stat = stats.get(key) ?? {
         repo: run.repoFullName,
         workflow: run.name,
         failures: 0,
         total: 0,
+        installationId: instByRepo.get(run.repoFullName) ?? 0,
+        runId: run.id,
         htmlUrl: run.htmlUrl,
+        latestFailAt: 0,
       }
       existing.total += 1
-      if (run.conclusion === 'failure' || run.conclusion === 'timed_out') existing.failures += 1
+      if (run.conclusion === 'failure' || run.conclusion === 'timed_out') {
+        existing.failures += 1
+        const at = Date.parse(run.createdAt)
+        if (at >= existing.latestFailAt) {
+          existing.latestFailAt = at
+          existing.runId = run.id
+          existing.htmlUrl = run.htmlUrl
+        }
+      }
       stats.set(key, existing)
     }
   }
@@ -92,6 +108,15 @@ function topFailingWorkflows(insights: RepoInsights[], n: number): FailingWorkfl
     .filter((s) => s.failures > 0 && s.total >= 3)
     .sort((a, b) => b.failures / b.total - a.failures / a.total)
     .slice(0, n)
+    .map((s) => ({
+      repo: s.repo,
+      workflow: s.workflow,
+      failures: s.failures,
+      total: s.total,
+      installationId: s.installationId,
+      runId: s.runId,
+      htmlUrl: s.htmlUrl,
+    }))
 }
 
 function quietRepos(insights: RepoInsights[], thresholdMs: number): QuietRepoRow[] {
@@ -142,7 +167,8 @@ export default async function DashboardPage() {
 
   const successPct = agg.successRate !== null ? Math.round(agg.successRate * 100) : null
   const avgDurMin = agg.avgDurationMs !== null ? Math.round(agg.avgDurationMs / 60_000) : null
-  const failingWorkflows = topFailingWorkflows(insights, 5)
+  const instByRepo = new Map(subs.map((s) => [s.repoFullName, s.installationId]))
+  const failingWorkflows = topFailingWorkflows(insights, instByRepo, 5)
   const quietRows = quietRepos(insights, 7 * DAY_MS)
 
   return (
