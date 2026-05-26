@@ -1,6 +1,7 @@
 import { ArrowLeft, CheckCircle2, CircleDashed, ExternalLink, XCircle } from 'lucide-react'
 import Link from 'next/link'
-import type { RunAnnotation, RunDetail, RunJob, RunStep } from '../../../lib/github/run-detail'
+import { canRerun, type RunAnnotation, type RunDetail, type RunJob, type RunStep } from '../../../lib/github/run-detail'
+import { RerunButton } from './RerunButton'
 
 function statusTone(conclusion: string | null, status: string): { label: string; cls: string } {
   if (status !== 'completed' && conclusion === null) {
@@ -83,7 +84,7 @@ function JobCard({ job }: { job: RunJob }) {
   )
 }
 
-export function RunDetailView({ detail }: { detail: RunDetail }) {
+export function RunDetailView({ detail, installationId }: { detail: RunDetail; installationId: number }) {
   const tone = statusTone(detail.conclusion, detail.status)
   const durationMin = detail.durationMs !== null ? Math.round(detail.durationMs / 60_000) : null
   return (
@@ -107,6 +108,9 @@ export function RunDetailView({ detail }: { detail: RunDetail }) {
           >
             Open on GitHub <ExternalLink className="h-3 w-3" />
           </a>
+          {canRerun(detail) ? (
+            <RerunButton installationId={installationId} repoFullName={detail.repoFullName} runId={detail.id} />
+          ) : null}
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-6">
           <Meta label="Repo" value={detail.repoFullName} />
