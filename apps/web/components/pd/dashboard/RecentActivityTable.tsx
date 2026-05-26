@@ -1,9 +1,11 @@
+import Link from 'next/link'
 import { cn, formatRelative } from '../../../lib/utils'
 
 export type ActivityStatus = 'investigating' | 'fixed' | 'failed' | 'queued'
 
 export interface ActivityRow {
   id: string
+  installationId: number
   repo: string
   workflow: string
   status: ActivityStatus
@@ -71,7 +73,14 @@ export function RecentActivityTable({ rows }: Props) {
                 )}
               >
                 <td className="px-4 py-3">{row.repo}</td>
-                <td className="px-4 py-3">{row.workflow}</td>
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/runs/${row.installationId}/${row.repo}/${row.id}`}
+                    className="transition-colors hover:text-light"
+                  >
+                    {row.workflow}
+                  </Link>
+                </td>
                 <td className="px-4 py-3">
                   <span className={cn('rounded-[3px] px-2 py-0.5 text-xs', STATUS_STYLES[row.status])}>
                     {row.status}
