@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  canRerun,
   mapAnnotations,
   mapRunDetail,
   type OctokitAnnotation,
@@ -144,5 +145,23 @@ describe('mapAnnotations', () => {
 
   it('returns an empty list for no annotations', () => {
     expect(mapAnnotations([], 10)).toEqual([])
+  })
+})
+
+describe('canRerun', () => {
+  it('is true for a completed run that failed', () => {
+    expect(canRerun(mapRunDetail({ ...baseRun, status: 'completed', conclusion: 'failure' }, [], 'acme/app'))).toBe(
+      true,
+    )
+    expect(canRerun(mapRunDetail({ ...baseRun, status: 'completed', conclusion: 'timed_out' }, [], 'acme/app'))).toBe(
+      true,
+    )
+  })
+
+  it('is false for a successful or in-progress run', () => {
+    expect(canRerun(mapRunDetail({ ...baseRun, status: 'completed', conclusion: 'success' }, [], 'acme/app'))).toBe(
+      false,
+    )
+    expect(canRerun(mapRunDetail({ ...baseRun, status: 'in_progress', conclusion: null }, [], 'acme/app'))).toBe(false)
   })
 })

@@ -141,6 +141,11 @@ function orderFailedFirst(jobs: RunJob[]): RunJob[] {
   return [...jobs.filter((j) => j.failed), ...jobs.filter((j) => !j.failed)]
 }
 
+// Re-running failed jobs only makes sense for a completed run that actually failed.
+export function canRerun(detail: RunDetail): boolean {
+  return detail.status === 'completed' && (detail.conclusion === 'failure' || detail.conclusion === 'timed_out')
+}
+
 /**
  * Fetch a single workflow run plus its jobs and map them to the typed detail
  * shape. Returns null when the run does not exist or GitHub errors, so the
