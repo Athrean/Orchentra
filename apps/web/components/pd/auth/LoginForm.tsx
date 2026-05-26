@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Github, Loader2, Mail } from 'lucide-react'
 import { createClient } from '../../../lib/supabase/client'
@@ -12,10 +13,15 @@ import { Separator } from '../ui/separator'
 
 type Mode = 'idle' | 'oauth' | 'email'
 
-export function LoginForm() {
+interface LoginFormProps {
+  next?: string
+  chromeless?: boolean
+}
+
+export function LoginForm({ next: nextProp, chromeless = false }: LoginFormProps = {}) {
   const router = useRouter()
   const params = useSearchParams()
-  const next = params.get('next') ?? '/dashboard'
+  const next = nextProp ?? params.get('next') ?? '/dashboard'
   const supabase = React.useMemo(() => createClient(), [])
   const [mode, setMode] = React.useState<Mode>('idle')
   const [error, setError] = React.useState<string | null>(null)
@@ -51,11 +57,13 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex w-full max-w-sm flex-col gap-6">
-      <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-light">Welcome back</h1>
-        <p className="text-sm text-light/70">Sign in to your Orchentra workspace</p>
-      </div>
+    <div className="flex w-full flex-col gap-5">
+      {!chromeless && (
+        <div className="flex flex-col gap-2 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight text-light">Welcome back</h1>
+          <p className="text-sm text-light/70">Sign in to your Orchentra workspace</p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <Button
@@ -114,13 +122,14 @@ export function LoginForm() {
         </div>
         {error ? <p className="text-xs text-red-400">{error}</p> : null}
         <Button type="submit" size="lg" loading={mode === 'email'} disabled={mode !== 'idle'}>
+          <Image src="/icons/sign-in.svg" alt="" width={16} height={16} className="opacity-80 [filter:invert(1)]" />
           Sign in
         </Button>
       </form>
 
       <p className="text-center text-xs text-light/70">
         No account?{' '}
-        <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
+        <Link href="/signup" className="text-[var(--color-pg-accent-green-2)] underline-offset-4 hover:underline">
           Create one
         </Link>
       </p>
