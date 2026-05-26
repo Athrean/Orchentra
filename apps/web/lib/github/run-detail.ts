@@ -22,12 +22,20 @@ export interface OctokitStep {
   conclusion: string | null
 }
 
+export interface OctokitAnnotation {
+  message: string | null
+  path: string
+  start_line: number | null
+  annotation_level: string | null
+}
+
 export interface OctokitJob {
   id: number
   name: string
   status: string | null
   conclusion: string | null
   html_url: string | null
+  check_run_url?: string | null
   steps?: OctokitStep[]
 }
 
@@ -38,6 +46,13 @@ export interface RunStep {
   conclusion: string | null
 }
 
+export interface RunAnnotation {
+  message: string
+  path: string
+  startLine: number
+  level: string
+}
+
 export interface RunJob {
   id: number
   name: string
@@ -46,6 +61,7 @@ export interface RunJob {
   failed: boolean
   htmlUrl: string
   steps: RunStep[]
+  annotations: RunAnnotation[]
 }
 
 export interface RunDetail {
@@ -90,7 +106,17 @@ function mapJob(job: OctokitJob): RunJob {
     failed: job.conclusion === 'failure' || job.conclusion === 'timed_out',
     htmlUrl: job.html_url ?? '',
     steps: (job.steps ?? []).map(mapStep),
+    annotations: [],
   }
+}
+
+export function mapAnnotations(raw: OctokitAnnotation[], cap: number): RunAnnotation[] {
+  return raw.slice(0, cap).map((a) => ({
+    message: a.message ?? '',
+    path: a.path,
+    startLine: a.start_line ?? 0,
+    level: a.annotation_level ?? 'notice',
+  }))
 }
 
 export function mapRunDetail(run: OctokitRunDetail, jobs: OctokitJob[], repoFullName: string): RunDetail {
@@ -142,8 +168,48 @@ export async function getRunDetail(
     ])
     const run = runRes.data as OctokitRunDetail
     const jobs = (jobsRes.data as { jobs: OctokitJob[] }).jobs
-    return mapRunDetail(run, jobs, repoFullName)
+    const detail = mapRunDetail(run, jobs, repoFullName)
+    await attachAnnotations(octokit, owner, repo, jobs, detail)
+    return detail
   } catch {
     return null
   }
+}
+
+const ANNOTATION_CAP = 20
+
+function checkRunId(url: string | null | undefined): number | null {
+  if (!url) return null
+  const id = Number(url.split('/').pop())
+  return Number.isInteger(id) ? id : null
+}
+
+// Best-effort: attach check-run annotations to each failed job. A failed
+// annotation fetch for one job must not sink the whole page.
+async function attachAnnotations(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  rawJobs: OctokitJob[],
+  detail: RunDetail,
+): Promise<void> {
+  const byId = new Map(detail.jobs.map((j) => [j.id, j]))
+  await Promise.all(
+    rawJobs.map(async (raw) => {
+      const job = byId.get(raw.id)
+      if (!job || !job.failed) return
+      const checkId = checkRunId(raw.check_run_url)
+      if (checkId === null) return
+      try {
+        const res = await octokit.request('GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations', {
+          owner,
+          repo,
+          check_run_id: checkId,
+        })
+        job.annotations = mapAnnotations(res.data as OctokitAnnotation[], ANNOTATION_CAP)
+      } catch {
+        // leave annotations empty
+      }
+    }),
+  )
 }
