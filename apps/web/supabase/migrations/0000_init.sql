@@ -1,5 +1,5 @@
 -- Web product schema: Supabase-Auth-scoped tables.
--- Apply via Supabase SQL Editor or `psql $DATABASE_URL -f 001_init.sql`.
+-- Applied by `bun run db:reset` (local stack) or `bun run db:push` (remote).
 -- Canonical execution graph (executions, nodes, monitored_repos, ...) lives
 -- in packages/db and is owned by the server. The web does NOT redefine those.
 
