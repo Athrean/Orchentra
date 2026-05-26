@@ -21,10 +21,11 @@ app/
   auth/callback  — OAuth code exchange
 lib/
   supabase/      — browser / server / middleware clients + nav allowlist
-  db/            — Drizzle schema (profiles + cli_installs) + lazy client + SQL migrations
+  db/            — Drizzle schema + lazy typed client (queries only; migrations live in supabase/)
   validators/    — zod schemas for server-action boundaries
   crypto.ts      — AES-256-GCM helper for LLM keys at rest
   nav.ts         — single source of truth for product-shell routes (sidebar + middleware)
+supabase/        — local stack config (config.toml) + migrations/ (SQL source of truth)
 components/
   marketing-v2/  — landing-page sections (Hero, NavBar, …)
   pd/            — product surface (ui primitives, shell, account forms)
@@ -32,39 +33,48 @@ components/
 
 ## Required env vars
 
-Read from `../../.env.dev` via dotenv-cli wrapping `next dev/build/start`.
+Read from `../../.env.dev` via dotenv-cli wrapping `next dev/build/start`. Copy `.env.example` to `../../.env.dev` and fill the GitHub-App + secret values; the Supabase + DB values are pre-filled for the **local** stack.
 
-| Var                             | Where to find                                                                 |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Project Settings → API                                             |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API (anon/public)                               |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase → Project Settings → API (service_role). Server-only, never bundled. |
-| `DATABASE_URL`                  | Supabase → Connect → URI (use the **transaction pooler**, port 6543)          |
-| `LLM_KEY_ENCRYPTION_KEY`        | 64-char hex (run `openssl rand -hex 32`). Encrypts LLM API keys at rest.      |
-| `NEXT_PUBLIC_APP_URL`           | `http://localhost:3000` in dev; deployed domain in prod                       |
+| Var                             | Local stack default                                       | Remote (prod)                                                 |
+| ------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | `http://127.0.0.1:54321`                                  | Supabase → Project Settings → API                             |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | local demo key (in `.env.example`)                        | Supabase → Project Settings → API (anon/public)               |
+| `SUPABASE_SERVICE_ROLE_KEY`     | local demo key (in `.env.example`)                        | Supabase → Project Settings → API (service_role, server-only) |
+| `WEB_DATABASE_URL`              | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` | Supabase → Connect → URI (transaction pooler, 6543)           |
+| `LLM_KEY_ENCRYPTION_KEY`        | 64-char hex (`openssl rand -hex 32`)                      | same                                                          |
+| `NEXT_PUBLIC_APP_URL`           | `http://localhost:3000`                                   | deployed domain                                               |
 
-## First-time Supabase setup
+The local demo anon/service keys are the fixed values every `supabase start` prints — not secrets, safe to commit in `.env.example`.
 
-1. Create a project on supabase.com (free tier is fine).
-2. Apply the schema:
-   - Supabase dashboard → SQL Editor → paste `lib/db/migrations/001_init.sql` → run.
-   - Or from a terminal: `psql "$DATABASE_URL" -f lib/db/migrations/001_init.sql`.
-3. Configure auth providers:
-   - Authentication → URL Configuration:
-     - Site URL: `http://localhost:3000` (dev) or your domain (prod).
-     - Redirect URLs allowlist: `http://localhost:3000/**` (dev) + `https://yourdomain.com/**` (prod).
-   - Authentication → Providers → GitHub:
-     - Use your existing Orchentra GitHub App's Client ID + Client Secret (GitHub Apps support user OAuth since 2019).
-     - Add `https://<project-ref>.supabase.co/auth/v1/callback` to your GitHub App's Callback URLs.
-     - In the GitHub App's Permissions, set **Account permissions → Email addresses: Read-only** (Supabase needs the email to create the user row).
-   - Authentication → Providers → Google: enable + paste Client ID + Secret from a Google Cloud OAuth client. Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`.
+## Database workflow
 
-The `001_init.sql` migration installs a trigger on `auth.users` that auto-creates a `profiles` row on first sign-in.
+The DB schema is **Supabase-native SQL** under `supabase/migrations/*.sql` (RLS, triggers on `auth.users`, policies). Those files are the source of truth — Drizzle (`lib/db/schema.ts`) is only the typed query layer, not a migration generator. Requires Docker.
+
+```bash
+bun run db:start    # boot local Supabase stack in Docker (pg+auth+RLS+studio)
+bun run db:reset    # drop local DB + reapply every migration (fresh, seeded)
+bun run db:new x    # scaffold supabase/migrations/<ts>_x.sql to hand-write
+bun run db:diff     # generate a migration from local schema drift
+bun run db:status   # print local stack URLs + keys
+bun run db:stop     # stop the local stack
+```
+
+Studio: `http://127.0.0.1:54323`. Inbucket (catches local auth emails): `http://127.0.0.1:54324`.
+
+**Push to remote** (one-time link, then forward-only — never resets remote data):
+
+```bash
+bun run db:link     # link to the remote Supabase project (prompts for ref + db password)
+bun run db:push     # apply pending migrations to the linked remote
+bun run db:pull     # import the remote schema as a new local migration
+```
+
+`0000_init.sql` installs a trigger on `auth.users` that auto-creates a `profiles` row on first sign-in. For remote OAuth (GitHub/Google) configure providers in the Supabase dashboard → Authentication → Providers, with callback `https://<project-ref>.supabase.co/auth/v1/callback`.
 
 ## Commands
 
 ```bash
-bun run dev        # localhost:3000 (loads ../../.env.dev)
+bun run dev        # localhost:3000 (loads ../../.env.dev; needs db:start running)
 bun run build      # production build
 bun run start      # serve the production build
 bun run typecheck  # tsc --noEmit
@@ -86,5 +96,5 @@ The execution graph surfaces (`/executions`, `/repos`, `/chat`, `/pipelines`, `/
 
 - Server actions go through `requireUserId()` which validates the Supabase session before touching Drizzle.
 - LLM API keys are AES-256-GCM-encrypted with `LLM_KEY_ENCRYPTION_KEY`; ciphertext is the only thing stored. See `lib/crypto.ts` and `tests/crypto.test.ts`.
-- RLS policies in `001_init.sql` enforce `auth.uid() = id` (profiles) and `auth.uid() = user_id` (cli_installs) — defense-in-depth alongside the app-layer check.
+- RLS policies in `supabase/migrations/*.sql` enforce `auth.uid() = id` (profiles) and `auth.uid() = user_id` (cli_installs, user_installations, repo_subscriptions, onboarding_state) — defense-in-depth alongside the app-layer check.
 - Service-role key is server-only (no `NEXT_PUBLIC_` prefix). No code path uses it yet; do not import it from a client module.

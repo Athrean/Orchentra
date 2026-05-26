@@ -6,8 +6,10 @@ let cached: ReturnType<typeof drizzle<typeof schema>> | null = null
 
 export function getDb() {
   if (cached) return cached
-  const connectionString = process.env.DATABASE_URL
-  if (!connectionString) throw new Error('DATABASE_URL is required')
+  // WEB_DATABASE_URL only — never fall back to the server's DATABASE_URL, which
+  // points at a non-Supabase Postgres without the auth.users schema this app needs.
+  const connectionString = process.env.WEB_DATABASE_URL
+  if (!connectionString) throw new Error('WEB_DATABASE_URL is required (Supabase Postgres connection string)')
   const client = postgres(connectionString, { prepare: false })
   cached = drizzle(client, { schema })
   return cached
