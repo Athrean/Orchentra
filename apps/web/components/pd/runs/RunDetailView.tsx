@@ -1,6 +1,6 @@
 import { ArrowLeft, CheckCircle2, CircleDashed, ExternalLink, XCircle } from 'lucide-react'
 import Link from 'next/link'
-import type { RunDetail, RunJob, RunStep } from '../../../lib/github/run-detail'
+import type { RunAnnotation, RunDetail, RunJob, RunStep } from '../../../lib/github/run-detail'
 
 function statusTone(conclusion: string | null, status: string): { label: string; cls: string } {
   if (status !== 'completed' && conclusion === null) {
@@ -17,6 +17,21 @@ function StepIcon({ conclusion }: { conclusion: string | null }) {
   if (conclusion === 'success') return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
   if (conclusion === 'failure' || conclusion === 'timed_out') return <XCircle className="h-3.5 w-3.5 text-red-400" />
   return <CircleDashed className="h-3.5 w-3.5 text-light/40" />
+}
+
+function AnnotationRow({ annotation }: { annotation: RunAnnotation }) {
+  const isError = annotation.level === 'failure'
+  return (
+    <li className="flex flex-col gap-0.5 px-4 py-2 text-xs">
+      <span className={isError ? 'text-red-400' : 'text-amber-400'}>{annotation.message}</span>
+      {annotation.path ? (
+        <span className="text-light/40">
+          {annotation.path}
+          {annotation.startLine > 0 ? `:${annotation.startLine}` : ''}
+        </span>
+      ) : null}
+    </li>
+  )
 }
 
 function StepRow({ step }: { step: RunStep }) {
@@ -54,6 +69,13 @@ function JobCard({ job }: { job: RunJob }) {
         <ul className="divide-y divide-neutral-800/60 border-t border-neutral-800">
           {job.steps.map((s) => (
             <StepRow key={s.number} step={s} />
+          ))}
+        </ul>
+      ) : null}
+      {job.annotations.length > 0 ? (
+        <ul className="divide-y divide-neutral-800/60 border-t border-neutral-800 bg-red-400/[0.03]">
+          {job.annotations.map((a, i) => (
+            <AnnotationRow key={`${a.path}:${a.startLine}:${i}`} annotation={a} />
           ))}
         </ul>
       ) : null}
