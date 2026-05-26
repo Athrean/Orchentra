@@ -155,9 +155,11 @@ export default async function DashboardPage() {
   const lineSeries = buildLineSeries(allRuns, 30)
   const mttrSeries = buildMttrSeries(allRuns)
   const recent = topRuns(insights, 20)
+  const instByRepo = new Map(subs.map((s) => [s.repoFullName, s.installationId]))
 
   const rows: ActivityRow[] = recent.map((r) => ({
     id: String(r.id),
+    installationId: instByRepo.get(r.repoFullName) ?? 0,
     repo: r.repoFullName,
     workflow: r.name,
     status: conclusionToStatus(r.conclusion, r.status),
@@ -167,7 +169,6 @@ export default async function DashboardPage() {
 
   const successPct = agg.successRate !== null ? Math.round(agg.successRate * 100) : null
   const avgDurMin = agg.avgDurationMs !== null ? Math.round(agg.avgDurationMs / 60_000) : null
-  const instByRepo = new Map(subs.map((s) => [s.repoFullName, s.installationId]))
   const failingWorkflows = topFailingWorkflows(insights, instByRepo, 5)
   const quietRows = quietRepos(insights, 7 * DAY_MS)
 
