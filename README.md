@@ -14,7 +14,7 @@ Open-source, terminal-native. Every capability is a typed `Operation` exposed ov
 
 ## What is Orchentra
 
-Orchentra is a contract-first DevOps operations runtime. Every capability — fetching workflow logs, posting a PR comment, searching code — is a typed `Operation` (Zod-validated input/output, declared trust class, single handler) registered once and exposed over two surfaces: the `orchentra` CLI for humans, and an MCP server for external agents like Claude Desktop, Cursor, and Windsurf. Both call into the same registry, so the same operations show up wherever the engineer already works. Webhooks (CI failures, Sentry alerts, cron ticks) record every run as an **execution** with a tree of **nodes**, and the web dashboard is a read-only projection of that graph.
+Orchentra is a contract-first DevOps operations runtime. Every capability — fetching workflow logs, posting a PR comment, searching code — is a typed `Operation` (Zod-validated input/output, declared trust class, single handler) registered once and exposed over two surfaces: the `orchentra` CLI for humans, and an MCP server for external agents like Claude Desktop, Cursor, and Windsurf. Both call into the same registry, so the same operations show up wherever the engineer already works. Webhooks (CI failures, Sentry alerts, cron ticks) record every run as an **execution** with a tree of **nodes**. The web is a standalone product surface — onboarding, GitHub App install, repo-insights dashboard — that reads that graph as a projection.
 
 This is **not** a Datadog/Grafana replacement, a "PR fixer" SaaS, or yet another alerting product. The wedge is the operations contract, the graph, and the terminal.
 
@@ -81,7 +81,7 @@ Cross-execution diff (`/dashboard/diff`) lines up two executions for postmortems
 
 **Server.** Hono backend — webhooks (`workflow_run`, Sentry), cron tick, agent loop with multi-provider LLM (per-org config), Postgres-backed job queue with retry + dead-letter, idempotent two-tier dedup.
 
-**Web (read-only).** Next.js dashboard — live agent timeline (WebSocket), execution graph view (kind-agnostic tree), node detail, cross-execution diff. No write paths.
+**Web (product surface).** Next.js — marketing, auth, onboarding (GitHub App install + repo selection), and a repo-insights dashboard, plus the execution-graph views (live agent timeline over WebSocket, kind-agnostic tree, node detail, cross-execution diff). A standalone product with its own write paths; it connects to the CLI/server only through the shared Postgres, never by importing their packages.
 
 ## Investigation tools
 
@@ -214,7 +214,7 @@ Orchentra/
 ├── apps/
 │   ├── cli/                 # Ink TUI — REPL, slash commands, skills, OAuth flows
 │   ├── server/              # Hono backend — webhooks, cron, agent, queue, integrations
-│   └── web/                 # Next.js — dashboard, exec graph view, cross-exec diff
+│   └── web/                 # Next.js — marketing, auth, onboarding (GitHub App), dashboards; supabase/ stack + migrations
 ├── packages/
 │   ├── operations/          # @orchentra/operations — typed Operation contract + registry
 │   ├── mcp-server/          # @orchentra/mcp-server — stdio MCP transport over the registry

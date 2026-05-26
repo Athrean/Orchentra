@@ -84,13 +84,15 @@ bun run test       # bun test (crypto round-trip etc.)
 
 ## What's live today
 
-- **Marketing** — `/` (landing); redirects to `/dashboard` if authed.
-- **Auth** — `/login`, `/signup` with email + GitHub + Google; `/auth/callback` exchanges the OAuth code.
-- **Product shell** — `/dashboard` (overview stub), `/account` (profile edit + LLM key paste with AES-256-GCM encryption), `/account/devices` (CLI install list).
+- **Marketing** — `/` (landing) with a login modal; redirects to `/dashboard` if authed.
+- **Auth** — login modal + `/login`, `/signup` (email + GitHub + Google); `/auth/callback` exchanges the OAuth code and discovers existing GitHub App installs while the token is fresh.
+- **Onboarding** — `/onboarding` wizard: welcome → install the Orchentra GitHub App → select repos. Resumable; skips the install step when an app is already installed on the user's account/org.
+- **Dashboard** — `/dashboard` aggregates GitHub Actions runs for subscribed repos into stat tiles, executions + MTTR charts, and failing-workflows / quiet-repos sections, with an empty state when no repos are tracked.
+- **Account** — `/account` (profile edit + LLM key paste with AES-256-GCM encryption), `/account/devices` (CLI install list).
 
 ## What's not built yet
 
-The execution graph surfaces (`/executions`, `/repos`, `/chat`, `/pipelines`, `/graphs`, `/actions`) are not in this slice. The execution graph is owned by `packages/db` + `apps/server`; the web will read it as a projection in a follow-up slice. The current schema here (`profiles` + `cli_installs`) is scoped to Supabase Auth and intentionally does **not** redefine the canonical graph tables.
+The execution-graph surfaces (`/executions`, exec graph view, cross-execution diff) are owned by `packages/db` + `apps/server`; the web will read them as a projection in a follow-up slice. The schema here (`profiles`, `cli_installs`, `user_installations`, `repo_subscriptions`, `onboarding_state`) is scoped to Supabase Auth and intentionally does **not** redefine the canonical graph tables.
 
 ## Security notes
 
