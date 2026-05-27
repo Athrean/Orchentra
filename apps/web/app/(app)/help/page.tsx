@@ -24,17 +24,20 @@ export default function HelpPage() {
   }, [])
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-10 space-y-8">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-wider text-light">Help</h1>
-        <p className="mt-1 text-sm text-light/60 tracking-wide">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-8 pb-12">
+      <header className="pt-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-pg-text-0">Help</h1>
+        <p className="mt-1 text-sm text-pg-text-mute">
           Press <Kbd>⌘</Kbd> <Kbd>/</Kbd> for the keyboard shortcut sheet.
         </p>
       </header>
 
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-light/60">Overlays</h2>
-        <div className="flex gap-3">
+      <section className="surface space-y-4 p-5">
+        <div>
+          <h2 className="text-sm font-semibold text-pg-text-0">Shortcuts and overlays</h2>
+          <p className="mt-1 text-sm text-pg-text-mute">Open the same panels used across the product shell.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
           <Button variant="outline" onClick={() => setModal(true)}>
             Open modal
           </Button>
@@ -53,13 +56,13 @@ export default function HelpPage() {
         title="Example modal"
         description="A simple dialog for confirmations and small forms."
       >
-        <p className="text-sm text-light/70 tracking-wide">
-          Modals are 8px-radius, no drop shadow except the floating shadow-md, and they trap focus. Press Esc to close.
+        <p className="text-sm text-pg-text-mute tracking-wide">
+          Modals use the same soft white surface as the rail popovers, and they trap focus. Press Esc to close.
         </p>
       </Modal>
 
       <Drawer open={drawer} onOpenChange={setDrawer} title="Example drawer">
-        <p className="text-sm text-light/70 tracking-wide">
+        <p className="text-sm text-pg-text-mute tracking-wide">
           Drawers slide in from the right and are 24rem wide. Good for detail panels.
         </p>
       </Drawer>
