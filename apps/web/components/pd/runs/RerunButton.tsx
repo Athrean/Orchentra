@@ -38,7 +38,7 @@ export function RerunButton({ installationId, repoFullName, runId }: Props) {
       type="button"
       onClick={onClick}
       disabled={loading}
-      className="flex items-center gap-1.5 rounded-md border border-neutral-700 bg-white/5 px-2.5 py-1 text-xs text-light transition-colors hover:bg-white/10 disabled:opacity-50"
+      className="flex items-center gap-1.5 rounded-md border border-pg-hairline bg-pg-surface-1 px-2.5 py-1 text-xs text-pg-text-0 transition-colors hover:bg-pg-surface-2 disabled:opacity-50"
     >
       <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
       {loading ? 'Re-running…' : 'Re-run failed jobs'}
