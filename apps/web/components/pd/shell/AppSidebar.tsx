@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { SidebarUser } from './SidebarUser'
+import { CreateTeamModal } from './CreateTeamModal'
 
 type RailIcon = ComponentType<{ className?: string; strokeWidth?: number }>
 
@@ -48,6 +49,7 @@ interface Props {
 export function AppSidebar({ email, fullName, avatarUrl }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [teamModalOpen, setTeamModalOpen] = useState(false)
 
   useEffect(() => {
     setCollapsed(localStorage.getItem(STORAGE_KEY) === '1')
@@ -104,7 +106,7 @@ export function AppSidebar({ email, fullName, avatarUrl }: Props) {
 
       <nav className={cn('flex flex-1 flex-col', collapsed ? 'mt-5 items-center' : 'mt-8')}>
         <div className={cn('flex flex-col', collapsed ? 'items-center gap-2' : 'gap-1.5')}>
-          <TeamButton collapsed={collapsed} />
+          <TeamButton collapsed={collapsed} onClick={() => setTeamModalOpen(true)} />
           {NAV_ITEMS.slice(0, 3).map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
             return <SidebarItem key={item.label} {...item} active={active} collapsed={collapsed} />
@@ -125,9 +127,17 @@ export function AppSidebar({ email, fullName, avatarUrl }: Props) {
             active={pathname.startsWith('/settings')}
             collapsed={collapsed}
           />
-          <SidebarUser email={email} fullName={fullName} avatarUrl={avatarUrl} collapsed={collapsed} />
+          <SidebarUser
+            email={email}
+            fullName={fullName}
+            avatarUrl={avatarUrl}
+            collapsed={collapsed}
+            onCreateTeam={() => setTeamModalOpen(true)}
+          />
         </div>
       </nav>
+
+      <CreateTeamModal open={teamModalOpen} onOpenChange={setTeamModalOpen} />
     </aside>
   )
 }
@@ -198,18 +208,18 @@ function SidebarButton({
   )
 }
 
-function TeamButton({ collapsed }: { collapsed: boolean }) {
+function TeamButton({ collapsed, onClick }: { collapsed: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
-      aria-disabled="true"
+      onClick={onClick}
       className={cn(
-        'group relative flex items-center rounded-[8px] text-pg-text-0 outline-none',
+        'group relative flex items-center rounded-[8px] text-pg-text-0 outline-none transition-colors hover:bg-pg-surface-1 focus-visible:bg-pg-surface-1',
         collapsed ? 'mb-2 h-9 w-9 justify-center bg-pg-surface-0' : 'mb-5 h-9 gap-3 px-2.5 text-sm font-medium',
       )}
     >
       <UsersRound className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-      {collapsed ? <RailTooltip>Create team first</RailTooltip> : <span>Create Team First</span>}
+      {collapsed ? <RailTooltip>Create team</RailTooltip> : <span>Create Team</span>}
     </button>
   )
 }
