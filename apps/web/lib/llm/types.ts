@@ -16,7 +16,28 @@ export const chatRequestSchema = z.object({
 export type ChatRequest = z.infer<typeof chatRequestSchema>
 
 export interface ChatChunk {
-  type: 'token' | 'done' | 'error'
+  type: 'token' | 'reasoning' | 'usage' | 'stage' | 'tool_call' | 'source' | 'done' | 'error'
   text?: string
   error?: string
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    estimatedCostUsd: number
+    model: string
+  }
+  stage?: {
+    id: string
+    label: string
+    status: 'pending' | 'active' | 'done' | 'failed'
+  }
+  toolCall?: {
+    name: string
+    arguments?: unknown
+    result?: unknown
+  }
+  source?: {
+    title: string
+    url?: string
+  }
 }
