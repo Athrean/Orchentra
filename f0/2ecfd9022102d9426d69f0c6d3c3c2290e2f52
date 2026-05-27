@@ -1,0 +1,9 @@
+apps/web/app/(app)/settings/integrations/page.tsx
+  ai_agent 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f02ecfd9022102d9426d69f0c6d3c3c2290e2f52",
+  "prompts": {}
+}
