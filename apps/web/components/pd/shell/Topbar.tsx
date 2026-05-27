@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '../ui/button'
-import { Input } from '../ui/input'
-import { ProfileMenu } from './ProfileMenu'
 
 interface PrimaryAction {
   label: string
@@ -11,37 +9,36 @@ interface PrimaryAction {
 
 interface Props {
   title?: string
-  email: string | null | undefined
-  fullName: string | null | undefined
-  avatarUrl: string | null | undefined
   primaryAction?: PrimaryAction
 }
 
-export function Topbar({ title, email, fullName, avatarUrl, primaryAction }: Props) {
+export function Topbar({ title, primaryAction }: Props) {
+  if (!title && !primaryAction) return null
+
   return (
-    <header className="flex min-h-[3.5rem] items-center gap-4 border-b border-neutral-800 bg-darkest px-6">
-      {title ? <h1 className="text-[15px] font-medium tracking-wide text-light">{title}</h1> : null}
+    <header className="relative z-10 flex min-h-[3.5rem] items-center gap-4 bg-transparent px-6">
+      {title ? <h1 className="text-[15px] font-medium tracking-wide text-pg-text-0">{title}</h1> : null}
       <div className="flex-1" />
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-light/40" />
-        <Input placeholder="Search…" className="h-8 w-64 pl-8 text-xs" />
-      </div>
       {primaryAction ? (
         primaryAction.href ? (
-          <Button asChild variant="primary" size="sm">
+          <Button
+            asChild
+            variant="primary"
+            size="sm"
+            className="bg-pg-accent-green text-white hover:bg-pg-accent-green-2"
+          >
             <Link href={primaryAction.href}>
               <Plus className="h-3.5 w-3.5" />
               {primaryAction.label}
             </Link>
           </Button>
         ) : (
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" className="bg-pg-accent-green text-white hover:bg-pg-accent-green-2">
             <Plus className="h-3.5 w-3.5" />
             {primaryAction.label}
           </Button>
         )
       ) : null}
-      <ProfileMenu email={email} fullName={fullName} avatarUrl={avatarUrl} />
     </header>
   )
 }
