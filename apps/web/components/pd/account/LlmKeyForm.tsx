@@ -55,7 +55,7 @@ export function LlmKeyForm({ provider: initialProvider, hasKey }: Props) {
     <form onSubmit={onSave} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label>Provider</Label>
-        <div className="inline-flex rounded-[4px] border border-neutral-800 p-0.5">
+        <div className="inline-flex w-fit rounded-[9px] bg-pg-surface-0 p-1 shadow-[0_0_0_1px_rgba(20,20,18,0.06)]">
           {(['anthropic', 'openai'] as const).map((p) => (
             <button
               key={p}
@@ -63,8 +63,8 @@ export function LlmKeyForm({ provider: initialProvider, hasKey }: Props) {
               onClick={() => setProvider(p)}
               className={
                 provider === p
-                  ? 'rounded-[3px] bg-dark px-3 py-1 text-xs font-medium tracking-wide text-light'
-                  : 'rounded-[3px] px-3 py-1 text-xs tracking-wide text-light/70 hover:text-light'
+                  ? 'rounded-[7px] bg-white px-3 py-1 text-xs font-medium tracking-wide text-pg-text-0 shadow-sm'
+                  : 'rounded-[7px] px-3 py-1 text-xs tracking-wide text-pg-text-mute hover:text-pg-text-0'
               }
             >
               {p}
@@ -84,16 +84,16 @@ export function LlmKeyForm({ provider: initialProvider, hasKey }: Props) {
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={provider === 'anthropic' ? 'sk-ant-…' : 'sk-…'}
         />
-        <p className="text-[11px] text-light/40">
+        <p className="text-[11px] text-pg-text-mute/70">
           Encrypted with AES-256-GCM before it touches the database. We never log plaintext.
         </p>
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="text-xs text-light/70">
+        <div className="text-xs text-pg-text-mute">
           {hasKey ? (
-            <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-neutral-800 px-2 py-1">
-              <KeyRound className="h-3 w-3 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-pg-surface-0 px-2 py-1">
+              <KeyRound className="h-3 w-3 text-pg-accent-green" />
               Key on file
             </span>
           ) : (
