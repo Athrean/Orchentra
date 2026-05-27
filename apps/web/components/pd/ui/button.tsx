@@ -7,15 +7,15 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[4px] text-sm font-medium tracking-wider transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[8px] text-sm font-medium tracking-wide transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-pg-accent-green disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-light text-darkest hover:-translate-y-0.5 font-semibold',
+        default: 'bg-pg-text-0 text-white hover:bg-black font-semibold',
         exec: 'exec-button-dark hover:-translate-y-0.5',
         primary: 'bg-primary text-light hover:bg-primary/90',
-        outline: 'border border-neutral-800 text-light hover:bg-dark hover:border-neutral-700',
-        ghost: 'text-light/70 hover:bg-dark hover:text-light',
+        outline: 'bg-white text-pg-text-0 shadow-[0_0_0_1px_rgba(20,20,18,0.08)] hover:bg-pg-surface-1',
+        ghost: 'text-pg-text-mute hover:bg-pg-surface-1 hover:text-pg-text-0',
         destructive: 'text-red-500 hover:bg-red-500/10',
         link: 'text-primary underline-offset-4 hover:underline',
       },

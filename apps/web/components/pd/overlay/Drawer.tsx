@@ -22,24 +22,23 @@ export function Drawer({ open, onOpenChange, title, description, children }: Dra
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-dark/70" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/25 backdrop-blur-[2px]" />
         <Dialog.Content
           className={cn(
             'fixed top-0 right-0 z-50 flex h-screen w-[24rem] flex-col',
-            'bg-darkest border-l border-neutral-800 rounded-[8px] rounded-r-none',
-            'px-6 py-5 shadow-md',
+            'rounded-[14px] rounded-r-none bg-white px-6 py-5 text-pg-text-0 shadow-[0_28px_70px_-32px_rgba(15,15,14,0.55),0_0_0_1px_rgba(20,20,18,0.08)]',
           )}
         >
           <div className="flex items-start justify-between mb-3">
             <div>
-              <Dialog.Title className="text-base font-semibold text-light tracking-wider">{title}</Dialog.Title>
+              <Dialog.Title className="text-base font-semibold text-pg-text-0 tracking-tight">{title}</Dialog.Title>
               {description && (
-                <Dialog.Description className="mt-1 text-sm text-light/60 tracking-wide">
+                <Dialog.Description className="mt-1 text-sm text-pg-text-mute tracking-wide">
                   {description}
                 </Dialog.Description>
               )}
             </div>
-            <Dialog.Close aria-label="Close" className="text-light/40 hover:text-light transition-colors">
+            <Dialog.Close aria-label="Close" className="text-pg-text-mute transition-colors hover:text-pg-text-0">
               <X className="h-4 w-4" />
             </Dialog.Close>
           </div>
