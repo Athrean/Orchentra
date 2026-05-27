@@ -23,11 +23,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const avatarUrl = profile?.avatarUrl ?? (user.user_metadata?.avatar_url as string | undefined) ?? null
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-pg-surface-0 text-pg-text-0">
       <AppSidebar email={user.email} fullName={fullName} avatarUrl={avatarUrl} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar email={user.email} fullName={fullName} avatarUrl={avatarUrl} />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <Topbar />
+        <main className="dot-canvas flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   )
