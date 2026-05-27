@@ -5,11 +5,11 @@ import { ArrowRight, GitPullRequest } from 'lucide-react'
 export function DashboardEmptyState() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-6">
-      <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-neutral-800 bg-darker p-10 text-center">
-        <Image src="/mascot.svg" alt="Orchentra" width={48} height={48} className="opacity-90 [filter:invert(1)]" />
+      <div className="surface flex w-full max-w-md flex-col items-center gap-6 p-10 text-center">
+        <Image src="/mascot.svg" alt="Orchentra" width={48} height={48} className="opacity-90" />
         <div className="flex flex-col gap-2">
-          <h2 className="text-xl font-semibold tracking-tight text-light">No repos tracked yet</h2>
-          <p className="text-sm text-light/70">
+          <h2 className="text-xl font-semibold tracking-tight text-pg-text-0">No repos tracked yet</h2>
+          <p className="text-sm text-pg-text-mute">
             Pick the repos you want Orchentra to surface insights for. Takes 30 seconds.
           </p>
         </div>
