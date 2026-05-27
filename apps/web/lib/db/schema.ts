@@ -82,6 +82,90 @@ export const repoSubscriptions = pgTable(
   ],
 )
 
+export const providerCredentials = pgTable(
+  'provider_credentials',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    apiKeyCiphertext: text('api_key_ciphertext').notNull(),
+    apiKeyIv: text('api_key_iv').notNull(),
+    apiKeyTag: text('api_key_tag').notNull(),
+    baseUrl: text('base_url'),
+    defaultModel: text('default_model').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    unique('provider_credentials_user_provider_key').on(t.userId, t.provider),
+    index('provider_credentials_user_id_idx').on(t.userId),
+  ],
+)
+
+export const projectApiKeys = pgTable(
+  'project_api_keys',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    tokenPrefix: text('token_prefix').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (t) => [index('project_api_keys_user_id_idx').on(t.userId)],
+)
+
+export const alertRules = pgTable(
+  'alert_rules',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    signal: text('signal').notNull(),
+    comparator: text('comparator').notNull(),
+    threshold: text('threshold').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('alert_rules_user_id_idx').on(t.userId)],
+)
+
+export const alertHistory = pgTable(
+  'alert_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    ruleId: uuid('rule_id').references(() => alertRules.id, { onDelete: 'set null' }),
+    status: text('status').notNull().default('recorded'),
+    message: text('message').notNull(),
+    firedAt: timestamp('fired_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('alert_history_user_id_idx').on(t.userId), index('alert_history_rule_id_idx').on(t.ruleId)],
+)
+
+export const notificationPrefs = pgTable('notification_prefs', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: 'cascade' }),
+  prefs: jsonb('prefs').notNull().default({}),
+  slackDm: boolean('slack_dm').notNull().default(false),
+  quietHoursStart: text('quiet_hours_start'),
+  quietHoursEnd: text('quiet_hours_end'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
 export const onboardingState = pgTable('onboarding_state', {
   userId: uuid('user_id')
     .primaryKey()
@@ -99,6 +183,13 @@ export type UserInstallation = typeof userInstallations.$inferSelect
 export type NewUserInstallation = typeof userInstallations.$inferInsert
 export type RepoSubscription = typeof repoSubscriptions.$inferSelect
 export type NewRepoSubscription = typeof repoSubscriptions.$inferInsert
+export type ProviderCredential = typeof providerCredentials.$inferSelect
+export type NewProviderCredential = typeof providerCredentials.$inferInsert
+export type ProjectApiKey = typeof projectApiKeys.$inferSelect
+export type NewProjectApiKey = typeof projectApiKeys.$inferInsert
+export type AlertRule = typeof alertRules.$inferSelect
+export type AlertHistory = typeof alertHistory.$inferSelect
+export type NotificationPrefs = typeof notificationPrefs.$inferSelect
 export type OnboardingState = typeof onboardingState.$inferSelect
 export type NewOnboardingState = typeof onboardingState.$inferInsert
 export type OnboardingStep = 'welcome' | 'install_app' | 'select_repos' | 'completed'
