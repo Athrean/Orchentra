@@ -33,12 +33,12 @@ export function Composer({ onSubmit, disabled }: ComposerProps) {
   return (
     <div
       className={cn(
-        'relative rounded-[8px] border border-neutral-800/80 bg-darkest transition-opacity',
+        'relative rounded-[12px] border border-pg-hairline bg-white shadow-[0_1px_2px_0_rgba(20,20,19,0.04)] transition-opacity',
         disabled && 'opacity-60',
       )}
     >
       <div className="relative flex flex-col">
-        <span className="pointer-events-none absolute left-4 top-5 select-none font-mono text-sm text-neutral-600">
+        <span className="pointer-events-none absolute left-4 top-5 select-none font-mono text-sm text-pg-accent-green">
           &gt;
         </span>
         <textarea
@@ -48,19 +48,26 @@ export function Composer({ onSubmit, disabled }: ComposerProps) {
           onKeyDown={handleKeyDown}
           rows={3}
           disabled={disabled}
-          className="h-15 w-full resize-none border-0 bg-transparent py-5 pl-10 pr-4 text-sm tracking-wider text-light caret-light transition-all duration-200 placeholder:text-sm placeholder:text-neutral-700 focus:h-28 focus:outline-none"
+          className="h-15 w-full resize-none border-0 bg-transparent py-5 pl-10 pr-4 text-sm tracking-wider text-pg-text-0 caret-pg-text-0 transition-all duration-200 placeholder:text-sm placeholder:text-pg-text-mute focus:h-28 focus:outline-none"
           placeholder="ask anything about your pipelines..."
         />
       </div>
       <div className="flex items-center justify-between px-4 py-2.5">
-        <div className="flex items-center gap-x-3 text-xs text-light/40">
+        <div className="flex items-center gap-x-3 text-xs text-pg-text-mute">
           <span className="font-mono">claude-3.7-sonnet</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-light/40">
+          <span className="font-mono text-xs text-pg-text-mute">
             {value.length} / {MAX}
           </span>
-          <Button variant="exec" size="sm" type="button" onClick={handleSubmit} disabled={disabled || !value.trim()}>
+          <Button
+            variant="primary"
+            size="sm"
+            type="button"
+            onClick={handleSubmit}
+            disabled={disabled || !value.trim()}
+            className="bg-pg-accent-green text-white hover:bg-pg-accent-green-2"
+          >
             <ArrowRight className="h-3 w-3" />
           </Button>
         </div>
