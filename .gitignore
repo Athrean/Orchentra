@@ -76,4 +76,6 @@ SmartNotes UI Design.zip
 skills-lock.json
 .charlie/
 
+# Heavy media kept locally for a future animated hero bg — not committed
 back-frames
+*.mp4
