@@ -14,10 +14,11 @@ interface Props {
   fullName: string | null | undefined
   avatarUrl: string | null | undefined
   collapsed?: boolean
+  onCreateTeam?: () => void
 }
 
 /** Footer profile row — opens an account dropdown (sidebar-03 NavUser pattern). */
-export function SidebarUser({ email, fullName, avatarUrl, collapsed }: Props) {
+export function SidebarUser({ email, fullName, avatarUrl, collapsed, onCreateTeam }: Props) {
   const router = useRouter()
   const supabase = React.useMemo(() => createClient(), [])
   const display = fullName ?? email ?? 'Signed in'
@@ -83,10 +84,10 @@ export function SidebarUser({ email, fullName, avatarUrl, collapsed }: Props) {
             </div>
           </div>
           <DropdownMenu.Item
-            disabled
-            className="flex cursor-not-allowed items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-sm text-pg-text-mute opacity-60 outline-none"
+            onSelect={onCreateTeam}
+            className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-sm text-pg-text-0 outline-none transition-colors hover:bg-pg-surface-1"
           >
-            <UsersRound className="h-4 w-4" />
+            <UsersRound className="h-4 w-4 text-pg-text-mute" />
             Create team
           </DropdownMenu.Item>
           <DropdownMenu.Item asChild>
