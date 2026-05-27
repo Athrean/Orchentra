@@ -24,7 +24,14 @@ export async function saveProfile(input: ProfileEdit) {
     .update(profiles)
     .set({ ...parsed, updatedAt: new Date() })
     .where(eq(profiles.id, userId))
-  revalidatePath('/account')
+  revalidatePath('/settings/profile')
+}
+
+export async function setAccountPassword(password: string) {
+  if (password.length < 8) throw new Error('Password must be at least 8 characters')
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw new Error(error.message)
 }
 
 export async function saveLlmKey(input: LlmKey) {
@@ -39,11 +46,11 @@ export async function saveLlmKey(input: LlmKey) {
       updatedAt: new Date(),
     })
     .where(eq(profiles.id, userId))
-  revalidatePath('/account')
+  revalidatePath('/settings/ai-providers')
 }
 
 export async function clearLlmKey() {
   const userId = await requireUserId()
   await db.update(profiles).set({ llmKeyEncrypted: null, updatedAt: new Date() }).where(eq(profiles.id, userId))
-  revalidatePath('/account')
+  revalidatePath('/settings/ai-providers')
 }
