@@ -4,7 +4,15 @@
  * Add a new route to a group here when shipping a new shell page —
  * the sidebar renders it and `PROTECTED_PREFIXES` auto-gates it.
  */
-export type NavIcon = 'Telescope' | 'Activity' | 'CalendarClock' | 'Workflow' | 'Settings' | 'HelpCircle'
+export type NavIcon =
+  | 'Telescope'
+  | 'Activity'
+  | 'BarChart3'
+  | 'Brain'
+  | 'CalendarClock'
+  | 'Workflow'
+  | 'Settings'
+  | 'HelpCircle'
 
 export interface NavItem {
   href: string
@@ -24,6 +32,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/dashboard', label: 'Investigate', icon: 'Telescope' },
       { href: '/runs', label: 'Runs & activity', icon: 'Activity' },
+      { href: '/usage', label: 'Usage', icon: 'BarChart3' },
+      { href: '/memory', label: 'Memory', icon: 'Brain' },
       { href: '/crons', label: 'Schedules', icon: 'CalendarClock' },
       { href: '/graph', label: 'Graph', icon: 'Workflow' },
     ],
