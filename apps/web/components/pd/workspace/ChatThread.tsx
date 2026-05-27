@@ -10,6 +10,7 @@ import type { ChatMessage } from './types'
 
 interface ChatThreadProps {
   initialMessages?: ChatMessage[]
+  initialPrompt?: string | null
   userAvatarUrl?: string | null
 }
 
@@ -17,11 +18,12 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function ChatThread({ initialMessages = [], userAvatarUrl }: ChatThreadProps) {
+export function ChatThread({ initialMessages = [], initialPrompt = null, userAvatarUrl }: ChatThreadProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const seededRef = useRef(false)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -67,10 +69,20 @@ export function ChatThread({ initialMessages = [], userAvatarUrl }: ChatThreadPr
     setIsStreaming(false)
   }
 
+  // Seed from the Investigate hero (?q=…) — fire once on mount.
+  useEffect(() => {
+    const seed = initialPrompt?.trim()
+    if (seed && !seededRef.current) {
+      seededRef.current = true
+      void handleSubmit(seed)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const isEmpty = messages.length === 0 && !isStreaming
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-darkest">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-pg-surface-0">
       {isEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center px-4">
           <div className="w-full max-w-3xl">
@@ -100,7 +112,7 @@ export function ChatThread({ initialMessages = [], userAvatarUrl }: ChatThreadPr
               <div ref={bottomRef} />
             </div>
           </div>
-          <div className="border-t border-neutral-800 px-4 py-3">
+          <div className="border-t border-pg-hairline px-4 py-3">
             <div className="mx-auto max-w-3xl">
               <Composer onSubmit={handleSubmit} disabled={isStreaming} />
             </div>

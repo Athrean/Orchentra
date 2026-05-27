@@ -5,28 +5,28 @@ import { RerunButton } from './RerunButton'
 
 function statusTone(conclusion: string | null, status: string): { label: string; cls: string } {
   if (status !== 'completed' && conclusion === null) {
-    return { label: status.replace(/_/g, ' '), cls: 'bg-amber-400/10 text-amber-400' }
+    return { label: status.replace(/_/g, ' '), cls: 'bg-amber-500/10 text-amber-700' }
   }
-  if (conclusion === 'success') return { label: 'success', cls: 'bg-emerald-400/10 text-emerald-400' }
+  if (conclusion === 'success') return { label: 'success', cls: 'bg-emerald-500/10 text-emerald-700' }
   if (conclusion === 'failure' || conclusion === 'timed_out') {
-    return { label: conclusion.replace(/_/g, ' '), cls: 'bg-red-400/10 text-red-400' }
+    return { label: conclusion.replace(/_/g, ' '), cls: 'bg-red-500/10 text-red-600' }
   }
-  return { label: conclusion ?? status, cls: 'bg-white/5 text-light/60' }
+  return { label: conclusion ?? status, cls: 'bg-pg-surface-2 text-pg-text-mute' }
 }
 
 function StepIcon({ conclusion }: { conclusion: string | null }) {
-  if (conclusion === 'success') return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-  if (conclusion === 'failure' || conclusion === 'timed_out') return <XCircle className="h-3.5 w-3.5 text-red-400" />
-  return <CircleDashed className="h-3.5 w-3.5 text-light/40" />
+  if (conclusion === 'success') return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+  if (conclusion === 'failure' || conclusion === 'timed_out') return <XCircle className="h-3.5 w-3.5 text-red-600" />
+  return <CircleDashed className="h-3.5 w-3.5 text-pg-text-mute" />
 }
 
 function AnnotationRow({ annotation }: { annotation: RunAnnotation }) {
   const isError = annotation.level === 'failure'
   return (
     <li className="flex flex-col gap-0.5 px-4 py-2 text-xs">
-      <span className={isError ? 'text-red-400' : 'text-amber-400'}>{annotation.message}</span>
+      <span className={isError ? 'text-red-600' : 'text-amber-700'}>{annotation.message}</span>
       {annotation.path ? (
-        <span className="text-light/40">
+        <span className="text-pg-text-mute">
           {annotation.path}
           {annotation.startLine > 0 ? `:${annotation.startLine}` : ''}
         </span>
@@ -39,7 +39,7 @@ function StepRow({ step }: { step: RunStep }) {
   return (
     <li className="flex items-center gap-2 px-4 py-1.5 text-xs">
       <StepIcon conclusion={step.conclusion} />
-      <span className="truncate text-light/75">{step.name}</span>
+      <span className="truncate text-pg-text-mute">{step.name}</span>
     </li>
   )
 }
@@ -48,33 +48,33 @@ function JobCard({ job }: { job: RunJob }) {
   const tone = statusTone(job.conclusion, job.status)
   return (
     <div
-      className={`overflow-hidden rounded-[8px] border bg-darker ${
-        job.failed ? 'border-red-400/30' : 'border-neutral-800'
+      className={`overflow-hidden rounded-[12px] border bg-white ${
+        job.failed ? 'border-red-500/40' : 'border-pg-hairline'
       }`}
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${tone.cls}`}>{tone.label}</span>
-        <span className="min-w-0 flex-1 truncate text-sm text-light">{job.name}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-pg-text-0">{job.name}</span>
         {job.htmlUrl ? (
           <a
             href={job.htmlUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-light/40 transition-colors hover:text-light"
+            className="flex items-center gap-1 text-xs text-pg-text-mute transition-colors hover:text-pg-text-0"
           >
             Logs on GitHub <ExternalLink className="h-3 w-3" />
           </a>
         ) : null}
       </div>
       {job.steps.length > 0 ? (
-        <ul className="divide-y divide-neutral-800/60 border-t border-neutral-800">
+        <ul className="divide-y divide-pg-hairline border-t border-pg-hairline">
           {job.steps.map((s) => (
             <StepRow key={s.number} step={s} />
           ))}
         </ul>
       ) : null}
       {job.annotations.length > 0 ? (
-        <ul className="divide-y divide-neutral-800/60 border-t border-neutral-800 bg-red-400/[0.03]">
+        <ul className="divide-y divide-pg-hairline border-t border-pg-hairline bg-red-500/[0.04]">
           {job.annotations.map((a, i) => (
             <AnnotationRow key={`${a.path}:${a.startLine}:${i}`} annotation={a} />
           ))}
@@ -90,21 +90,21 @@ export function RunDetailView({ detail, installationId }: { detail: RunDetail; i
   return (
     <div className="space-y-6 p-6">
       <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-xs text-light/55 transition-colors hover:text-light"
+        href="/runs"
+        className="inline-flex items-center gap-1.5 text-xs text-pg-text-mute transition-colors hover:text-pg-text-0"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to overview
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to runs
       </Link>
 
-      <div className="rounded-[8px] border border-neutral-800 bg-darker p-5">
+      <div className="surface p-5">
         <div className="flex flex-wrap items-center gap-3">
           <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${tone.cls}`}>{tone.label}</span>
-          <h1 className="min-w-0 flex-1 truncate text-lg text-light">{detail.name}</h1>
+          <h1 className="min-w-0 flex-1 truncate text-lg text-pg-text-0">{detail.name}</h1>
           <a
             href={detail.htmlUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-light/45 transition-colors hover:text-light"
+            className="flex items-center gap-1 text-xs text-pg-text-mute transition-colors hover:text-pg-text-0"
           >
             Open on GitHub <ExternalLink className="h-3 w-3" />
           </a>
@@ -123,7 +123,9 @@ export function RunDetailView({ detail, installationId }: { detail: RunDetail; i
       </div>
 
       <div>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-light/60">Jobs ({detail.jobs.length})</h2>
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-pg-text-mute">
+          Jobs ({detail.jobs.length})
+        </h2>
         <div className="space-y-3">
           {detail.jobs.map((job) => (
             <JobCard key={job.id} job={job} />
@@ -137,8 +139,8 @@ export function RunDetailView({ detail, installationId }: { detail: RunDetail; i
 function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-light/40">{label}</dt>
-      <dd className="truncate text-light/80">{value}</dd>
+      <dt className="text-pg-text-mute">{label}</dt>
+      <dd className="truncate text-pg-text-0">{value}</dd>
     </div>
   )
 }

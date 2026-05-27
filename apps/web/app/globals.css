@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ──────────────────────────────────────────────────────────────────
    Nocturn — body font for the entire product surface.
@@ -34,16 +34,20 @@
   --color-primary: #6c44fc;
   --color-primary-light: #9679ffea;
 
-  /* ── Pixel-grid marketing palette (kept until marketing dark unification) ── */
-  --color-pg-surface-0: #f4ede2;
-  --color-pg-surface-1: #ede4d4;
-  --color-pg-surface-2: #e0d6c1;
-  --color-pg-text-0: #141413;
-  --color-pg-text-mute: #6c6a64;
-  --color-pg-grid-dot: #c9c2b7;
-  --color-pg-hairline: #c9c2b7;
-  --color-pg-accent-green: #156545;
-  --color-pg-accent-green-2: #23a470;
+  /* ── Soft-UI tokens — borderless surfaces, separation by light not lines ── */
+  --color-raised: #17181b;
+  --color-hairline: #fdf9f00f; /* warm white @ ~6% — used only where structure needs it */
+
+  /* ── Product surface palette: soft whites, quiet greys, one green action. ── */
+  --color-pg-surface-0: #f7f7f4;
+  --color-pg-surface-1: #eeeeeb;
+  --color-pg-surface-2: #e2e2de;
+  --color-pg-text-0: #171716;
+  --color-pg-text-mute: #707068;
+  --color-pg-grid-dot: #deded9;
+  --color-pg-hairline: #deded9;
+  --color-pg-accent-green: #147a52;
+  --color-pg-accent-green-2: #1a9a67;
 
   /* Fonts */
   --font-body: 'Nocturn', ui-sans-serif, system-ui, sans-serif;
@@ -51,7 +55,9 @@
 }
 
 @layer base {
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     background-color: var(--color-darkest);
     color: var(--color-light);
@@ -66,7 +72,40 @@
   }
 }
 
-/* Marketing route group opts back into the cream surface. */
+/* ──────────────────────────────────────────────────────────────────
+   Product primitives — depth from soft surfaces and subtle elevation,
+   not heavy borders. Cards float above a white-grey canvas.
+   ────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* White card on grey-white — barely-there lift. */
+  .surface {
+    background-color: #ffffff;
+    border-radius: 14px;
+    box-shadow:
+      0 18px 45px -34px rgba(15, 15, 14, 0.5),
+      0 0 0 1px rgba(20, 20, 18, 0.06);
+  }
+
+  /* Grey chip — filter pills, soft buttons. */
+  .inset-chip {
+    background-color: var(--color-pg-surface-1);
+    border-radius: 9999px;
+    transition: background-color 140ms ease-out;
+  }
+  .inset-chip:hover {
+    background-color: var(--color-pg-surface-2);
+  }
+
+  /* White-grey canvas with a restrained, almost-flat gradient. */
+  .dot-canvas {
+    background-color: var(--color-pg-surface-0);
+    background-image:
+      radial-gradient(circle at 24% 16%, rgba(255, 255, 255, 0.95), transparent 32rem),
+      linear-gradient(180deg, #fafaf8 0%, var(--color-pg-surface-0) 100%);
+  }
+}
+
+/* Marketing route group opts into the product surface. */
 .mk-surface {
   background-color: var(--color-pg-surface-0);
   color: var(--color-pg-text-0);
@@ -107,13 +146,25 @@
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.35); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.55); }
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.35);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.55);
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
