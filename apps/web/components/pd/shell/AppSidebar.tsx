@@ -20,6 +20,7 @@ import {
   Search,
   Settings,
   Sparkles,
+  Brain,
   Telescope,
   UsersRound,
 } from 'lucide-react'
@@ -36,7 +37,8 @@ const NAV_ITEMS: Array<{ href: string; label: string; icon: RailIcon }> = [
   { href: '/runs', label: 'Traces', icon: Activity },
   { href: '/graph', label: 'Detections', icon: Search },
   { href: '/crons', label: 'Evals', icon: CalendarClock },
-  { href: '/runs?view=analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/usage', label: 'Usage', icon: BarChart3 },
+  { href: '/memory', label: 'Memory', icon: Brain },
   { href: '/workspace', label: 'Triage', icon: Code2 },
 ]
 
