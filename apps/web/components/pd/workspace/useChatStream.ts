@@ -5,6 +5,11 @@ import type { ChatMessage } from './types'
 interface StreamOpts {
   messages: Array<Pick<ChatMessage, 'role' | 'content'>>
   onToken: (chunk: string) => void
+  onReasoning?: (chunk: string) => void
+  onUsage?: (usage: NonNullable<ChatMessage['usage']>) => void
+  onStage?: (stage: NonNullable<ChatMessage['stages']>[number]) => void
+  onToolCall?: (toolCall: NonNullable<ChatMessage['toolCalls']>[number]) => void
+  onSource?: (source: NonNullable<ChatMessage['sources']>[number]) => void
   onError?: (error: string) => void
   signal?: AbortSignal
 }
@@ -14,7 +19,17 @@ interface StreamOpts {
  * Each SSE frame is `data: <json>\n\n`; the json shape is the ChatChunk
  * union defined in lib/llm/types.ts (`{ type: 'token' | 'done' | 'error', text?, error? }`).
  */
-export async function streamChat({ messages, onToken, onError, signal }: StreamOpts): Promise<void> {
+export async function streamChat({
+  messages,
+  onToken,
+  onReasoning,
+  onUsage,
+  onStage,
+  onToolCall,
+  onSource,
+  onError,
+  signal,
+}: StreamOpts): Promise<void> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -50,13 +65,26 @@ export async function streamChat({ messages, onToken, onError, signal }: StreamO
       if (!line.startsWith('data:')) continue
       const payload = line.slice(5).trim()
       if (!payload) continue
-      let chunk: { type: string; text?: string; error?: string }
+      let chunk: {
+        type: string
+        text?: string
+        error?: string
+        usage?: NonNullable<ChatMessage['usage']>
+        stage?: NonNullable<ChatMessage['stages']>[number]
+        toolCall?: NonNullable<ChatMessage['toolCalls']>[number]
+        source?: NonNullable<ChatMessage['sources']>[number]
+      }
       try {
         chunk = JSON.parse(payload)
       } catch {
         continue
       }
       if (chunk.type === 'token' && chunk.text) onToken(chunk.text)
+      else if (chunk.type === 'reasoning' && chunk.text) onReasoning?.(chunk.text)
+      else if (chunk.type === 'usage' && chunk.usage) onUsage?.(chunk.usage)
+      else if (chunk.type === 'stage' && chunk.stage) onStage?.(chunk.stage)
+      else if (chunk.type === 'tool_call' && chunk.toolCall) onToolCall?.(chunk.toolCall)
+      else if (chunk.type === 'source' && chunk.source) onSource?.(chunk.source)
       else if (chunk.type === 'error') onError?.(chunk.error ?? 'stream failed')
     }
   }

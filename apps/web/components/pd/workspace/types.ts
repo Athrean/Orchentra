@@ -5,6 +5,24 @@ export interface ChatMessage {
   role: ChatRole
   content: string
   createdAt: Date
+  reasoning?: string
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    estimatedCostUsd: number
+    model: string
+  }
+  toolCalls?: Array<{
+    name: string
+    arguments?: unknown
+    result?: unknown
+  }>
+  sources?: Array<{
+    title: string
+    url?: string
+  }>
+  stages?: StageItem[]
 }
 
 export interface StageItem {
