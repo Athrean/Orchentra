@@ -29,14 +29,8 @@ export function ShortcutSheet({ open, onOpenChange }: ShortcutSheetProps) {
     <Modal open={open} onOpenChange={onOpenChange} title="Keyboard shortcuts" maxWidth="md">
       <ul>
         {SHORTCUTS.map((s, i) => (
-          <li
-            key={i}
-            className={
-              'flex items-center justify-between py-2.5 ' +
-              (i < SHORTCUTS.length - 1 ? 'border-b border-neutral-800' : '')
-            }
-          >
-            <span className="text-sm text-light/80 tracking-wide">{s.label}</span>
+          <li key={i} className="flex items-center justify-between rounded-[9px] px-2 py-2.5 odd:bg-pg-surface-0">
+            <span className="text-sm text-pg-text-mute tracking-wide">{s.label}</span>
             <span className="flex items-center gap-1">
               {s.keys.map((k, j) => (
                 <Kbd key={j}>{k}</Kbd>
