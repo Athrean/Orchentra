@@ -402,6 +402,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         suggestedFix: synthesis.brief.suggestedFix,
         confidence: synthesis.brief.confidence,
         status: 'brief_ready',
+        modelId,
         tokenInputs: budget.inputTokens,
         tokenOutputs: budget.outputTokens,
         estimatedCostUsd: estimatedCost,
@@ -460,6 +461,7 @@ export async function runIncidentAgent(incident: IncidentRow): Promise<void> {
         status: 'error',
         rootCause: errorRootCause,
         ...(budget.inputTokens > 0 && {
+          modelId,
           tokenInputs: budget.inputTokens,
           tokenOutputs: budget.outputTokens,
           estimatedCostUsd: errorCost,

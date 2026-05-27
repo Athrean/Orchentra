@@ -54,6 +54,7 @@ export const executions = pgTable(
     escalatedAt: timestamp('escalated_at', { withTimezone: true }),
 
     // Token usage & cost tracking
+    modelId: text('model_id'),
     tokenInputs: integer('token_inputs'),
     tokenOutputs: integer('token_outputs'),
     estimatedCostUsd: doublePrecision('estimated_cost_usd'),
@@ -69,6 +70,7 @@ export const executions = pgTable(
     uniqueIndex('incidents_workflow_run_id_idx').on(table.orgId, table.workflowRunId),
     index('incidents_org_id_idx').on(table.orgId),
     index('executions_kind_idx').on(table.kind),
+    index('executions_model_id_idx').on(table.modelId),
   ],
 )
 
