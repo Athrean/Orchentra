@@ -19,10 +19,10 @@ interface Props {
 }
 
 const STATUS_STYLES: Record<ActivityStatus, string> = {
-  investigating: 'text-amber-400 bg-amber-400/10',
-  fixed: 'text-emerald-400 bg-emerald-400/10',
-  failed: 'text-red-400 bg-red-400/10',
-  queued: 'text-light/60 bg-light/10',
+  investigating: 'text-amber-700 bg-amber-500/10',
+  fixed: 'text-emerald-700 bg-emerald-500/10',
+  failed: 'text-red-600 bg-red-500/10',
+  queued: 'text-pg-text-mute bg-pg-surface-2',
 }
 
 const COLUMNS = ['Repo', 'Workflow', 'Status', 'Triggered', 'Duration', 'Cost'] as const
@@ -42,14 +42,14 @@ function formatCost(cost: number | undefined): string {
 
 export function RecentActivityTable({ rows }: Props) {
   return (
-    <div className="overflow-hidden rounded-[8px] border border-neutral-800 bg-darker">
+    <div className="surface overflow-hidden">
       <table className="w-full border-collapse">
         <thead>
           <tr>
             {COLUMNS.map((col) => (
               <th
                 key={col}
-                className="border-b border-neutral-800 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-light/60"
+                className="border-b border-pg-hairline bg-pg-surface-1/50 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-pg-text-mute"
               >
                 {col}
               </th>
@@ -59,7 +59,7 @@ export function RecentActivityTable({ rows }: Props) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={COLUMNS.length} className="py-16 text-center text-sm text-light/40">
+              <td colSpan={COLUMNS.length} className="py-16 text-center text-sm text-pg-text-mute">
                 Connect a repo at /account to start ingesting workflow runs.
               </td>
             </tr>
@@ -68,15 +68,15 @@ export function RecentActivityTable({ rows }: Props) {
               <tr
                 key={row.id}
                 className={cn(
-                  'text-sm tracking-wide text-light/80',
-                  idx < rows.length - 1 && 'border-b border-neutral-800',
+                  'text-sm tracking-wide text-pg-text-0 transition-colors hover:bg-pg-surface-1/60',
+                  idx < rows.length - 1 && 'border-b border-pg-hairline',
                 )}
               >
                 <td className="px-4 py-3">{row.repo}</td>
                 <td className="px-4 py-3">
                   <Link
                     href={`/runs/${row.installationId}/${row.repo}/${row.id}`}
-                    className="transition-colors hover:text-light"
+                    className="text-pg-text-mute transition-colors hover:text-pg-text-0"
                   >
                     {row.workflow}
                   </Link>
@@ -86,9 +86,9 @@ export function RecentActivityTable({ rows }: Props) {
                     {row.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-light/60">{formatRelative(row.triggeredAt)}</td>
-                <td className="px-4 py-3 text-light/60">{formatDuration(row.durationSec)}</td>
-                <td className="px-4 py-3 text-light/60">{formatCost(row.costUsd)}</td>
+                <td className="px-4 py-3 text-pg-text-mute">{formatRelative(row.triggeredAt)}</td>
+                <td className="px-4 py-3 text-pg-text-mute">{formatDuration(row.durationSec)}</td>
+                <td className="px-4 py-3 text-pg-text-mute">{formatCost(row.costUsd)}</td>
               </tr>
             ))
           )}

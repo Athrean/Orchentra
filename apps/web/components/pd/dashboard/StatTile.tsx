@@ -13,33 +13,28 @@ interface StatTileProps {
 
 export function StatTile({ title, value, delta, filter, icon: Icon, children, className }: StatTileProps) {
   return (
-    <div
-      className={cn(
-        'flex min-h-[260px] flex-col gap-4 rounded-[8px] border border-neutral-800 bg-darker p-5',
-        className,
-      )}
-    >
+    <div className={cn('surface flex min-h-[260px] flex-col gap-4 p-5', className)}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Icon className="h-3.5 w-3.5 text-light/60" />
-          <span className="text-sm font-medium tracking-wide text-light/80">{title}</span>
+          <Icon className="h-3.5 w-3.5 text-pg-text-mute" />
+          <span className="text-sm font-medium tracking-wide text-pg-text-mute">{title}</span>
         </div>
         {filter ? (
           <button
             type="button"
-            className="cursor-pointer rounded-[4px] border border-neutral-800 px-2 py-0.5 text-xs text-light/60 transition-colors hover:text-light"
+            className="inset-chip cursor-pointer px-2.5 py-1 text-xs text-pg-text-mute transition-colors hover:text-pg-text-0"
           >
             {filter}
           </button>
         ) : null}
       </div>
       <div className="flex items-baseline">
-        <span className="text-3xl font-semibold tracking-tight text-light">{value}</span>
+        <span className="text-3xl font-semibold tracking-tight text-pg-text-0">{value}</span>
         {delta ? (
           <span
             className={cn(
               'ml-2 rounded-[3px] px-1.5 py-0.5 text-xs',
-              delta.dir === 'up' ? 'bg-emerald-400/10 text-emerald-400' : 'bg-red-400/10 text-red-400',
+              delta.dir === 'up' ? 'bg-emerald-500/10 text-emerald-700' : 'bg-red-500/10 text-red-600',
             )}
           >
             {delta.dir === 'up' ? '+' : '-'}
