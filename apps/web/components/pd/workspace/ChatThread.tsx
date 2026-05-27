@@ -22,6 +22,11 @@ export function ChatThread({ initialMessages = [], initialPrompt = null, userAva
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [streamingReasoning, setStreamingReasoning] = useState('')
+  const [streamingUsage, setStreamingUsage] = useState<ChatMessage['usage']>()
+  const [streamingStages, setStreamingStages] = useState<NonNullable<ChatMessage['stages']>>([])
+  const [streamingToolCalls, setStreamingToolCalls] = useState<NonNullable<ChatMessage['toolCalls']>>([])
+  const [streamingSources, setStreamingSources] = useState<NonNullable<ChatMessage['sources']>>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const seededRef = useRef(false)
 
@@ -41,14 +46,44 @@ export function ChatThread({ initialMessages = [], initialPrompt = null, userAva
     setMessages(nextMessages)
     setIsStreaming(true)
     setStreamingContent('')
+    setStreamingReasoning('')
+    setStreamingUsage(undefined)
+    setStreamingStages([])
+    setStreamingToolCalls([])
+    setStreamingSources([])
 
     let accumulated = ''
+    let reasoning = ''
+    let usage: ChatMessage['usage']
+    let stages: NonNullable<ChatMessage['stages']> = []
+    let toolCalls: NonNullable<ChatMessage['toolCalls']> = []
+    let sources: NonNullable<ChatMessage['sources']> = []
     let errored = false
     await streamChat({
       messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
       onToken: (text) => {
         accumulated += text
         setStreamingContent(accumulated)
+      },
+      onReasoning: (text) => {
+        reasoning += text
+        setStreamingReasoning(reasoning)
+      },
+      onUsage: (nextUsage) => {
+        usage = nextUsage
+        setStreamingUsage(nextUsage)
+      },
+      onStage: (stage) => {
+        stages = [...stages.filter((item) => item.id !== stage.id), stage]
+        setStreamingStages(stages)
+      },
+      onToolCall: (toolCall) => {
+        toolCalls = [...toolCalls, toolCall]
+        setStreamingToolCalls(toolCalls)
+      },
+      onSource: (source) => {
+        sources = [...sources, source]
+        setStreamingSources(sources)
       },
       onError: (err) => {
         errored = true
@@ -62,10 +97,20 @@ export function ChatThread({ initialMessages = [], initialPrompt = null, userAva
         role: 'assistant',
         content: accumulated,
         createdAt: new Date(),
+        reasoning,
+        usage,
+        stages,
+        toolCalls,
+        sources,
       }
       setMessages((m) => [...m, assistantMsg])
     }
     setStreamingContent('')
+    setStreamingReasoning('')
+    setStreamingUsage(undefined)
+    setStreamingStages([])
+    setStreamingToolCalls([])
+    setStreamingSources([])
     setIsStreaming(false)
   }
 
@@ -104,6 +149,11 @@ export function ChatThread({ initialMessages = [], initialPrompt = null, userAva
                     role: 'assistant',
                     content: streamingContent,
                     createdAt: new Date(),
+                    reasoning: streamingReasoning,
+                    usage: streamingUsage,
+                    stages: streamingStages,
+                    toolCalls: streamingToolCalls,
+                    sources: streamingSources,
                   }}
                   isStreaming
                   userAvatarUrl={userAvatarUrl}
