@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const providerIds = ['openai', 'anthropic', 'google', 'openrouter', 'xai', 'groq', 'azure-openai'] as const
+export const providerIds = ['openai', 'anthropic', 'google', 'openrouter'] as const
 export type ProviderId = (typeof providerIds)[number]
 
 export interface ProviderCatalogItem {
@@ -37,43 +37,13 @@ export const providerCatalog: ProviderCatalogItem[] = [
   },
   {
     id: 'google',
-    name: 'Google Gemini',
+    name: 'Gemini',
     description: 'Gemini models for multimodal and fast analysis flows.',
     keyPlaceholder: 'AIza...',
     baseUrlPlaceholder: 'https://generativelanguage.googleapis.com',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com',
     docsUrl: 'https://aistudio.google.com/apikey',
     models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
-  },
-  {
-    id: 'xai',
-    name: 'xAI',
-    description: 'Grok models from xAI for general reasoning and coding.',
-    keyPlaceholder: 'xai-...',
-    baseUrlPlaceholder: 'https://api.x.ai/v1',
-    defaultBaseUrl: 'https://api.x.ai/v1',
-    docsUrl: 'https://console.x.ai/',
-    models: ['grok-4', 'grok-3', 'grok-2-1212'],
-  },
-  {
-    id: 'groq',
-    name: 'Groq',
-    description: 'Low-latency inference for open-weight models on Groq LPUs.',
-    keyPlaceholder: 'gsk_...',
-    baseUrlPlaceholder: 'https://api.groq.com/openai/v1',
-    defaultBaseUrl: 'https://api.groq.com/openai/v1',
-    docsUrl: 'https://console.groq.com/keys',
-    models: ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
-  },
-  {
-    id: 'azure-openai',
-    name: 'Azure OpenAI',
-    description: 'OpenAI models hosted on your Azure deployment.',
-    keyPlaceholder: 'azure key',
-    baseUrlPlaceholder: 'https://{resource}.openai.azure.com/openai',
-    defaultBaseUrl: null,
-    docsUrl: 'https://learn.microsoft.com/azure/ai-services/openai/',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4', 'gpt-4-turbo', 'gpt-35-turbo'],
   },
   {
     id: 'openrouter',
