@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { toast } from 'sonner'
-import { Plus, Trash2 } from 'lucide-react'
+import { Bell, Plus, Trash2 } from 'lucide-react'
 import { deleteAlertRule, saveAlertRule } from '../../../app/(app)/settings/alerts/actions'
 import type { AlertHistory, AlertRule } from '../../../lib/db/schema'
 import { Modal } from '../overlay/Modal'
@@ -53,20 +53,42 @@ export function AlertsPanel({ rules, history }: { rules: AlertRule[]; history: A
         </div>
         <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => {
             setForm(emptyRule())
             setOpen(true)
           }}
         >
           <Plus className="h-3.5 w-3.5" />
-          Create alert
+          Alert
         </Button>
       </div>
 
       {tab === 'rules' ? (
         <div className="surface overflow-hidden">
           {rules.length === 0 ? (
-            <div className="py-14 text-center text-sm text-pg-text-mute">No alerts created.</div>
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-pg-surface-1">
+                <Bell className="h-4 w-4 text-pg-text-mute" />
+              </span>
+              <div className="flex flex-col gap-1">
+                <div className="text-sm font-medium text-pg-text-0">No alerts created</div>
+                <div className="text-xs text-pg-text-mute">
+                  Start creating alerts to get notified when something goes wrong with detections.
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setForm(emptyRule())
+                  setOpen(true)
+                }}
+              >
+                Create alert
+              </Button>
+            </div>
           ) : (
             <ul className="divide-y divide-pg-hairline">
               {rules.map((rule) => (
@@ -101,7 +123,17 @@ export function AlertsPanel({ rules, history }: { rules: AlertRule[]; history: A
       ) : (
         <div className="surface overflow-hidden">
           {history.length === 0 ? (
-            <div className="py-14 text-center text-sm text-pg-text-mute">No alert history yet.</div>
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-pg-surface-1">
+                <Bell className="h-4 w-4 text-pg-text-mute" />
+              </span>
+              <div className="flex flex-col gap-1">
+                <div className="text-sm font-medium text-pg-text-0">No alert history yet</div>
+                <div className="text-xs text-pg-text-mute">
+                  Create an alert rule first. Fired alert events will appear here.
+                </div>
+              </div>
+            </div>
           ) : (
             <ul className="divide-y divide-pg-hairline">
               {history.map((item) => (
@@ -147,6 +179,7 @@ export function AlertsPanel({ rules, history }: { rules: AlertRule[]; history: A
           <label className="flex items-center gap-2 text-sm text-pg-text-0">
             <input
               type="checkbox"
+              className="h-4 w-4 cursor-pointer accent-pg-accent-green"
               checked={form.enabled}
               onChange={(e) => setForm((current) => ({ ...current, enabled: e.target.checked }))}
             />
