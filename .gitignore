@@ -48,6 +48,7 @@ UBIQUITOUS_LANGUAGE.md
 
 # Local sprint planning notes (not part of product repo)
 .claude/*.md
+handover.md
 
 # Local session state
 .orchentra/
