@@ -23,16 +23,19 @@ export function SettingsNav() {
             href={item.href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'group flex min-w-[150px] items-center gap-2 rounded-[8px] px-3 py-2 text-sm transition lg:min-w-0',
-              active
-                ? 'bg-pg-text-0 text-white shadow-sm'
-                : 'text-pg-text-mute hover:bg-white hover:text-pg-text-0 hover:shadow-[0_0_0_1px_rgba(20,20,18,0.06)]',
+              'group flex min-w-[150px] items-center gap-2 rounded-[8px] px-2.5 text-sm transition-colors lg:min-w-0',
+              'h-8 text-pg-text-mute hover:bg-pg-surface-1 hover:text-pg-text-0',
+              active && 'bg-pg-surface-1 text-pg-text-0',
             )}
           >
             <Icon
-              className={cn('h-4 w-4 shrink-0', active ? 'text-white' : 'text-pg-text-mute group-hover:text-pg-text-0')}
+              className={cn(
+                'h-[18px] w-[18px] shrink-0',
+                active ? 'text-pg-text-0' : 'text-pg-text-mute group-hover:text-pg-text-0',
+              )}
+              strokeWidth={1.75}
             />
-            <span className="truncate font-medium">{item.label}</span>
+            <span className="truncate">{item.label}</span>
           </Link>
         )
       })}
