@@ -1,8 +1,9 @@
 'use client'
 
 import * as React from 'react'
+import Image from 'next/image'
 import { toast } from 'sonner'
-import { CheckCircle2, KeyRound, Pencil, Trash2 } from 'lucide-react'
+import { ExternalLink, Trash2 } from 'lucide-react'
 import {
   deleteProviderCredentialAction,
   saveProviderCredentialAction,
@@ -70,6 +71,10 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
   }
 
   async function onTest() {
+    if (!form.apiKey.trim()) {
+      setTestResult({ ok: false, message: 'Enter an API key to test.' })
+      return
+    }
     setBusy('test')
     setTestResult(null)
     try {
@@ -91,7 +96,7 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              {['Provider', 'Status', 'Default model', 'Base URL', 'Last updated', ''].map((column) => (
+              {['Name', 'Status', 'Last updated'].map((column) => (
                 <th
                   key={column}
                   className="border-b border-pg-hairline bg-pg-surface-1/50 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-pg-text-mute"
@@ -105,36 +110,22 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
             {providerCatalog.map((provider) => {
               const credential = credentialByProvider.get(provider.id)
               return (
-                <tr key={provider.id} className="border-b border-pg-hairline text-sm last:border-b-0">
+                <tr
+                  key={provider.id}
+                  className="cursor-pointer border-b border-pg-hairline text-sm transition-colors last:border-b-0 hover:bg-pg-surface-1/40"
+                  onClick={() => configure(provider.id)}
+                >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-pg-text-0">{provider.name}</div>
-                    <div className="mt-0.5 text-xs text-pg-text-mute">{provider.description}</div>
+                    <div className="flex items-center gap-2.5">
+                      <ProviderIcon provider={provider.id} />
+                      <span className="font-medium text-pg-text-0">{provider.name}</span>
+                    </div>
                   </td>
-                  <td className="px-4 py-3">
-                    {credential?.configured ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-emerald-500/10 px-2 py-1 text-xs text-emerald-700">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Configured
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-pg-surface-1 px-2 py-1 text-xs text-pg-text-mute">
-                        <KeyRound className="h-3.5 w-3.5" />
-                        Not set
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-pg-text-mute">{credential?.defaultModel ?? provider.models[0]}</td>
-                  <td className="max-w-[220px] truncate px-4 py-3 text-pg-text-mute">
-                    {credential?.baseUrl ?? provider.defaultBaseUrl ?? '-'}
+                  <td className="px-4 py-3 text-pg-text-mute">
+                    {credential?.configured ? 'Configured' : 'Not configured'}
                   </td>
                   <td className="px-4 py-3 text-pg-text-mute">
                     {credential?.updatedAt ? credential.updatedAt.toLocaleString() : '-'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button type="button" variant="outline" size="sm" onClick={() => configure(provider.id)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                      Configure
-                    </Button>
                   </td>
                 </tr>
               )
@@ -143,52 +134,25 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
         </table>
       </div>
 
-      <Modal
-        open={open}
-        onOpenChange={setOpen}
-        title={`Configure ${selectedCatalog.name}`}
-        description="Keys are encrypted before storage and never shown after save."
-        maxWidth="lg"
-      >
+      <Modal open={open} onOpenChange={setOpen} title="Configure API key" maxWidth="md">
         <form onSubmit={onSave} className="flex flex-col gap-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="provider">Provider</Label>
-              <select
-                id="provider"
-                value={form.provider}
-                onChange={(e) => {
-                  setForm(initialForm(e.target.value as ProviderId, credentials))
-                  setTestResult(null)
-                }}
-                className="h-9 rounded-[8px] bg-pg-surface-0 px-3 text-sm text-pg-text-0 shadow-[0_0_0_1px_rgba(20,20,18,0.08)] outline-none"
+          <div className="flex items-start gap-3">
+            <ProviderIcon provider={selectedCatalog.id} size={36} />
+            <div className="flex flex-col">
+              <div className="font-medium text-pg-text-0">{selectedCatalog.name}</div>
+              <a
+                href={selectedCatalog.docsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-pg-text-mute hover:text-pg-text-0"
               >
-                {providerCatalog.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="defaultModel">Default model</Label>
-              <select
-                id="defaultModel"
-                value={form.defaultModel}
-                onChange={(e) => setForm((current) => ({ ...current, defaultModel: e.target.value }))}
-                className="h-9 rounded-[8px] bg-pg-surface-0 px-3 text-sm text-pg-text-0 shadow-[0_0_0_1px_rgba(20,20,18,0.08)] outline-none"
-              >
-                {selectedCatalog.models.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
+                Provider docs <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="apiKey">{selectedCredential?.configured ? 'Replace API key' : 'API key'}</Label>
+            <Label htmlFor="apiKey">API key</Label>
             <Input
               id="apiKey"
               type="password"
@@ -200,10 +164,15 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
                 setTestResult(null)
               }}
             />
+            <p className="text-xs text-pg-text-mute">
+              {selectedCredential?.configured
+                ? 'A key is already configured. Enter a new value to replace it.'
+                : `Create one at ${stripScheme(selectedCatalog.docsUrl)}`}
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="baseUrl">Base URL</Label>
+            <Label htmlFor="baseUrl">Base URL (optional)</Label>
             <Input
               id="baseUrl"
               type="url"
@@ -214,13 +183,39 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
                 setTestResult(null)
               }}
             />
+            <p className="text-xs text-pg-text-mute">
+              Override only if using an OpenAI-compatible proxy or self-hosted endpoint.
+            </p>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="defaultModel">Default model</Label>
+            <select
+              id="defaultModel"
+              value={form.defaultModel}
+              onChange={(e) => setForm((current) => ({ ...current, defaultModel: e.target.value }))}
+              className="h-9 rounded-[8px] bg-pg-surface-0 px-3 text-sm text-pg-text-0 shadow-[0_0_0_1px_rgba(20,20,18,0.08)] outline-none"
+            >
+              {selectedCatalog.models.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-pg-text-mute">
+              This is the model pre-selected in the playground for this provider.
+            </p>
+          </div>
+
+          <p className="text-xs text-pg-text-mute">
+            Secrets are encrypted at rest with AES-256-GCM (unique IV per record) before being written to the database.
+          </p>
 
           {testResult ? (
             <div
               className={
                 testResult.ok
-                  ? 'rounded-[8px] bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700'
+                  ? 'rounded-[8px] bg-pg-accent-green/10 px-3 py-2 text-sm text-pg-accent-green'
                   : 'rounded-[8px] bg-red-500/10 px-3 py-2 text-sm text-red-600'
               }
             >
@@ -229,25 +224,22 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
           ) : null}
 
           <div className="flex items-center justify-between pt-2">
-            {selectedCredential?.configured ? (
-              <Button type="button" variant="destructive" onClick={onDelete} loading={busy === 'delete'}>
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </Button>
-            ) : (
-              <span />
-            )}
             <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                loading={busy === 'test'}
-                disabled={!form.apiKey.trim()}
-                onClick={onTest}
-              >
+              <Button type="button" variant="outline" size="sm" loading={busy === 'test'} onClick={onTest}>
                 Test key
               </Button>
-              <Button type="submit" loading={busy === 'save'} disabled={!form.apiKey.trim()}>
+              {selectedCredential?.configured ? (
+                <Button type="button" variant="destructive" size="sm" onClick={onDelete} loading={busy === 'delete'}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              ) : null}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" loading={busy === 'save'} disabled={!form.apiKey.trim()}>
                 Save
               </Button>
             </div>
@@ -256,6 +248,30 @@ export function AiProvidersTable({ credentials }: AiProvidersTableProps) {
       </Modal>
     </>
   )
+}
+
+function ProviderIcon({ provider, size = 16 }: { provider: ProviderId; size?: number }) {
+  const color: Record<ProviderId, string> = {
+    openai: '#10A37F',
+    anthropic: '#D97757',
+    google: '#4285F4',
+    openrouter: '#6E56CF',
+    xai: '#000000',
+    groq: '#F55036',
+    'azure-openai': '#0078D4',
+  }
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full"
+      style={{ width: size, height: size, backgroundColor: color[provider] }}
+    >
+      <Image src="/stripped.png" alt="" width={size * 0.6} height={size * 0.6} className="opacity-0" />
+    </span>
+  )
+}
+
+function stripScheme(url: string): string {
+  return url.replace(/^https?:\/\//, '')
 }
 
 function initialForm(provider: ProviderId, credentials: MaskedProviderCredential[]): FormState {
