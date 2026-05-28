@@ -92,7 +92,10 @@ export function AlertsPanel({ rules, history }: { rules: AlertRule[]; history: A
           ) : (
             <ul className="divide-y divide-pg-hairline">
               {rules.map((rule) => (
-                <li key={rule.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                <li
+                  key={rule.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3 text-sm transition-colors hover:bg-pg-surface-1/60"
+                >
                   <div>
                     <div className="font-medium text-pg-text-0">{rule.name}</div>
                     <div className="text-xs text-pg-text-mute">
@@ -137,7 +140,7 @@ export function AlertsPanel({ rules, history }: { rules: AlertRule[]; history: A
           ) : (
             <ul className="divide-y divide-pg-hairline">
               {history.map((item) => (
-                <li key={item.id} className="px-4 py-3 text-sm">
+                <li key={item.id} className="px-4 py-3 text-sm transition-colors hover:bg-pg-surface-1/60">
                   <div className="text-pg-text-0">{item.message}</div>
                   <div className="text-xs text-pg-text-mute">{item.firedAt.toLocaleString()}</div>
                 </li>
