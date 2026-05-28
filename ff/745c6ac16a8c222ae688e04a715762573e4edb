@@ -1,0 +1,9 @@
+apps/web/lib/ai-providers/catalog.ts
+  ai_agent 3,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ff745c6ac16a8c222ae688e04a715762573e4edb",
+  "prompts": {}
+}
