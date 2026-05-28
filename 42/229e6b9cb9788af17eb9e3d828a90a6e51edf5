@@ -1,0 +1,9 @@
+apps/web/components/pd/settings/AlertsPanel.tsx
+  ai_agent 95-98,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42229e6b9cb9788af17eb9e3d828a90a6e51edf5",
+  "prompts": {}
+}
