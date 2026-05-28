@@ -95,8 +95,8 @@ export async function getUsageForUser(userId: string, range: UsageRange): Promis
         estimated_cost_usd
       FROM executions
       WHERE repo IN (${repoSql})
-        AND COALESCE(triggered_at, created_at) >= ${range.from}
-        AND COALESCE(triggered_at, created_at) <= ${range.to}
+        AND COALESCE(triggered_at, created_at) >= ${range.from.toISOString()}
+        AND COALESCE(triggered_at, created_at) <= ${range.to.toISOString()}
         AND (
           token_inputs IS NOT NULL
           OR token_outputs IS NOT NULL
