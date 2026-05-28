@@ -43,11 +43,15 @@ function buildUrl(provider: ProviderId, baseUrl: string, apiKey: string): string
   switch (provider) {
     case 'openai':
     case 'openrouter':
+    case 'xai':
+    case 'groq':
       return `${baseUrl}/models`
     case 'anthropic':
       return `${baseUrl}/v1/models`
     case 'google':
       return `${baseUrl}/v1beta/models?key=${encodeURIComponent(apiKey)}`
+    case 'azure-openai':
+      return `${baseUrl}/deployments?api-version=2024-02-15-preview`
   }
 }
 
@@ -60,8 +64,12 @@ function buildHeaders(provider: ProviderId, apiKey: string): Record<string, stri
       }
     case 'google':
       return {}
+    case 'azure-openai':
+      return { 'api-key': apiKey }
     case 'openai':
     case 'openrouter':
+    case 'xai':
+    case 'groq':
       return { Authorization: `Bearer ${apiKey}` }
   }
 }
