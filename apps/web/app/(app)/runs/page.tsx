@@ -1,4 +1,4 @@
-import { AlertOctagon, CheckCircle2, Clock, Zap } from 'lucide-react'
+import { AlertOctagon, CheckCircle2, Clock, GitBranch, Gauge, ShieldCheck, Zap } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '../../../lib/supabase/server'
 import { getUserSubscriptions } from '../../../lib/db/queries/subscriptions'
@@ -20,7 +20,7 @@ import { DashboardEmptyState } from '../../../components/pd/dashboard/EmptyState
 import { FailingWorkflows, type FailingWorkflowRow } from '../../../components/pd/dashboard/FailingWorkflows'
 import { QuietRepos, type QuietRepoRow } from '../../../components/pd/dashboard/QuietRepos'
 
-export const metadata = { title: 'Runs & activity · Orchentra' }
+export const metadata = { title: 'Traces · Orchentra' }
 export const dynamic = 'force-dynamic'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -174,6 +174,32 @@ export default async function RunsPage() {
 
   return (
     <div className="space-y-6 p-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-pg-text-mute">DevOps Engineer</div>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-pg-text-0">Traces</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-pg-text-mute">
+            GitHub Actions operations for CI/CD health, source workflow control, quality signals, and workflow
+            observability.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { icon: GitBranch, label: 'GitHub Actions' },
+            { icon: ShieldCheck, label: 'Quality signals' },
+            { icon: Gauge, label: 'Run observability' },
+          ].map(({ icon: Icon, label }) => (
+            <span
+              key={label}
+              className="inset-chip inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-pg-text-mute"
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatTile title="Workflow runs (30d)" value={String(agg.totalRuns)} filter="30 days" icon={Zap}>
           <ExecutionsLineChart data={lineSeries} />

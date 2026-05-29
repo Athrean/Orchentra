@@ -30,7 +30,7 @@ export function FailingWorkflows({ rows }: { rows: FailingWorkflowRow[] }) {
               className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-pg-surface-1/60"
             >
               <Link
-                href={`/runs/${r.installationId}/${r.repo}/${r.runId}`}
+                href={`/traces/${r.installationId}/${r.repo}/${r.runId}`}
                 className="flex min-w-0 flex-1 items-center gap-4 transition-opacity hover:opacity-80"
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-600">

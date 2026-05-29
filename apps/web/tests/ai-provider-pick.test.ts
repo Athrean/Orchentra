@@ -26,8 +26,8 @@ describe('chooseProviderAndModel', () => {
     expect(choice).toEqual({ provider: 'anthropic', modelId: 'claude-opus-4-8' })
   })
 
-  it('ignores a requested model whose provider has no credential', () => {
+  it('does not silently run another provider for an unavailable requested model', () => {
     const choice = chooseProviderAndModel({ openai: { defaultModel: 'gpt-4o' } }, 'claude-opus-4-8')
-    expect(choice).toEqual({ provider: 'openai', modelId: 'gpt-4o' })
+    expect(choice).toBeNull()
   })
 })

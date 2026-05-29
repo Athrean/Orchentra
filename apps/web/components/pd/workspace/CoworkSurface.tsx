@@ -45,7 +45,13 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
   return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null
 }
 
-export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null }) {
+export function CoworkSurface({
+  initialPrompt,
+  mode = 'triage',
+}: {
+  initialPrompt?: string | null
+  mode?: 'investigate' | 'triage'
+}) {
   const [model, setModel] = useState<string>(DEFAULT_MODEL_ID)
   const [effort, setEffort] = useState<Effort>('low')
   const [adaptive, setAdaptive] = useState(false)
@@ -185,6 +191,7 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
         onRemoveFile={removeFile}
         onMic={toggleMic}
         micActive={micActive}
+        mode={mode}
       />
     )
   }

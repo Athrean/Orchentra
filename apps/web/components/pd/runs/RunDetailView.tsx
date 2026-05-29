@@ -90,7 +90,7 @@ export function RunDetailView({ detail, installationId }: { detail: RunDetail; i
   return (
     <div className="space-y-6 p-6">
       <Link
-        href="/runs"
+        href="/traces"
         className="inline-flex items-center gap-1.5 text-xs text-pg-text-mute transition-colors hover:text-pg-text-0"
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Back to runs
