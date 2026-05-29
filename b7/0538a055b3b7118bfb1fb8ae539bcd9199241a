@@ -1,0 +1,13 @@
+apps/web/app/(app)/usage/page.tsx
+  ai_agent 3,7,26-27,34-36,56-69,128-224
+apps/web/lib/graph/repo-health.ts
+  ai_agent 1-106
+apps/web/tests/repo-health.test.ts
+  ai_agent 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b70538a055b3b7118bfb1fb8ae539bcd9199241a",
+  "prompts": {}
+}
