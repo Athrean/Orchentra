@@ -1,7 +1,7 @@
 'use client'
 
 import type { ChatStatus, FileUIPart } from 'ai'
-import { ArrowUp, Paperclip, Square, X } from 'lucide-react'
+import { ArrowUp, Mic, Paperclip, Square, X } from 'lucide-react'
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { cn } from '../../../lib/utils'
 
@@ -21,6 +21,8 @@ interface ChatComposerProps {
   files?: FileUIPart[]
   onAddFiles?: (files: FileList) => void
   onRemoveFile?: (index: number) => void
+  onMic?: () => void
+  micActive?: boolean
 }
 
 const MAX = 8000
@@ -38,6 +40,8 @@ export function ChatComposer({
   files = [],
   onAddFiles,
   onRemoveFile,
+  onMic,
+  micActive = false,
 }: ChatComposerProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -122,6 +126,20 @@ export function ChatComposer({
         {toolbar}
         <div className="flex-1" />
         {actions}
+        {onMic && (
+          <button
+            type="button"
+            onClick={onMic}
+            aria-label={micActive ? 'Stop voice input' : 'Start voice input'}
+            aria-pressed={micActive}
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0',
+              micActive && 'bg-pg-surface-1 text-pg-accent-green',
+            )}
+          >
+            <Mic className="h-4 w-4" />
+          </button>
+        )}
         <button
           type="button"
           onClick={isBusy ? onStop : submit}
