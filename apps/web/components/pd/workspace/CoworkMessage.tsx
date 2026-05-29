@@ -2,7 +2,7 @@
 
 import { getToolName, isToolUIPart, type DynamicToolUIPart, type ToolUIPart, type UIMessage } from 'ai'
 import { ChevronRight, Sparkles, Wrench } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '../../../lib/utils'
 
 export function CoworkMessage({ message }: { message: UIMessage }) {
@@ -43,7 +43,18 @@ function TextPart({ text, isUser }: { text: string; isUser: boolean }) {
 }
 
 function ReasoningPart({ text, streaming }: { text: string; streaming: boolean }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(streaming)
+  const wasStreamingRef = useRef(streaming)
+
+  useEffect(() => {
+    if (streaming && !wasStreamingRef.current) {
+      setOpen(true)
+    } else if (!streaming && wasStreamingRef.current) {
+      setOpen(false)
+    }
+    wasStreamingRef.current = streaming
+  }, [streaming])
+
   return (
     <div className="text-xs text-pg-text-mute">
       <button
@@ -51,11 +62,11 @@ function ReasoningPart({ text, streaming }: { text: string; streaming: boolean }
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 rounded-[8px] px-1.5 py-1 transition-colors hover:text-pg-text-0"
       >
-        <Sparkles className="h-3.5 w-3.5" />
-        {streaming ? 'thinking…' : 'thought'}
+        <Sparkles className={cn('h-3.5 w-3.5 text-pg-accent-green', streaming && 'animate-pulse')} />
+        {streaming ? 'Thinking' : 'Thought'}
         <ChevronRight className={cn('h-3 w-3 transition-transform', open && 'rotate-90')} />
       </button>
-      {open && <p className="mt-1 whitespace-pre-wrap pl-2 italic leading-5">{text}</p>}
+      {open && <p className="mt-1 whitespace-pre-wrap border-l border-pg-hairline pl-3 italic leading-5">{text}</p>}
     </div>
   )
 }
