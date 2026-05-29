@@ -1,3 +1,4 @@
+import type { JSONValue } from 'ai'
 import type { ProviderId } from '../ai-providers/catalog'
 
 export const efforts = ['low', 'medium', 'high', 'max'] as const
@@ -19,7 +20,7 @@ export function effortToProviderOptions(
   provider: ProviderId,
   effort: Effort,
   adaptive: boolean,
-): Record<string, Record<string, unknown>> {
+): Record<string, Record<string, JSONValue>> {
   if (provider !== 'anthropic') return {}
 
   if (adaptive) {
