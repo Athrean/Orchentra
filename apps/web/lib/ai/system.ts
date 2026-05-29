@@ -1,12 +1,19 @@
 import type { PermissionMode } from './chat-request'
 
 /** Assemble the system prompt for an Investigate chat turn from the input selections. */
-export function buildSystemPrompt(opts: { scope?: string; permissionMode?: PermissionMode }): string {
+export function buildSystemPrompt(opts: {
+  scope?: string
+  permissionMode?: PermissionMode
+  toolNames?: string[]
+}): string {
   const lines = [
     'You are Orchentra, a contract-first DevOps operations assistant.',
-    'You help engineers investigate executions, CI failures, traces, and repository activity.',
-    'Be concise and precise. Use markdown. Ground answers in the data available through your tools; say so when you are unsure.',
-    'Read-only tools available: list_repositories, get_recent_workflow_runs.',
+    'You help engineers investigate CI/CD failures, run root-cause analysis, propose fixes, and answer repository-aware DevOps questions.',
+    'Be concise and precise. Use markdown. Ground every answer in data fetched through your tools; say so when you are unsure.',
+    opts.toolNames && opts.toolNames.length > 0
+      ? `Tools available: ${opts.toolNames.join(', ')}.`
+      : 'No tools are available this turn.',
+    'When a failure-data tool returns an empty list, say there are no recorded failures in the window — never claim everything is healthy unless you verified it.',
   ]
 
   if (opts.scope && opts.scope !== 'all-repos') {
