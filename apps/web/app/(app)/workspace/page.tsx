@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '../../../lib/supabase/server'
-import { ChatThread } from '../../../components/pd/workspace/ChatThread'
+import { CoworkSurface } from '../../../components/pd/workspace/CoworkSurface'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Workspace · Orchentra' }
@@ -12,8 +12,7 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null
   const { q } = await searchParams
 
-  return <ChatThread initialMessages={[]} initialPrompt={q ?? null} userAvatarUrl={avatarUrl} />
+  return <CoworkSurface initialPrompt={q ?? null} />
 }
