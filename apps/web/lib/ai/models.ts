@@ -6,21 +6,28 @@ export interface ModelOption {
   provider: ProviderId
 }
 
-/** Models surfaced directly in the picker (Claude-first, matching the Cowork layout). */
-export const PRIMARY_MODEL_IDS = ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'] as const
+/** Models surfaced directly in the picker: one best frontier pick per provider. */
+export const PRIMARY_MODEL_IDS = ['claude-opus-4-8', 'gpt-5.5', 'gemini-3.1-pro-preview'] as const
 
-export const DEFAULT_MODEL_ID = 'claude-sonnet-4-6'
+export const DEFAULT_MODEL_ID = 'claude-opus-4-8'
 
 const EXPLICIT_LABELS: Record<string, string> = {
   'gpt-4.1': 'GPT-4.1',
   'gpt-4.1-mini': 'GPT-4.1 Mini',
   'gpt-4o': 'GPT-4o',
   'gpt-4o-mini': 'GPT-4o Mini',
+  'gpt-5.5': 'GPT-5.5',
+  'gpt-5.4': 'GPT-5.4',
+  'gpt-5.4-mini': 'GPT-5.4 Mini',
   'o4-mini': 'o4-mini',
   o3: 'o3',
   'gemini-2.5-pro': 'Gemini 2.5 Pro',
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
   'gemini-2.0-flash': 'Gemini 2.0 Flash',
+  'gemini-3.1-pro-preview': 'Gemini 3.1 Pro',
+  'gemini-3.5-flash': 'Gemini 3.5 Flash',
+  'gemini-3-flash': 'Gemini 3 Flash',
+  'claude-haiku-4-5-20251001': 'Haiku 4.5',
 }
 
 const CLAUDE_RE = /^claude-(opus|sonnet|haiku)-(\d+)-(\d+)$/
@@ -44,14 +51,14 @@ function allModelOptions(): ModelOption[] {
   )
 }
 
-/** Split the model catalog into the primary picks and the "More models" overflow. */
+/** Split the model catalog into visible frontier picks; settings still accept the full provider catalog. */
 export function buildModelMenu(): { primary: ModelOption[]; more: ModelOption[] } {
   const options = allModelOptions()
   const byId = new Map(options.map((option) => [option.id, option]))
 
   const primary = PRIMARY_MODEL_IDS.map((id) => byId.get(id)).filter((option): option is ModelOption => Boolean(option))
   const primaryIds = new Set(primary.map((option) => option.id))
-  const more = options.filter((option) => !primaryIds.has(option.id))
+  const more = options.filter((option) => option.provider === 'openrouter' && !primaryIds.has(option.id))
 
   return { primary, more }
 }

@@ -10,8 +10,8 @@ describe('getModelLabel', () => {
   })
 
   it('labels non-claude models', () => {
-    expect(getModelLabel('gpt-4.1')).toBe('GPT-4.1')
-    expect(getModelLabel('gemini-2.5-pro')).toBe('Gemini 2.5 Pro')
+    expect(getModelLabel('gpt-5.5')).toBe('GPT-5.5')
+    expect(getModelLabel('gemini-3.1-pro-preview')).toBe('Gemini 3.1 Pro')
   })
 
   it('falls back to the raw id for unknown models', () => {
@@ -20,16 +20,18 @@ describe('getModelLabel', () => {
 })
 
 describe('buildModelMenu', () => {
-  it('puts opus 4.8 / sonnet 4.6 / haiku 4.5 first, in order', () => {
+  it('puts the best frontier model per provider first, in order', () => {
     const menu = buildModelMenu()
-    expect(menu.primary.map((m) => m.label)).toEqual(['Opus 4.8', 'Sonnet 4.6', 'Haiku 4.5'])
+    expect(menu.primary.map((m) => m.label)).toEqual(['Opus 4.8', 'GPT-5.5', 'Gemini 3.1 Pro'])
   })
 
-  it('keeps older anthropic models under "more"', () => {
+  it('keeps OpenRouter aliases under "more"', () => {
     const menu = buildModelMenu()
     const moreIds = menu.more.map((m) => m.id)
-    expect(moreIds).toContain('claude-opus-4-7')
+    expect(moreIds).toContain('anthropic/claude-opus-4-8')
+    expect(moreIds).toContain('openai/gpt-5.5')
     expect(moreIds).not.toContain('claude-opus-4-8')
+    expect(moreIds).not.toContain('gpt-4.1')
   })
 
   it('never duplicates a model across primary and more', () => {
@@ -44,8 +46,14 @@ describe('catalog', () => {
     expect(getProviderCatalogItem('anthropic').models).toContain('claude-opus-4-8')
   })
 
-  it('default model is sonnet 4.6 and is a primary model', () => {
-    expect(DEFAULT_MODEL_ID).toBe('claude-sonnet-4-6')
+  it('default model is the best Anthropic frontier model', () => {
+    expect(DEFAULT_MODEL_ID).toBe('claude-opus-4-8')
     expect(PRIMARY_MODEL_IDS).toContain(DEFAULT_MODEL_ID)
+  })
+
+  it('keeps older supported defaults in provider settings catalog', () => {
+    expect(getProviderCatalogItem('openai').models).toContain('gpt-4.1')
+    expect(getProviderCatalogItem('anthropic').models).toContain('claude-sonnet-4-6')
+    expect(getProviderCatalogItem('google').models).toContain('gemini-2.5-pro')
   })
 })

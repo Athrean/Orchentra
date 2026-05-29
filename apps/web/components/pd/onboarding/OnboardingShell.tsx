@@ -34,7 +34,7 @@ export function OnboardingShell({ initialStep }: OnboardingShellProps) {
       })
       if (!res.ok) throw new Error(await res.text())
       if (to === 'completed') {
-        router.push('/dashboard')
+        router.push('/investigate')
         router.refresh()
         return
       }
@@ -53,7 +53,7 @@ export function OnboardingShell({ initialStep }: OnboardingShellProps) {
         {step === 'select_repos' && (
           <SelectReposStep
             onComplete={() => {
-              router.push('/dashboard')
+              router.push('/investigate')
               router.refresh()
             }}
           />

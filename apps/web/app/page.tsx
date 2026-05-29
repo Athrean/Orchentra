@@ -8,7 +8,7 @@ export default async function Page(): Promise<React.ReactNode> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (user) redirect('/dashboard')
+  if (user) redirect('/investigate')
 
   return <MarketingLanding loginHref="/login" version={pkg.version} />
 }

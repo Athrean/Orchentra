@@ -18,17 +18,17 @@ export const providerCatalog: ProviderCatalogItem[] = [
   {
     id: 'openai',
     name: 'OpenAI',
-    description: 'GPT models for general reasoning and coding workflows.',
+    description: 'GPT frontier models for agentic engineering workflows.',
     keyPlaceholder: 'sk-...',
     baseUrlPlaceholder: 'https://api.openai.com/v1',
     defaultBaseUrl: 'https://api.openai.com/v1',
     docsUrl: 'https://platform.openai.com/api-keys',
-    models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o4-mini', 'o3'],
+    models: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o4-mini', 'o3'],
   },
   {
     id: 'anthropic',
     name: 'Anthropic',
-    description: 'Claude models for long-context analysis and triage.',
+    description: 'Claude frontier models for long-context analysis and triage.',
     keyPlaceholder: 'sk-ant-...',
     baseUrlPlaceholder: 'https://api.anthropic.com',
     defaultBaseUrl: 'https://api.anthropic.com',
@@ -46,12 +46,12 @@ export const providerCatalog: ProviderCatalogItem[] = [
   {
     id: 'google',
     name: 'Gemini',
-    description: 'Gemini models for multimodal and fast analysis flows.',
+    description: 'Gemini frontier models for multimodal and agentic analysis.',
     keyPlaceholder: 'AIza...',
     baseUrlPlaceholder: 'https://generativelanguage.googleapis.com',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com',
     docsUrl: 'https://aistudio.google.com/apikey',
-    models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+    models: ['gemini-3.1-pro-preview', 'gemini-3.5-flash', 'gemini-3-flash', 'gemini-2.5-pro', 'gemini-2.5-flash'],
   },
   {
     id: 'openrouter',
@@ -61,7 +61,7 @@ export const providerCatalog: ProviderCatalogItem[] = [
     baseUrlPlaceholder: 'https://openrouter.ai/api/v1',
     defaultBaseUrl: 'https://openrouter.ai/api/v1',
     docsUrl: 'https://openrouter.ai/keys',
-    models: ['anthropic/claude-sonnet-4-5', 'openai/gpt-4.1', 'google/gemini-2.5-pro'],
+    models: ['anthropic/claude-opus-4-8', 'openai/gpt-5.5', 'google/gemini-3.1-pro-preview'],
   },
 ]
 

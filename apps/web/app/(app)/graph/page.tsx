@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '../../../lib/supabase/server'
 import { FeatureLanding } from '../../../components/pd/shell/FeatureLanding'
 
-export const metadata = { title: 'Graph · Orchentra' }
+export const metadata = { title: 'Detections · Orchentra' }
 export const dynamic = 'force-dynamic'
 
 export default async function GraphPage() {
@@ -16,8 +16,8 @@ export default async function GraphPage() {
   return (
     <FeatureLanding
       icon={Workflow}
-      title="Observability graph"
-      description="A live view of the execution graph — every run and its nodes, traced end to end across CLI, MCP, and webhook surfaces."
+      title="Detections"
+      description="A live view of execution signals, suspicious patterns, and graph-linked findings across CLI, MCP, and webhook surfaces."
     />
   )
 }

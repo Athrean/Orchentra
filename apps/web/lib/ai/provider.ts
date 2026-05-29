@@ -24,6 +24,7 @@ export function chooseProviderAndModel(
   if (requestedModel) {
     const owner = providerForModel(requestedModel)
     if (owner && configured[owner]) return { provider: owner, modelId: requestedModel }
+    if (owner) return null
   }
 
   for (const provider of PROVIDER_PRECEDENCE) {

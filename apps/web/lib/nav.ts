@@ -30,12 +30,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operations',
     items: [
-      { href: '/dashboard', label: 'Investigate', icon: 'Telescope' },
-      { href: '/runs', label: 'Runs & activity', icon: 'Activity' },
+      { href: '/investigate', label: 'Investigate', icon: 'Telescope' },
+      { href: '/traces', label: 'Traces', icon: 'Activity' },
       { href: '/usage', label: 'Usage', icon: 'BarChart3' },
       { href: '/memory', label: 'Memory', icon: 'Brain' },
-      { href: '/crons', label: 'Schedules', icon: 'CalendarClock' },
-      { href: '/graph', label: 'Graph', icon: 'Workflow' },
+      { href: '/evals', label: 'Evals', icon: 'CalendarClock' },
+      { href: '/detections', label: 'Detections', icon: 'Workflow' },
     ],
   },
   {
@@ -48,6 +48,17 @@ export const NAV_GROUPS: NavGroup[] = [
 
 const NAV_HREFS = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href))
 
-/** Workspace is reachable via the Investigate hero, not the rail — still gated. */
-export const PROTECTED_PREFIXES = [...NAV_HREFS, '/workspace', '/onboarding', '/account']
+/** Legacy route names stay gated while their pages redirect to the sidebar URLs. */
+export const PROTECTED_PREFIXES = [
+  ...NAV_HREFS,
+  '/investigate',
+  '/triage',
+  '/dashboard',
+  '/workspace',
+  '/runs',
+  '/graph',
+  '/crons',
+  '/onboarding',
+  '/account',
+]
 export const AUTH_PAGES = ['/login', '/signup'] as const
