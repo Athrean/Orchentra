@@ -3,6 +3,7 @@
 import type { ChatStatus } from 'ai'
 import { Activity, AlertTriangle, FlaskConical, Shuffle, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { ChatComposer } from './ChatComposer'
 
 const SUGGESTIONS: { icon: LucideIcon; label: string }[] = [
@@ -17,9 +18,11 @@ interface CoworkHeroProps {
   onSend: () => void
   onStop?: () => void
   status: ChatStatus
+  toolbar?: ReactNode
+  actions?: ReactNode
 }
 
-export function CoworkHero({ value, onValueChange, onSend, onStop, status }: CoworkHeroProps) {
+export function CoworkHero({ value, onValueChange, onSend, onStop, status, toolbar, actions }: CoworkHeroProps) {
   return (
     <div className="dot-canvas relative flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-6">
       <div className="w-full max-w-2xl">
@@ -37,6 +40,8 @@ export function CoworkHero({ value, onValueChange, onSend, onStop, status }: Cow
           onSend={onSend}
           onStop={onStop}
           status={status}
+          toolbar={toolbar}
+          actions={actions}
           autoFocus
         />
 
