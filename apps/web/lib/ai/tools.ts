@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import type { RepoSubscription } from '../db/schema'
 import { getUserSubscriptions } from '../db/queries/subscriptions'
+import { insertMemory, recallMemories } from '../db/queries/memories'
 import { getInsightsForRepos } from '../github/repo-insights'
 import { postIssueComment } from '../github/comment'
 import { getRecentFailures } from '../graph/detections'
@@ -92,6 +93,40 @@ export function createChatTools({ userId, scope, permissionMode = 'ask' }: ChatT
         const repos = scoped.map((subscription) => subscription.repoFullName)
         const { failures, dataAvailable } = await getRecentFailures(repos, days, 25)
         return { failures, count: failures.length, dataAvailable, repositories: repos }
+      },
+    }),
+    save_memory: tool({
+      description:
+        'Save a durable learning for this user — an error and its fix, a repo-specific pattern, or a stated preference — so it can be recalled in future conversations. Use when you discover something worth remembering or the user asks you to remember it.',
+      inputSchema: z.object({
+        title: z.string().min(1).max(200).describe('Short headline for the memory.'),
+        content: z.string().min(1).max(4000).describe('The learning, fix, or preference to remember.'),
+        repo: z.string().optional().describe('Optional owner/repo this memory is specific to.'),
+        tags: z.array(z.string().max(40)).max(10).optional().describe('Optional short tags for retrieval.'),
+      }),
+      execute: async ({ title, content, repo, tags }) => {
+        const memory = await insertMemory(userId, { title, content, repo, tags })
+        return { ok: true, id: memory.id }
+      },
+    }),
+    recall_memory: tool({
+      description:
+        'Recall durable learnings previously saved for this user. Call this BEFORE answering when prior context could help, to avoid asking the user to repeat themselves.',
+      inputSchema: z.object({
+        query: z.string().optional().describe('Optional text to match against memory titles and content.'),
+        repo: z.string().optional().describe('Optional owner/repo filter.'),
+      }),
+      execute: async ({ query, repo }) => {
+        const memories = await recallMemories(userId, { query, repo, limit: 10 })
+        return {
+          count: memories.length,
+          memories: memories.map((memory) => ({
+            title: memory.title,
+            content: memory.content,
+            repo: memory.repo,
+            tags: memory.tags,
+          })),
+        }
       },
     }),
   }

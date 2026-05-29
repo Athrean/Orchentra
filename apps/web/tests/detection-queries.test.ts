@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { getUsageRange } from '../lib/graph/usage'
 import {
+  aggregateRepeatedFailures,
   formatFailureForChat,
   mapDetectionRow,
   median,
@@ -108,5 +109,31 @@ describe('formatFailureForChat', () => {
     expect(out.workflow).toBe('CI')
     expect(out.failedStep).toBe('build')
     expect(out.occurredAt).toBe('2026-05-20T00:00:00.000Z')
+  })
+})
+
+describe('aggregateRepeatedFailures', () => {
+  test('groups by repo+workflow+failedStep, keeps recurring, newest timestamp wins', () => {
+    const repeated = aggregateRepeatedFailures([
+      detection({ workflowName: 'CI', failedStep: 'test', occurredAt: new Date('2026-05-20T00:00:00Z') }),
+      detection({ workflowName: 'CI', failedStep: 'test', occurredAt: new Date('2026-05-22T00:00:00Z') }),
+      detection({ workflowName: 'CI', failedStep: 'lint', occurredAt: new Date('2026-05-21T00:00:00Z') }),
+    ])
+    expect(repeated).toHaveLength(1)
+    expect(repeated[0]).toMatchObject({ workflow: 'CI', failedStep: 'test', count: 2 })
+    expect(repeated[0].lastOccurredAt.toISOString()).toBe('2026-05-22T00:00:00.000Z')
+  })
+
+  test('sorts by frequency descending', () => {
+    const repeated = aggregateRepeatedFailures(
+      [
+        detection({ repo: 'a/one', workflowName: 'X', failedStep: 's' }),
+        detection({ repo: 'a/two', workflowName: 'Y', failedStep: 's' }),
+        detection({ repo: 'a/two', workflowName: 'Y', failedStep: 's' }),
+        detection({ repo: 'a/two', workflowName: 'Y', failedStep: 's' }),
+      ],
+      1,
+    )
+    expect(repeated.map((r) => r.repo)).toEqual(['a/two', 'a/one'])
   })
 })

@@ -166,6 +166,24 @@ export const notificationPrefs = pgTable('notification_prefs', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+export const userMemories = pgTable(
+  'user_memories',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    repo: text('repo'),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    tags: text('tags').array().notNull().default([]),
+    lastRecalledAt: timestamp('last_recalled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('user_memories_user_id_idx').on(t.userId), index('user_memories_user_repo_idx').on(t.userId, t.repo)],
+)
+
 export const onboardingState = pgTable('onboarding_state', {
   userId: uuid('user_id')
     .primaryKey()
@@ -193,3 +211,5 @@ export type NotificationPrefs = typeof notificationPrefs.$inferSelect
 export type OnboardingState = typeof onboardingState.$inferSelect
 export type NewOnboardingState = typeof onboardingState.$inferInsert
 export type OnboardingStep = 'welcome' | 'install_app' | 'select_repos' | 'completed'
+export type UserMemory = typeof userMemories.$inferSelect
+export type NewUserMemory = typeof userMemories.$inferInsert
