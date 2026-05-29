@@ -33,7 +33,15 @@ export const providerCatalog: ProviderCatalogItem[] = [
     baseUrlPlaceholder: 'https://api.anthropic.com',
     defaultBaseUrl: 'https://api.anthropic.com',
     docsUrl: 'https://console.anthropic.com/',
-    models: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5'],
+    models: [
+      'claude-opus-4-8',
+      'claude-opus-4-7',
+      'claude-opus-4-6',
+      'claude-sonnet-4-6',
+      'claude-sonnet-4-5',
+      'claude-opus-4-1',
+      'claude-haiku-4-5',
+    ],
   },
   {
     id: 'google',
