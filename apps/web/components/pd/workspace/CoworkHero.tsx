@@ -1,6 +1,6 @@
 'use client'
 
-import type { ChatStatus } from 'ai'
+import type { ChatStatus, FileUIPart } from 'ai'
 import { Activity, AlertTriangle, FlaskConical, Shuffle, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -20,9 +20,23 @@ interface CoworkHeroProps {
   status: ChatStatus
   toolbar?: ReactNode
   actions?: ReactNode
+  files?: FileUIPart[]
+  onAddFiles?: (files: FileList) => void
+  onRemoveFile?: (index: number) => void
 }
 
-export function CoworkHero({ value, onValueChange, onSend, onStop, status, toolbar, actions }: CoworkHeroProps) {
+export function CoworkHero({
+  value,
+  onValueChange,
+  onSend,
+  onStop,
+  status,
+  toolbar,
+  actions,
+  files,
+  onAddFiles,
+  onRemoveFile,
+}: CoworkHeroProps) {
   return (
     <div className="dot-canvas relative flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-6">
       <div className="w-full max-w-2xl">
@@ -42,6 +56,9 @@ export function CoworkHero({ value, onValueChange, onSend, onStop, status, toolb
           status={status}
           toolbar={toolbar}
           actions={actions}
+          files={files}
+          onAddFiles={onAddFiles}
+          onRemoveFile={onRemoveFile}
           autoFocus
         />
 
