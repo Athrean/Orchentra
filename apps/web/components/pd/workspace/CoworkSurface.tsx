@@ -8,6 +8,7 @@ import type { PermissionMode } from '../../../lib/ai/chat-request'
 import type { Effort } from '../../../lib/ai/effort'
 import { DEFAULT_MODEL_ID } from '../../../lib/ai/models'
 import { ChatComposer } from './ChatComposer'
+import { CoworkHero } from './CoworkHero'
 import { CoworkMessage } from './CoworkMessage'
 
 export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null }) {
@@ -17,6 +18,7 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
   const [adaptive] = useState(false)
   const [permissionMode] = useState<PermissionMode>('ask')
   const [scope] = useState('all-repos')
+  const [draft, setDraft] = useState('')
 
   const settingsRef = useRef({ model, effort, adaptive, permissionMode, scope })
   settingsRef.current = { model, effort, adaptive, permissionMode, scope }
@@ -28,7 +30,7 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
     if (error) toast.error(error.message)
   }, [error])
 
-  // Seed the first turn from the Investigate hero (?q=…) — fire once on mount.
+  // Seed the first turn from a deep link (?q=…) — fire once on mount.
   const seededRef = useRef(false)
   useEffect(() => {
     const seed = initialPrompt?.trim()
@@ -44,19 +46,15 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, status])
 
-  const send = (text: string) => void sendMessage({ text })
+  const submit = () => {
+    const text = draft.trim()
+    if (!text || status === 'submitted' || status === 'streaming') return
+    void sendMessage({ text })
+    setDraft('')
+  }
 
   if (messages.length === 0) {
-    return (
-      <div className="dot-canvas relative flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-6">
-        <div className="w-full max-w-2xl">
-          <h1 className="mb-6 text-center text-3xl font-semibold tracking-tight text-pg-text-0">
-            Let&apos;s knock something off your list
-          </h1>
-          <ChatComposer onSend={send} onStop={stop} status={status} autoFocus />
-        </div>
-      </div>
-    )
+    return <CoworkHero value={draft} onValueChange={setDraft} onSend={submit} onStop={stop} status={status} />
   }
 
   return (
@@ -72,7 +70,7 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
       </div>
       <div className="px-4 pb-5">
         <div className="mx-auto max-w-3xl">
-          <ChatComposer onSend={send} onStop={stop} status={status} />
+          <ChatComposer value={draft} onValueChange={setDraft} onSend={submit} onStop={stop} status={status} />
         </div>
       </div>
     </div>

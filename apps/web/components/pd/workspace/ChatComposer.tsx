@@ -2,11 +2,13 @@
 
 import type { ChatStatus } from 'ai'
 import { ArrowUp, Square } from 'lucide-react'
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { cn } from '../../../lib/utils'
 
 interface ChatComposerProps {
-  onSend: (text: string) => void
+  value: string
+  onValueChange: (value: string) => void
+  onSend: () => void
   onStop?: () => void
   status: ChatStatus
   placeholder?: string
@@ -19,14 +21,19 @@ interface ChatComposerProps {
 
 const MAX = 8000
 
-export function ChatComposer({ onSend, onStop, status, placeholder, autoFocus, toolbar, actions }: ChatComposerProps) {
-  const [value, setValue] = useState('')
+export function ChatComposer({
+  value,
+  onValueChange,
+  onSend,
+  onStop,
+  status,
+  placeholder,
+  autoFocus,
+  toolbar,
+  actions,
+}: ChatComposerProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const isBusy = status === 'submitted' || status === 'streaming'
-
-  useEffect(() => {
-    if (autoFocus) ref.current?.focus()
-  }, [autoFocus])
 
   const autosize = () => {
     const el = ref.current
@@ -35,12 +42,18 @@ export function ChatComposer({ onSend, onStop, status, placeholder, autoFocus, t
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`
   }
 
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus()
+  }, [autoFocus])
+
+  // Keep the textarea height in sync when the value changes externally (e.g. a suggestion).
+  useEffect(() => {
+    autosize()
+  }, [value])
+
   const submit = () => {
-    const trimmed = value.trim()
-    if (!trimmed || isBusy) return
-    onSend(trimmed)
-    setValue('')
-    requestAnimationFrame(autosize)
+    if (!value.trim() || isBusy) return
+    onSend()
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -56,10 +69,7 @@ export function ChatComposer({ onSend, onStop, status, placeholder, autoFocus, t
         ref={ref}
         value={value}
         rows={1}
-        onChange={(e) => {
-          setValue(e.target.value.slice(0, MAX))
-          autosize()
-        }}
+        onChange={(e) => onValueChange(e.target.value.slice(0, MAX))}
         onKeyDown={onKeyDown}
         placeholder={placeholder ?? 'How can I help you today?'}
         className="block max-h-60 w-full resize-none bg-transparent px-2 pt-2 text-sm leading-relaxed text-pg-text-0 caret-pg-accent-green outline-none placeholder:text-pg-text-mute"
