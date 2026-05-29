@@ -192,6 +192,7 @@ export function CoworkSurface({
         onRemoveFile={removeFile}
         onMic={toggleMic}
         micActive={micActive}
+        allowActCommands={permissionMode === 'act'}
         mode={mode}
       />
     )
@@ -229,6 +230,7 @@ export function CoworkSurface({
               onRemoveFile={removeFile}
               onMic={toggleMic}
               micActive={micActive}
+              allowActCommands={permissionMode === 'act'}
             />
           </div>
         </div>
