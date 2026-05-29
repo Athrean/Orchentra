@@ -1,0 +1,15 @@
+apps/web/tests/ai-tools.test.ts
+  ai_agent 1-37
+apps/web/lib/ai/tools.ts
+  ai_agent 1-80
+apps/web/app/api/chat/route.ts
+  ai_agent 7,47
+apps/web/lib/ai/system.ts
+  ai_agent 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "72cb763ee03f801f24d3887e75cc02cefdb6b871",
+  "prompts": {}
+}
