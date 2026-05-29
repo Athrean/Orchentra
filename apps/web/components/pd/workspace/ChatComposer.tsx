@@ -1,9 +1,16 @@
 'use client'
 
 import type { ChatStatus, FileUIPart } from 'ai'
-import { ArrowUp, Mic, Paperclip, Square, X } from 'lucide-react'
+import { ArrowUp, Check, ChevronUp, Mic, Paperclip, Square, X, AudioLines } from 'lucide-react'
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { cn } from '../../../lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 
 interface ChatComposerProps {
   value: string
@@ -76,11 +83,11 @@ export function ChatComposer({
   }
 
   return (
-    <div className="surface w-full p-2.5">
+    <div className="surface w-full overflow-hidden rounded-[18px] p-0">
       {files.length > 0 && (
         <div className="grid transition-[grid-template-rows] duration-200 ease-out" style={{ gridTemplateRows: '1fr' }}>
           <div className="overflow-hidden">
-            <div className="flex flex-wrap gap-2 px-1 pb-2">
+            <div className="flex flex-wrap gap-2 px-4 pt-3">
               {files.map((file, index) => (
                 <AttachmentChip key={`${file.filename}-${index}`} file={file} onRemove={() => onRemoveFile?.(index)} />
               ))}
@@ -89,57 +96,44 @@ export function ChatComposer({
         </div>
       )}
 
-      <textarea
-        ref={ref}
-        value={value}
-        rows={1}
-        onChange={(e) => onValueChange(e.target.value.slice(0, MAX))}
-        onKeyDown={onKeyDown}
-        placeholder={placeholder ?? 'How can I help you today?'}
-        className="block max-h-60 w-full resize-none bg-transparent px-2 pt-2 text-sm leading-relaxed text-pg-text-0 caret-pg-accent-green outline-none placeholder:text-pg-text-mute"
-      />
-
-      <div className="mt-1 flex items-center gap-1.5">
+      <div className="relative min-h-[5.75rem]">
+        <textarea
+          ref={ref}
+          value={value}
+          rows={1}
+          onChange={(e) => onValueChange(e.target.value.slice(0, MAX))}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder ?? 'How can I help you today?'}
+          className="block max-h-60 min-h-[5.75rem] w-full resize-none bg-transparent px-5 pb-11 pr-32 pt-4 text-base leading-relaxed text-pg-text-0 caret-pg-accent-green outline-none placeholder:text-pg-text-mute"
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,text/*,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files?.length) onAddFiles?.(e.target.files)
+            e.target.value = ''
+          }}
+        />
         {onAddFiles && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*,text/*,application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.length) onAddFiles(e.target.files)
-                e.target.value = ''
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Attach files"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0"
-            >
-              <Paperclip className="h-4 w-4" />
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Attach files"
+            className="absolute bottom-3 left-4 flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
         )}
+        {onMic && <VoiceControls active={micActive} onMic={onMic} />}
+      </div>
+
+      <div className="flex min-h-12 items-center gap-1.5 border-t border-pg-hairline/70 px-3">
         {toolbar}
         <div className="flex-1" />
         {actions}
-        {onMic && (
-          <button
-            type="button"
-            onClick={onMic}
-            aria-label={micActive ? 'Stop voice input' : 'Start voice input'}
-            aria-pressed={micActive}
-            className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0',
-              micActive && 'bg-pg-surface-1 text-pg-accent-green',
-            )}
-          >
-            <Mic className="h-4 w-4" />
-          </button>
-        )}
         <button
           type="button"
           onClick={isBusy ? onStop : submit}
@@ -155,6 +149,58 @@ export function ChatComposer({
           {isBusy ? <Square className="h-3.5 w-3.5" fill="currentColor" /> : <ArrowUp className="h-4 w-4" />}
         </button>
       </div>
+    </div>
+  )
+}
+
+function VoiceControls({ active, onMic }: { active: boolean; onMic: () => void }) {
+  return (
+    <div className="absolute bottom-3 right-4 flex items-center gap-1">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="Voice input options"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute outline-none transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0 data-[state=open]:bg-pg-text-0 data-[state=open]:text-white"
+        >
+          <ChevronUp className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" className="w-72 p-2">
+          <div className="px-2 py-1.5 text-xs text-pg-text-mute">Microphone</div>
+          {['MacBook Pro Microphone', "RISHIT's iPhone Microphone", 'AirPods'].map((device, index) => (
+            <DropdownMenuItem key={device} className="h-9">
+              <span className="truncate">{device}</span>
+              {index === 0 ? <Check className="ml-auto h-4 w-4 text-pg-accent-green" /> : null}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault()
+              onMic()
+            }}
+            className="h-9"
+          >
+            <Mic className="h-4 w-4 text-pg-text-mute" />
+            Hold to record
+            <span className="ml-auto flex h-5 w-9 items-center rounded-full bg-pg-accent-green p-0.5">
+              <span className="ml-auto h-4 w-4 rounded-full bg-white" />
+            </span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <button
+        type="button"
+        onClick={onMic}
+        aria-label={active ? 'Stop voice input' : 'Start voice input'}
+        aria-pressed={active}
+        title="Press and hold to record"
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0',
+          active && 'bg-pg-text-0 text-white',
+        )}
+      >
+        <Mic className="h-4 w-4" />
+      </button>
+      <AudioLines className="h-5 w-5 text-pg-text-mute/80" />
     </div>
   )
 }

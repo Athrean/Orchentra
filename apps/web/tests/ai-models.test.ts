@@ -14,6 +14,12 @@ describe('getModelLabel', () => {
     expect(getModelLabel('gemini-3.1-pro-preview')).toBe('Gemini 3.1 Pro')
   })
 
+  it('labels routed model ids by clean model name', () => {
+    expect(getModelLabel('anthropic/claude-opus-4-8')).toBe('Opus 4.8')
+    expect(getModelLabel('openai/gpt-5.5')).toBe('GPT-5.5')
+    expect(getModelLabel('google/gemini-3.1-pro-preview')).toBe('Gemini 3.1 Pro')
+  })
+
   it('falls back to the raw id for unknown models', () => {
     expect(getModelLabel('some-weird-model')).toBe('some-weird-model')
   })
