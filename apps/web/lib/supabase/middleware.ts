@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthPage) {
     const redirect = request.nextUrl.clone()
-    redirect.pathname = '/dashboard'
+    redirect.pathname = '/investigate'
     redirect.search = ''
     return NextResponse.redirect(redirect)
   }

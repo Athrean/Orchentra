@@ -21,7 +21,7 @@ interface LoginFormProps {
 export function LoginForm({ next: nextProp, chromeless = false }: LoginFormProps = {}) {
   const router = useRouter()
   const params = useSearchParams()
-  const next = nextProp ?? params.get('next') ?? '/dashboard'
+  const next = nextProp ?? params.get('next') ?? '/investigate'
   const supabase = React.useMemo(() => createClient(), [])
   const [mode, setMode] = React.useState<Mode>('idle')
   const [error, setError] = React.useState<string | null>(null)
