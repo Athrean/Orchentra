@@ -4,6 +4,7 @@ import { chatBodySchema } from '../../../lib/ai/chat-request'
 import { effortToProviderOptions } from '../../../lib/ai/effort'
 import { resolveChatModel } from '../../../lib/ai/provider'
 import { buildSystemPrompt } from '../../../lib/ai/system'
+import { createChatTools } from '../../../lib/ai/tools'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
     model: resolved.model,
     system: buildSystemPrompt({ scope, permissionMode }),
     messages: await convertToModelMessages(messages as UIMessage[]),
+    tools: createChatTools({ userId: user.id, scope }),
     providerOptions: effortToProviderOptions(resolved.provider, effort, adaptive),
     stopWhen: stepCountIs(5),
     experimental_transform: smoothStream(),
