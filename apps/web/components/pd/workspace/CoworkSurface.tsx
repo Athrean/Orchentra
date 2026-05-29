@@ -12,6 +12,39 @@ import { CoworkHero } from './CoworkHero'
 import { CoworkMessage } from './CoworkMessage'
 import { ModelEffortPicker, PermissionModePicker, ScopePicker } from './ChatToolbar'
 
+interface SpeechRecognitionResultLike {
+  readonly isFinal: boolean
+  readonly 0: { transcript: string }
+}
+
+interface SpeechRecognitionEventLike {
+  readonly results: ArrayLike<SpeechRecognitionResultLike>
+}
+
+interface SpeechRecognitionLike {
+  lang: string
+  interimResults: boolean
+  continuous: boolean
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionLike
+}
+
+function getSpeechRecognition(): SpeechRecognitionConstructor | null {
+  if (typeof window === 'undefined') return null
+  const speechWindow = window as Window & {
+    SpeechRecognition?: SpeechRecognitionConstructor
+    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  }
+  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null
+}
+
 export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null }) {
   const [model, setModel] = useState<string>(DEFAULT_MODEL_ID)
   const [effort, setEffort] = useState<Effort>('low')
@@ -20,16 +53,21 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
   const [scope, setScope] = useState('all-repos')
   const [draft, setDraft] = useState('')
   const [files, setFiles] = useState<FileUIPart[]>([])
+  const [micActive, setMicActive] = useState(false)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
 
   const settingsRef = useRef({ model, effort, adaptive, permissionMode, scope })
   settingsRef.current = { model, effort, adaptive, permissionMode, scope }
 
   const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat', body: () => settingsRef.current }), [])
-  const { messages, sendMessage, status, stop, error } = useChat({ transport })
+  const { messages, sendMessage, regenerate, status, stop, error } = useChat({ transport })
+  const isBusy = status === 'submitted' || status === 'streaming'
 
   useEffect(() => {
     if (error) toast.error(error.message)
   }, [error])
+
+  useEffect(() => () => recognitionRef.current?.stop(), [])
 
   // Seed the first turn from a deep link (?q=…) — fire once on mount.
   const seededRef = useRef(false)
@@ -59,10 +97,60 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
 
   const submit = () => {
     const text = draft.trim()
-    if ((!text && files.length === 0) || status === 'submitted' || status === 'streaming') return
+    if ((!text && files.length === 0) || isBusy) return
     void sendMessage({ text, files: files.length ? files : undefined })
     setDraft('')
     setFiles([])
+  }
+
+  const toggleMic = () => {
+    if (micActive) {
+      recognitionRef.current?.stop()
+      recognitionRef.current = null
+      setMicActive(false)
+      return
+    }
+
+    const Recognition = getSpeechRecognition()
+    if (!Recognition) {
+      toast.error('Voice input is not supported in this browser')
+      return
+    }
+
+    const recognition = new Recognition()
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.continuous = false
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .filter((result) => result.isFinal)
+        .map((result) => result[0].transcript.trim())
+        .filter(Boolean)
+        .join(' ')
+      if (transcript) setDraft((current) => (current.trim() ? `${current.trim()} ${transcript}` : transcript))
+    }
+    recognition.onerror = () => {
+      toast.error('Voice input failed')
+      setMicActive(false)
+      recognitionRef.current = null
+    }
+    recognition.onend = () => {
+      setMicActive(false)
+      recognitionRef.current = null
+    }
+    recognitionRef.current = recognition
+    try {
+      recognition.start()
+      setMicActive(true)
+    } catch {
+      toast.error('Voice input failed')
+      recognitionRef.current = null
+    }
+  }
+
+  const regenerateMessage = (messageId: string) => {
+    if (isBusy) return
+    void regenerate({ messageId })
   }
 
   const toolbar = (
@@ -95,6 +183,8 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
         files={files}
         onAddFiles={addFiles}
         onRemoveFile={removeFile}
+        onMic={toggleMic}
+        micActive={micActive}
       />
     )
   }
@@ -104,7 +194,12 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
       <div className="flex-1 overflow-y-auto px-4 pt-8">
         <div className="mx-auto max-w-3xl">
           {messages.map((message) => (
-            <CoworkMessage key={message.id} message={message} />
+            <CoworkMessage
+              key={message.id}
+              message={message}
+              canRegenerate={!isBusy}
+              onRegenerate={regenerateMessage}
+            />
           ))}
           {status === 'submitted' && <ThinkingDots />}
           <div ref={bottomRef} />
@@ -123,6 +218,8 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
             files={files}
             onAddFiles={addFiles}
             onRemoveFile={removeFile}
+            onMic={toggleMic}
+            micActive={micActive}
           />
         </div>
       </div>
