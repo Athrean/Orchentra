@@ -10,6 +10,7 @@ import { DEFAULT_MODEL_ID } from '../../../lib/ai/models'
 import { ChatComposer } from './ChatComposer'
 import { CoworkHero } from './CoworkHero'
 import { CoworkMessage } from './CoworkMessage'
+import { CoworkRail } from './CoworkRail'
 import { ModelEffortPicker, PermissionModePicker, ScopePicker } from './ChatToolbar'
 
 interface SpeechRecognitionResultLike {
@@ -197,39 +198,50 @@ export function CoworkSurface({
   }
 
   return (
-    <div className="dot-canvas flex h-[calc(100vh-3.5rem)] flex-col">
-      <div className="flex-1 overflow-y-auto px-4 pt-8">
-        <div className="mx-auto max-w-3xl">
-          {messages.map((message) => (
-            <CoworkMessage
-              key={message.id}
-              message={message}
-              canRegenerate={!isBusy}
-              onRegenerate={regenerateMessage}
+    <div className="dot-canvas flex h-[calc(100vh-3.5rem)]">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex-1 overflow-y-auto px-4 pt-8">
+          <div className="mx-auto max-w-3xl">
+            {messages.map((message) => (
+              <CoworkMessage
+                key={message.id}
+                message={message}
+                canRegenerate={!isBusy}
+                onRegenerate={regenerateMessage}
+              />
+            ))}
+            {status === 'submitted' && <ThinkingDots />}
+            <div ref={bottomRef} />
+          </div>
+        </div>
+        <div className="px-4 pb-5">
+          <div className="mx-auto max-w-3xl">
+            <ChatComposer
+              value={draft}
+              onValueChange={setDraft}
+              onSend={submit}
+              onStop={stop}
+              status={status}
+              toolbar={toolbar}
+              actions={actions}
+              files={files}
+              onAddFiles={addFiles}
+              onRemoveFile={removeFile}
+              onMic={toggleMic}
+              micActive={micActive}
             />
-          ))}
-          {status === 'submitted' && <ThinkingDots />}
-          <div ref={bottomRef} />
+          </div>
         </div>
       </div>
-      <div className="px-4 pb-5">
-        <div className="mx-auto max-w-3xl">
-          <ChatComposer
-            value={draft}
-            onValueChange={setDraft}
-            onSend={submit}
-            onStop={stop}
-            status={status}
-            toolbar={toolbar}
-            actions={actions}
-            files={files}
-            onAddFiles={addFiles}
-            onRemoveFile={removeFile}
-            onMic={toggleMic}
-            micActive={micActive}
-          />
-        </div>
-      </div>
+      <CoworkRail
+        messages={messages}
+        status={status}
+        model={model}
+        effort={effort}
+        adaptive={adaptive}
+        permissionMode={permissionMode}
+        scope={scope}
+      />
     </div>
   )
 }
