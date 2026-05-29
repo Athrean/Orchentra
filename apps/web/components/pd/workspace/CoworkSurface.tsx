@@ -10,14 +10,14 @@ import { DEFAULT_MODEL_ID } from '../../../lib/ai/models'
 import { ChatComposer } from './ChatComposer'
 import { CoworkHero } from './CoworkHero'
 import { CoworkMessage } from './CoworkMessage'
+import { ModelEffortPicker, PermissionModePicker, ScopePicker } from './ChatToolbar'
 
 export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null }) {
-  // Input selections. Setters are wired to the toolbar pickers in a later phase.
-  const [model] = useState<string>(DEFAULT_MODEL_ID)
-  const [effort] = useState<Effort>('low')
-  const [adaptive] = useState(false)
-  const [permissionMode] = useState<PermissionMode>('ask')
-  const [scope] = useState('all-repos')
+  const [model, setModel] = useState<string>(DEFAULT_MODEL_ID)
+  const [effort, setEffort] = useState<Effort>('low')
+  const [adaptive, setAdaptive] = useState(false)
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask')
+  const [scope, setScope] = useState('all-repos')
   const [draft, setDraft] = useState('')
 
   const settingsRef = useRef({ model, effort, adaptive, permissionMode, scope })
@@ -53,8 +53,35 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
     setDraft('')
   }
 
+  const toolbar = (
+    <>
+      <ScopePicker scope={scope} onScope={setScope} />
+      <PermissionModePicker mode={permissionMode} onMode={setPermissionMode} />
+    </>
+  )
+  const actions = (
+    <ModelEffortPicker
+      model={model}
+      onModel={setModel}
+      effort={effort}
+      onEffort={setEffort}
+      adaptive={adaptive}
+      onAdaptive={setAdaptive}
+    />
+  )
+
   if (messages.length === 0) {
-    return <CoworkHero value={draft} onValueChange={setDraft} onSend={submit} onStop={stop} status={status} />
+    return (
+      <CoworkHero
+        value={draft}
+        onValueChange={setDraft}
+        onSend={submit}
+        onStop={stop}
+        status={status}
+        toolbar={toolbar}
+        actions={actions}
+      />
+    )
   }
 
   return (
@@ -70,7 +97,15 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
       </div>
       <div className="px-4 pb-5">
         <div className="mx-auto max-w-3xl">
-          <ChatComposer value={draft} onValueChange={setDraft} onSend={submit} onStop={stop} status={status} />
+          <ChatComposer
+            value={draft}
+            onValueChange={setDraft}
+            onSend={submit}
+            onStop={stop}
+            status={status}
+            toolbar={toolbar}
+            actions={actions}
+          />
         </div>
       </div>
     </div>
