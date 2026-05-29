@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation'
-import { BookOpenText, Brain, GitBranch } from 'lucide-react'
+import { BookOpenText, Brain, GitBranch, Repeat, Sparkles } from 'lucide-react'
 import { createClient } from '../../../lib/supabase/server'
 import { getBrainForUser } from '../../../lib/graph/brain'
+import { getRepeatedFailuresForUser, type RepeatedFailure } from '../../../lib/graph/detections'
+import { listMemories } from '../../../lib/db/queries/memories'
+import type { UserMemory } from '../../../lib/db/schema'
 
 export const metadata = { title: 'Memory · Orchentra' }
 export const dynamic = 'force-dynamic'
@@ -13,15 +16,25 @@ export default async function MemoryPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const brain = await getBrainForUser(user.id)
+  const [brain, memories, repeated] = await Promise.all([
+    getBrainForUser(user.id),
+    listMemories(user.id),
+    getRepeatedFailuresForUser(user.id),
+  ])
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 pb-12 pt-8 sm:px-8">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-pg-text-0">Memory</h1>
-        <p className="mt-1 text-sm text-pg-text-mute">Episodes and runbooks learned from subscribed repositories.</p>
+        <p className="mt-1 text-sm text-pg-text-mute">
+          Saved learnings, recurring failures, and episodes — so context does not have to be re-explained.
+        </p>
       </header>
 
+      <SavedMemories memories={memories} />
+      <RepeatedFailures items={repeated.items} />
+
+      <h2 className="text-xs font-medium uppercase tracking-wider text-pg-text-mute">Distilled from the graph</h2>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <section className="surface overflow-hidden">
           <div className="border-b border-pg-hairline px-5 py-4">
@@ -80,6 +93,79 @@ export default async function MemoryPage() {
         </section>
       </div>
     </div>
+  )
+}
+
+function SavedMemories({ memories }: { memories: UserMemory[] }) {
+  return (
+    <section className="surface overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-pg-hairline px-5 py-4 text-sm font-medium text-pg-text-0">
+        <Sparkles className="h-4 w-4 text-pg-accent-green" />
+        Saved memories
+        <span className="ml-auto text-xs font-normal text-pg-text-mute">
+          The assistant saves learnings here from chat.
+        </span>
+      </div>
+      {memories.length === 0 ? (
+        <div className="px-5 py-12 text-center text-sm text-pg-text-mute">
+          No saved memories yet. Ask the assistant to remember a fix or preference in Investigate or Triage.
+        </div>
+      ) : (
+        <ul className="divide-y divide-pg-hairline">
+          {memories.map((memory) => (
+            <li key={memory.id} className="px-5 py-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-pg-text-0">
+                {memory.title}
+                {memory.repo && (
+                  <span className="inset-chip px-2 py-0.5 text-[11px] font-normal text-pg-text-mute">
+                    {memory.repo}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-sm leading-6 text-pg-text-mute">{memory.content}</p>
+              {memory.tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {memory.tags.map((tag) => (
+                    <span key={tag} className="rounded-[6px] bg-pg-surface-1 px-2 py-1 text-xs text-pg-text-mute">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function RepeatedFailures({ items }: { items: RepeatedFailure[] }) {
+  if (items.length === 0) return null
+  return (
+    <section className="surface overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-pg-hairline px-5 py-4 text-sm font-medium text-pg-text-0">
+        <Repeat className="h-4 w-4 text-amber-600" />
+        Recurring failures
+        <span className="ml-auto text-xs font-normal text-pg-text-mute">Last 90 days</span>
+      </div>
+      <ul className="divide-y divide-pg-hairline">
+        {items.map((item) => (
+          <li
+            key={`${item.repo}-${item.workflow}-${item.failedStep ?? ''}`}
+            className="flex items-center gap-3 px-5 py-3 text-sm"
+          >
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-amber-500/10 px-1.5 text-xs font-medium text-amber-700">
+              {item.count}×
+            </span>
+            <span className="text-pg-text-0">{item.repo}</span>
+            <span className="text-pg-text-mute">{item.workflow}</span>
+            {item.failedStep && <span className="font-mono text-xs text-pg-text-mute">{item.failedStep}</span>}
+            <span className="ml-auto text-xs text-pg-text-mute">{item.lastOccurredAt.toLocaleDateString()}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
