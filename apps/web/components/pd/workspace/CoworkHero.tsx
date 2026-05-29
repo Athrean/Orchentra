@@ -23,6 +23,8 @@ interface CoworkHeroProps {
   files?: FileUIPart[]
   onAddFiles?: (files: FileList) => void
   onRemoveFile?: (index: number) => void
+  onMic?: () => void
+  micActive?: boolean
 }
 
 export function CoworkHero({
@@ -36,6 +38,8 @@ export function CoworkHero({
   files,
   onAddFiles,
   onRemoveFile,
+  onMic,
+  micActive,
 }: CoworkHeroProps) {
   return (
     <div className="dot-canvas relative flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-6">
@@ -59,6 +63,8 @@ export function CoworkHero({
           files={files}
           onAddFiles={onAddFiles}
           onRemoveFile={onRemoveFile}
+          onMic={onMic}
+          micActive={micActive}
           autoFocus
         />
 

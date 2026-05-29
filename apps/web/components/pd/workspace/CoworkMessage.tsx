@@ -1,15 +1,24 @@
 'use client'
 
 import { getToolName, isToolUIPart, type DynamicToolUIPart, type ToolUIPart, type UIMessage } from 'ai'
-import { ChevronRight, Sparkles, Wrench } from 'lucide-react'
+import { ChevronRight, RotateCcw, Sparkles, Wrench } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '../../../lib/utils'
 
-export function CoworkMessage({ message }: { message: UIMessage }) {
+export function CoworkMessage({
+  message,
+  canRegenerate,
+  onRegenerate,
+}: {
+  message: UIMessage
+  canRegenerate?: boolean
+  onRegenerate?: (messageId: string) => void
+}) {
   const isUser = message.role === 'user'
+  const showActions = !isUser && canRegenerate && onRegenerate
 
   return (
-    <div className={cn('mb-6 flex w-full', isUser ? 'justify-end' : 'justify-start')}>
+    <div className={cn('group mb-6 flex w-full', isUser ? 'justify-end' : 'justify-start')}>
       <div className={cn('flex min-w-0 flex-col gap-2', isUser ? 'max-w-[80%] items-end' : 'w-full')}>
         {message.parts.map((part, index) => {
           if (part.type === 'text') {
@@ -26,6 +35,18 @@ export function CoworkMessage({ message }: { message: UIMessage }) {
           }
           return null
         })}
+        {showActions && (
+          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => onRegenerate(message.id)}
+              aria-label="Regenerate response"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
