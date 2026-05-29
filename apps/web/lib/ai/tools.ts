@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { RepoSubscription } from '../db/schema'
 import { getUserSubscriptions } from '../db/queries/subscriptions'
 import { getInsightsForRepos } from '../github/repo-insights'
+import { getRecentFailures } from '../graph/detections'
 
 interface ChatToolsOptions {
   userId: string
@@ -74,6 +75,20 @@ export function createChatTools({ userId, scope }: ChatToolsOptions) {
           })),
           count: insights.length,
         }
+      },
+    }),
+    get_recent_failures: tool({
+      description:
+        'Recent CI failures with root-cause analysis and suggested fixes for enabled repositories. Use this for failure investigation, root-cause analysis, and "why did X break" questions. An empty list means no recorded failures in the window — NOT that everything is healthy.',
+      inputSchema: z.object({
+        repoFullName: z.string().optional().describe('Optional owner/repo filter. Must be one enabled repository.'),
+        days: z.number().int().min(1).max(30).default(14).describe('Lookback window in days, from 1 to 30.'),
+      }),
+      execute: async ({ repoFullName, days }) => {
+        const scoped = selectScopedSubscriptions(await getUserSubscriptions(userId), scope, repoFullName).slice(0, 25)
+        const repos = scoped.map((subscription) => subscription.repoFullName)
+        const { failures, dataAvailable } = await getRecentFailures(repos, days, 25)
+        return { failures, count: failures.length, dataAvailable, repositories: repos }
       },
     }),
   }

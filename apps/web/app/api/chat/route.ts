@@ -40,11 +40,13 @@ export async function POST(req: Request) {
     return Response.json({ error: 'failed to decrypt LLM key' }, { status: 500 })
   }
 
+  const tools = createChatTools({ userId: user.id, scope })
+
   const result = streamText({
     model: resolved.model,
-    system: buildSystemPrompt({ scope, permissionMode }),
+    system: buildSystemPrompt({ scope, permissionMode, toolNames: Object.keys(tools) }),
     messages: await convertToModelMessages(messages as UIMessage[]),
-    tools: createChatTools({ userId: user.id, scope }),
+    tools,
     providerOptions: effortToProviderOptions(resolved.provider, effort, adaptive),
     stopWhen: stepCountIs(5),
     experimental_transform: smoothStream(),

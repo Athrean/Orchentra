@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { getUserSubscriptions } from '../db/queries/subscriptions'
 import { graphDb } from './client'
-import { safeGraphRead, type ReadStatus } from './result'
+import { safeGraphRead, type ReadResult, type ReadStatus } from './result'
 import { getUsageRange, USAGE_RANGE_OPTIONS, type UsageRange } from './usage'
 
 export { getUsageRange as getDetectionRange, USAGE_RANGE_OPTIONS as DETECTION_RANGE_OPTIONS }
@@ -99,20 +99,17 @@ export function summarizeDetections(detections: Detection[], range: UsageRange):
   }
 }
 
-export async function getDetectionsForUser(userId: string, range: UsageRange): Promise<DetectionResult> {
-  const subscriptions = await getUserSubscriptions(userId)
-  const subscribedRepos = subscriptions.map((subscription) => subscription.repoFullName).sort()
-
-  if (subscribedRepos.length === 0) {
-    return { range, subscribedRepos, status: 'empty', detections: [], summary: summarizeDetections([], range) }
-  }
-
+async function fetchFailureRows(
+  subscribedRepos: string[],
+  fromIso: string,
+  toIso: string,
+  limit: number,
+): Promise<ReadResult<Array<Record<string, unknown>>>> {
   const repoSql = sql.join(
     subscribedRepos.map((repo) => sql`${repo}`),
     sql`, `,
   )
-
-  const result = await safeGraphRead<Array<Record<string, unknown>>>('detections', [], async () => {
+  return safeGraphRead<Array<Record<string, unknown>>>('detections', [], async () => {
     return (await graphDb.execute(sql`
       SELECT
         id, repo, branch, workflow_name, failed_step, status, confidence,
@@ -121,15 +118,70 @@ export async function getDetectionsForUser(userId: string, range: UsageRange): P
       FROM executions
       WHERE repo IN (${repoSql})
         AND kind = 'ci_failure'
-        AND COALESCE(triggered_at, created_at) >= ${range.from.toISOString()}
-        AND COALESCE(triggered_at, created_at) <= ${range.to.toISOString()}
+        AND COALESCE(triggered_at, created_at) >= ${fromIso}
+        AND COALESCE(triggered_at, created_at) <= ${toIso}
       ORDER BY occurred_at DESC
-      LIMIT 100
+      LIMIT ${limit}
     `)) as unknown as Array<Record<string, unknown>>
   })
+}
 
+export async function getDetectionsForUser(userId: string, range: UsageRange): Promise<DetectionResult> {
+  const subscriptions = await getUserSubscriptions(userId)
+  const subscribedRepos = subscriptions.map((subscription) => subscription.repoFullName).sort()
+
+  if (subscribedRepos.length === 0) {
+    return { range, subscribedRepos, status: 'empty', detections: [], summary: summarizeDetections([], range) }
+  }
+
+  const result = await fetchFailureRows(subscribedRepos, range.from.toISOString(), range.to.toISOString(), 100)
   const detections = result.data.map(mapDetectionRow)
   return { range, subscribedRepos, status: result.status, detections, summary: summarizeDetections(detections, range) }
+}
+
+/** Compact, chat-friendly view of a recent failure for the get_recent_failures tool. */
+export interface FailureForChat {
+  repo: string
+  workflow: string
+  branch: string
+  status: string
+  failedStep: string | null
+  rootCause: string | null
+  suggestedFix: string | null
+  occurredAt: string
+}
+
+export function formatFailureForChat(detection: Detection): FailureForChat {
+  return {
+    repo: detection.repo,
+    workflow: detection.workflowName,
+    branch: detection.branch,
+    status: detection.resolved ? 'resolved' : detection.status,
+    failedStep: detection.failedStep,
+    rootCause: detection.rootCause,
+    suggestedFix: detection.suggestedFix,
+    occurredAt: detection.occurredAt.toISOString(),
+  }
+}
+
+/**
+ * Recent CI failures for a set of repos, for the chat tool. Returns an explicit
+ * `dataAvailable` flag so the model never reports a read error or empty store as
+ * "everything is healthy".
+ */
+export async function getRecentFailures(
+  repos: string[],
+  days: number,
+  limit: number,
+): Promise<{ failures: FailureForChat[]; dataAvailable: boolean }> {
+  if (repos.length === 0) return { failures: [], dataAvailable: true }
+  const to = new Date()
+  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000)
+  const result = await fetchFailureRows(repos, from.toISOString(), to.toISOString(), limit)
+  return {
+    failures: result.data.map(mapDetectionRow).map(formatFailureForChat),
+    dataAvailable: result.status !== 'error',
+  }
 }
 
 function toUtcDay(date: Date): string {
