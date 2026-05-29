@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { getUsageRange } from '../lib/graph/usage'
-import { mapDetectionRow, median, summarizeDetections, type Detection } from '../lib/graph/detections'
+import {
+  formatFailureForChat,
+  mapDetectionRow,
+  median,
+  summarizeDetections,
+  type Detection,
+} from '../lib/graph/detections'
 
 function detection(overrides: Partial<Detection>): Detection {
   return {
@@ -82,5 +88,25 @@ describe('summarizeDetections', () => {
     const summary = summarizeDetections([detection({ occurredAt: new Date('2026-05-21T08:00:00Z') })], range)
     expect(summary.byDay.length).toBe(7)
     expect(summary.byDay.find((d) => d.day === '2026-05-21')?.count).toBe(1)
+  })
+})
+
+describe('formatFailureForChat', () => {
+  test('maps to compact chat shape; resolved overrides status; iso timestamp', () => {
+    const out = formatFailureForChat(
+      detection({
+        resolved: true,
+        status: 'investigating',
+        workflowName: 'CI',
+        failedStep: 'build',
+        rootCause: 'flaky',
+        suggestedFix: 'retry',
+        occurredAt: new Date('2026-05-20T00:00:00Z'),
+      }),
+    )
+    expect(out.status).toBe('resolved')
+    expect(out.workflow).toBe('CI')
+    expect(out.failedStep).toBe('build')
+    expect(out.occurredAt).toBe('2026-05-20T00:00:00.000Z')
   })
 })
