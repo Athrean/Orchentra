@@ -31,6 +31,7 @@ interface CoworkHeroProps {
   onRemoveFile?: (index: number) => void
   onMic?: () => void
   micActive?: boolean
+  allowActCommands?: boolean
   mode?: 'investigate' | 'triage'
 }
 
@@ -47,6 +48,7 @@ export function CoworkHero({
   onRemoveFile,
   onMic,
   micActive,
+  allowActCommands,
   mode = 'triage',
 }: CoworkHeroProps) {
   const isInvestigate = mode === 'investigate'
@@ -79,6 +81,7 @@ export function CoworkHero({
           onRemoveFile={onRemoveFile}
           onMic={onMic}
           micActive={micActive}
+          allowActCommands={allowActCommands}
           autoFocus
         />
 

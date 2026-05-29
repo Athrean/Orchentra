@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     return Response.json({ error: 'failed to decrypt LLM key' }, { status: 500 })
   }
 
-  const tools = createChatTools({ userId: user.id, scope })
+  const tools = createChatTools({ userId: user.id, scope, permissionMode })
 
   const result = streamText({
     model: resolved.model,

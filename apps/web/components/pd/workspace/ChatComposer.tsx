@@ -1,9 +1,10 @@
 'use client'
 
 import type { ChatStatus, FileUIPart } from 'ai'
-import { ArrowUp, Check, ChevronUp, Mic, Paperclip, Square, X, AudioLines } from 'lucide-react'
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { ArrowUp, Check, ChevronUp, Mic, Paperclip, Square, TerminalSquare, X, AudioLines } from 'lucide-react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { cn } from '../../../lib/utils'
+import { filterSlashCommands, parseSlashQuery, type SlashCommand } from '../../../lib/ai/commands'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,8 @@ interface ChatComposerProps {
   onRemoveFile?: (index: number) => void
   onMic?: () => void
   micActive?: boolean
+  /** Show write-back slash commands (act mode). Read commands always show. */
+  allowActCommands?: boolean
 }
 
 const MAX = 8000
@@ -49,11 +52,29 @@ export function ChatComposer({
   onRemoveFile,
   onMic,
   micActive = false,
+  allowActCommands = false,
 }: ChatComposerProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isBusy = status === 'submitted' || status === 'streaming'
   const canSend = value.trim().length > 0 || files.length > 0
+
+  const slash = parseSlashQuery(value)
+  const slashCommands = slash.active ? filterSlashCommands(slash.query, allowActCommands) : []
+  const [slashDismissed, setSlashDismissed] = useState(false)
+  const [slashHighlight, setSlashHighlight] = useState(0)
+  const showSlash = slash.active && !slashDismissed && slashCommands.length > 0
+
+  useEffect(() => {
+    setSlashDismissed(false)
+    setSlashHighlight(0)
+  }, [slash.query])
+
+  const selectCommand = (command: SlashCommand) => {
+    onValueChange(`${command.prompt} `)
+    setSlashDismissed(true)
+    ref.current?.focus()
+  }
 
   const autosize = () => {
     const el = ref.current
@@ -76,6 +97,28 @@ export function ChatComposer({
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showSlash) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSlashHighlight((h) => (h + 1) % slashCommands.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSlashHighlight((h) => (h - 1 + slashCommands.length) % slashCommands.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        selectCommand(slashCommands[slashHighlight] ?? slashCommands[0])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSlashDismissed(true)
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       submit()
@@ -83,72 +126,119 @@ export function ChatComposer({
   }
 
   return (
-    <div className="surface w-full overflow-hidden rounded-[18px] p-0">
-      {files.length > 0 && (
-        <div className="grid transition-[grid-template-rows] duration-200 ease-out" style={{ gridTemplateRows: '1fr' }}>
-          <div className="overflow-hidden">
-            <div className="flex flex-wrap gap-2 px-4 pt-3">
-              {files.map((file, index) => (
-                <AttachmentChip key={`${file.filename}-${index}`} file={file} onRemove={() => onRemoveFile?.(index)} />
-              ))}
+    <div className="relative">
+      {showSlash && <SlashMenu commands={slashCommands} highlight={slashHighlight} onSelect={selectCommand} />}
+      <div className="surface w-full overflow-hidden rounded-[18px] p-0">
+        {files.length > 0 && (
+          <div
+            className="grid transition-[grid-template-rows] duration-200 ease-out"
+            style={{ gridTemplateRows: '1fr' }}
+          >
+            <div className="overflow-hidden">
+              <div className="flex flex-wrap gap-2 px-4 pt-3">
+                {files.map((file, index) => (
+                  <AttachmentChip
+                    key={`${file.filename}-${index}`}
+                    file={file}
+                    onRemove={() => onRemoveFile?.(index)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="relative min-h-[5.75rem]">
-        <textarea
-          ref={ref}
-          value={value}
-          rows={1}
-          onChange={(e) => onValueChange(e.target.value.slice(0, MAX))}
-          onKeyDown={onKeyDown}
-          placeholder={placeholder ?? 'How can I help you today?'}
-          className="block max-h-60 min-h-[5.75rem] w-full resize-none bg-transparent px-5 pb-11 pr-32 pt-4 text-base leading-relaxed text-pg-text-0 caret-pg-accent-green outline-none placeholder:text-pg-text-mute"
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,text/*,application/pdf"
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files?.length) onAddFiles?.(e.target.files)
-            e.target.value = ''
-          }}
-        />
-        {onAddFiles && (
+        <div className="relative min-h-[5.75rem]">
+          <textarea
+            ref={ref}
+            value={value}
+            rows={1}
+            onChange={(e) => onValueChange(e.target.value.slice(0, MAX))}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder ?? 'How can I help you today?'}
+            className="block max-h-60 min-h-[5.75rem] w-full resize-none bg-transparent px-5 pb-11 pr-32 pt-4 text-base leading-relaxed text-pg-text-0 caret-pg-accent-green outline-none placeholder:text-pg-text-mute"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,text/*,application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) onAddFiles?.(e.target.files)
+              e.target.value = ''
+            }}
+          />
+          {onAddFiles && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Attach files"
+              className="absolute bottom-3 left-4 flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+          )}
+          {onMic && <VoiceControls active={micActive} onMic={onMic} />}
+        </div>
+
+        <div className="flex min-h-12 items-center gap-1.5 border-t border-pg-hairline/70 px-3">
+          {toolbar}
+          <div className="flex-1" />
+          {actions}
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Attach files"
-            className="absolute bottom-3 left-4 flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0"
+            onClick={isBusy ? onStop : submit}
+            disabled={isBusy ? !onStop : !canSend}
+            aria-label={isBusy ? 'Stop' : 'Send'}
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:opacity-30',
+              isBusy
+                ? 'bg-pg-text-0 text-white hover:bg-black'
+                : 'bg-pg-accent-green text-white hover:bg-pg-accent-green-2',
+            )}
           >
-            <Paperclip className="h-4 w-4" />
+            {isBusy ? <Square className="h-3.5 w-3.5" fill="currentColor" /> : <ArrowUp className="h-4 w-4" />}
           </button>
-        )}
-        {onMic && <VoiceControls active={micActive} onMic={onMic} />}
+        </div>
       </div>
+    </div>
+  )
+}
 
-      <div className="flex min-h-12 items-center gap-1.5 border-t border-pg-hairline/70 px-3">
-        {toolbar}
-        <div className="flex-1" />
-        {actions}
+function SlashMenu({
+  commands,
+  highlight,
+  onSelect,
+}: {
+  commands: SlashCommand[]
+  highlight: number
+  onSelect: (command: SlashCommand) => void
+}) {
+  return (
+    <div className="surface absolute bottom-full left-0 z-30 mb-2 w-full max-w-md overflow-hidden rounded-[12px] p-1">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] uppercase tracking-wide text-pg-text-mute">
+        <TerminalSquare className="h-3.5 w-3.5" />
+        Commands
+      </div>
+      {commands.map((command, index) => (
         <button
+          key={command.name}
           type="button"
-          onClick={isBusy ? onStop : submit}
-          disabled={isBusy ? !onStop : !canSend}
-          aria-label={isBusy ? 'Stop' : 'Send'}
+          // onMouseDown (not onClick) so the textarea does not blur before selection runs.
+          onMouseDown={(e) => {
+            e.preventDefault()
+            onSelect(command)
+          }}
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:opacity-30',
-            isBusy
-              ? 'bg-pg-text-0 text-white hover:bg-black'
-              : 'bg-pg-accent-green text-white hover:bg-pg-accent-green-2',
+            'flex w-full items-center gap-2 rounded-[8px] px-2.5 py-2 text-left text-sm transition-colors',
+            index === highlight ? 'bg-pg-surface-1 text-pg-text-0' : 'text-pg-text-mute hover:bg-pg-surface-1',
           )}
         >
-          {isBusy ? <Square className="h-3.5 w-3.5" fill="currentColor" /> : <ArrowUp className="h-4 w-4" />}
+          <span className="font-mono text-pg-text-0">/{command.name}</span>
+          <span className="truncate text-xs text-pg-text-mute">{command.description}</span>
         </button>
-      </div>
+      ))}
     </div>
   )
 }

@@ -3,11 +3,14 @@ import { z } from 'zod'
 import type { RepoSubscription } from '../db/schema'
 import { getUserSubscriptions } from '../db/queries/subscriptions'
 import { getInsightsForRepos } from '../github/repo-insights'
+import { postIssueComment } from '../github/comment'
 import { getRecentFailures } from '../graph/detections'
+import type { PermissionMode } from './chat-request'
 
 interface ChatToolsOptions {
   userId: string
   scope?: string
+  permissionMode?: PermissionMode
 }
 
 export function selectScopedSubscriptions(
@@ -26,8 +29,8 @@ export function selectScopedSubscriptions(
   })
 }
 
-export function createChatTools({ userId, scope }: ChatToolsOptions) {
-  return {
+export function createChatTools({ userId, scope, permissionMode = 'ask' }: ChatToolsOptions) {
+  const readTools = {
     list_repositories: tool({
       description: 'List repositories the signed-in user has enabled for Orchentra.',
       inputSchema: z.object({}),
@@ -89,6 +92,28 @@ export function createChatTools({ userId, scope }: ChatToolsOptions) {
         const repos = scoped.map((subscription) => subscription.repoFullName)
         const { failures, dataAvailable } = await getRecentFailures(repos, days, 25)
         return { failures, count: failures.length, dataAvailable, repositories: repos }
+      },
+    }),
+  }
+
+  // Write-back tools are only available in "act" mode — the user has opted into
+  // letting the assistant change state without per-action confirmation.
+  if (permissionMode !== 'act') return readTools
+
+  return {
+    ...readTools,
+    post_github_comment: tool({
+      description:
+        'Post a comment to a GitHub issue or pull request — a write-back action. Use only after the user has approved posting. Returns ok:false with an error (e.g. missing permission) instead of failing silently.',
+      inputSchema: z.object({
+        repoFullName: z.string().describe('owner/repo — must be one enabled repository.'),
+        issueNumber: z.number().int().positive().describe('Issue or pull-request number to comment on.'),
+        body: z.string().min(1).max(60000).describe('Markdown comment body.'),
+      }),
+      execute: async ({ repoFullName, issueNumber, body }) => {
+        const target = selectScopedSubscriptions(await getUserSubscriptions(userId), scope, repoFullName)[0]
+        if (!target) return { ok: false, error: 'repository not enabled or out of scope' }
+        return postIssueComment(target.installationId, target.repoFullName, issueNumber, body)
       },
     }),
   }
