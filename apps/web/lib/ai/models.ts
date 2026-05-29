@@ -34,15 +34,18 @@ const CLAUDE_RE = /^claude-(opus|sonnet|haiku)-(\d+)-(\d+)$/
 
 /** Turn a raw model id into a friendly label (e.g. `claude-opus-4-8` → `Opus 4.8`). */
 export function getModelLabel(modelId: string): string {
+  const normalizedId = modelId.includes('/') ? modelId.split('/').at(-1)! : modelId
+
+  if (EXPLICIT_LABELS[normalizedId]) return EXPLICIT_LABELS[normalizedId]
   if (EXPLICIT_LABELS[modelId]) return EXPLICIT_LABELS[modelId]
 
-  const claude = CLAUDE_RE.exec(modelId)
+  const claude = CLAUDE_RE.exec(normalizedId)
   if (claude) {
     const [, family, major, minor] = claude
     return `${family.charAt(0).toUpperCase()}${family.slice(1)} ${major}.${minor}`
   }
 
-  return modelId
+  return normalizedId
 }
 
 function allModelOptions(): ModelOption[] {
