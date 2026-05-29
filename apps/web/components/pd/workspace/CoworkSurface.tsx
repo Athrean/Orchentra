@@ -1,7 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
+import { convertFileListToFileUIParts, DefaultChatTransport, type FileUIPart } from 'ai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { PermissionMode } from '../../../lib/ai/chat-request'
@@ -19,6 +19,7 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('ask')
   const [scope, setScope] = useState('all-repos')
   const [draft, setDraft] = useState('')
+  const [files, setFiles] = useState<FileUIPart[]>([])
 
   const settingsRef = useRef({ model, effort, adaptive, permissionMode, scope })
   settingsRef.current = { model, effort, adaptive, permissionMode, scope }
@@ -46,11 +47,22 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, status])
 
+  const addFiles = async (list: FileList) => {
+    try {
+      const parts = await convertFileListToFileUIParts(list)
+      setFiles((current) => [...current, ...parts])
+    } catch {
+      toast.error('Could not read that file')
+    }
+  }
+  const removeFile = (index: number) => setFiles((current) => current.filter((_, i) => i !== index))
+
   const submit = () => {
     const text = draft.trim()
-    if (!text || status === 'submitted' || status === 'streaming') return
-    void sendMessage({ text })
+    if ((!text && files.length === 0) || status === 'submitted' || status === 'streaming') return
+    void sendMessage({ text, files: files.length ? files : undefined })
     setDraft('')
+    setFiles([])
   }
 
   const toolbar = (
@@ -80,6 +92,9 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
         status={status}
         toolbar={toolbar}
         actions={actions}
+        files={files}
+        onAddFiles={addFiles}
+        onRemoveFile={removeFile}
       />
     )
   }
@@ -105,6 +120,9 @@ export function CoworkSurface({ initialPrompt }: { initialPrompt?: string | null
             status={status}
             toolbar={toolbar}
             actions={actions}
+            files={files}
+            onAddFiles={addFiles}
+            onRemoveFile={removeFile}
           />
         </div>
       </div>
