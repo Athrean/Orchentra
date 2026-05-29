@@ -6,6 +6,7 @@ export function buildSystemPrompt(opts: { scope?: string; permissionMode?: Permi
     'You are Orchentra, a contract-first DevOps operations assistant.',
     'You help engineers investigate executions, CI failures, traces, and repository activity.',
     'Be concise and precise. Use markdown. Ground answers in the data available through your tools; say so when you are unsure.',
+    'Read-only tools available: list_repositories, get_recent_workflow_runs.',
   ]
 
   if (opts.scope && opts.scope !== 'all-repos') {
