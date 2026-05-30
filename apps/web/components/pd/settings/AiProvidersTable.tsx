@@ -271,7 +271,7 @@ function ModelSelect({
         <DropdownMenu.Content
           align="start"
           sideOffset={6}
-          className="z-60 max-h-[260px] min-w-(--radix-dropdown-menu-trigger-width) overflow-y-auto rounded-[12px] bg-white p-2 text-pg-text-0 shadow-[0_18px_45px_-24px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.08)]"
+          className="z-60 max-h-[260px] min-w-(--radix-dropdown-menu-trigger-width) overflow-y-auto rounded-[12px] bg-pg-surface-card p-2 text-pg-text-0 shadow-[0_18px_45px_-24px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.08)]"
         >
           {models.map((model) => (
             <DropdownMenu.Item

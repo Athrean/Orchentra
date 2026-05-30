@@ -22,7 +22,7 @@ export function Modal({ open, onOpenChange, title, description, children, maxWid
         <Dialog.Content
           className={cn(
             'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
-            'w-full rounded-[14px] bg-white px-6 py-5 text-pg-text-0 shadow-[0_28px_70px_-32px_rgba(15,15,14,0.55),0_0_0_1px_rgba(20,20,18,0.08)]',
+            'w-full rounded-[14px] bg-pg-surface-card px-6 py-5 text-pg-text-0 shadow-[0_28px_70px_-32px_rgba(15,15,14,0.55),0_0_0_1px_rgba(20,20,18,0.08)]',
             maxWidth === 'md' && 'max-w-md',
             maxWidth === 'lg' && 'max-w-lg',
             maxWidth === 'xl' && 'max-w-2xl',

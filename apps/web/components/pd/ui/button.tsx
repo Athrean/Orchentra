@@ -11,10 +11,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-pg-text-0 text-white hover:bg-black font-semibold',
+        default: 'bg-pg-inverse text-pg-inverse-text hover:bg-pg-inverse-hover font-semibold',
         exec: 'exec-button-dark hover:-translate-y-0.5',
         primary: 'bg-primary text-light hover:bg-primary/90',
-        outline: 'bg-white text-pg-text-0 shadow-[0_0_0_1px_rgba(20,20,18,0.08)] hover:bg-pg-surface-1',
+        outline: 'bg-pg-surface-card text-pg-text-0 shadow-[0_0_0_1px_rgba(20,20,18,0.08)] hover:bg-pg-surface-1',
         ghost: 'text-pg-text-mute hover:bg-pg-surface-1 hover:text-pg-text-0',
         destructive: 'text-red-500 hover:bg-red-500/10',
         link: 'text-primary underline-offset-4 hover:underline',

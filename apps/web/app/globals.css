@@ -46,6 +46,11 @@
   --color-pg-text-mute: #707068;
   --color-pg-grid-dot: #deded9;
   --color-pg-hairline: #deded9;
+  --color-pg-surface-card: #ffffff;
+  --color-pg-sidebar: #ffffff;
+  --color-pg-inverse: #171716;
+  --color-pg-inverse-hover: #0c0c0b;
+  --color-pg-inverse-text: #ffffff;
   --color-pg-accent-green: #147a52;
   --color-pg-accent-green-2: #1a9a67;
 
@@ -56,19 +61,39 @@
 
 @layer base {
   html {
+    color-scheme: light dark;
     scroll-behavior: smooth;
   }
   body {
-    background-color: var(--color-darkest);
-    color: var(--color-light);
+    background-color: var(--color-pg-surface-0);
+    color: var(--color-pg-text-0);
     font-family: var(--font-body);
     letter-spacing: 0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   ::selection {
-    background-color: var(--color-primary);
-    color: var(--color-light);
+    background-color: var(--color-pg-accent-green);
+    color: var(--color-pg-inverse-text);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-pg-surface-0: #10110f;
+    --color-pg-surface-1: #181715;
+    --color-pg-surface-2: #252320;
+    --color-pg-text-0: #faf9f5;
+    --color-pg-text-mute: #a09d96;
+    --color-pg-grid-dot: #24231f;
+    --color-pg-hairline: #34312c;
+    --color-pg-surface-card: #181715;
+    --color-pg-sidebar: #10110f;
+    --color-pg-inverse: #faf9f5;
+    --color-pg-inverse-hover: #ffffff;
+    --color-pg-inverse-text: #141413;
+    --color-pg-accent-green: #2dbf7e;
+    --color-pg-accent-green-2: #53d99c;
   }
 }
 
@@ -79,7 +104,7 @@
 @layer components {
   /* White card on grey-white — barely-there lift. */
   .surface {
-    background-color: #ffffff;
+    background-color: var(--color-pg-surface-card);
     border-radius: 14px;
     box-shadow:
       0 18px 45px -34px rgba(15, 15, 14, 0.5),
@@ -100,8 +125,34 @@
   .dot-canvas {
     background-color: var(--color-pg-surface-0);
     background-image:
-      radial-gradient(circle at 24% 16%, rgba(255, 255, 255, 0.95), transparent 32rem),
-      linear-gradient(180deg, #fafaf8 0%, var(--color-pg-surface-0) 100%);
+      radial-gradient(circle at 24% 16%, color-mix(in srgb, var(--color-pg-surface-card) 90%, transparent), transparent 32rem),
+      linear-gradient(180deg, color-mix(in srgb, var(--color-pg-surface-card) 70%, var(--color-pg-surface-0)) 0%, var(--color-pg-surface-0) 100%);
+  }
+
+  .brand-mark {
+    transition:
+      filter 140ms ease-out,
+      opacity 140ms ease-out;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .surface {
+    box-shadow:
+      0 24px 70px -42px rgba(0, 0, 0, 0.9),
+      0 0 0 1px var(--color-pg-hairline),
+      inset 0 1px 0 rgba(250, 249, 245, 0.035);
+  }
+
+  .dot-canvas {
+    background-image:
+      radial-gradient(circle at 18% 10%, rgba(37, 35, 32, 0.48), transparent 30rem),
+      linear-gradient(180deg, #121411 0%, var(--color-pg-surface-0) 100%);
+  }
+
+  .brand-mark {
+    filter: invert(1) brightness(1.18);
+    opacity: 0.9;
   }
 }
 

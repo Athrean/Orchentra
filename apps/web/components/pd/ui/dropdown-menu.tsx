@@ -12,7 +12,7 @@ export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 export const DropdownMenuSub = DropdownMenuPrimitive.Sub
 
 const surfaceClass =
-  'z-50 min-w-[11rem] overflow-hidden rounded-[12px] border border-pg-hairline bg-white p-1 text-pg-text-0 shadow-[0_18px_45px_-22px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.05)]'
+  'z-50 min-w-[11rem] overflow-hidden rounded-[12px] border border-pg-hairline bg-pg-surface-card p-1 text-pg-text-0 shadow-[0_18px_45px_-22px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.05)]'
 
 const itemClass =
   'relative flex cursor-pointer select-none items-center gap-2 rounded-[8px] px-2.5 py-2 text-sm text-pg-text-0 outline-none transition-colors focus:bg-pg-surface-1 data-[highlighted]:bg-pg-surface-1 data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
