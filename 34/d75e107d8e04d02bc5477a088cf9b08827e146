@@ -1,0 +1,57 @@
+apps/web/components/pd/ui/button.tsx
+  ai_agent 14,17
+apps/web/components/pd/ui/card.tsx
+  ai_agent 9
+apps/web/components/pd/settings/ApiKeysPanel.tsx
+  ai_agent 53
+apps/web/components/pd/settings/AiProvidersTable.tsx
+  ai_agent 274
+apps/web/components/pd/shell/AppSidebar.tsx
+  ai_agent 71,250,297
+apps/web/components/pd/workspace/CoworkMessage.tsx
+  ai_agent 105,116
+apps/web/components/pd/overlay/Modal.tsx
+  ai_agent 25
+apps/web/components/pd/overlay/Drawer.tsx
+  ai_agent 29
+apps/web/components/pd/workspace/CoworkRail.tsx
+  ai_agent 124
+apps/web/components/pd/settings/SettingsSection.tsx
+  ai_agent 17
+apps/web/app/layout.tsx
+  ai_agent 23,27-30
+apps/web/components/pd/usage/UsageDayChart.tsx
+  ai_agent 15
+apps/web/components/pd/shell/SidebarUser.tsx
+  ai_agent 77
+apps/web/components/pd/dashboard/charts/MttrBarChart.tsx
+  ai_agent 18
+apps/web/components/pd/workspace/ChatComposer.tsx
+  ai_agent 197,252,288,318
+apps/web/components/pd/account/LlmKeyForm.tsx
+  ai_agent 66
+apps/web/app/globals.css
+  ai_agent 49-52,63,67-68,75-94,105,126-127
+apps/web/app/(app)/detections/page.tsx
+  ai_agent 47,55
+apps/web/components/pd/dashboard/charts/ExecutionsLineChart.tsx
+  ai_agent 18
+apps/web/components/pd/runs/RunDetailView.tsx
+  ai_agent 51
+apps/web/app/(app)/usage/page.tsx
+  ai_agent 38,46
+apps/web/components/pd/ui/dropdown-menu.tsx
+  ai_agent 15
+apps/web/components/pd/settings/AlertsPanel.tsx
+  ai_agent 38,46
+apps/web/components/pd/workspace/CoworkHero.tsx
+  ai_agent 99,101
+apps/web/components/pd/account/ProfileForm.tsx
+  ai_agent 263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "34d75e107d8e04d02bc5477a088cf9b08827e146",
+  "prompts": {}
+}
