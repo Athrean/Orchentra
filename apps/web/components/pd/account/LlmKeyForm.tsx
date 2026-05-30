@@ -63,7 +63,7 @@ export function LlmKeyForm({ provider: initialProvider, hasKey }: Props) {
               onClick={() => setProvider(p)}
               className={
                 provider === p
-                  ? 'rounded-[7px] bg-white px-3 py-1 text-xs font-medium tracking-wide text-pg-text-0 shadow-sm'
+                  ? 'rounded-[7px] bg-pg-surface-card px-3 py-1 text-xs font-medium tracking-wide text-pg-text-0 shadow-sm'
                   : 'rounded-[7px] px-3 py-1 text-xs tracking-wide text-pg-text-mute hover:text-pg-text-0'
               }
             >

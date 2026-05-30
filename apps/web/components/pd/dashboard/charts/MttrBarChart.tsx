@@ -15,7 +15,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Tooltip
   if (!active || !payload || payload.length === 0) return null
   const { day, mttr } = payload[0].payload
   return (
-    <div className="rounded-[8px] border border-pg-hairline bg-white p-2 text-xs text-pg-text-0 shadow-[0_8px_24px_-12px_rgba(20,20,19,0.2)]">
+    <div className="rounded-[8px] border border-pg-hairline bg-pg-surface-card p-2 text-xs text-pg-text-0 shadow-[0_8px_24px_-12px_rgba(20,20,19,0.2)]">
       <div className="tracking-wide">{day}</div>
       <div className="tracking-wide text-pg-text-mute">{mttr} min</div>
     </div>

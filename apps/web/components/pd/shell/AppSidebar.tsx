@@ -68,7 +68,7 @@ export function AppSidebar({ email, fullName, avatarUrl }: Props) {
   return (
     <aside
       className={cn(
-        'relative z-20 m-2 flex h-[calc(100vh-1rem)] shrink-0 flex-col rounded-[18px] bg-white/95 text-pg-text-0 shadow-[0_18px_45px_-32px_rgba(15,15,14,0.55),0_0_0_1px_rgba(20,20,18,0.08)] backdrop-blur-sm transition-[width] duration-200',
+        'relative z-20 m-2 flex h-[calc(100vh-1rem)] shrink-0 flex-col rounded-[18px] bg-pg-sidebar/95 text-pg-text-0 shadow-[0_24px_70px_-42px_rgba(0,0,0,0.78),0_0_0_1px_var(--color-pg-hairline),inset_0_1px_0_rgba(250,249,245,0.035)] backdrop-blur-sm transition-[width] duration-200',
         collapsed ? 'w-[60px] items-center px-2 py-4' : 'w-[250px] px-5 py-5',
       )}
     >
@@ -89,11 +89,11 @@ export function AppSidebar({ email, fullName, avatarUrl }: Props) {
               width={24}
               height={24}
               priority
-              className="h-6 w-6 object-contain opacity-75 transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0"
+              className="brand-mark h-6 w-6 object-contain opacity-75 group-hover:hidden group-focus-visible:hidden"
             />
             <PanelLeft
               className={cn(
-                'absolute h-[18px] w-[18px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100',
+                'absolute hidden h-[18px] w-[18px] group-hover:block group-focus-visible:block',
                 collapsed && 'rotate-180',
               )}
               strokeWidth={1.7}
@@ -247,7 +247,7 @@ function ExperimentsMenu({ collapsed }: { collapsed: boolean }) {
           side="right"
           align="start"
           sideOffset={10}
-          className="z-50 w-56 rounded-[12px] bg-white p-2 text-pg-text-0 shadow-[0_18px_45px_-24px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.08)]"
+          className="z-50 w-56 rounded-[12px] bg-pg-surface-card p-2 text-pg-text-0 shadow-[0_18px_45px_-24px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.08)]"
         >
           <div className="px-2 pb-1 pt-1 text-sm font-medium">Experiments</div>
           <DropdownMenu.Item asChild>
@@ -294,7 +294,7 @@ function ActivityMenu({ collapsed }: { collapsed: boolean }) {
           side="right"
           align="end"
           sideOffset={10}
-          className="z-50 flex h-[390px] w-[500px] flex-col rounded-[12px] bg-white p-4 text-pg-text-0 shadow-[0_22px_60px_-28px_rgba(15,15,14,0.42),0_0_0_1px_rgba(20,20,18,0.08)]"
+          className="z-50 flex h-[390px] w-[500px] flex-col rounded-[12px] bg-pg-surface-card p-4 text-pg-text-0 shadow-[0_22px_60px_-28px_rgba(15,15,14,0.42),0_0_0_1px_rgba(20,20,18,0.08)]"
         >
           <div className="flex items-center gap-4">
             <div className="text-sm font-medium">Activity</div>

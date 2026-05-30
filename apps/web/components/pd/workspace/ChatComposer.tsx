@@ -194,7 +194,7 @@ export function ChatComposer({
             className={cn(
               'flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:opacity-30',
               isBusy
-                ? 'bg-pg-text-0 text-white hover:bg-black'
+                ? 'bg-pg-inverse text-pg-inverse-text hover:bg-pg-inverse-hover'
                 : 'bg-pg-accent-green text-white hover:bg-pg-accent-green-2',
             )}
           >
@@ -249,7 +249,7 @@ function VoiceControls({ active, onMic }: { active: boolean; onMic: () => void }
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Voice input options"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute outline-none transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0 data-[state=open]:bg-pg-text-0 data-[state=open]:text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute outline-none transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0 data-[state=open]:bg-pg-inverse data-[state=open]:text-pg-inverse-text"
         >
           <ChevronUp className="h-4 w-4" />
         </DropdownMenuTrigger>
@@ -285,7 +285,7 @@ function VoiceControls({ active, onMic }: { active: boolean; onMic: () => void }
         title="Press and hold to record"
         className={cn(
           'flex h-8 w-8 items-center justify-center rounded-full text-pg-text-mute transition-colors hover:bg-pg-surface-1 hover:text-pg-text-0',
-          active && 'bg-pg-text-0 text-white',
+          active && 'bg-pg-inverse text-pg-inverse-text',
         )}
       >
         <Mic className="h-4 w-4" />
@@ -315,7 +315,7 @@ function AttachmentChip({ file, onRemove }: { file: FileUIPart; onRemove: () => 
         type="button"
         onClick={onRemove}
         aria-label="Remove attachment"
-        className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-pg-text-0 text-white opacity-0 transition-opacity group-hover:opacity-100"
+        className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-pg-inverse text-pg-inverse-text opacity-0 transition-opacity group-hover:opacity-100"
       >
         <X className="h-2.5 w-2.5" />
       </button>
