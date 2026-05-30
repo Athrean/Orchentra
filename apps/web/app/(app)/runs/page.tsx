@@ -1,7 +1,21 @@
-import { AlertOctagon, CheckCircle2, Clock, Zap } from 'lucide-react'
+import {
+  AlertOctagon,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  GitBranch,
+  Gauge,
+  Lock,
+  Rocket,
+  ShieldCheck,
+  Zap,
+} from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '../../../lib/supabase/server'
 import { getUserSubscriptions } from '../../../lib/db/queries/subscriptions'
+import { getUserInstallationPermissions } from '../../../lib/db/queries/installations'
+import { getReleasesForRepos, type ReleaseSummary } from '../../../lib/github/releases'
+import { buildControlsCoverage, type ControlCoverage } from '../../../lib/github/controls'
 import {
   aggregateInsights,
   getInsightsForRepos,
@@ -20,7 +34,7 @@ import { DashboardEmptyState } from '../../../components/pd/dashboard/EmptyState
 import { FailingWorkflows, type FailingWorkflowRow } from '../../../components/pd/dashboard/FailingWorkflows'
 import { QuietRepos, type QuietRepoRow } from '../../../components/pd/dashboard/QuietRepos'
 
-export const metadata = { title: 'Runs & activity · Orchentra' }
+export const metadata = { title: 'Traces · Orchentra' }
 export const dynamic = 'force-dynamic'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -172,8 +186,40 @@ export default async function RunsPage() {
   const failingWorkflows = topFailingWorkflows(insights, instByRepo, 5)
   const quietRows = quietRepos(insights, 7 * DAY_MS)
 
+  const [permissions, releases] = await Promise.all([
+    getUserInstallationPermissions(user.id),
+    getReleasesForRepos(subs.map((s) => ({ installationId: s.installationId, repoFullName: s.repoFullName }))),
+  ])
+  const coverage = buildControlsCoverage(permissions)
+
   return (
     <div className="space-y-6 p-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-pg-text-mute">DevOps Engineer</div>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-pg-text-0">Traces</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-pg-text-mute">
+            GitHub Actions operations for CI/CD health, source workflow control, quality signals, and workflow
+            observability.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { icon: GitBranch, label: 'GitHub Actions' },
+            { icon: ShieldCheck, label: 'Quality signals' },
+            { icon: Gauge, label: 'Run observability' },
+          ].map(({ icon: Icon, label }) => (
+            <span
+              key={label}
+              className="inset-chip inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-pg-text-mute"
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatTile title="Workflow runs (30d)" value={String(agg.totalRuns)} filter="30 days" icon={Zap}>
           <ExecutionsLineChart data={lineSeries} />
@@ -222,6 +268,66 @@ export default async function RunsPage() {
         <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-pg-text-mute">Recent activity</h2>
         <RecentActivityTable rows={rows} />
       </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-pg-text-mute">Recent releases</h2>
+          <ReleasesPanel releases={releases} />
+        </div>
+        <div>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-pg-text-mute">GitHub access</h2>
+          <ControlsCoveragePanel coverage={coverage} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReleasesPanel({ releases }: { releases: ReleaseSummary[] }) {
+  if (releases.length === 0) {
+    return (
+      <div className="surface px-5 py-10 text-center text-sm text-pg-text-mute">
+        No releases found for tracked repositories.
+      </div>
+    )
+  }
+  return (
+    <div className="surface divide-y divide-pg-hairline overflow-hidden">
+      {releases.map((release) => (
+        <a
+          key={`${release.repo}-${release.tag}`}
+          href={release.url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-pg-surface-1/60"
+        >
+          <Rocket className="h-3.5 w-3.5 shrink-0 text-pg-accent-green" />
+          <span className="min-w-0 truncate text-pg-text-0">{release.name}</span>
+          {release.prerelease && (
+            <span className="inset-chip px-1.5 py-0.5 text-[10px] uppercase text-pg-text-mute">pre</span>
+          )}
+          <span className="ml-auto shrink-0 text-xs text-pg-text-mute">{release.repo}</span>
+          <ExternalLink className="h-3 w-3 shrink-0 text-pg-text-mute" />
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function ControlsCoveragePanel({ coverage }: { coverage: ControlCoverage[] }) {
+  return (
+    <div className="surface divide-y divide-pg-hairline overflow-hidden">
+      {coverage.map((control) => (
+        <div key={control.label} className="flex items-center gap-3 px-4 py-3 text-sm">
+          {control.authorized ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-pg-accent-green" />
+          ) : (
+            <Lock className="h-4 w-4 shrink-0 text-pg-text-mute" />
+          )}
+          <span className={control.authorized ? 'text-pg-text-0' : 'text-pg-text-mute'}>{control.label}</span>
+          <span className="ml-auto font-mono text-[11px] text-pg-text-mute">{control.permission}</span>
+        </div>
+      ))}
     </div>
   )
 }

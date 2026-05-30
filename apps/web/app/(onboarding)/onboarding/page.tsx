@@ -14,7 +14,7 @@ export default async function OnboardingPage() {
   if (!user) redirect('/login?next=/onboarding')
 
   const state = await getOrCreateOnboardingState(user.id)
-  if (state.completedAt) redirect('/dashboard')
+  if (state.completedAt) redirect('/investigate')
 
   return <OnboardingShell initialStep={state.step as 'welcome' | 'install_app' | 'select_repos'} />
 }

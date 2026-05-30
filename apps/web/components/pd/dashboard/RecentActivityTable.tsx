@@ -75,7 +75,7 @@ export function RecentActivityTable({ rows }: Props) {
                 <td className="px-4 py-3">{row.repo}</td>
                 <td className="px-4 py-3">
                   <Link
-                    href={`/runs/${row.installationId}/${row.repo}/${row.id}`}
+                    href={`/traces/${row.installationId}/${row.repo}/${row.id}`}
                     className="text-pg-text-mute transition-colors hover:text-pg-text-0"
                   >
                     {row.workflow}

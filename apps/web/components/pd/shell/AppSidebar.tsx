@@ -20,6 +20,7 @@ import {
   Search,
   Settings,
   Sparkles,
+  Brain,
   Telescope,
   UsersRound,
 } from 'lucide-react'
@@ -32,12 +33,13 @@ type RailIcon = ComponentType<{ className?: string; strokeWidth?: number }>
 const STORAGE_KEY = 'orchentra:sidebar-collapsed'
 
 const NAV_ITEMS: Array<{ href: string; label: string; icon: RailIcon }> = [
-  { href: '/dashboard', label: 'Investigate', icon: Telescope },
-  { href: '/runs', label: 'Traces', icon: Activity },
-  { href: '/graph', label: 'Detections', icon: Search },
-  { href: '/crons', label: 'Evals', icon: CalendarClock },
-  { href: '/runs?view=analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/workspace', label: 'Triage', icon: Code2 },
+  { href: '/investigate', label: 'Investigate', icon: Telescope },
+  { href: '/traces', label: 'Traces', icon: Activity },
+  { href: '/detections', label: 'Detections', icon: Search },
+  { href: '/evals', label: 'Evals', icon: CalendarClock },
+  { href: '/usage', label: 'Usage', icon: BarChart3 },
+  { href: '/memory', label: 'Memory', icon: Brain },
+  { href: '/triage', label: 'Triage', icon: Code2 },
 ]
 
 interface Props {
@@ -250,7 +252,7 @@ function ExperimentsMenu({ collapsed }: { collapsed: boolean }) {
           <div className="px-2 pb-1 pt-1 text-sm font-medium">Experiments</div>
           <DropdownMenu.Item asChild>
             <Link
-              href="/workspace"
+              href="/triage"
               className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-2 text-sm text-pg-text-mute outline-none hover:bg-pg-surface-1 hover:text-pg-text-0"
             >
               <Sparkles className="h-4 w-4" />
@@ -259,7 +261,7 @@ function ExperimentsMenu({ collapsed }: { collapsed: boolean }) {
           </DropdownMenu.Item>
           <DropdownMenu.Item asChild>
             <Link
-              href="/workspace"
+              href="/triage"
               className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-2 text-sm text-pg-text-mute outline-none hover:bg-pg-surface-1 hover:text-pg-text-0"
             >
               <Play className="h-4 w-4" />
@@ -268,7 +270,7 @@ function ExperimentsMenu({ collapsed }: { collapsed: boolean }) {
           </DropdownMenu.Item>
           <DropdownMenu.Item asChild>
             <Link
-              href="/runs"
+              href="/traces"
               className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-2 text-sm text-pg-text-mute outline-none hover:bg-pg-surface-1 hover:text-pg-text-0"
             >
               <Database className="h-4 w-4" />

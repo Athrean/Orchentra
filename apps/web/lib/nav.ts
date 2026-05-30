@@ -4,7 +4,15 @@
  * Add a new route to a group here when shipping a new shell page —
  * the sidebar renders it and `PROTECTED_PREFIXES` auto-gates it.
  */
-export type NavIcon = 'Telescope' | 'Activity' | 'CalendarClock' | 'Workflow' | 'Settings' | 'HelpCircle'
+export type NavIcon =
+  | 'Telescope'
+  | 'Activity'
+  | 'BarChart3'
+  | 'Brain'
+  | 'CalendarClock'
+  | 'Workflow'
+  | 'Settings'
+  | 'HelpCircle'
 
 export interface NavItem {
   href: string
@@ -22,10 +30,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operations',
     items: [
-      { href: '/dashboard', label: 'Investigate', icon: 'Telescope' },
-      { href: '/runs', label: 'Runs & activity', icon: 'Activity' },
-      { href: '/crons', label: 'Schedules', icon: 'CalendarClock' },
-      { href: '/graph', label: 'Graph', icon: 'Workflow' },
+      { href: '/investigate', label: 'Investigate', icon: 'Telescope' },
+      { href: '/traces', label: 'Traces', icon: 'Activity' },
+      { href: '/usage', label: 'Usage', icon: 'BarChart3' },
+      { href: '/memory', label: 'Memory', icon: 'Brain' },
+      { href: '/evals', label: 'Evals', icon: 'CalendarClock' },
+      { href: '/detections', label: 'Detections', icon: 'Workflow' },
     ],
   },
   {
@@ -38,6 +48,17 @@ export const NAV_GROUPS: NavGroup[] = [
 
 const NAV_HREFS = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href))
 
-/** Workspace is reachable via the Investigate hero, not the rail — still gated. */
-export const PROTECTED_PREFIXES = [...NAV_HREFS, '/workspace', '/onboarding', '/account']
+/** Legacy route names stay gated while their pages redirect to the sidebar URLs. */
+export const PROTECTED_PREFIXES = [
+  ...NAV_HREFS,
+  '/investigate',
+  '/triage',
+  '/dashboard',
+  '/workspace',
+  '/runs',
+  '/graph',
+  '/crons',
+  '/onboarding',
+  '/account',
+]
 export const AUTH_PAGES = ['/login', '/signup'] as const
