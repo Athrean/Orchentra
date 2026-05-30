@@ -1,5 +1,7 @@
+import { eq } from 'drizzle-orm'
 import { db } from '../client'
 import { userInstallations } from '../schema'
+import { mergePermissions } from '../../github/permission-check'
 
 export interface InstallationUpsert {
   installationId: number
@@ -8,6 +10,15 @@ export interface InstallationUpsert {
   repositorySelection: 'all' | 'selected'
   permissions: Record<string, string>
   events: string[]
+}
+
+/** Merged GitHub App permissions across all of a user's installations (most permissive wins). */
+export async function getUserInstallationPermissions(userId: string): Promise<Record<string, string>> {
+  const rows = await db
+    .select({ permissions: userInstallations.permissions })
+    .from(userInstallations)
+    .where(eq(userInstallations.userId, userId))
+  return mergePermissions(rows.map((row) => (row.permissions ?? {}) as Record<string, string>))
 }
 
 /**

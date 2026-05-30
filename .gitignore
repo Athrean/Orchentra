@@ -48,6 +48,7 @@ UBIQUITOUS_LANGUAGE.md
 
 # Local sprint planning notes (not part of product repo)
 .claude/*.md
+handover.md
 
 # Local session state
 .orchentra/
@@ -58,6 +59,7 @@ UBIQUITOUS_LANGUAGE.md
 .agents/
 skills-lock.json
 .charlie/
+.commandcode/
 
 # Heavy media kept locally for a future animated hero bg — not committed
 back-frames

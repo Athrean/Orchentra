@@ -1,10 +1,10 @@
-import Link from 'next/link'
 import { desc, eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { Laptop } from 'lucide-react'
 import { createClient } from '../../../../lib/supabase/server'
 import { db } from '../../../../lib/db/client'
 import { cliInstalls } from '../../../../lib/db/schema'
+import { SettingsSection } from '../../../../components/pd/settings/SettingsSection'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/pd/ui/card'
 
 export const metadata = { title: 'CLI devices · Orchentra' }
@@ -23,22 +23,7 @@ export default async function SettingsDevicesPage() {
     .orderBy(desc(cliInstalls.lastSeenAt))
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-8 pb-12">
-      <header className="pt-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-pg-text-0">Settings</h1>
-        <p className="mt-1 text-sm text-pg-text-mute">Machines that ran `orchentra login` with this account.</p>
-      </header>
-
-      <nav className="flex gap-2 text-sm">
-        <Link
-          href="/settings"
-          className="rounded-[8px] px-3 py-1.5 text-pg-text-mute hover:bg-pg-surface-1 hover:text-pg-text-0"
-        >
-          Profile settings
-        </Link>
-        <span className="rounded-[8px] bg-pg-text-0 px-3 py-1.5 text-white">CLI devices</span>
-      </nav>
-
+    <SettingsSection title="CLI devices" description="Machines that ran orchentra login with this account.">
       <Card>
         <CardHeader>
           <CardTitle>Installs</CardTitle>
@@ -75,6 +60,6 @@ export default async function SettingsDevicesPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </SettingsSection>
   )
 }
