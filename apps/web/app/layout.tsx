@@ -20,14 +20,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
       <body>
         {children}
         <Toaster
-          theme="dark"
+          theme="system"
           position="bottom-right"
           toastOptions={{
             style: {
-              background: 'var(--color-darker)',
-              border: '1px solid rgb(38 38 38)',
-              color: 'var(--color-light)',
-              borderRadius: '4px',
+              background: 'var(--color-pg-surface-card)',
+              border: '1px solid var(--color-pg-hairline)',
+              color: 'var(--color-pg-text-0)',
+              borderRadius: '8px',
               fontSize: '12px',
             },
           }}

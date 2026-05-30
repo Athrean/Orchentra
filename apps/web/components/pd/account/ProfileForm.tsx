@@ -260,7 +260,7 @@ function SectionCard({
   children: React.ReactNode
 }) {
   return (
-    <div className="rounded-[12px] bg-white p-5 shadow-[0_0_0_1px_rgba(20,20,18,0.06)]">
+    <div className="rounded-[12px] bg-pg-surface-card p-5 shadow-[0_0_0_1px_rgba(20,20,18,0.06)]">
       <div className="mb-3">
         <div className="text-sm font-semibold text-pg-text-0">{title}</div>
         <div className="mt-0.5 text-xs text-pg-text-mute">{description}</div>

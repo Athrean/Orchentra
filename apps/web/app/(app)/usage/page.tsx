@@ -35,7 +35,7 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
             Repository health, workflow workload, and AI token spend for subscribed repositories.
           </p>
         </div>
-        <div className="flex rounded-[8px] bg-white p-1 shadow-[0_0_0_1px_rgba(20,20,18,0.06)]">
+        <div className="flex rounded-[8px] bg-pg-surface-card p-1 shadow-[0_0_0_1px_rgba(20,20,18,0.06)]">
           {USAGE_RANGE_OPTIONS.map((option) => (
             <Link
               key={option.value}
@@ -43,7 +43,7 @@ export default async function UsagePage({ searchParams }: UsagePageProps) {
               className={cn(
                 'rounded-[7px] px-3 py-1.5 text-xs font-medium transition-colors',
                 usage.range.value === option.value
-                  ? 'bg-pg-text-0 text-white'
+                  ? 'bg-pg-inverse text-pg-inverse-text'
                   : 'text-pg-text-mute hover:bg-pg-surface-1 hover:text-pg-text-0',
               )}
             >

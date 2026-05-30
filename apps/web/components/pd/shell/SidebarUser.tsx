@@ -74,7 +74,7 @@ export function SidebarUser({ email, fullName, avatarUrl, collapsed, onCreateTea
           align="end"
           side="right"
           sideOffset={10}
-          className="z-50 w-[212px] rounded-[12px] bg-white p-2 text-pg-text-0 shadow-[0_18px_45px_-24px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.08)]"
+          className="z-50 w-[212px] rounded-[12px] bg-pg-surface-card p-2 text-pg-text-0 shadow-[0_18px_45px_-24px_rgba(15,15,14,0.45),0_0_0_1px_rgba(20,20,18,0.08)]"
         >
           <div className="flex items-center gap-2.5 px-2 pb-3 pt-1">
             {avatar}
