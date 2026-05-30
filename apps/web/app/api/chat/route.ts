@@ -1,12 +1,14 @@
-import { eq } from 'drizzle-orm'
-import { db } from '../../../lib/db/client'
-import { profiles } from '../../../lib/db/schema'
+import { convertToModelMessages, smoothStream, stepCountIs, streamText, type UIMessage } from 'ai'
 import { createClient } from '../../../lib/supabase/server'
-import { decryptSecret } from '../../../lib/crypto'
-import { chatRequestSchema, streamFromProvider, type LlmProvider } from '../../../lib/llm'
+import { chatBodySchema } from '../../../lib/ai/chat-request'
+import { effortToProviderOptions } from '../../../lib/ai/effort'
+import { resolveChatModel } from '../../../lib/ai/provider'
+import { buildSystemPrompt } from '../../../lib/ai/system'
+import { createChatTools } from '../../../lib/ai/tools'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -14,61 +16,51 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 })
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
 
   let body: unknown
   try {
     body = await req.json()
   } catch {
-    return new Response(JSON.stringify({ error: 'invalid json' }), { status: 400 })
+    return Response.json({ error: 'invalid json' }, { status: 400 })
   }
-  const parsed = chatRequestSchema.safeParse(body)
+  const parsed = chatBodySchema.safeParse(body)
   if (!parsed.success) {
-    return new Response(JSON.stringify({ error: parsed.error.issues[0]?.message ?? 'invalid request' }), {
-      status: 400,
-    })
+    return Response.json({ error: parsed.error.issues[0]?.message ?? 'invalid request' }, { status: 400 })
   }
 
-  const [profile] = await db.select().from(profiles).where(eq(profiles.id, user.id)).limit(1)
-  if (!profile?.llmKeyEncrypted) {
-    return new Response(JSON.stringify({ error: 'no LLM key on file — set one at /account' }), { status: 412 })
-  }
-  const provider = (profile.llmProvider ?? 'anthropic') as LlmProvider
-  let apiKey: string
-  try {
-    apiKey = decryptSecret(profile.llmKeyEncrypted)
-  } catch {
-    return new Response(JSON.stringify({ error: 'failed to decrypt LLM key' }), { status: 500 })
+  const { messages, model, effort, adaptive, permissionMode, scope } = parsed.data
+
+  const resolved = await resolveChatModel(user.id, model)
+  if (!resolved.ok) {
+    if (resolved.reason === 'no-key') {
+      return Response.json({ error: 'no LLM key on file — set one in Settings > AI Providers' }, { status: 412 })
+    }
+    return Response.json({ error: 'failed to decrypt LLM key' }, { status: 500 })
   }
 
-  const encoder = new TextEncoder()
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const chunk of streamFromProvider({
-          provider,
-          apiKey,
-          messages: parsed.data.messages,
-          model: parsed.data.model,
-        })) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
-          if (chunk.type === 'done' || chunk.type === 'error') break
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'stream failed'
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: msg })}\n\n`))
-      } finally {
-        controller.close()
-      }
-    },
+  const tools = createChatTools({ userId: user.id, scope, permissionMode })
+
+  const result = streamText({
+    model: resolved.model,
+    system: buildSystemPrompt({ scope, permissionMode, toolNames: Object.keys(tools) }),
+    messages: await convertToModelMessages(messages as UIMessage[]),
+    tools,
+    providerOptions: effortToProviderOptions(resolved.provider, effort, adaptive),
+    stopWhen: stepCountIs(5),
+    experimental_transform: smoothStream(),
+    abortSignal: req.signal,
   })
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
+  return result.toUIMessageStreamResponse({
+    sendReasoning: true,
+    messageMetadata: ({ part }) => {
+      if (part.type === 'finish') {
+        return { model: resolved.modelId, totalUsage: part.totalUsage }
+      }
+      return undefined
     },
+    onError: (error) => (error instanceof Error ? error.message : 'chat failed'),
   })
 }

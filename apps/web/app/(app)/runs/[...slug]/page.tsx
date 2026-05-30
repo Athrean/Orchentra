@@ -6,7 +6,7 @@ import { RunDetailView } from '../../../../components/pd/runs/RunDetailView'
 
 export const dynamic = 'force-dynamic'
 
-// Route: /runs/<installationId>/<owner>/<repo>/<runId>
+// Route: /traces/<installationId>/<owner>/<repo>/<runId>.
 export default async function RunDetailPage({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await params
   if (slug.length !== 4) notFound()
