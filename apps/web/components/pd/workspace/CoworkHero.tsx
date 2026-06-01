@@ -54,8 +54,8 @@ export function CoworkHero({
   const isInvestigate = mode === 'investigate'
   const suggestions = isInvestigate ? INVESTIGATE_SUGGESTIONS : TRIAGE_SUGGESTIONS
   return (
-    <div className="dot-canvas relative flex h-[calc(100vh-3.5rem)] flex-col px-6 py-10">
-      <div className="mx-auto w-full max-w-3xl pt-[6vh]">
+    <div className="relative flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-10">
+      <div className="relative z-10 mx-auto w-full max-w-3xl pt-[6vh]">
         <div className="mb-3 flex items-center gap-3">
           <Sparkles className="h-7 w-7 text-[#d65f32]" strokeWidth={1.8} />
           <h1 className="font-serif text-[32px] font-semibold leading-tight tracking-normal text-pg-text-0">
@@ -96,9 +96,9 @@ export function CoworkHero({
                 key={label}
                 type="button"
                 onClick={() => onValueChange(label)}
-                className="group flex min-h-16 items-center gap-5 border-b border-pg-hairline px-3 text-left text-sm text-pg-text-0 transition-colors hover:bg-white/60"
+                className="group flex min-h-16 items-center gap-5 border-b border-pg-hairline px-3 text-left text-sm text-pg-text-0 transition-colors hover:bg-pg-surface-card/60"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-pg-hairline bg-white text-pg-text-mute shadow-[0_8px_24px_-18px_rgba(15,15,14,0.45)] transition-colors group-hover:text-pg-accent-green">
+                <span className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-pg-hairline bg-pg-surface-card text-pg-text-mute shadow-[0_8px_24px_-18px_rgba(15,15,14,0.45)] transition-colors group-hover:text-pg-accent-green">
                   <Icon className="h-4 w-4" strokeWidth={1.5} />
                 </span>
                 {label}

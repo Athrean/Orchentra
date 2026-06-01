@@ -48,7 +48,7 @@ function JobCard({ job }: { job: RunJob }) {
   const tone = statusTone(job.conclusion, job.status)
   return (
     <div
-      className={`overflow-hidden rounded-[12px] border bg-white ${
+      className={`overflow-hidden rounded-[12px] border bg-pg-surface-card ${
         job.failed ? 'border-red-500/40' : 'border-pg-hairline'
       }`}
     >

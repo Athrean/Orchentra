@@ -12,7 +12,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Tooltip
   const day = payload[0].payload
 
   return (
-    <div className="rounded-[8px] border border-pg-hairline bg-white p-2 text-xs text-pg-text-0 shadow-[0_8px_24px_-12px_rgba(20,20,19,0.2)]">
+    <div className="rounded-[8px] border border-pg-hairline bg-pg-surface-card p-2 text-xs text-pg-text-0 shadow-[0_8px_24px_-12px_rgba(20,20,19,0.2)]">
       <div>{day.day}</div>
       <div className="mt-1 text-pg-text-mute">{day.totalTokens.toLocaleString()} tokens</div>
       <div className="text-pg-text-mute">${day.estimatedCostUsd.toFixed(4)}</div>

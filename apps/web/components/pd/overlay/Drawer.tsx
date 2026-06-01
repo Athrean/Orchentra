@@ -26,7 +26,7 @@ export function Drawer({ open, onOpenChange, title, description, children }: Dra
         <Dialog.Content
           className={cn(
             'fixed top-0 right-0 z-50 flex h-screen w-[24rem] flex-col',
-            'rounded-[14px] rounded-r-none bg-white px-6 py-5 text-pg-text-0 shadow-[0_28px_70px_-32px_rgba(15,15,14,0.55),0_0_0_1px_rgba(20,20,18,0.08)]',
+            'rounded-[14px] rounded-r-none bg-pg-surface-card px-6 py-5 text-pg-text-0 shadow-[0_28px_70px_-32px_rgba(15,15,14,0.55),0_0_0_1px_rgba(20,20,18,0.08)]',
           )}
         >
           <div className="flex items-start justify-between mb-3">

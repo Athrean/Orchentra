@@ -102,7 +102,7 @@ function FilePart({ mediaType, url, filename }: { mediaType: string; url: string
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-2 rounded-[8px] border border-pg-hairline bg-white px-3 py-2 text-xs text-pg-text-0 hover:bg-pg-surface-1"
+      className="inline-flex items-center gap-2 rounded-[8px] border border-pg-hairline bg-pg-surface-card px-3 py-2 text-xs text-pg-text-0 hover:bg-pg-surface-1"
     >
       {filename ?? mediaType}
     </a>
@@ -113,7 +113,7 @@ function ToolPart({ part }: { part: ToolUIPart | DynamicToolUIPart }) {
   const name = getToolName(part)
   const done = part.state === 'output-available' || part.state === 'output-error'
   return (
-    <details className="rounded-[8px] border border-pg-hairline bg-white px-3 py-2 text-xs">
+    <details className="rounded-[8px] border border-pg-hairline bg-pg-surface-card px-3 py-2 text-xs">
       <summary className="flex cursor-pointer items-center gap-2 text-pg-text-0">
         <Wrench className="h-3.5 w-3.5 text-pg-accent-green" />
         <span className="font-mono">{name}</span>

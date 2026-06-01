@@ -199,8 +199,8 @@ export function CoworkSurface({
   }
 
   return (
-    <div className="dot-canvas flex h-[calc(100vh-3.5rem)]">
-      <div className="flex min-w-0 flex-1 flex-col">
+    <div className="relative flex h-[calc(100vh-3.5rem)] overflow-hidden">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <div className="flex-1 overflow-y-auto px-4 pt-8">
           <div className="mx-auto max-w-3xl">
             {messages.map((message) => (
@@ -235,15 +235,17 @@ export function CoworkSurface({
           </div>
         </div>
       </div>
-      <CoworkRail
-        messages={messages}
-        status={status}
-        model={model}
-        effort={effort}
-        adaptive={adaptive}
-        permissionMode={permissionMode}
-        scope={scope}
-      />
+      <div className="relative z-10 hidden lg:block">
+        <CoworkRail
+          messages={messages}
+          status={status}
+          model={model}
+          effort={effort}
+          adaptive={adaptive}
+          permissionMode={permissionMode}
+          scope={scope}
+        />
+      </div>
     </div>
   )
 }
