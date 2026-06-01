@@ -50,7 +50,7 @@ export function ApiKeysPanel({ keys }: { keys: ProjectApiKey[] }) {
       {plaintext ? (
         <div className="rounded-[8px] bg-emerald-500/10 p-4 text-sm text-emerald-800">
           <div className="font-medium">Copy this token now. It will not be shown again.</div>
-          <code className="mt-2 block overflow-x-auto rounded-[6px] bg-white px-3 py-2 text-pg-text-0">
+          <code className="mt-2 block overflow-x-auto rounded-[6px] bg-pg-surface-card px-3 py-2 text-pg-text-0">
             {plaintext}
           </code>
         </div>

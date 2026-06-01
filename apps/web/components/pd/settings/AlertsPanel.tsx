@@ -35,7 +35,7 @@ export function AlertsPanel({ rules, history }: { rules: AlertRule[]; history: A
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <div className="flex rounded-[8px] bg-white p-1 shadow-[0_0_0_1px_rgba(20,20,18,0.06)]">
+        <div className="flex rounded-[8px] bg-pg-surface-card p-1 shadow-[0_0_0_1px_rgba(20,20,18,0.06)]">
           {(['rules', 'history'] as const).map((item) => (
             <button
               key={item}
@@ -43,7 +43,7 @@ export function AlertsPanel({ rules, history }: { rules: AlertRule[]; history: A
               onClick={() => setTab(item)}
               className={
                 tab === item
-                  ? 'rounded-[7px] bg-pg-text-0 px-3 py-1.5 text-xs font-medium text-white'
+                  ? 'rounded-[7px] bg-pg-inverse px-3 py-1.5 text-xs font-medium text-pg-inverse-text'
                   : 'rounded-[7px] px-3 py-1.5 text-xs text-pg-text-mute'
               }
             >
