@@ -80,15 +80,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-pg-surface-0: #10110f;
-    --color-pg-surface-1: #181715;
-    --color-pg-surface-2: #252320;
+    /* ── Charcoal shade system — near-black ground, layered greys ── */
+    --color-pg-surface-0: #0a0a0a; /* Canvas — the brand's only ground */
+    --color-pg-surface-1: #1a1c20; /* Canvas Soft — hovered nav items + tooltips */
+    --color-pg-surface-2: #363a3f; /* Canvas Mid — nested surfaces + code mockups */
     --color-pg-text-0: #faf9f5;
     --color-pg-text-mute: #a09d96;
-    --color-pg-grid-dot: #24231f;
-    --color-pg-hairline: #34312c;
-    --color-pg-surface-card: #181715;
-    --color-pg-sidebar: #10110f;
+    --color-pg-grid-dot: #212327;
+    --color-pg-hairline: #212327; /* Hairline — 1px dividers on dark surfaces */
+    --color-pg-surface-card: #191919; /* Canvas Card — charcoal fill inside cards */
+    --color-pg-sidebar: #0a0a0a;
     --color-pg-inverse: #faf9f5;
     --color-pg-inverse-hover: #ffffff;
     --color-pg-inverse-text: #141413;
@@ -146,8 +147,8 @@
 
   .dot-canvas {
     background-image:
-      radial-gradient(circle at 18% 10%, rgba(37, 35, 32, 0.48), transparent 30rem),
-      linear-gradient(180deg, #121411 0%, var(--color-pg-surface-0) 100%);
+      radial-gradient(circle at 18% 10%, rgba(26, 28, 32, 0.5), transparent 30rem),
+      linear-gradient(180deg, #141518 0%, var(--color-pg-surface-0) 100%);
   }
 
   .brand-mark {
