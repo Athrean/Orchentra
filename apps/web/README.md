@@ -7,7 +7,7 @@ Marketing landing + product surface for Orchentra. Next.js 15 + Supabase Auth + 
 - Next.js 15 (App Router) + React 19
 - Supabase (Auth + Postgres + RLS) — free tier
 - Drizzle ORM (postgres-js driver, lazy-init)
-- Tailwind v4
+- Tailwind v4 — system-aware dark mode via `prefers-color-scheme`, charcoal shade tokens in `app/globals.css`
 - shadcn/ui-style primitives under `components/pd/ui/*` (CVA + Radix)
 - Sonner toasts, framer-motion (marketing only), lucide-react
 
@@ -17,7 +17,8 @@ Marketing landing + product surface for Orchentra. Next.js 15 + Supabase Auth + 
 app/
   (marketing)/   — implicit; public landing at /
   (auth)/        — /login, /signup (force-dynamic)
-  (app)/         — /dashboard, /account, /account/devices (force-dynamic, gated)
+  (app)/         — /investigate, /triage, /traces, /detections, /memory, /usage, /dashboard, /runs, /settings, /account (force-dynamic, gated)
+  api/chat       — streaming agent endpoint (Vercel AI SDK) for the Cowork surface
   auth/callback  — OAuth code exchange
 lib/
   supabase/      — browser / server / middleware clients + nav allowlist
@@ -88,11 +89,15 @@ bun run test       # bun test (crypto round-trip etc.)
 - **Auth** — login modal + `/login`, `/signup` (email + GitHub + Google); `/auth/callback` exchanges the OAuth code and discovers existing GitHub App installs while the token is fresh.
 - **Onboarding** — `/onboarding` wizard: welcome → install the Orchentra GitHub App → select repos. Resumable; skips the install step when an app is already installed on the user's account/org.
 - **Dashboard** — `/dashboard` aggregates GitHub Actions runs for subscribed repos into stat tiles, executions + MTTR charts, and failing-workflows / quiet-repos sections, with an empty state when no repos are tracked.
+- **Cowork** — `/investigate` + `/triage`: a streaming chat (`/api/chat`, Vercel AI SDK) with a model + effort picker, permission modes (ask / act), repo scope, file upload + voice input, a grounded system prompt, and GitHub write-back tools. `/triage` seeds the first turn from `?q=`.
+- **Memory** — `/memory`: saved learnings, recurring failures, and episodes, so context does not have to be re-explained across runs.
+- **Detections & Traces** — `/detections` charts execution signals over a selectable range; `/traces` + `/runs` read the execution graph as a projection.
 - **Account** — `/account` (profile edit + LLM key paste with AES-256-GCM encryption), `/account/devices` (CLI install list).
+- **UI** — system-aware dark mode (`prefers-color-scheme`) on a charcoal shade system (Canvas `#0a0a0a` ground, layered greys, `#212327` hairline dividers); light + dark share one `--color-pg-*` token set.
 
 ## What's not built yet
 
-The execution-graph surfaces (`/executions`, exec graph view, cross-execution diff) are owned by `packages/db` + `apps/server`; the web will read them as a projection in a follow-up slice. The schema here (`profiles`, `cli_installs`, `user_installations`, `repo_subscriptions`, `onboarding_state`) is scoped to Supabase Auth and intentionally does **not** redefine the canonical graph tables.
+The `/graph` and `/evals` routes are still feature-landing placeholders, and cross-execution diff is not wired yet. The web now reads the canonical execution graph as a projection (`lib/graph/*` — brain, detections, runs) but does **not** redefine those tables; its own schema (`profiles`, `cli_installs`, `user_installations`, `repo_subscriptions`, `onboarding_state`, `user_memories`, …) stays scoped to Supabase Auth + RLS.
 
 ## Security notes
 
