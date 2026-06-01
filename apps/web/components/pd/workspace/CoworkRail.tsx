@@ -121,7 +121,7 @@ export function CoworkRail({
             {files.map((file, index) => (
               <li
                 key={`${file.filename}-${index}`}
-                className="flex items-center gap-2 rounded-[8px] border border-pg-hairline bg-white px-2.5 py-1.5 text-xs text-pg-text-0"
+                className="flex items-center gap-2 rounded-[8px] border border-pg-hairline bg-pg-surface-card px-2.5 py-1.5 text-xs text-pg-text-0"
               >
                 {file.mediaType.startsWith('image/') ? (
                   <ImageIcon className="h-3.5 w-3.5 shrink-0 text-pg-text-mute" />
