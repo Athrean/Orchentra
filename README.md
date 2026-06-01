@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="apps/web/public/green-logo.png" alt="Orchentra" width="480">
+<img src="apps/web/public/green-logo.svg" alt="Orchentra" width="120">
 
 ### Contract-first DevOps operations runtime.
 
@@ -81,7 +81,7 @@ Cross-execution diff (`/dashboard/diff`) lines up two executions for postmortems
 
 **Server.** Hono backend — webhooks (`workflow_run`, Sentry), cron tick, agent loop with multi-provider LLM (per-org config), Postgres-backed job queue with retry + dead-letter, idempotent two-tier dedup.
 
-**Web (product surface).** Next.js — marketing, auth, onboarding (GitHub App install + repo selection), and a repo-insights dashboard, plus the execution-graph views (live agent timeline over WebSocket, kind-agnostic tree, node detail, cross-execution diff). A standalone product with its own write paths; it connects to the CLI/server only through the shared Postgres, never by importing their packages.
+**Web (product surface).** Next.js — marketing, auth, onboarding (GitHub App install + repo selection), and a repo-insights dashboard. The **Cowork** agent surface (`/investigate` + `/triage`) is a streaming chat (`/api/chat`) with a model/effort picker, permission modes, repo scope, file + voice input, a grounded system prompt, and GitHub write-back tools. Alongside it: **Memory** (saved learnings, recurring failures, episodes), **Detections**, and **Traces / Runs** that read the execution graph as a projection. System-aware dark mode (`prefers-color-scheme`) on a charcoal shade system. A standalone product with its own write paths; it connects to the CLI/server only through the shared Postgres, never by importing their packages.
 
 ## Investigation tools
 
