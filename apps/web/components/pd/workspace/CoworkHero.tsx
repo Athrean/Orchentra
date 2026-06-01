@@ -54,8 +54,8 @@ export function CoworkHero({
   const isInvestigate = mode === 'investigate'
   const suggestions = isInvestigate ? INVESTIGATE_SUGGESTIONS : TRIAGE_SUGGESTIONS
   return (
-    <div className="dot-canvas relative flex h-[calc(100vh-3.5rem)] flex-col px-6 py-10">
-      <div className="mx-auto w-full max-w-3xl pt-[6vh]">
+    <div className="relative flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden px-6 py-10">
+      <div className="relative z-10 mx-auto w-full max-w-3xl pt-[6vh]">
         <div className="mb-3 flex items-center gap-3">
           <Sparkles className="h-7 w-7 text-[#d65f32]" strokeWidth={1.8} />
           <h1 className="font-serif text-[32px] font-semibold leading-tight tracking-normal text-pg-text-0">
