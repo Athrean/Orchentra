@@ -1,0 +1,27 @@
+apps/web/tests/teams-roles.test.ts
+  ai_agent 1-10,12-18,20-24,26,28-32,34,36-40,42,44-48,50,52-56,59-73,76-79
+apps/web/components/pd/shell/CreateTeamModal.tsx
+  ai_agent 4,8,16-19,23-25,33,35-45,49-69,72-73,75
+apps/web/components/marketing-v2/NavBar.tsx
+  ai_agent 49,74,76,89,91
+apps/web/components/marketing-v2/Hero.tsx
+  ai_agent 3,8-9,12-15,18-21,33,37-38,40-47,49-54,56-58,60-122,128-171
+apps/web/lib/teams/roles.ts
+  ai_agent 1-39
+apps/web/app/(app)/teams/actions.ts
+  ai_agent 1-35
+apps/web/lib/db/schema.ts
+  ai_agent 187-220,250-253
+apps/web/components/marketing-v2/ASCIIBackground.tsx
+  ai_agent 13-19
+apps/web/components/marketing-v2/Footer.tsx
+  ai_agent 11-12,17,19-20,93,96
+apps/web/supabase/migrations/0006_teams.sql
+  ai_agent 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c42cfc6228712d420560db685defc583774cb58",
+  "prompts": {}
+}
