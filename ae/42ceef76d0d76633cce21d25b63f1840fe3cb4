@@ -1,0 +1,19 @@
+.gitignore
+  s_1c92a13962dcd5::t_f2957be9e0711b 63-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "ae42ceef76d0d76633cce21d25b63f1840fe3cb4",
+  "prompts": {},
+  "sessions": {
+    "s_1c92a13962dcd5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4eb0d30-69f6-4c0c-adff-2ec5a4c71bd0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
