@@ -2,11 +2,3 @@
 // that turns distilled runbooks into context an external agent can load.
 export type { Episode, EpisodeOutcome, Runbook, Skill } from './types'
 export { exportSkillMd, runbookToSkill } from './export-skill'
-export { createDrizzleBrainAdapter } from './drizzle-adapter'
-export type {
-  DrizzleBrainAdapter,
-  DrizzleEpisodeRow,
-  DrizzleRunbookRow,
-  DrizzleListEpisodesFilter,
-  DrizzleListRunbooksFilter,
-} from './drizzle-adapter'
