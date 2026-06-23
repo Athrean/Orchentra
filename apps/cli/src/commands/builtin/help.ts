@@ -1,11 +1,8 @@
-import { operations } from '@orchentra/operations'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import type { CommandRegistry } from '../registry'
 import type { UiCardSection, UiKVRow } from '../ui-output'
-import { categoryForOp, OP_CATEGORIES } from '../../op-commands/help-categorizer'
-import { renderOpDetail } from '../../op-commands/help-detail'
 
-const TABS = ['All', 'Core', 'Workspace', 'Server', 'Auth', 'Tools', ...OP_CATEGORIES] as const
+const TABS = ['All', 'Core', 'Workspace', 'Auth', 'Tools'] as const
 type TabName = (typeof TABS)[number]
 
 const BUILTIN_CATEGORY: Record<string, TabName> = {
@@ -23,15 +20,13 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   issue: 'Workspace',
   session: 'Workspace',
   resume: 'Workspace',
-  incident: 'Server',
-  triage: 'Server',
-  summarize: 'Server',
-  retry: 'Server',
-  explain: 'Server',
-  graph: 'Server',
-  why: 'Server',
+  scan: 'Workspace',
+  init: 'Workspace',
+  skills: 'Workspace',
+  restart: 'Workspace',
   login: 'Auth',
   logout: 'Auth',
+  reauth: 'Auth',
   'auth-status': 'Auth',
   mcp: 'Tools',
   doctor: 'Tools',
@@ -41,8 +36,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
 
 function categoryFor(name: string): TabName | null {
   if (name in BUILTIN_CATEGORY) return BUILTIN_CATEGORY[name]
-  const opCat = categoryForOp(name)
-  return opCat === 'Unknown' ? null : opCat
+  return null
 }
 
 export class HelpCommand implements CommandHandler {
@@ -50,7 +44,7 @@ export class HelpCommand implements CommandHandler {
     name: 'help',
     aliases: ['?', 'h'],
     summary: 'List slash commands grouped by category',
-    argumentHint: '[all|core|workspace|server|auth|tools]',
+    argumentHint: '[all|core|workspace|auth|tools]',
   }
 
   private registry: CommandRegistry
@@ -60,18 +54,6 @@ export class HelpCommand implements CommandHandler {
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    // /help <op_id> → render the per-op param detail block.
-    const first = args[0]
-    if (first && !TABS.some((t) => t.toLowerCase() === first.toLowerCase())) {
-      const op = operations.find((o) => o.id === first)
-      if (op) {
-        const detail = renderOpDetail(op as Parameters<typeof renderOpDetail>[0])
-        if (ctx.ui) ctx.ui({ kind: 'text', text: detail })
-        else process.stdout.write(detail + '\n')
-        return true
-      }
-    }
-
     const initial = pickTab(args[0])
     const initialIdx = TABS.indexOf(initial)
     const specs = this.registry.allSpecs()
@@ -107,7 +89,7 @@ function pickTab(arg?: string): TabName {
 
 function sectionsFor(tab: TabName, specs: readonly SlashCommandSpec[]): UiCardSection[] {
   if (tab === 'All') {
-    const groups = ['Core', 'Workspace', 'Server', 'Auth', 'Tools', ...OP_CATEGORIES] as const
+    const groups = ['Core', 'Workspace', 'Auth', 'Tools'] as const
     return groups.map((g) => ({ title: g, rows: rowsForCategory(specs, g) })).filter((s) => s.rows.length > 0)
   }
   return [{ rows: rowsForCategory(specs, tab) }]

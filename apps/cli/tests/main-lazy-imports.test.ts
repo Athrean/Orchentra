@@ -19,20 +19,12 @@ const MAIN = join(REPO_ROOT, 'apps', 'cli', 'src', 'main.ts')
 
 const HEAVY_MODULES = [
   './repl',
-  './commands/run-investigate',
-  './commands/run-triage',
-  './commands/run-fix',
   './commands/session-replay',
   './commands/doctor',
-  './commands/watch',
   './commands/mcp',
-  './commands/mcp-serve',
   './commands/run-auth',
   './commands/run-reauth',
   './commands/run-init',
-  './commands/run-graph',
-  './commands/run-why',
-  './op-commands/run-op-verb',
 ]
 
 describe('lazy verb imports — source contract', () => {

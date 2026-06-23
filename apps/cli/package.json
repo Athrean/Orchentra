@@ -17,8 +17,6 @@
     "@orchentra/cli-api": "workspace:*",
     "@orchentra/cli-core": "workspace:*",
     "@orchentra/cli-tools": "workspace:*",
-    "@orchentra/mcp-server": "workspace:*",
-    "@orchentra/operations": "workspace:*",
     "ink": "^7",
     "react": "^19",
     "zod": "^3.23.8",
