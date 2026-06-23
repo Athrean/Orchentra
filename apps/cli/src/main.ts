@@ -48,39 +48,6 @@ async function main(argv: string[]): Promise<number> {
       process.stdout.write(`Resuming session: ${action.sessionPath}\n`)
       return 0
 
-    case 'investigate': {
-      const { runInvestigate } = await import('./commands/run-investigate')
-      return runInvestigate({
-        spec: action.spec,
-        model: action.model,
-        permissionMode: action.permissionMode,
-        cwd: process.cwd(),
-      })
-    }
-
-    case 'triage': {
-      const { runTriage } = await import('./commands/run-triage')
-      return runTriage({
-        spec: action.spec,
-        model: action.model,
-        permissionMode: action.permissionMode,
-        cwd: process.cwd(),
-      })
-    }
-
-    case 'fix': {
-      const { runFix } = await import('./commands/run-fix')
-      return runFix({
-        spec: action.spec,
-        model: action.model,
-        permissionMode: action.permissionMode,
-        cwd: process.cwd(),
-        title: action.title,
-        base: action.base,
-        autoMerge: action.autoMerge,
-      })
-    }
-
     case 'session-replay': {
       const { runSessionReplay } = await import('./commands/session-replay')
       const { getSessionsDirForWorkspace } = await import('./session-config')
@@ -95,19 +62,10 @@ async function main(argv: string[]): Promise<number> {
       return runDoctor()
     }
 
-    case 'watch': {
-      const { runWatch } = await import('./commands/watch')
-      return runWatch({ repo: action.repo, intervalMs: action.intervalMs })
-    }
-
     case 'mcp': {
       if (action.sub === 'list') {
         const { runMcpList } = await import('./commands/mcp')
         return runMcpList(process.cwd())
-      }
-      if (action.sub === 'serve') {
-        const { runMcpServe } = await import('./commands/mcp-serve')
-        return runMcpServe({ printToolsJson: action.printToolsJson })
       }
       const { runMcpTest } = await import('./commands/mcp')
       return runMcpTest(action.name, process.cwd())
@@ -131,29 +89,6 @@ async function main(argv: string[]): Promise<number> {
     case 'auth-status': {
       const { runAuthStatus } = await import('./commands/run-auth')
       return runAuthStatus()
-    }
-
-    case 'graph': {
-      const { runGraph } = await import('./commands/run-graph')
-      return runGraph({
-        executionId: action.executionId,
-        cwd: process.cwd(),
-        outputFormat: action.outputFormat,
-      })
-    }
-
-    case 'why': {
-      const { runWhy } = await import('./commands/run-why')
-      return runWhy({
-        nodeId: action.nodeId,
-        cwd: process.cwd(),
-        outputFormat: action.outputFormat,
-      })
-    }
-
-    case 'op': {
-      const { runOpVerb } = await import('./op-commands/run-op-verb')
-      return runOpVerb(action.opId, action.argv)
     }
   }
 }
