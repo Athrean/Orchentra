@@ -2,35 +2,38 @@
 
 This is the only doc that defines **what we're building** and **how to build it**. Read it before starting any new feature. Update it intentionally when the plan changes — do not let it rot.
 
-Last refresh: 2026-05-26.
+Last refresh: 2026-06-23.
 
 ---
 
 ## 1. Vision
 
-**Orchentra is a contract-first DevOps operations runtime.** Every capability we ship is an `Operation` — a typed, schema-validated unit of work — exposed over two surfaces from the same registry: a CLI for humans, and an MCP server for external agents (Claude Desktop, Cursor, Windsurf). The execution graph (`executions` + `nodes`) records every invocation regardless of which surface called it. Trust-boundary enforcement (org/repo scoping, approval gates) lives in the runtime, not in any individual caller.
+**Orchentra is a token-lean, write-less coding-agent CLI.** It is a terminal-native AI coding agent whose wedge is **efficiency**: it spends fewer tokens — input _and_ output — and writes less, higher-quality code than the alternatives, and makes the savings **visible**. Four built-in capabilities deliver this: terse output mode, context budgeting + reversible compression, lean-code review discipline, and persistent cross-session memory. Build order: `docs/ORCHENTRA_PLAN.md`.
 
-We are **not** a "PR fixer," not a Datadog/Grafana replacement, and not a SaaS-only tool. The wedge is open-source, terminal-native UX plus a portable MCP server so the same DevOps operations show up wherever the engineer already works. The web is a **standalone product surface** — its own auth, onboarding, GitHub App install, and dashboards, with its own write paths — that owns user-scoped tables in the shared Postgres and reads the execution graph as a projection. It is well-connected to the CLI/MCP (same database), not dependent on them.
+The contract-first **DevOps operations runtime** — every privileged action as a typed, schema-validated `Operation` exposed identically over CLI and an MCP server, recorded in the execution graph (`executions` + `nodes`) behind a trust gate — is now **one capability among many**, not the identity. It remains the model for how _any_ remote/privileged action is surfaced and audited.
+
+We are **not** a Datadog/Grafana replacement and not a SaaS-only tool. The CLI is the product. The web is a **standalone surface** (own auth, onboarding, dashboards) connected only through the shared Postgres — never an import dependency on the CLI/server.
 
 ### What a daily surface looks like
 
-| Surface                                | Status             | Mechanism                                                                           |
-| -------------------------------------- | ------------------ | ----------------------------------------------------------------------------------- |
-| CLI invocation of operations           | shipped            | `orchentra <verb>` against the operations registry                                  |
-| MCP server (stdio) for external agents | shipped (Phase 1A) | `orchentra mcp serve` exposes operations as MCP tools                               |
-| MCP server (HTTP) + hosted             | future             | HTTP transport in `packages/mcp-server`; hosted Worker scaffold removed in #cleanup |
-| CI failure triage                      | shipped            | `kind='ci_failure'` from GitHub `workflow_run` webhook                              |
-| On-call alerting                       | future             | Sentry/Datadog ingest dropped in #cleanup until real demand                         |
-| Cron / scheduled ops                   | shipped            | `kind='cron'` driven by `cronSpecs` table                                           |
-| Deploy gating / canary                 | future             | not yet wired                                                                       |
-| Cross-execution diff (postmortem, A/B) | shipped (Phase 4)  | web projection of graph                                                             |
-| Runbook automation                     | partial            | promote skills to first-class graph nodes                                           |
+| Capability                                                          | Status              | Mechanism                                                                             |
+| ------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------- |
+| **Terse output mode** (output-token saving)                         | planned (Phase 1)   | `/terse` verbosity ladder → system-prompt injection + statusline badge                |
+| **Context budgeting + reversible compression** (input-token saving) | planned (Phase 2–3) | tool-output hooks + `cli-core` compaction live-zone + a `retrieve_original` op        |
+| **Lean-code review** (write-less / quality)                         | planned (Phase 4)   | bloat lens grafted into `code-review`/`simplify` skills + a `debt` op                 |
+| **Persistent session memory**                                       | planned (Phase 5)   | progressive-disclosure MCP tools over `executions`/`nodes` + `@orchentra/brain`       |
+| Agent loop + general tool surface                                   | shipped             | `cli-core` `ConversationRuntime` + `cli-tools` (bash/file/glob/grep/web + MCP client) |
+| DevOps operations (CI triage, PR/issue/workflow ops)                | shipped             | `@orchentra/operations` over CLI + MCP, trust-gated, recorded in the execution graph  |
+| MCP server (stdio) for external agents                              | shipped             | `orchentra mcp serve` exposes the operations registry as MCP tools                    |
+| Web dashboard (read-only projection)                                | shipped             | standalone surface reading the execution graph                                        |
 
-Every new feature must answer: **what `Operation` does it add (or extend), and what `execution.kind` / node type does it produce?** If it doesn't fit the operations contract or the graph, we don't build it.
+Every new feature must answer: **does it save tokens (input or output), make the agent write less / better code, or extend the operations contract?** If it does none of those, we don't build it. Terseness and compression are always cosmetic/transport concerns — they never alter a safety-relevant or trust-boundary message.
 
 ---
 
 ## 2. Roadmap status
+
+**Active roadmap lives in `docs/ORCHENTRA_PLAN.md`** (the efficiency-layer build order). The phase table below is the **shipped DevOps foundation** the efficiency layer builds on — kept for provenance, not active work.
 
 **No phase rewrites a working module.** Phase gating: if verification fails, the next phase doesn't start.
 
@@ -46,9 +49,9 @@ Every new feature must answer: **what `Operation` does it add (or extend), and w
 
 Side-shipped (outside the phase plan but landed): per-org LLM config (#226), test architecture refactor (#220–#224, mock-github-service / mock-openrouter-service / JobQueue DI), live agent investigation timeline (#225), CLI parity sweep Tier 1 (#406–#414) — error boundary, reasoning shimmer, markdown LRU cache, alt+enter, external editor, theme registry, fingerprinted sessions, hooks system — and Tier 2 (#415–#418) — solarized + high-contrast themes, slash aliases, multi-line input modal, tool-row dim. Web product surface (#422) — standalone marketing → login modal → onboarding (GitHub App install + repo selection) → repo-insights dashboard, on a local Supabase stack with Supabase-native migrations.
 
-### Next up — Phase 5 (gated on usage)
+### Next up — the Efficiency Layer
 
-Phases 1 through 4 are shipped. Phase 5 — "pick the next adapter from real usage data" — has no scheduled deliverable. It opens once we have enough usage data to point at a specific second integration (deploy gating, runbook automation, or a new webhook source). Until then, parallel polish tracks (CLI UX, TUI aesthetic, doc refresh) ship independently and do not gate the roadmap.
+The DevOps phases (1–4) are shipped; the old adapter-expansion "Phase 5" is parked (still gated on usage). The **active** work is the efficiency layer: terse output → context budgeting + compression → lean-code review → persistent memory, ordered in `docs/ORCHENTRA_PLAN.md`. It ships as **skills / agents / hooks** grafted into the existing `cli-core` / `cli-tools` / `operations` / `brain` packages — no new runtime packages.
 
 ### Verification per phase
 
@@ -180,16 +183,20 @@ The CLI is the product surface. These patterns come from studying a reference op
 
 ## 7. Module map
 
-| Module                  | Lives in                                                         | Notes                                                                                                                                                                                                                                                                  |
-| ----------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Operations Contract     | `packages/operations` (`@orchentra/operations`)                  | single typed `Operation` shape (Zod input/output, trust class, handler). Source of truth for every CLI verb and MCP tool.                                                                                                                                              |
-| MCP Server              | `packages/mcp-server` (`@orchentra/mcp-server`)                  | stdio + HTTP transports; exposes the operations registry as MCP tools. Bearer auth + `x-orchentra-org` enforced on HTTP. Hosted Worker scaffold was removed in the cleanup audit.                                                                                      |
-| Execution Engine        | `apps/server/src/agent/runner.ts`, `agent-event-bus.ts`          | LLM-loop today; needs node-typed dispatch beyond tool_calls                                                                                                                                                                                                            |
-| Decision Engine         | `apps/server/src/agent/{prompts,tool-registry}.ts`               | branches on `execution.kind`; rationale is logged to `nodes.argsJson`                                                                                                                                                                                                  |
-| Observability Substrate | `apps/server/src/db/`, `nodes` table                             | event-tied; future `query(filter) → events` API                                                                                                                                                                                                                        |
-| CLI Surface             | `apps/cli/src/commands/*`                                        | rich (triage, investigate, fix, brief, watch, login, `mcp serve`, `graph`, `why`).                                                                                                                                                                                     |
-| Web Surface             | `apps/web/app/`, `apps/web/supabase/`                            | standalone product: marketing, auth, onboarding (GitHub App install), repo-insights dashboard. Owns user-scoped tables (Supabase auth + RLS); dashboard reads the execution graph as a projection. Local Supabase stack; migrations in `apps/web/supabase/migrations`. |
-| Integration Adapters    | `apps/server/src/routes/webhooks.ts`, `apps/server/src/github/*` | one adapter = one webhook source = one `kind`. GitHub is the only adapter today.                                                                                                                                                                                       |
+| Module                  | Lives in                                                         | Notes                                                                                                                                                                                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Operations Contract     | `packages/operations` (`@orchentra/operations`)                  | single typed `Operation` shape (Zod input/output, trust class, handler). Source of truth for every CLI verb and MCP tool.                                                                                                                                                      |
+| MCP Server              | `packages/mcp-server` (`@orchentra/mcp-server`)                  | stdio + HTTP transports; exposes the operations registry as MCP tools. Bearer auth + `x-orchentra-org` enforced on HTTP. Hosted Worker scaffold was removed in the cleanup audit.                                                                                              |
+| Execution Engine        | `apps/server/src/agent/runner.ts`, `agent-event-bus.ts`          | LLM-loop today; needs node-typed dispatch beyond tool_calls                                                                                                                                                                                                                    |
+| Decision Engine         | `apps/server/src/agent/{prompts,tool-registry}.ts`               | branches on `execution.kind`; rationale is logged to `nodes.argsJson`                                                                                                                                                                                                          |
+| Observability Substrate | `apps/server/src/db/`, `nodes` table                             | event-tied; future `query(filter) → events` API                                                                                                                                                                                                                                |
+| CLI Surface             | `apps/cli/src/commands/*`                                        | rich (triage, investigate, fix, brief, watch, login, `mcp serve`, `graph`, `why`).                                                                                                                                                                                             |
+| Web Surface             | `apps/web/app/`, `apps/web/supabase/`                            | standalone product: marketing, auth, onboarding (GitHub App install), repo-insights dashboard. Owns user-scoped tables (Supabase auth + RLS); dashboard reads the execution graph as a projection. Local Supabase stack; migrations in `apps/web/supabase/migrations`.         |
+| Integration Adapters    | `apps/server/src/routes/webhooks.ts`, `apps/server/src/github/*` | one adapter = one webhook source = one `kind`. GitHub is the only adapter today.                                                                                                                                                                                               |
+| Agent Runtime (CLI)     | `packages/cli-core/src/runtime`                                  | `ConversationRuntime` — the CLI agent loop (stateless, step lifecycle, budget, spans) + provider abstraction, compaction, hooks, permissions, skills, session replay, `worker-boot`. Distinct from the server's incident `runner.ts`. **Where context compression grafts in.** |
+| Agent Tools (CLI)       | `packages/cli-tools/src`                                         | general tool surface (bash/file/glob/grep/web/task/agent/ask-user) + an MCP **client** (`mcp/`, stdio+http) + `file-ops`. **Where tool-output budgeting + coding-mode hooks graft in.**                                                                                        |
+| Efficiency Layer        | skills + `.orchentra/hooks.json` + grafts into the above         | terse mode, context budgeting/compression, lean-code review, session memory. **No new package.** Ordered in `docs/ORCHENTRA_PLAN.md`.                                                                                                                                          |
+| Memory                  | `packages/brain` (`@orchentra/brain`)                            | episode/runbook store. Session-memory capability layers progressive-disclosure retrieval over `executions`/`nodes` here; no second store.                                                                                                                                      |
 
 ### Module design rule
 
@@ -223,6 +230,10 @@ Anchored to Claude Code's aesthetic. Borderless cards. Pill-style active tab. In
 - Theme picker first-run flow — separate CLI polish track. The picker itself ships (`/theme`) but a guided first-run prompt does not.
 - User-defined themes via `~/.config/orchentra/themes/<name>.json` — built-in registry ships 6 themes; JSON drop-ins gated on demand.
 - Hook hot-reload + timeout policy — hooks today reload only on CLI restart and have no timeout; revisit when an operator hits the friction.
+- Multi-host adapter sprawl (Cursor/Windsurf/Cline rule-file copies) — Orchentra is terminal + MCP only; the efficiency skills do not ship per-host adapters.
+- Autonomous "autopilot" fix loops with a $/token ledger — gated on a real unattended use case.
+- ML-model-based prose compression (HF/ONNX dependency) — too heavyweight for CLI scope; use grammar-based + type-routed compression instead.
+- Importance-score history dropping for compression — a known dead end (it busts provider prefix caching). Compress only the live zone (newest turn/tool result); never rewrite or reorder sent history.
 
 If a request lands in this list, reply with the policy + offer the smallest valid path forward (e.g., "out of plan; the closest in-plan move is X").
 
@@ -230,6 +241,10 @@ If a request lands in this list, reply with the policy + offer the smallest vali
 
 ## 10. Decisions worth remembering
 
+- **Re-centered on efficiency (2026-06-23).** Identity moved from "contract-first DevOps operations runtime" to **"token-lean, write-less coding-agent CLI."** DevOps operations are now one capability among many. Build order in `docs/ORCHENTRA_PLAN.md`.
+- **Efficiency layer is skills / agents / hooks only.** No new runtime packages; runtime logic grafts into `cli-core` / `cli-tools` / `operations` / `brain`.
+- **Compression is reversible, validated, and live-zone-only.** Never drop or reorder already-sent history (busts prefix caching); always recoverable via a `retrieve_original` op; only kept when a real tokenizer confirms a shrink. Trust-boundary / approval messages are never compressed.
+- **The CLI ships zero-DB.** `apps/cli` has no database import; the agent loop, tools, and sessions persist to local files (JSONL). Memory is **local-first** via `brain`'s adapter (`LocalFileBrainAdapter` default); Postgres/Drizzle/Supabase are **optional**, scoped to the server/team/web DevOps capability — never on the CLI's critical path. Deleting that capability is out of scope (it's the execution-graph moat); just keep it off the CLI's path.
 - **Schema migration is real, aliases are temporary.** `incidents` and `toolCalls` re-export `executions` and `nodes` for one release. Drop the aliases when no caller imports them.
 - **Web is a standalone product, not a CLI dependency.** It ships its own auth, onboarding, GitHub App install, repo subscriptions, and dashboards — with its own write paths. It connects to the CLI/server only through the shared Supabase Postgres, never by importing their packages. The dashboard still reads the execution graph as a projection.
 - **Web DB = Supabase-native migrations + Drizzle query layer.** `apps/web/supabase/migrations/*.sql` (RLS, triggers on `auth.users`) is the source of truth; Drizzle (`lib/db/schema.ts`) is the typed query layer, not a migration generator. Local dev runs the full Supabase stack in Docker (`bun db:start`); `bun db:push` forwards migrations to the remote. Web-owned tables (`profiles`, `cli_installs`, `user_installations`, `repo_subscriptions`, `onboarding_state`, `provider_credentials`, `project_api_keys`, `alert_rules`, `alert_history`, `notification_prefs`, `user_memories`) are separate from the server's org-keyed `github_installations`.
