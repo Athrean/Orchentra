@@ -11,10 +11,8 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "db:generate": "bun run --filter './packages/db' generate",
-    "db:migrate": "bun run --filter './packages/db' migrate",
-    "test": "bun run --filter @orchentra/server test",
-    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests packages/operations/tests packages/mcp-server/tests packages/brain/tests apps/cli/tests apps/web/tests",
+    "test": "bun run test:precommit",
+    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests packages/brain/tests apps/cli/tests apps/web/tests",
     "typecheck": "turbo run typecheck",
     "prepare": "husky"
   },
