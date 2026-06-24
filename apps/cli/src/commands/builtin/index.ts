@@ -28,6 +28,10 @@ import { SkillsCommand } from './skills-adapter'
 import { RestartCommand } from './restart'
 import { ScanSlashCommand } from './scan-slash'
 import { InitSlashCommand } from './init-slash'
+import { SearchCommand } from './search'
+import { ReviewCommand } from './review'
+import { PlanCommand } from './plan'
+import { ThinkCommand } from './think'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -72,6 +76,10 @@ export function createBuiltinRegistry(): CommandRegistry {
   // /init wraps the install orchestrator inside the REPL so users don't need
   // to exit and re-launch to onboard.
   registry.register(new InitSlashCommand())
+  registry.register(new SearchCommand())
+  registry.register(new ReviewCommand())
+  registry.register(new PlanCommand())
+  registry.register(new ThinkCommand())
 
   return registry
 }
