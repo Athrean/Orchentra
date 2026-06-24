@@ -1,22 +1,30 @@
 <div align="center">
 
-<img src="apps/web/public/green-logo.svg" alt="Orchentra" width="120">
+<img src="apps/web/public/stripped-black.png" alt="Orchentra" width="120">
 
-### Contract-first DevOps operations runtime.
+# Orchentra
 
-Open-source, terminal-native. Every capability is a typed `Operation` exposed over two surfaces from one registry: a CLI for humans and an MCP server for external agents (Claude Desktop, Cursor, Windsurf). Trust-boundary enforcement lives in the runtime, not the caller.
+### The engineering memory layer for repeated CI, deploy, and production failures.
 
-[**What is Orchentra**](#what-is-orchentra) · [**Quick start**](#quick-start) · [**Status**](#status) · [**How it works**](#how-it-works) · [**Getting started**](#getting-started) · [**CLI**](#cli) · [**Self-hosting**](#self-hosting)
+Orchentra watches the debugging trail, remembers how your team fixed failures before, and gives agents the context to explain and safely fix the same class of issue next time.
+
+[**Why**](#why-orchentra) · [**Quick start**](#quick-start) · [**What ships today**](#what-ships-today) · [**CLI**](#cli) · [**Memory loop**](#memory-loop) · [**Status**](#status)
 
 </div>
 
 ---
 
-## What is Orchentra
+## Why Orchentra
 
-Orchentra is a contract-first DevOps operations runtime. Every capability — fetching workflow logs, posting a PR comment, searching code — is a typed `Operation` (Zod-validated input/output, declared trust class, single handler) registered once and exposed over two surfaces: the `orchentra` CLI for humans, and an MCP server for external agents like Claude Desktop, Cursor, and Windsurf. Both call into the same registry, so the same operations show up wherever the engineer already works. Webhooks (CI failures, Sentry alerts, cron ticks) record every run as an **execution** with a tree of **nodes**. The web is a standalone product surface — onboarding, GitHub App install, repo-insights dashboard — that reads that graph as a projection.
+Engineering teams do not need more dashboards. They need memory.
 
-This is **not** a Datadog/Grafana replacement, a "PR fixer" SaaS, or yet another alerting product. The wedge is the operations contract, the graph, and the terminal.
+Every failed deploy, broken workflow, flaky test, rollback, and fix PR creates useful operational knowledge. Most teams throw that knowledge away after the incident is resolved. Orchentra captures the trail, extracts reusable patterns, and turns those patterns into context and executable actions for agents.
+
+The wedge is narrow on purpose:
+
+> A GitHub Actions deploy fails. Orchentra inspects the logs, finds similar historical failures, explains the likely cause, and proposes or opens the fix PR.
+
+This is not a Datadog replacement, generic incident-management suite, or generic coding assistant. The product is the company brain for engineering operations.
 
 ## Quick start
 
@@ -24,160 +32,85 @@ This is **not** a Datadog/Grafana replacement, a "PR fixer" SaaS, or yet another
 git clone https://github.com/Athrean/Orchentra.git
 cd Orchentra
 bun install
-orchentra mcp serve   # stdio MCP server, ready to wire into an MCP client
+
+bun run --cwd apps/cli start
 ```
 
-To wire the stdio server into an MCP client, add an entry to its `mcpServers` config that runs `orchentra mcp serve`. See your client's docs for the exact config-file location:
-
-- Claude Desktop — `claude_desktop_config.json` <!-- TODO: link once docs page lands -->
-- Cursor — `~/.cursor/mcp.json` <!-- TODO: link once docs page lands -->
-- Windsurf — MCP settings panel <!-- TODO: link once docs page lands -->
-
-An HTTP transport behind bearer auth (Phase 1B, shipped) makes the same operations reachable from a hosted endpoint.
-
-## Status
-
-| Phase | Description                                                        | Status              |
-| ----- | ------------------------------------------------------------------ | ------------------- |
-| 1     | `executions` + `nodes` schema (generalize from `incidents`)        | shipped             |
-| 1A    | Operations contract + stdio MCP server (`orchentra mcp serve`)     | shipped (#295)      |
-| 1B    | HTTP MCP transport + bearer auth + hosted Worker scaffold          | shipped (#298)      |
-| 2     | Execution kinds: Sentry `alert` + `cron`                           | shipped             |
-| 3     | `orchentra graph <executionId>` + `orchentra why <nodeId>`         | shipped (#306–#310) |
-| 4     | Web becomes read-only projection + cross-execution diff            | shipped (#235–#240) |
-| 5     | Next adapter (deploy gating, runbook automation) — gated on demand | future              |
-
-Side-shipped: per-org LLM config (multi-provider), live agent investigation timeline, CLI Pro/Max OAuth on macOS (Keychain auto-detect), in-TUI login + model picker, theme registry (6 built-in palettes incl. solarized + WCAG-AAA high-contrast), pre/post tool-use hooks (drop-in `.orchentra/hooks.json`), multi-line input modal, per-workspace fingerprinted sessions, slash-command aliases.
-
-## How it works
-
-```
-Trigger arrives
-  ├── GitHub workflow_run webhook   → execution.kind = 'ci_failure'
-  ├── Sentry alert webhook           → execution.kind = 'alert'
-  └── Cron tick                       → execution.kind = 'cron'
-        │
-        ▼
-  Agent loop spawns nodes
-   ├── tool_call:  fetch logs, read files, list commits, search code
-   ├── tool_call:  pattern memory lookup
-   ├── decision:   root-cause hypothesis + confidence
-   └── writeback:  PR comment, check run, fix patch
-        │
-        ▼
-  Same graph rendered in both surfaces
-   ├── CLI:  orchentra graph <id>   →  ASCII tree
-   ├── CLI:  orchentra why <nodeId> →  inputs + rationale
-   └── Web:  /dashboard/exec/[id]   →  live timeline + node detail
-```
-
-Cross-execution diff (`/dashboard/diff`) lines up two executions for postmortems and A/B comparisons.
-
-## Surfaces
-
-**CLI (primary).** Interactive Ink TUI — REPL, slash commands (`/login`, `/doctor`, `/graph`, `/why`, `/issue`, `/pr`, `/model`, `/theme`, `/skills`, …), short aliases (`/t`, `/sum`, `/h`, `/cls`, …), arrow-key model + theme + repo pickers, in-TUI Anthropic OAuth login, multi-line input modal that activates at ≥5 wrapped rows, `ctrl+x ctrl+e` to edit current input in `$EDITOR`, native `--output-format json` for diagnostic verbs, resume model, per-workspace fingerprinted sessions, optional pre/post tool-use hooks via `.orchentra/hooks.json`.
-
-**MCP server.** `orchentra mcp serve` exposes the operations registry to external MCP clients (Claude Desktop, Cursor, Windsurf) over stdio. Same operations the CLI verbs hit, validated by the same Zod schemas, with trust-class enforcement at dispatch. An HTTP transport + bearer auth + hosted Cloudflare Worker scaffold ship as Phase 1B.
-
-**Server.** Hono backend — webhooks (`workflow_run`, Sentry), cron tick, agent loop with multi-provider LLM (per-org config), Postgres-backed job queue with retry + dead-letter, idempotent two-tier dedup.
-
-**Web (product surface).** Next.js — marketing, auth, onboarding (GitHub App install + repo selection), and a repo-insights dashboard. The **Cowork** agent surface (`/investigate` + `/triage`) is a streaming chat (`/api/chat`) with a model/effort picker, permission modes, repo scope, file + voice input, a grounded system prompt, and GitHub write-back tools. Alongside it: **Memory** (saved learnings, recurring failures, episodes), **Detections**, and **Traces / Runs** that read the execution graph as a projection. System-aware dark mode (`prefers-color-scheme`) on a charcoal shade system. A standalone product with its own write paths; it connects to the CLI/server only through the shared Postgres, never by importing their packages.
-
-## Investigation tools
-
-The agent has typed tools for: workflow logs, commit + diff inspection, file reads, PR/issue listing, code search, pattern memory across past executions. Skills (`SKILL.md` files) ship reusable prompts as first-class slash commands.
-
-## Tech stack
-
-| Layer    | Technology                                                                     |
-| -------- | ------------------------------------------------------------------------------ |
-| Runtime  | [Bun](https://bun.sh) 1.3                                                      |
-| Backend  | [Hono](https://hono.dev)                                                       |
-| Frontend | [Next.js](https://nextjs.org) 15 (App Router)                                  |
-| Database | PostgreSQL 17 + [Drizzle ORM](https://orm.drizzle.team)                        |
-| AI       | [Vercel AI SDK](https://sdk.vercel.ai) — OpenRouter / Anthropic OAuth / OpenAI |
-| GitHub   | [Octokit](https://octokit.github.io/rest.js)                                   |
-| TUI      | [Ink](https://github.com/vadimdemedes/ink) + React                             |
-| Styling  | [Tailwind CSS](https://tailwindcss.com) 4 + Framer Motion                      |
-| Monorepo | Bun workspaces + [Turborepo](https://turbo.build)                              |
-
-## Getting started
-
-### Prerequisites
-
-- [Bun](https://bun.sh) >= 1.3
-- PostgreSQL >= 17 (or Docker)
-- GitHub OAuth app credentials
-- An LLM credential — OpenRouter key, Anthropic API key, or Claude Pro/Max subscription (CLI only, macOS auto-detect)
-
-### Install
+Useful commands:
 
 ```bash
-git clone https://github.com/Athrean/Orchentra.git
-cd Orchentra
-bun install
+orchentra                         # interactive TUI
+orchentra "<prompt>"              # one-shot prompt
+orchentra doctor                  # environment preflight
+orchentra init                    # scaffold local .orchentra config
+orchentra resume latest           # resume the latest workspace session
 ```
 
-### Configure
+Bring your own model key. The CLI supports Anthropic, OpenAI-compatible providers, OpenRouter, Gemini, xAI, and DashScope through the provider layer.
 
-```bash
-cp orchentra.yml.example orchentra.yml
-```
+## What ships today
 
-Edit with your credentials:
-
-```yaml
-github:
-  webhook_secret: 'your-webhook-secret'
-  token: 'ghp_xxx'
-  oauth:
-    client_id: 'your-github-client-id'
-    client_secret: 'your-github-client-secret'
-    redirect_uri: 'http://localhost:3001/auth/github/callback'
-  repos:
-    - 'my-org/api'
-    - 'my-org/frontend'
-
-llm:
-  api_key: 'sk-or-xxx'
-  model: 'anthropic/claude-sonnet-4-5'
-```
-
-### Database + run
-
-```bash
-bun run db:generate
-bun run db:migrate
-bun run dev
-```
-
-Server: `http://localhost:3001` · Web: `http://localhost:3000`.
+- **Terminal-native agent CLI** — streaming Ink TUI, collapsible reasoning, command palette, model picker, theme picker, multi-line input modal, and `$EDITOR` handoff.
+- **General-purpose tools** — bash, file read/write/edit, glob, grep, web fetch/search, notebooks, todos, tasks, ask-user, and agent/task helpers.
+- **MCP client** — connect external MCP servers and register their tools into the CLI runtime.
+- **Session persistence** — per-workspace JSONL sessions with resume and replay.
+- **Permission system** — mode ladder, pattern rules, remembered approvals, workspace scoping checks, and hook-based pre/post tool gates.
+- **Provider effort control** — `/effort` and `/think` map low/medium/high reasoning effort into provider request options.
+- **Engineering-memory substrate** — `packages/brain` has episodes, patterns, runbooks, embedding-based similarity, and pattern context plumbing.
+- **Web product surface** — standalone Next.js/Supabase app for onboarding, repo insight surfaces, memory, detections, and settings.
 
 ## CLI
 
+### Shell verbs
+
 ```bash
-orchentra                                       # interactive TUI
-orchentra doctor                                # environment preflight (auth, DB, repo)
-orchentra mcp serve                             # stdio MCP server exposing the operations registry
-orchentra graph <executionId>                   # ASCII tree of nodes for an execution
-orchentra graph <executionId> --output-format json
-orchentra why <nodeId>                          # walk parent chain, print inputs + rationale
-orchentra why <nodeId> --output-format json
+orchentra
+orchentra "<prompt>"
+orchentra doctor
+orchentra init
+orchentra mcp list
+orchentra mcp test <server>
+orchentra session replay <id>
+orchentra login | logout | reauth | auth-status
 ```
 
 ### REPL slash commands
 
-Core: `/help` (`/h`, `/?`), `/status` (`/st`), `/clear` (`/cls`), `/exit` (`/q`), `/model` (`/m`), `/theme` (`/th`), `/cost`, `/compact`, `/diff` (`/d`), `/version` (`/v`), `/restart`, `/config` (`/cfg`).
+Core:
 
-Workspace: `/init`, `/repos` (`/repo`), `/triage` (`/t`), `/summarize` (`/sum`, `/summary`), `/clean` (`/cleanup`), `/scan`, `/commit`, `/pr`, `/issue` (`/iss`), `/graph`, `/why`.
+```text
+/help (/h /?)   /status (/st)   /clear (/cls)   /exit (/q)
+/compact        /model (/m)     /effort         /think
+/plan           /cost           /version (/v)   /restart
+```
 
-Auth: `/login` (`/li`), `/logout` (`/lo`), `/auth` (`/whoami`), `/reauth`.
+Workspace:
 
-Tools: `/skills`, `/mcp`, `/doctor` (`/doc`), `/session`, `/resume`, `/export`, `/env`.
+```text
+/init           /search         /scan           /review
+/diff (/d)      /commit         /pr             /issue (/iss)
+/session        /resume         /skills
+```
 
-### Pre/post tool-use hooks
+Tools and auth:
 
-Drop a `.orchentra/hooks.json` into a repo to fire shell hooks around every tool call inside that workspace's REPL session:
+```text
+/mcp            /permissions    /doctor (/doc)  /config (/cfg)
+/export         /login (/li)    /logout (/lo)   /reauth
+/auth-status (/whoami)
+```
+
+## Skills and hooks
+
+Skills are local `SKILL.md` files:
+
+```text
+.orchentra/skills/<name>/SKILL.md
+```
+
+Restart the CLI, or run `/skills reload`, then invoke the skill as `/<name>`.
+
+Hooks are repo-local shell gates:
 
 ```json
 {
@@ -189,65 +122,75 @@ Drop a `.orchentra/hooks.json` into a repo to fire shell hooks around every tool
 }
 ```
 
-Pre-hook non-zero exit blocks the tool call with stderr surfaced to the user as the reason. Post-hook stdout becomes a user-visible annotation. Hooks reload only on CLI restart by design.
+A pre-hook non-zero exit blocks the tool call and surfaces stderr as the reason. Hooks reload on CLI restart.
 
-- **Anthropic auth:** Pro/Max subscription auto-detect on macOS, env precedence, opt-out, troubleshooting. <!-- TODO: link once docs/cli/anthropic-auth.md lands -->
-- **Skills:** frontmatter schema, discovery precedence, argument substitution, allowed-tools syntax, hot reload. <!-- TODO: link once docs/cli/skills.md lands -->
-- **Examples:** [`examples/skills/`](examples/skills/) — drop-in `SKILL.md` samples (`/incident`, `/deploy`).
+## Memory loop
 
-**macOS Pro/Max users:** if you already use Claude Code, just run `orchentra` — your subscription is picked up from the system Keychain on first request, no extra login needed.
+The Phase 5 loop is the product wedge:
 
-Skills quick start: drop a `SKILL.md` at `<repo>/.orchentra/skills/<name>/SKILL.md`, restart the CLI (or `/skills reload`), invoke `/<name>`.
-
-## Self-hosting
-
-```bash
-docker compose up -d
+```text
+CI/deploy failure
+  → normalize failure signature
+  → retrieve similar episodes/patterns/runbooks
+  → explain likely cause
+  → propose or open a fix PR
+  → record whether the fix was useful
+  → strengthen future retrieval
 ```
 
-Starts PostgreSQL and the Orchentra server. Mount your `orchentra.yml` — compose handles the rest.
+Current state:
+
+- failure ingestion and execution graph concepts are established;
+- `packages/brain` contains the local memory primitives;
+- CLI sessions and tool trails are replayable;
+- the missing Phase 5 work is first-class failure records, automatic memory extraction, retrieval feedback, and `/debug`.
+
+## Status
+
+| Area                                               | Status  |
+| -------------------------------------------------- | ------- |
+| CLI/TUI runtime                                    | shipped |
+| General-purpose tools                              | shipped |
+| MCP client                                         | shipped |
+| Sessions, resume, replay                           | shipped |
+| Permissions, hooks, `/permissions` UX              | shipped |
+| `/effort`, `/think`, `/plan`, `/search`, `/review` | shipped |
+| Web onboarding/settings/memory surfaces            | partial |
+| Incident memory records + failure signatures       | next    |
+| Auto-extract memory after turns                    | next    |
+| `/debug latest failed deploy` loop                 | next    |
+| Auto-compact and budget hard stops                 | next    |
 
 ## Project structure
 
-```
+```text
 Orchentra/
 ├── apps/
-│   ├── cli/                 # Ink TUI — REPL, slash commands, skills, OAuth flows
-│   ├── server/              # Hono backend — webhooks, cron, agent, queue, integrations
-│   └── web/                 # Next.js — marketing, auth, onboarding (GitHub App), dashboards; supabase/ stack + migrations
+│   ├── cli/                 # TUI, slash commands, auth, sessions
+│   └── web/                 # standalone Next.js/Supabase product surface
 ├── packages/
-│   ├── operations/          # @orchentra/operations — typed Operation contract + registry
-│   ├── mcp-server/          # @orchentra/mcp-server — stdio MCP transport over the registry
-│   ├── cli-core/            # Skill loader, permissions, runtime primitives
-│   ├── cli-api/             # Provider clients (Anthropic OAuth, GitHub, Gemini), keychain
-│   ├── cli-tools/           # Built-in tool registry + MCP transport
-│   ├── core/                # Shared schemas, types (executions/nodes), utilities
-│   ├── db/                  # Drizzle schema, migrations, client
-│   ├── config-eslint/       # Shared ESLint config
-│   └── config-typescript/   # Shared TypeScript config
-├── docs/cli/                # CLI guides (Anthropic auth, skills authoring)
-├── examples/skills/         # Sample SKILL.md files
-├── docker-compose.yml
-├── orchentra.yml.example
-└── CLAUDE.md                # Vision, roadmap, principles (canonical)
+│   ├── brain/               # episodes, patterns, runbooks, memory matching
+│   ├── cli-api/             # provider clients, GitHub clients, auth helpers
+│   ├── cli-core/            # conversation runtime, sessions, permissions, skills
+│   ├── cli-tools/           # built-in tools + MCP client
+│   ├── config-eslint/
+│   └── config-typescript/
+└── README.md
 ```
 
 ## Development
 
 ```bash
-bun run dev          # All apps in dev mode
-bun run build        # Production build
-bun run typecheck    # Type checking across all packages
-bun run lint         # Lint all packages
-bun run test         # Server tests
-bun run test:precommit  # CLI stack tests (cli-core, cli-api, cli-tools, cli)
-bun run format       # Prettier
+bun install
+bun run typecheck
+bun run lint
+bun run test:precommit
 ```
 
 ---
 
 <div align="center">
 
-Built by [Athrean](https://github.com/Athrean) · Vision + roadmap in [`CLAUDE.md`](CLAUDE.md)
+Built by [Athrean](https://github.com/Athrean). Depth before breadth: memory for repeated engineering failures.
 
 </div>
