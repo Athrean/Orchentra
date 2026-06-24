@@ -5,9 +5,9 @@ interface DiagnosticsInput {
   command?: string
 }
 
-// simplify: default to `tsc --noEmit`; the agent can pass a `command` override
-// (e.g. an eslint invocation). A real LSP client is deferred until a non-TS
-// workspace needs it — a shell command covers the value here.
+// Default to `tsc --noEmit`; the agent can pass a `command` override (e.g. an
+// eslint invocation). A real LSP client is deferred until a non-TS workspace
+// needs it — a shell command covers the value here.
 const DEFAULT_COMMAND = 'tsc --noEmit'
 
 export const diagnosticsTool: ToolDefinition = {
