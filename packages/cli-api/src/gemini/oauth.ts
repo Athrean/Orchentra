@@ -4,7 +4,7 @@ import { getCredential, saveCredential, clearCredential, type StoredCredential }
 const GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
-// Installed-app client ID published in open-source CLI's open-source tree. OK to ship
+// Installed-app client ID published in Google's open-source CLI tree. OK to ship
 // per Google's installed-app guidance (client secret is not a secret for public clients).
 const DEFAULT_CLIENT_ID = '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com'
 const DEFAULT_CLIENT_SECRET = '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'
