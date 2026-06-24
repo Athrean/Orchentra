@@ -15,6 +15,7 @@ function makeSession(): SessionControl {
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
     getPermissionMode: () => 'workspace-write',
+    setPermissionMode: (m) => m,
     getSessionId: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     getTurns: () => 7,
     getUsage: () => usage,
