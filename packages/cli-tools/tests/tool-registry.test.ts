@@ -141,6 +141,11 @@ describe('BUILTIN_TOOLS', () => {
     }
   })
 
+  test('registers the diagnostics tool', () => {
+    const names = new Set(BUILTIN_TOOLS.map((t) => t.name))
+    expect(names.has('diagnostics')).toBe(true)
+  })
+
   test('each tool has required fields', () => {
     for (const tool of BUILTIN_TOOLS) {
       expect(tool.name.length).toBeGreaterThan(0)
