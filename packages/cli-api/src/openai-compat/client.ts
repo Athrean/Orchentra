@@ -59,7 +59,7 @@ export class OpenAiCompatProvider implements Provider {
 
   async *stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
     const url = `${this.baseUrl}/chat/completions`
-    const body = buildRequestBody(request)
+    const body = buildRequestBody(request, supportsReasoningEffort(this.config, request.model))
 
     const response = await fetch(url, {
       method: 'POST',
@@ -153,7 +153,7 @@ export class OpenAiCompatProvider implements Provider {
   }
 }
 
-function buildRequestBody(request: ProviderRequest): Record<string, unknown> {
+function buildRequestBody(request: ProviderRequest, includeReasoningEffort = false): Record<string, unknown> {
   const messages: OpenAiMessage[] = []
 
   if (request.systemStatic || request.systemDynamic) {
@@ -177,11 +177,27 @@ function buildRequestBody(request: ProviderRequest): Record<string, unknown> {
     body.max_tokens = request.maxOutputTokens
   }
 
+  if (includeReasoningEffort && request.effort) {
+    body.reasoning_effort = request.effort
+  }
+
   if (request.tools.length > 0) {
     body.tools = request.tools.map(convertTool)
   }
 
   return body
+}
+
+function supportsReasoningEffort(config: OpenAiCompatConfig, model: string): boolean {
+  if (config.providerName !== 'OpenAI') return false
+  const lower = model.toLowerCase()
+  return (
+    lower.startsWith('o1') ||
+    lower.startsWith('o3') ||
+    lower.startsWith('o4') ||
+    lower.startsWith('gpt-5') ||
+    lower.includes('reasoning')
+  )
 }
 
 export function convertMessage(msg: ChatMessage): OpenAiMessage {

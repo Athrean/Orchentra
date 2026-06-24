@@ -26,6 +26,7 @@ import { ModelPickerCard } from './components/ModelPickerCard'
 import { RepoPickerCard } from './components/RepoPickerCard'
 import { LoginPickerCard } from './components/LoginPickerCard'
 import { ThemePicker } from './components/ThemePicker'
+import { CommandPalette } from './components/CommandPalette'
 import { setActiveRepo } from '../session-config'
 import { loadActiveTheme, saveActiveTheme } from './theme-registry'
 import type { BannerOptions } from '../render/banner'
@@ -511,6 +512,11 @@ export function Tui(props: TuiProps): React.ReactElement {
         return dispatch({ type: 'collapsible/toggle-last' })
       }
 
+      if (key.ctrl && input === 'k') {
+        dispatch({ type: 'flow/start', flow: { kind: 'command-palette' } })
+        return
+      }
+
       if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
         dispatch({
           type: 'card/open',
@@ -528,11 +534,6 @@ export function Tui(props: TuiProps): React.ReactElement {
       if (key.ctrl && input === 'u') {
         const next = cur.buffer.slice(cur.cursor)
         return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
-      }
-
-      if (key.ctrl && input === 'k') {
-        const next = cur.buffer.slice(0, cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
       }
 
       if (key.ctrl && input === 'w') {
@@ -742,6 +743,21 @@ export function Tui(props: TuiProps): React.ReactElement {
             }}
           />
         ) : null}
+        {state.activeFlow?.kind === 'command-palette' ? (
+          <CommandPalette
+            registry={registry}
+            onPick={(command) => {
+              const cur = stateRef.current
+              const insert = `${command} `
+              const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
+              dispatch({ type: 'flow/end' })
+              dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
+            }}
+            onCancel={() => {
+              dispatch({ type: 'flow/end' })
+            }}
+          />
+        ) : null}
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
         {showSuggestions ? <Suggestions state={state.suggestions} width={suggestionsWidth} /> : null}
         {isMultilineModal ? (
@@ -782,7 +798,6 @@ const SHORTCUT_SECTIONS = [
       { key: 'enter', value: 'submit' },
       { key: 'shift+enter / alt+enter', value: 'newline (alt is a fallback for terminals that swallow shift+enter)' },
       { key: 'ctrl+u', value: 'delete to start of line' },
-      { key: 'ctrl+k', value: 'delete to end of line' },
       { key: 'ctrl+w', value: 'delete previous word' },
       { key: 'alt+← / →', value: 'jump cursor to previous / next word' },
       { key: '↑ / ↓', value: 'history (or move cursor in multi-line)' },
@@ -805,6 +820,7 @@ const SHORTCUT_SECTIONS = [
     title: 'Discovery',
     rows: [
       { key: '/', value: 'slash command picker' },
+      { key: 'ctrl+k', value: 'command palette' },
       { key: '@', value: 'file path picker' },
       { key: '!', value: 'shell shortcut' },
       { key: '?', value: 'this help (when buffer is empty)' },

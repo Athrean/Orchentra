@@ -166,6 +166,17 @@ describe('AnthropicProvider', () => {
     expect(finish).toMatchObject({ kind: 'finish', stopReason: 'end_turn' })
   })
 
+  test('sends Anthropic thinking budget when provided', async () => {
+    mockServer([{ body: successSseFrame() }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ effort: 'medium', thinkingTokenBudget: 4096 }))
+
+    const { body } = lastRequest()
+    expect(body.thinking).toEqual({ type: 'enabled', budget_tokens: 4096 })
+    expect(body.max_tokens).toBe(5120)
+  })
+
   test('streams tool-use events', async () => {
     const sseStream = [
       sseFrame('message_start', { type: 'message_start', message: { usage: { input_tokens: 5, output_tokens: 0 } } }),

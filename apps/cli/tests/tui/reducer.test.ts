@@ -32,19 +32,19 @@ describe('tui reducer', () => {
     expect(s.history).toEqual(['hello', 'world'])
   })
 
-  test('mode/cycle wraps through every mode', () => {
-    let s = base()
-    expect(s.mode).toBe('prompt')
-    s = reducer(s, { type: 'mode/cycle' })
-    expect(s.mode).toBe('workspace-write')
-    s = reducer(s, { type: 'mode/cycle' })
+  test('mode/cycle wraps through the Shift+Tab permission ladder', () => {
+    let s = initialState({ model: 'claude-sonnet-4-20250514', mode: 'read-only' })
     expect(s.mode).toBe('read-only')
     s = reducer(s, { type: 'mode/cycle' })
-    expect(s.mode).toBe('allow')
+    expect(s.mode).toBe('workspace-write')
     s = reducer(s, { type: 'mode/cycle' })
     expect(s.mode).toBe('danger-full-access')
     s = reducer(s, { type: 'mode/cycle' })
     expect(s.mode).toBe('prompt')
+    s = reducer(s, { type: 'mode/cycle' })
+    expect(s.mode).toBe('allow')
+    s = reducer(s, { type: 'mode/cycle' })
+    expect(s.mode).toBe('read-only')
   })
 
   test('suggestions move wraps and respects empty state', () => {

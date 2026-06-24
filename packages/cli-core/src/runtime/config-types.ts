@@ -1,3 +1,5 @@
+import type { EffortTier } from './provider'
+
 export type ConfigSource = 'user' | 'project' | 'local'
 
 export interface ConfigEntry {
@@ -30,6 +32,7 @@ export interface RuntimeFeatureConfig {
   hooks: RuntimeHookConfig
   model: string | undefined
   aliases: Record<string, string>
+  effort: EffortTier
   permissionMode: ResolvedPermissionMode | undefined
   permissionRules: RuntimePermissionRuleConfig
   memory: MemoryFeatureConfig

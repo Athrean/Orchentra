@@ -119,9 +119,9 @@ function renderCost(usage: UsageTotals, model: string): string | null {
 function formatMode(mode: PermissionMode): string {
   switch (mode) {
     case 'allow':
-      return 'allow ⚠'
+      return 'allow ⚠ skip permissions'
     case 'danger-full-access':
-      return 'danger ⚠'
+      return 'danger-full-access ⚠'
     default:
       return mode
   }

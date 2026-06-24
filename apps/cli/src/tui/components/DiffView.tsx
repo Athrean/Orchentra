@@ -6,7 +6,7 @@ export interface DiffViewProps {
   readonly maxLines?: number
 }
 
-type DiffLineKind = 'add' | 'del' | 'context' | 'hunk' | 'meta'
+type DiffLineKind = 'add' | 'del' | 'context' | 'hunk' | 'meta' | 'file'
 
 interface DiffLine {
   readonly kind: DiffLineKind
@@ -37,6 +37,7 @@ export function looksLikeDiff(text: string): boolean {
 }
 
 export function classifyDiffLine(line: string): DiffLine {
+  if (line.startsWith('diff --git ')) return { kind: 'file', text: line }
   if (line.startsWith('@@')) return { kind: 'hunk', text: line }
   if (line.startsWith('+++') || line.startsWith('---')) return { kind: 'meta', text: line }
   if (line.startsWith('+')) return { kind: 'add', text: line }
@@ -63,19 +64,28 @@ export function DiffView(props: DiffViewProps): React.ReactElement {
 
 function DiffRow({ line }: { readonly line: DiffLine }): React.ReactElement {
   switch (line.kind) {
+    case 'file':
+      return <Text color="magenta">{`file ${formatGitFileHeader(line.text)}`}</Text>
     case 'add':
-      return <Text color="green">{line.text}</Text>
+      return <Text color="green">{`add  ${line.text}`}</Text>
     case 'del':
-      return <Text color="red">{line.text}</Text>
+      return <Text color="red">{`del  ${line.text}`}</Text>
     case 'hunk':
       return (
         <Text color="cyan" dimColor>
-          {line.text}
+          {`hunk ${line.text}`}
         </Text>
       )
     case 'meta':
-      return <Text dimColor>{line.text}</Text>
+      return <Text dimColor>{`meta ${line.text}`}</Text>
     case 'context':
-      return <Text>{line.text}</Text>
+      return <Text>{`     ${line.text}`}</Text>
   }
+}
+
+function formatGitFileHeader(line: string): string {
+  const match = /^diff --git a\/(.+) b\/(.+)$/.exec(line)
+  if (!match) return line
+  const [, from, to] = match
+  return from === to ? from : `${from} → ${to}`
 }
