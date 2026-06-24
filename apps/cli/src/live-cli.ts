@@ -157,6 +157,15 @@ export class LiveCli implements SessionControl {
     return effort
   }
 
+  getPlanMode(): boolean {
+    return this.sharedState.planMode
+  }
+
+  setPlanMode(enabled: boolean): boolean {
+    this.sharedState.planMode = enabled
+    return enabled
+  }
+
   setEventSink(sink: RuntimeEventSink | null): void {
     this.eventSink = sink
   }

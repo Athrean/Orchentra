@@ -24,6 +24,8 @@ export interface SessionControl {
   listStoredPermissionRules?(): readonly StoredPermissionRule[]
   getEffort?(): EffortTier
   setEffort?(effort: EffortTier): EffortTier
+  getPlanMode?(): boolean
+  setPlanMode?(enabled: boolean): boolean
   clearHistory(): void
   forceCompact(): void
 }
