@@ -1,0 +1,29 @@
+apps/cli/tests/mcp-serve.test.ts
+  27be1972cf29b313 139,141-158
+packages/operations/src/ops/index.ts
+  27be1972cf29b313 9-13,16,24-29
+packages/mcp-server/tests/stdio-integration.test.ts
+  27be1972cf29b313 85,90-107
+packages/operations/tests/operations-array.test.ts
+  27be1972cf29b313 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9c4aff56f43781fe7c70c793f6ab331bab898f4c",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 83,
+      "total_deletions": 20,
+      "accepted_lines": 83,
+      "overriden_lines": 0
+    }
+  }
+}

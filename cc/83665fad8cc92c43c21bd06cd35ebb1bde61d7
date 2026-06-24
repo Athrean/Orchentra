@@ -1,0 +1,25 @@
+packages/operations/src/ops/github/get-commit-changes.ts
+  27be1972cf29b313 6-9,44,50-51
+packages/operations/tests/get-commit-changes.test.ts
+  27be1972cf29b313 105-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cc83665fad8cc92c43c21bd06cd35ebb1bde61d7",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 41,
+      "total_deletions": 1,
+      "accepted_lines": 41,
+      "overriden_lines": 0
+    }
+  }
+}

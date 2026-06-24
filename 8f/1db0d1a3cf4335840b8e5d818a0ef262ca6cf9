@@ -1,0 +1,27 @@
+packages/cli-core/src/memory/service.ts
+  11f55c4d5827686f 1-66
+packages/cli-core/src/memory/index.ts
+  11f55c4d5827686f 18-19
+packages/cli-core/tests/service.test.ts
+  11f55c4d5827686f 1-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "8f1db0d1a3cf4335840b8e5d818a0ef262ca6cf9",
+  "prompts": {
+    "11f55c4d5827686f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f405a06f-a0ee-4a52-9bf7-4370cf405373",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 19,
+      "accepted_lines": 257,
+      "overriden_lines": 0
+    }
+  }
+}

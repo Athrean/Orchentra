@@ -1,0 +1,27 @@
+apps/cli/src/args.ts
+  27be1972cf29b313 34,96-101
+apps/cli/src/main.ts
+  27be1972cf29b313 15,111-113
+apps/cli/tests/args-subcommands.test.ts
+  27be1972cf29b313 90-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a1070f1d460b964880e3bf8755851926d589494d",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 7,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    }
+  }
+}

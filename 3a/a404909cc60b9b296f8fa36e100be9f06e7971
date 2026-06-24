@@ -1,0 +1,41 @@
+apps/cli/src/main.ts
+  c9f414a07c567e1e 6-8,57-65,67-75,77-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "3aa404909cc60b9b296f8fa36e100be9f06e7971",
+  "prompts": {
+    "88a6b20b575ac950": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49d4fc01-4084-4cfa-81cc-944a102d8eb6",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 18,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "c9f414a07c567e1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ed6b901-b10b-4dd9-b23a-c67508d4a8e9",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 373,
+      "total_deletions": 129,
+      "accepted_lines": 373,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}

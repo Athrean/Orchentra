@@ -1,0 +1,27 @@
+apps/web/components/marketing/Container.tsx
+  b1d5c5b8db40de23 1-2,4-5
+apps/web/components/marketing/SpikeMark.tsx
+  b1d5c5b8db40de23 2-7
+apps/web/components/marketing/TopNav.tsx
+  b1d5c5b8db40de23 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7b6c9ab7401035ccbc28bc9920f40576a1aa25ac",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 173,
+      "total_deletions": 2,
+      "accepted_lines": 55,
+      "overriden_lines": 2
+    }
+  }
+}

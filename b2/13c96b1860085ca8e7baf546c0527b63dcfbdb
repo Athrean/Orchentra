@@ -1,0 +1,29 @@
+apps/cli/src/repl.ts
+  b1d5c5b8db40de23 14-15,84-89
+apps/cli/src/render/welcome-tips.tsx
+  b1d5c5b8db40de23 1-86
+apps/cli/src/render/first-run.ts
+  b1d5c5b8db40de23 1-24
+turbo.json
+  b1d5c5b8db40de23 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b213c96b1860085ca8e7baf546c0527b63dcfbdb",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 246,
+      "total_deletions": 236,
+      "accepted_lines": 817,
+      "overriden_lines": 0
+    }
+  }
+}

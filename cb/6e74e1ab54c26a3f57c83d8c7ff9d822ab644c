@@ -1,0 +1,11 @@
+apps/cli/src/login/state-machine.ts
+  ai_agent 1-75
+apps/cli/tests/login/state-machine.test.ts
+  ai_agent 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "cb6e74e1ab54c26a3f57c83d8c7ff9d822ab644c",
+  "prompts": {}
+}

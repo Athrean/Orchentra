@@ -1,0 +1,15 @@
+apps/server/tests/repo-install-merge.test.ts
+  ai_agent 1-46
+apps/server/src/queries/installations.ts
+  ai_agent 1-16
+apps/server/src/routes/repos.ts
+  ai_agent 6-7,40,43,48
+apps/server/src/lib/repo-install-merge.ts
+  ai_agent 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "792dce6917574c0fd159b28673c59e5ccf0f6387",
+  "prompts": {}
+}

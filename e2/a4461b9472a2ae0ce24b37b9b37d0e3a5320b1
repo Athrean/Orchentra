@@ -1,0 +1,39 @@
+apps/web/components/dashboard/IncidentOverview.tsx
+  a2d76ef7221de50e 1-82
+apps/web/components/dashboard/IncidentSkeleton.tsx
+  a2d76ef7221de50e 1-42
+apps/web/components/dashboard/IncidentsDashboard.tsx
+  a2d76ef7221de50e 3-4,8,12-15
+apps/web/components/dashboard/IncidentActions.tsx
+  a2d76ef7221de50e 1-210
+apps/web/components/dashboard/IncidentDetailPanel.tsx
+  a2d76ef7221de50e 1-183
+apps/web/components/dashboard/IncidentDetailBody.tsx
+  a2d76ef7221de50e 1-91
+apps/web/components/dashboard/incidents.utils.ts
+  a2d76ef7221de50e 2-90
+apps/web/lib/hooks/useSummarize.ts
+  a2d76ef7221de50e 1-73
+apps/web/components/dashboard/IncidentDetailPrimitives.tsx
+  a2d76ef7221de50e 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "e2a4461b9472a2ae0ce24b37b9b37d0e3a5320b1",
+  "prompts": {
+    "a2d76ef7221de50e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "851c2aa9-b5d0-460c-a4fd-ba564a749157",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1327,
+      "total_deletions": 1051,
+      "accepted_lines": 974,
+      "overriden_lines": 1
+    }
+  }
+}

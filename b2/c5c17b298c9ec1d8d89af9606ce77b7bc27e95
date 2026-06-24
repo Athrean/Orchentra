@@ -1,0 +1,13 @@
+apps/cli/tests/repos-slash.test.ts
+  ai_agent 1-109
+apps/cli/src/commands/builtin/repos-slash.ts
+  ai_agent 1-125
+apps/cli/src/commands/builtin/index.ts
+  ai_agent 38,120-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "b2c5c17b298c9ec1d8d89af9606ce77b7bc27e95",
+  "prompts": {}
+}

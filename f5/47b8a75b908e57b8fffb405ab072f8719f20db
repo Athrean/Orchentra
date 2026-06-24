@@ -1,0 +1,25 @@
+apps/cli/src/args.ts
+  27be1972cf29b313 171-172,179-180
+apps/cli/src/main.ts
+  27be1972cf29b313 114-118,121-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f547b8a75b908e57b8fffb405ab072f8719f20db",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 4,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}

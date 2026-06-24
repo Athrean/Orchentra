@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "19b83ce8a3d8750158761205504f9a79f43e06ee",
+  "prompts": {},
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}

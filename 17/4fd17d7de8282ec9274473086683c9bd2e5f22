@@ -1,0 +1,29 @@
+package.json
+  b1d5c5b8db40de23 17
+packages/cli-tools/tests/tool-registry.test.ts
+  b1d5c5b8db40de23 8,11-15,51,137-141
+.husky/pre-commit
+  b1d5c5b8db40de23 2-3
+.gitignore
+  b1d5c5b8db40de23 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "174fd17d7de8282ec9274473086683c9bd2e5f22",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 42,
+      "total_deletions": 14,
+      "accepted_lines": 41,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,25 @@
+apps/server/src/agent/llm.ts
+  b1d5c5b8db40de23 3-4,7,10-11,13-49,51-68,70-73,76,88-89
+apps/server/package.json
+  b1d5c5b8db40de23 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3cacec1c053d4921d9868f094b0cd2128550887a",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 784,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,9 @@
+apps/cli/src/render/welcome-tips.tsx
+  ai_agent 12-13,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "566c51c95b1981b585895924299a74c1ab0082f4",
+  "prompts": {}
+}

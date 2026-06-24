@@ -1,0 +1,27 @@
+packages/cli-api/src/anthropic/client.ts
+  b1d5c5b8db40de23 90
+packages/cli-api/tests/client.test.ts
+  b1d5c5b8db40de23 456-498
+packages/cli-api/src/anthropic/cache.ts
+  b1d5c5b8db40de23 3-18,21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7d0f8462746b26841be27f2ac3cf80321032e8f2",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1013,
+      "total_deletions": 14,
+      "accepted_lines": 1326,
+      "overriden_lines": 0
+    }
+  }
+}

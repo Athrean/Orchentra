@@ -1,0 +1,27 @@
+packages/cli-core/src/render/index.ts
+  b1d5c5b8db40de23 1-2
+packages/cli-core/package.json
+  b1d5c5b8db40de23 10
+packages/cli-core/src/index.ts
+  b1d5c5b8db40de23 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "733884743ef8b859c6836a5d5082f90f5b6e72a8",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 2,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}

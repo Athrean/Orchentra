@@ -1,0 +1,11 @@
+apps/web/app/globals.css
+  ai_agent 50-53,64,68-69,76-91
+apps/web/components/pd/shell/AppSidebar.tsx
+  ai_agent 71,92,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "031cd93fa94ffef8722c2732e4fd91f7dd536e18",
+  "prompts": {}
+}

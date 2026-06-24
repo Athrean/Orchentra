@@ -1,0 +1,30 @@
+packages/mcp-server/src/approval-port.ts
+  s_27be1972cf29b3::t_2d66e246b6f921 1-57
+packages/mcp-server/src/hono-adapter.ts
+  s_27be1972cf29b3::t_6cfd5fb814bc79 19,23
+  s_27be1972cf29b3::t_4a94bb2abf2701 2,4
+packages/mcp-server/src/http-handler.ts
+  s_27be1972cf29b3::t_55fc397b1ed133 75-89,92
+  s_27be1972cf29b3::t_5b5980becc9d2f 2,6-18
+  s_27be1972cf29b3::t_a441ce7360f24d 38
+packages/mcp-server/src/index.ts
+  s_27be1972cf29b3::t_34e2dea940e0b1 3,5-6
+packages/mcp-server/tests/http-approval-port.test.ts
+  s_27be1972cf29b3::t_855985d0980c4c 1-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "e687a5556a62fc1da0556dc830af29ba14b9203b",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

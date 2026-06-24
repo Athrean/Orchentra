@@ -1,0 +1,9 @@
+apps/cli/src/live-cli-factory.ts
+  ai_agent 12,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "55ceee8078a1083c8e4d36ac6dd852e6ee27958c",
+  "prompts": {}
+}

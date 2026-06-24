@@ -1,0 +1,15 @@
+apps/web/components/marketing-v2/index.ts
+  ai_agent 1-2
+apps/web/components/marketing-v2/DitherGrid.tsx
+  ai_agent 1-18
+apps/web/app/globals.css
+  ai_agent 128-138
+apps/web/app/page.tsx
+  ai_agent 1,4,30,33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "a9e0762a1eb5ff93ee6866b9c34dc62cef0d6e67",
+  "prompts": {}
+}

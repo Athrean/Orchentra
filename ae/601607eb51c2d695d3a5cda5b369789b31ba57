@@ -1,0 +1,23 @@
+apps/web/app/(app)/settings/page.tsx
+  ai_agent 5-6
+apps/web/app/(app)/settings/layout.tsx
+  ai_agent 1-24
+apps/web/app/(app)/settings/devices/page.tsx
+  ai_agent 7,26,63
+apps/web/components/pd/settings/SettingsNav.tsx
+  ai_agent 1-41
+apps/web/components/pd/settings/settings-sections.ts
+  ai_agent 1-47
+apps/web/lib/nav.ts
+  ai_agent 7-15,35-36
+apps/web/components/pd/settings/SettingsSection.tsx
+  ai_agent 1-23
+apps/web/components/pd/shell/AppSidebar.tsx
+  ai_agent 23,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae601607eb51c2d695d3a5cda5b369789b31ba57",
+  "prompts": {}
+}

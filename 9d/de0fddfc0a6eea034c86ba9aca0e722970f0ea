@@ -1,0 +1,31 @@
+.charlie/instructions/coding-preferences.md
+  88a6b20b575ac950 1-39
+.charlie/config.yml
+  88a6b20b575ac950 1-5
+.charlie/instructions/architecture.md
+  88a6b20b575ac950 1-55
+.charlie/instructions/typescript.md
+  88a6b20b575ac950 1-46
+.charlie/instructions/git-and-prs.md
+  88a6b20b575ac950 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "9dde0fddfc0a6eea034c86ba9aca0e722970f0ea",
+  "prompts": {
+    "88a6b20b575ac950": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49d4fc01-4084-4cfa-81cc-944a102d8eb6",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 188,
+      "total_deletions": 3,
+      "accepted_lines": 185,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/operations/tests/get-pull-request.test.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 35,45,49,52-61
+packages/operations/tests/get-issue.test.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 20,38,44,47-56
+packages/mcp-server/tests/fixtures/test-server.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 24,39,43-57,73-82
+packages/operations/tests/get-commit-changes.test.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 15,21,25,43-45,48-53
+apps/cli/src/commands/mcp-serve.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 124,134-139,147-151,169-173,181-185,199-225
+packages/operations/tests/get-file-content.test.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 15,21,25,28-37
+packages/operations/src/adapters/github.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 9-19,35-45,54,57-87,105-116,133-144,174-210
+packages/operations/tests/search-code.test.ts
+  s_27be1972cf29b3::t_2a60736cac2fe2 27,33,37,40-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "74dd0f836cd7e30f41f7a3c84ba8bf353b2d8668",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

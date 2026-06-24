@@ -1,0 +1,31 @@
+apps/server/tests/patch-generator.test.ts
+  cf2377b16fbcb374 76-90
+apps/server/src/agent/runner.ts
+  cf2377b16fbcb374 193,195-200,202,214
+packages/core/src/types.ts
+  cf2377b16fbcb374 42-47,50-55
+apps/server/src/agent/patch-generator.ts
+  cf2377b16fbcb374 17,19-22,27,34-35,39,47,50,53
+apps/server/src/actions/handlers.ts
+  cf2377b16fbcb374 9,207,212-214,264-270,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "8a4b872874d67a5077f80a4d2298c02bb75b57e9",
+  "prompts": {
+    "cf2377b16fbcb374": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23652a1d-3ef2-4f02-9265-517ddc0862db",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 76,
+      "total_deletions": 21,
+      "accepted_lines": 70,
+      "overriden_lines": 2
+    }
+  }
+}

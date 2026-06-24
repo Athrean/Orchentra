@@ -1,0 +1,11 @@
+apps/cli/src/auth/install-bootstrap.ts
+  ai_agent 162-172
+apps/cli/tests/install-bootstrap.test.ts
+  ai_agent 296-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "21d72062a01475c518dc48c7e2818a350ddd8e09",
+  "prompts": {}
+}

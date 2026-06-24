@@ -1,0 +1,40 @@
+packages/mcp-server/tests/fixtures/test-server.ts
+  s_27be1972cf29b3::t_33370a45022072 112-120
+apps/cli/src/commands/mcp-serve.ts
+  s_27be1972cf29b3::t_11c819f9de33a5 140-155
+  s_27be1972cf29b3::t_a08986fde23801 267-283
+packages/operations/tests/cancel-workflow-run.test.ts
+  s_27be1972cf29b3::t_118d2b9abedfe4 1-181
+packages/operations/src/ops/index.ts
+  s_27be1972cf29b3::t_8dc4c1384c8aec 20-23
+  s_27be1972cf29b3::t_19eca1fb6bc49c 52-56
+packages/operations/src/ops/github/dispatch-workflow.ts
+  s_27be1972cf29b3::t_b23b1535b94c52 1-60
+packages/operations/src/ops/github/cancel-workflow-run.ts
+  s_27be1972cf29b3::t_a664109b90f8fc 1-44
+apps/server/src/agent/tools/github-actions.ts
+  s_27be1972cf29b3::t_f2d71b72d134af 96-133
+  s_27be1972cf29b3::t_9c5c0c925cee8f 3-4,10-11
+apps/cli/tests/mcp-serve.test.ts
+  s_27be1972cf29b3::t_b25e1e5e7853ae 139,164-168
+packages/operations/src/index.ts
+  s_27be1972cf29b3::t_39e22295d4170f 52-59
+packages/mcp-server/tests/stdio-integration.test.ts
+  s_27be1972cf29b3::t_d1ae49eb3ae779 113-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "91c2e4e3a75c68a6ac729f80e980afe5e06273d9",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

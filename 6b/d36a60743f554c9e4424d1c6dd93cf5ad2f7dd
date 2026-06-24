@@ -1,0 +1,23 @@
+packages/cli-core/src/memory/store.ts
+  88a6b20b575ac950 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "6bd36a60743f554c9e4424d1c6dd93cf5ad2f7dd",
+  "prompts": {
+    "88a6b20b575ac950": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49d4fc01-4084-4cfa-81cc-944a102d8eb6",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 64,
+      "total_deletions": 0,
+      "accepted_lines": 126,
+      "overriden_lines": 0
+    }
+  }
+}

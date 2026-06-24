@@ -1,0 +1,77 @@
+apps/server/src/routes/webhooks.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 19-33,112,242-271,273-275,277
+apps/server/tests/installation-handlers.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-114
+packages/mcp-server/tests/fixtures/test-server.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 92-112
+apps/server/src/github/installation-handlers.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-71
+packages/operations/src/ops/github/get-workflow-run.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-68
+apps/server/src/github/app-jwt.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-14
+packages/operations/tests/get-workflow-run.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-185
+packages/operations/src/ops/github/list-workflow-runs.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-104
+apps/cli/tests/mcp-serve.test.ts
+  ai_agent 139,151-155
+packages/operations/src/ops/github/get-workflow-run-jobs.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-84
+packages/operations/src/adapters/github.ts
+  ai_agent 77-97,195-237
+apps/server/src/agent/tools/github-actions.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 3-11,19-20,43-90
+apps/server/src/index.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 11,131
+apps/server/tests/github-app-callback.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-119
+.gitignore
+  s_27be1972cf29b3::t_1394aa5f0aaae1 33-34
+packages/operations/src/index.ts
+  ai_agent 27-39
+apps/server/src/routes/github-app.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-118
+apps/server/tests/webhook.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 548-593
+apps/server/tests/app-jwt.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-93
+apps/server/tests/list-workflow-runs-live.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-49
+packages/operations/tests/get-workflow-run-jobs.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-233
+apps/server/src/github/installations.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-84
+packages/operations/tests/list-workflow-runs.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-247
+packages/operations/tests/get-job-logs.test.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-202
+turbo.json
+  s_27be1972cf29b3::t_1394aa5f0aaae1 32
+packages/operations/src/ops/index.ts
+  ai_agent 9-12,35-39
+packages/mcp-server/tests/stdio-integration.test.ts
+  ai_agent 100-104
+apps/server/docs/dev-webhook-forwarding.md
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-41
+apps/cli/src/commands/mcp-serve.ts
+  ai_agent 124,219-242
+packages/operations/src/ops/github/get-job-logs.ts
+  s_27be1972cf29b3::t_1394aa5f0aaae1 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "6ca1a979ef59af20b238dd5d10a12cce6dc2e530",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

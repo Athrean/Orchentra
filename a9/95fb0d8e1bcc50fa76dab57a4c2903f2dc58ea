@@ -1,0 +1,13 @@
+apps/web/components/marketing-v2/Footer.tsx
+  ai_agent 1-2,4,6,8-10,14,16-17,21,23-24,29,31-47,49-56,58
+apps/web/app/page.tsx
+  ai_agent 4,6,39
+apps/web/components/marketing-v2/index.ts
+  ai_agent 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "a995fb0d8e1bcc50fa76dab57a4c2903f2dc58ea",
+  "prompts": {}
+}

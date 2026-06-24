@@ -1,0 +1,22 @@
+apps/server/src/github/app-jwt.ts
+  s_27be1972cf29b3::t_70afa175b1a671 1-14
+apps/server/tests/app-jwt.test.ts
+  s_27be1972cf29b3::t_d5883d940503fc 1-60,64-70
+  ai_agent 61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "7bd4082bb87bbb5a31181861a95f761aaa9185dd",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

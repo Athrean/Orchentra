@@ -1,0 +1,13 @@
+bun.lock
+  ai_agent 576,600,1670,1674,1676
+apps/web/app/layout.tsx
+  ai_agent 47
+apps/web/package.json
+  ai_agent 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "295838d0b23a9b380d9f2007e8264ee018306582",
+  "prompts": {}
+}

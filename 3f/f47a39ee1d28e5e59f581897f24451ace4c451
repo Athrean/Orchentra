@@ -1,0 +1,25 @@
+apps/cli/src/commands/builtin/session.ts
+  b1d5c5b8db40de23 1,4-5,20,25,37,40-44,47-48,53-59,61-73,83,87,90-91,94-114,124,128,131,134-138
+apps/cli/src/commands/builtin/config.ts
+  b1d5c5b8db40de23 19-21,25-41,43-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3ff47a39ee1d28e5e59f581897f24451ace4c451",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 97,
+      "total_deletions": 49,
+      "accepted_lines": 196,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/db/src/schema.ts
+  27be1972cf29b313 332-365
+packages/db/src/migrations/meta/_journal.json
+  27be1972cf29b313 137-143
+packages/brain/tests/episodes-schema.test.ts
+  27be1972cf29b313 1-36
+packages/db/src/migrations/0019_episodes.sql
+  27be1972cf29b313 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "982130c3781fbbce4c3b4686e5dd81ac2493f42c",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 94,
+      "total_deletions": 0,
+      "accepted_lines": 94,
+      "overriden_lines": 0
+    }
+  }
+}

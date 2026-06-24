@@ -1,0 +1,21 @@
+apps/server/src/auth/middleware.ts
+  ai_agent 6,41-56,103-114,126-145
+apps/server/src/types.ts
+  ai_agent 5-15,18
+apps/server/tests/auth-installation-key.test.ts
+  ai_agent 1-85
+apps/server/src/github/installations.ts
+  ai_agent 62,82-83
+apps/server/src/github/api-key-issuer.ts
+  ai_agent 1,4-10,18-19,22
+apps/server/src/github/installations-memory-store.ts
+  ai_agent 43-48
+apps/server/src/github/installations-store.ts
+  ai_agent 88-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "982f3c0b7b36d5a914120593970693b394b2ed1e",
+  "prompts": {}
+}

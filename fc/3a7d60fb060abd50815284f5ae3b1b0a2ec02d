@@ -1,0 +1,33 @@
+packages/cli-api/tests/github-client.test.ts
+  eee32a63f381761b 1-724
+packages/cli-api/src/index.ts
+  eee32a63f381761b 39
+turbo.json
+  eee32a63f381761b 15
+packages/cli-api/src/github/client.ts
+  eee32a63f381761b 5-6,68-84,97,102-103,133,147-149,167,243,249-251,253,258,266-268,270-286
+packages/cli-api/src/github/auth.ts
+  eee32a63f381761b 14,80-92,115-131,159-163
+packages/cli-api/tests/github-auth.test.ts
+  eee32a63f381761b 1-476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "fc3a7d60fb060abd50815284f5ae3b1b0a2ec02d",
+  "prompts": {
+    "eee32a63f381761b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6281388-80a1-491a-a9bc-cad4ed5008fc",
+        "model": "<synthetic>"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 1386,
+      "total_deletions": 128,
+      "accepted_lines": 1291,
+      "overriden_lines": 0
+    }
+  }
+}

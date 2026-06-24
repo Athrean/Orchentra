@@ -1,0 +1,23 @@
+packages/cli-core/src/memory/similarity.ts
+  88a6b20b575ac950 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "945c8859ae9eae83548895397e1d99594851bbfb",
+  "prompts": {
+    "88a6b20b575ac950": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49d4fc01-4084-4cfa-81cc-944a102d8eb6",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 0,
+      "accepted_lines": 83,
+      "overriden_lines": 0
+    }
+  }
+}

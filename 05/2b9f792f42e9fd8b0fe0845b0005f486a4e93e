@@ -1,0 +1,55 @@
+apps/cli/src/commands/builtin/login.ts
+  3704aa808d00a8bd 2-3,5-7,9-11,16-27,32-33,37-40,42-44,50,52-82,93-97,101-106,108,112-114,117-118,123,127-129,133,138-169,177-193
+apps/cli/src/args.ts
+  3704aa808d00a8bd 30,271
+apps/cli/src/ui/select.ts
+  3704aa808d00a8bd 1-86
+packages/cli-api/src/anthropic/oauth.ts
+  3704aa808d00a8bd 1,4-10,13,21,33-38,40-45,48,50-51,55,57-58,60-70,72-76,84,94-106,151,157,160-161,163,169,177,186
+apps/cli/src/commands/builtin/logout.ts
+  3704aa808d00a8bd 1,3-4,6-15,21-22,26-29,31-32,36-66,68
+packages/cli-api/src/oauth-pkce.ts
+  3704aa808d00a8bd 88,120,146
+apps/cli/src/ui/clipboard.ts
+  3704aa808d00a8bd 1-62
+packages/cli-api/src/anthropic/client.ts
+  3704aa808d00a8bd 25-27,45
+.gitignore
+  h_ef2d7f928b1d51 32
+  3704aa808d00a8bd 36-39,42-43
+apps/cli/src/commands/auth-state.ts
+  3704aa808d00a8bd 1-45
+apps/cli/src/ui/anthropic-login-flow.ts
+  3704aa808d00a8bd 1-205
+turbo.json
+  3704aa808d00a8bd 23-25
+packages/cli-api/src/index.ts
+  3704aa808d00a8bd 9-10,13
+apps/cli/src/commands/run-auth.ts
+  3704aa808d00a8bd 2,13-15,17-19,23-44,54-58,66-150,214-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "052b9f792f42e9fd8b0fe0845b0005f486a4e93e",
+  "prompts": {
+    "3704aa808d00a8bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1533396-85b6-46cc-94cd-dcb35e4fc702",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 831,
+      "total_deletions": 244,
+      "accepted_lines": 803,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}

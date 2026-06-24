@@ -1,0 +1,23 @@
+apps/server/src/agent/runner.ts
+  b1d5c5b8db40de23 214-236,263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "29fcbd0b56f5bd1e65fb07f55f4cdb1a57f57daa",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 22,
+      "accepted_lines": 24,
+      "overriden_lines": 0
+    }
+  }
+}

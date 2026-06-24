@@ -1,0 +1,41 @@
+packages/operations/tests/operation-error.test.ts
+  27be1972cf29b313 1-12
+packages/operations/package.json
+  27be1972cf29b313 1-22
+packages/mcp-server/src/index.ts
+  27be1972cf29b313 1-10
+packages/operations/tsconfig.json
+  27be1972cf29b313 1-8
+packages/mcp-server/tsconfig.json
+  27be1972cf29b313 1-8
+packages/operations/src/index.ts
+  27be1972cf29b313 1
+package.json
+  27be1972cf29b313 17
+packages/mcp-server/src/serialize.ts
+  27be1972cf29b313 1-14
+packages/mcp-server/package.json
+  27be1972cf29b313 1-25
+packages/operations/src/operation-error.ts
+  27be1972cf29b313 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b5bff5dbe8243902c18d081687206a033913183f",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 187,
+      "total_deletions": 16,
+      "accepted_lines": 172,
+      "overriden_lines": 0
+    }
+  }
+}

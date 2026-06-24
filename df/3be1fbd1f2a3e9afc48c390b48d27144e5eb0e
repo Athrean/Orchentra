@@ -1,0 +1,23 @@
+README.md
+  27be1972cf29b313 36,40-48,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "df3be1fbd1f2a3e9afc48c390b48d27144e5eb0e",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 252,
+      "total_deletions": 25,
+      "accepted_lines": 238,
+      "overriden_lines": 0
+    }
+  }
+}

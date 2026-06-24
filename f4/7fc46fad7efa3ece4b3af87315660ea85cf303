@@ -1,0 +1,9 @@
+apps/web/components/pd/settings/AiProvidersTable.tsx
+  ai_agent 4,6,193,196-198,247-294,297-299,301-304,309-363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f47fc46fad7efa3ece4b3af87315660ea85cf303",
+  "prompts": {}
+}

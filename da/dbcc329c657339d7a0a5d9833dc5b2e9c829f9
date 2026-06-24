@@ -1,0 +1,40 @@
+apps/server/src/routes/webhooks.ts
+  cf2377b16fbcb374 126,128,132,134
+apps/server/src/lib/webhook-dedup.ts
+  cf2377b16fbcb374 67,96
+apps/server/src/lib/incident-queue.ts
+  cf2377b16fbcb374 139,149-150,181-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "dadbcc329c657339d7a0a5d9833dc5b2e9c829f9",
+  "prompts": {
+    "a2d76ef7221de50e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "851c2aa9-b5d0-460c-a4fd-ba564a749157",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 159,
+      "total_deletions": 0,
+      "accepted_lines": 159,
+      "overriden_lines": 0
+    },
+    "cf2377b16fbcb374": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23652a1d-3ef2-4f02-9265-517ddc0862db",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 7,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}

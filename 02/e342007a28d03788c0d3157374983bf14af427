@@ -1,0 +1,23 @@
+turbo.json
+  b1d5c5b8db40de23 24-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "02e342007a28d03788c0d3157374983bf14af427",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 317,
+      "total_deletions": 1,
+      "accepted_lines": 317,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/operations/src/ops/index.ts
+  s_27be1972cf29b3::t_555d28b4df79d0 9,25-26
+packages/mcp-server/tests/stdio-integration.test.ts
+  s_27be1972cf29b3::t_3f00dceeeb4406 100-101
+packages/operations/src/index.ts
+  s_27be1972cf29b3::t_aea781315a4546 27
+packages/operations/tests/list-pull-requests.test.ts
+  s_27be1972cf29b3::t_812bded80db3cd 1-14,19-203
+  s_27be1972cf29b3::t_e3706775aa5d37 15-18
+apps/cli/tests/mcp-serve.test.ts
+  s_27be1972cf29b3::t_cf7dc2a7ad461e 139,151-152
+packages/operations/src/ops/github/list-pull-requests.ts
+  s_27be1972cf29b3::t_f2dc7dfdab0c75 1-13,18-76
+  s_27be1972cf29b3::t_e3706775aa5d37 14-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "f4d3aacd156f36d4aa0dab52395ad515d8ae48aa",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/cli-api/src/tool-arguments.ts
+  b1d5c5b8db40de23 1-55
+packages/cli-api/src/anthropic/client.ts
+  b1d5c5b8db40de23 8,253,256
+packages/cli-api/tests/tool-arguments.test.ts
+  b1d5c5b8db40de23 1-64
+packages/cli-api/src/index.ts
+  b1d5c5b8db40de23 68
+packages/cli-api/src/openai-compat/client.ts
+  b1d5c5b8db40de23 12,103,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "093b1667d29d7d5ed33265d92f20c83fae1d850d",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 126,
+      "total_deletions": 8,
+      "accepted_lines": 126,
+      "overriden_lines": 0
+    }
+  }
+}

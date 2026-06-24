@@ -1,0 +1,46 @@
+apps/cli/src/op-commands/help-categorizer.ts
+  s_27be1972cf29b3::t_ec17afb1253d4b 27,34
+  s_27be1972cf29b3::t_4dc2bb010d2233 48
+packages/operations/src/ops/github/set-repo-secret.ts
+  s_27be1972cf29b3::t_4ad6809374c231 1-50
+packages/operations/src/ops/github/list-repo-secrets.ts
+  s_27be1972cf29b3::t_9de60618dc3407 1-62
+packages/mcp-server/tests/stdio-integration.test.ts
+  s_27be1972cf29b3::t_895f57e7245177 135-138
+packages/operations/tests/set-repo-secret.test.ts
+  s_27be1972cf29b3::t_2917f4f45c4fe5 1-90
+packages/operations/src/ops/index.ts
+  s_27be1972cf29b3::t_1c3c0b05e9454f 38-40
+  s_27be1972cf29b3::t_47125c242185c8 86-89
+packages/operations/tests/delete-artifact.test.ts
+  s_27be1972cf29b3::t_35e3008e6c5196 1-90
+packages/operations/src/ops/github/delete-artifact.ts
+  s_27be1972cf29b3::t_579255881e5d2f 1-42
+packages/operations/tests/list-repo-secrets.test.ts
+  s_27be1972cf29b3::t_02ae4095e567a6 1-64
+packages/operations/src/adapters/github.ts
+  s_27be1972cf29b3::t_5827fc57c11140 384-389
+  s_27be1972cf29b3::t_4ab2efb0200bc5 204-213
+apps/cli/tests/mcp-serve.test.ts
+  s_27be1972cf29b3::t_7d30f06bc820dc 186-189
+  s_27be1972cf29b3::t_1cc029abf0ced5 139
+apps/cli/src/commands/mcp-serve.ts
+  s_27be1972cf29b3::t_da3e691b8592f6 158
+  s_27be1972cf29b3::t_66753564fc31ba 381-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "18492ff0f22adfb1a6cfc13e463f54831b1d3348",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+apps/cli/tests/repl-prompt-removed.test.ts
+  s_27be1972cf29b3::t_7170d05e95eff8 1-20
+apps/cli/src/repl.ts
+  s_27be1972cf29b3::t_fca26b0cc0bc28 68-75,77
+apps/cli/src/tui/Tui.tsx
+  s_27be1972cf29b3::t_f05e6f66e5b7ed 327-344
+apps/cli/src/render/welcome-tips.tsx
+  s_27be1972cf29b3::t_72a353c1aa9c33 12-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "cfa9792d5dc5bfe25ac9542c94be7af49df041c4",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

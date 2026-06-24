@@ -1,0 +1,21 @@
+apps/server/src/github/pagination.ts
+  s_27be1972cf29b3::t_4e8d580e2ebace 1-60
+apps/server/tests/github-pagination.test.ts
+  s_27be1972cf29b3::t_c8543b7bd7da3e 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "89bb5c9d69f9d66b5e246b1a538d847a97aced85",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

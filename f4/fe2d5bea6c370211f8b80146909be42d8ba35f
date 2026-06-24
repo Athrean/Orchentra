@@ -1,0 +1,23 @@
+apps/web/lib/hooks/useIncidentWebSocket.ts
+  b1d5c5b8db40de23 5,98-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f4fe2d5bea6c370211f8b80146909be42d8ba35f",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 715,
+      "overriden_lines": 0
+    }
+  }
+}

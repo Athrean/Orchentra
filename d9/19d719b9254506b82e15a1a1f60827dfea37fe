@@ -1,0 +1,25 @@
+packages/mcp-server/tests/http-handler.test.ts
+  27be1972cf29b313 48-85
+packages/mcp-server/src/http-handler.ts
+  27be1972cf29b313 33-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d919d719b9254506b82e15a1a1f60827dfea37fe",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 48,
+      "total_deletions": 1,
+      "accepted_lines": 48,
+      "overriden_lines": 0
+    }
+  }
+}

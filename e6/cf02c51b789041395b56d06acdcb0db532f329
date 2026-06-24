@@ -1,0 +1,35 @@
+apps/install-mcp/package.json
+  27be1972cf29b313 1-24
+apps/install-mcp/src/main.ts
+  27be1972cf29b313 1-101
+apps/install-mcp/tsconfig.json
+  27be1972cf29b313 1-9
+apps/install-mcp/tests/main.test.ts
+  27be1972cf29b313 1-85
+apps/install-mcp/src/config.ts
+  27be1972cf29b313 1-78
+package.json
+  27be1972cf29b313 17
+apps/install-mcp/tests/config.test.ts
+  27be1972cf29b313 1-40,42-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e6cf02c51b789041395b56d06acdcb0db532f329",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 388,
+      "total_deletions": 2,
+      "accepted_lines": 384,
+      "overriden_lines": 1
+    }
+  }
+}

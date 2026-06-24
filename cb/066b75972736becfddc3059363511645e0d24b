@@ -1,0 +1,15 @@
+apps/web/components/pd/workspace/ChatComposer.tsx
+  ai_agent 4,24-25,43-44,129-142
+apps/web/components/pd/workspace/CoworkMessage.tsx
+  ai_agent 4,8-16,18,21,38-49
+apps/web/components/pd/workspace/CoworkSurface.tsx
+  ai_agent 15-47,56-57,63-64,70-71,100,106-155,186-187,197-202,221-222
+apps/web/components/pd/workspace/CoworkHero.tsx
+  ai_agent 26-27,41-42,66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb066b75972736becfddc3059363511645e0d24b",
+  "prompts": {}
+}

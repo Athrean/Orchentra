@@ -1,0 +1,29 @@
+apps/cli/src/repl.ts
+  27be1972cf29b313 4,27-38,134-138
+apps/cli/src/tui/components/TrustPrompt.tsx
+  27be1972cf29b313 1-51
+apps/cli/src/trust/prompt-trust.tsx
+  27be1972cf29b313 1-38
+turbo.json
+  27be1972cf29b313 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "67cdd8c49cf2e2de4c5c54b2283f904e6f434f71",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 110,
+      "total_deletions": 0,
+      "accepted_lines": 110,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/db/src/schema.ts
+  b1d5c5b8db40de23 263-288
+packages/db/src/migrations/meta/_journal.json
+  b1d5c5b8db40de23 123-129
+apps/server/src/cron/tick.ts
+  b1d5c5b8db40de23 1-51
+packages/db/src/migrations/0017_cron_specs.sql
+  b1d5c5b8db40de23 1-14
+apps/server/tests/cron-tick.test.ts
+  b1d5c5b8db40de23 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8606144ef827cebc8226dc333ee06321feb6b29b",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 160,
+      "total_deletions": 0,
+      "accepted_lines": 160,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,25 @@
+apps/cli/src/commands/builtin/auth-status.ts
+  b1d5c5b8db40de23 2,4-7,16,18,20-34,36,39-42,48-59,66,77
+apps/cli/src/commands/builtin/cost.ts
+  b1d5c5b8db40de23 19-23,25-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9e01635909c3d284f765eea3d692d7676f3133a2",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 69,
+      "total_deletions": 29,
+      "accepted_lines": 166,
+      "overriden_lines": 0
+    }
+  }
+}

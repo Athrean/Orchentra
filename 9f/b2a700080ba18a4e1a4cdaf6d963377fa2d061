@@ -1,0 +1,11 @@
+apps/cli/src/sessions/workspace-fingerprint.ts
+  ai_agent 1-43
+apps/cli/tests/sessions/workspace-fingerprint.test.ts
+  ai_agent 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "9fb2a700080ba18a4e1a4cdaf6d963377fa2d061",
+  "prompts": {}
+}

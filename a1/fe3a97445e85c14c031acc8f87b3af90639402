@@ -1,0 +1,11 @@
+apps/cli/tests/markdown-short-circuit.test.ts
+  ai_agent 1-54
+apps/cli/src/tui/markdown/short-circuit.ts
+  ai_agent 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "a1fe3a97445e85c14c031acc8f87b3af90639402",
+  "prompts": {}
+}

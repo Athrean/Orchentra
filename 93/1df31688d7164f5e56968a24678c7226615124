@@ -1,0 +1,24 @@
+apps/cli/src/approval-prompt.ts
+  s_27be1972cf29b3::t_b6a382bc345edc 1-78
+apps/server/src/approvals/mcp-port.ts
+  s_27be1972cf29b3::t_4159b6786eee60 1-21
+apps/cli/tests/approval-prompt.test.ts
+  s_27be1972cf29b3::t_f8877f0ec0f0fc 1-4,7-13,15-26,28-139
+  s_27be1972cf29b3::t_a63a8ff0332262 5-6,14,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "931df31688d7164f5e56968a24678c7226615124",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

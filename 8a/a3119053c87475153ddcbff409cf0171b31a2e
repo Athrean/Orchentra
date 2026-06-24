@@ -1,0 +1,120 @@
+apps/cli/src/commands/mcp-serve.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 124,134-139,147-151,169-173,181-185,199-249
+packages/operations/src/ops/github/list-pull-requests.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-76
+apps/server/src/github/installations-store.ts
+  s_27be1972cf29b3::t_9ccd41a1d1601f 14
+  s_27be1972cf29b3::t_2c1a2a02d7be21 5-9,12,16-31,34,36,42-43,55-56,64-65,68,70-96
+apps/cli/tests/mcp-serve.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 139,151-163
+apps/server/src/github/installation-handlers.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-71
+packages/operations/tests/get-pull-request.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 35,45,49,52-61
+packages/operations/tests/download-artifact.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-172
+packages/operations/tests/get-repo-metadata-live.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-37
+packages/operations/tests/get-workflow-run.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-185
+.gitignore
+  s_27be1972cf29b3::t_f5dbbba3a4c093 33-34
+packages/operations/tests/list-issues.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-188
+packages/operations/tests/get-commit-changes.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 15,21,25,43-45,48-53
+packages/operations/tests/list-workflow-run-artifacts.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-168
+packages/operations/src/index.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 27-46
+packages/operations/tests/get-issue.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 20,38,44,47-56
+packages/operations/src/ops/github/list-issues.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-75
+apps/server/docs/dev-webhook-forwarding.md
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-41
+apps/server/tests/webhook.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 548-593
+apps/server/tests/github-app-callback.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-119
+packages/operations/src/ops/github/get-repo-metadata.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-54
+packages/operations/src/ops/github/get-workflow-run.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-68
+packages/operations/src/ops/github/list-workflow-run-artifacts.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-48
+packages/operations/tests/get-job-logs.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-202
+packages/operations/tests/list-check-runs.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-168
+packages/operations/src/ops/index.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 9-19,35-47
+packages/operations/src/ops/github/get-workflow-run-jobs.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-84
+packages/mcp-server/tests/stdio-integration.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 100-112
+packages/operations/src/ops/github/list-check-runs.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-65
+apps/server/src/agent/tools/github-actions.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 3-11,19-20,43-90
+apps/server/tests/list-workflow-runs-live.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-49
+packages/operations/src/ops/github/list-branches.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-60
+apps/server/tests/installation-handlers.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-114
+packages/operations/src/ops/github/list-workflow-runs.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-104
+packages/mcp-server/tests/fixtures/test-server.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 24,39,43-57,73-82,92-111
+packages/operations/tests/list-pull-requests.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-203
+packages/operations/tests/search-code.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 27,33,37,40-49
+packages/operations/tests/get-workflow-run-jobs.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-233
+packages/operations/tests/list-branches.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-140
+apps/server/src/index.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 11,131
+apps/server/src/routes/webhooks.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 19-33,112,242-271,273-275,277
+apps/server/tests/app-jwt.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-93
+packages/operations/src/adapters/github.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 9-19,35-45,54,57-108,126-137,154-165,195-276
+packages/operations/tests/list-workflow-runs.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-247
+apps/server/src/github/octokit.ts
+  s_27be1972cf29b3::t_ab112a2d7e7303 93
+packages/operations/src/ops/github/get-job-logs.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-69
+apps/server/src/routes/github-app.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-118
+packages/operations/tests/get-file-content.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 15,21,25,28-37
+turbo.json
+  s_27be1972cf29b3::t_f5dbbba3a4c093 32
+apps/server/src/github/app-jwt.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-14
+packages/operations/tests/get-repo-metadata.test.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-183
+packages/operations/src/ops/github/download-artifact.ts
+  s_27be1972cf29b3::t_f5dbbba3a4c093 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "8aa3119053c87475153ddcbff409cf0171b31a2e",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

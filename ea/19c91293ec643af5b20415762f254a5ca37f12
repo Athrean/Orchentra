@@ -1,0 +1,29 @@
+apps/cli/src/tui/components/Transcript.tsx
+  27be1972cf29b313 99,130,138
+apps/cli/src/tui/components/ModelPickerCard.tsx
+  27be1972cf29b313 75-76,81
+apps/cli/src/tui/components/ConfirmationPrompt.tsx
+  27be1972cf29b313 55-56,61
+apps/cli/src/tui/components/AnthropicLoginCard.tsx
+  27be1972cf29b313 151,154,157,167-168,177,184-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "ea19c91293ec643af5b20415762f254a5ca37f12",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 17,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    }
+  }
+}

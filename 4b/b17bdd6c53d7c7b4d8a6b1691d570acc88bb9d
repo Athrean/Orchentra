@@ -1,0 +1,29 @@
+apps/cli/src/render/scene.ts
+  h_ef2d7f928b1d51 19,21-41
+  b1d5c5b8db40de23 59-60,62-65,104-105,107-108,111-112,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "4bb17bdd6c53d7c7b4d8a6b1691d570acc88bb9d",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 175,
+      "total_deletions": 3,
+      "accepted_lines": 705,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}

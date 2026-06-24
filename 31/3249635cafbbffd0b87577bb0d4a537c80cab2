@@ -1,0 +1,25 @@
+apps/server/src/agent/runner.ts
+  cf2377b16fbcb374 226-230,292-295,304,316
+apps/server/src/agent/prompts.ts
+  cf2377b16fbcb374 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "313249635cafbbffd0b87577bb0d4a537c80cab2",
+  "prompts": {
+    "cf2377b16fbcb374": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23652a1d-3ef2-4f02-9265-517ddc0862db",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 6,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  }
+}

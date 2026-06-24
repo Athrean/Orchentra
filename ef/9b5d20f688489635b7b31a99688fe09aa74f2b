@@ -1,0 +1,22 @@
+packages/operations/tests/create-or-update-file-contents.test.ts
+  s_27be1972cf29b3::t_c76d19aa1c0cf1 1-138,140-192
+  ai_agent 139
+packages/operations/src/ops/github/create-or-update-file-contents.ts
+  s_27be1972cf29b3::t_de04ed21432b7e 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "ef9b5d20f688489635b7b31a99688fe09aa74f2b",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+apps/cli/src/main.ts
+  8535276491203312 9-11,84-92
+apps/cli/src/commands/watch.ts
+  8535276491203312 1-3
+apps/cli/tests/args-subcommands.test.ts
+  8535276491203312 32-69
+apps/cli/src/commands/doctor.ts
+  8535276491203312 1-3
+apps/cli/src/commands/session-replay.ts
+  8535276491203312 1-43
+apps/cli/tests/session-replay.test.ts
+  8535276491203312 1-55,57-109,111-132
+packages/cli-core/tests/session.test.ts
+  8535276491203312 54-95
+apps/cli/src/args.ts
+  8535276491203312 15,26-27,59-70,128-130,201-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "5bb9e7ff078660fbe289c659b88e58af8d104c8f",
+  "prompts": {
+    "8535276491203312": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "644a7b04-c601-4407-864c-d9c037e96077",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 312,
+      "total_deletions": 2,
+      "accepted_lines": 324,
+      "overriden_lines": 2
+    }
+  },
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}

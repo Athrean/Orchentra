@@ -1,0 +1,25 @@
+apps/server/tests/installations.test.ts
+  s_27be1972cf29b3::t_f372eef8bf6189 128,132-135
+apps/server/tests/installation-handlers.test.ts
+  s_27be1972cf29b3::t_f9fe4860623949 9-10,13
+apps/server/src/github/installations-memory-store.ts
+  s_27be1972cf29b3::t_e9c8e34aec9ebf 1-7,9-59
+apps/server/tests/webhook.test.ts
+  s_27be1972cf29b3::t_b3d91d4211ea17 551-553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "06b72da85543c68e956ad752e6707c8c1357d23c",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+apps/cli/tests/why-command.test.ts
+  b1d5c5b8db40de23 1-134
+apps/cli/src/commands/builtin/index.ts
+  b1d5c5b8db40de23 27,65
+apps/cli/src/commands/builtin/why.ts
+  b1d5c5b8db40de23 1-85
+apps/cli/src/commands/builtin/help.ts
+  b1d5c5b8db40de23 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a35775725f473e559e679d69e033746276236f75",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 229,
+      "total_deletions": 7,
+      "accepted_lines": 1552,
+      "overriden_lines": 0
+    }
+  }
+}

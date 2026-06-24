@@ -1,0 +1,27 @@
+packages/cli-api/src/anthropic/claude-code-creds.ts
+  27be1972cf29b313 1-86
+packages/cli-api/src/index.ts
+  27be1972cf29b313 15-20
+packages/cli-api/tests/claude-code-creds.test.ts
+  27be1972cf29b313 1-54,56-122,124-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "37bd03c62b3e83f21d5ebe39b285951b1d3d8bdf",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 390,
+      "total_deletions": 0,
+      "accepted_lines": 218,
+      "overriden_lines": 2
+    }
+  }
+}

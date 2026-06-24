@@ -1,0 +1,27 @@
+apps/server/src/agent/runner.ts
+  b1d5c5b8db40de23 19
+apps/server/src/agent/retry.ts
+  b1d5c5b8db40de23 1-62
+apps/server/tests/retry.test.ts
+  b1d5c5b8db40de23 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7a27d39a91ae65bdc2e57007a921b1d497c1006e",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 141,
+      "total_deletions": 38,
+      "accepted_lines": 358,
+      "overriden_lines": 0
+    }
+  }
+}

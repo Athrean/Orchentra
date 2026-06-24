@@ -1,0 +1,15 @@
+apps/web/lib/github/run-detail.ts
+  ai_agent 1-149
+apps/web/lib/github/run-access.ts
+  ai_agent 1-18
+apps/web/tests/run-detail.test.ts
+  ai_agent 1-113
+apps/web/tests/run-access.test.ts
+  ai_agent 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "f36977565532b480c473867e10e22b0c0f1c0810",
+  "prompts": {}
+}

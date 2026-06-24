@@ -1,0 +1,35 @@
+apps/cli/tests/fixtures/fake-github-server.ts
+  27be1972cf29b313 1-59
+apps/cli/src/args.ts
+  27be1972cf29b313 30,157,254-257
+apps/cli/src/main.ts
+  27be1972cf29b313 13,99
+apps/cli/tests/mcp-serve.test.ts
+  27be1972cf29b313 1-172
+apps/cli/src/commands/mcp-serve.ts
+  27be1972cf29b313 1-69
+apps/cli/package.json
+  27be1972cf29b313 18-19
+turbo.json
+  27be1972cf29b313 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3d34d31bc98ccbb3f033acd1c8433eb81617b46d",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 324,
+      "total_deletions": 12,
+      "accepted_lines": 313,
+      "overriden_lines": 0
+    }
+  }
+}

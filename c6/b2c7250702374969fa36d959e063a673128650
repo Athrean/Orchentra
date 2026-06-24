@@ -1,0 +1,27 @@
+apps/server/src/db/client.ts
+  s_27be1972cf29b3::t_b478f94ba00d67 21-24
+packages/db/src/schema.ts
+  s_27be1972cf29b3::t_ddcb1570457474 415-504
+packages/db/src/migrations/0021_credential_vault.sql
+  s_27be1972cf29b3::t_3e55c6a9b2fee9 1-51
+apps/server/tests/helpers/db-client-mock.ts
+  s_27be1972cf29b3::t_f21d73527e1be5 44-46
+packages/db/src/migrations/meta/_journal.json
+  s_27be1972cf29b3::t_a31c9f21e9f881 151-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "c6b2c7250702374969fa36d959e063a673128650",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

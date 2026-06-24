@@ -1,0 +1,25 @@
+apps/server/tests/sentry-mapper.test.ts
+  b1d5c5b8db40de23 1-21,23-58
+apps/server/src/integrations/sentry.ts
+  b1d5c5b8db40de23 62-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "4f39f1ccad2c0b5434954f0cc3b825bc9a6f57b6",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 100,
+      "total_deletions": 0,
+      "accepted_lines": 103,
+      "overriden_lines": 1
+    }
+  }
+}

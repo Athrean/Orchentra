@@ -1,0 +1,25 @@
+apps/cli/src/commands/run-graph.ts
+  27be1972cf29b313 1-60
+apps/cli/tests/graph-verb.test.ts
+  27be1972cf29b313 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "35b9cf8835516099e9d58750ca43a22a7f732de5",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 169,
+      "overriden_lines": 0
+    }
+  }
+}

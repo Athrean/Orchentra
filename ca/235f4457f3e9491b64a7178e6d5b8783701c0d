@@ -1,0 +1,33 @@
+apps/cli/tests/op-auto-register.test.ts
+  s_27be1972cf29b3::t_fffaba875e7e2d 1-49
+apps/cli/src/op-commands/wire.ts
+  s_27be1972cf29b3::t_58872f08c78f60 27-36,38-43
+  ai_agent 37
+  s_27be1972cf29b3::t_3d5ea0dc919702 1
+apps/cli/src/args.ts
+  s_27be1972cf29b3::t_119bb960984ad9 2
+  s_27be1972cf29b3::t_052583b4d27f6c 113-115
+apps/cli/src/commands/builtin/index.ts
+  s_27be1972cf29b3::t_6711acec539767 28
+  s_27be1972cf29b3::t_2c9a2c3423c2d2 114-117
+apps/cli/src/op-commands/run-op-verb.ts
+  s_27be1972cf29b3::t_8a74e9eae9ab2c 1,5-17,21
+apps/cli/tests/op-verb-e2e.test.ts
+  s_27be1972cf29b3::t_9470d7246b02fa 67-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "ca235f4457f3e9491b64a7178e6d5b8783701c0d",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

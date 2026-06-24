@@ -1,0 +1,17 @@
+apps/cli/tests/fixtures/hooks/annotate.sh
+  ai_agent 1-4
+apps/cli/tests/fixtures/hooks/echo-stdin.sh
+  ai_agent 1-3
+apps/cli/src/hooks/run-hook.ts
+  ai_agent 1-55
+apps/cli/tests/fixtures/hooks/fail.sh
+  ai_agent 1-4
+apps/cli/tests/hooks/run-hook.test.ts
+  ai_agent 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "4f0a211d3a7e37e4c8f9dd4e0d21d08ed3d47bf5",
+  "prompts": {}
+}

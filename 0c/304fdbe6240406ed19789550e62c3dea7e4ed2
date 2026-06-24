@@ -1,0 +1,11 @@
+apps/cli/src/tui/markdown/cache.ts
+  ai_agent 1-38
+apps/cli/tests/markdown-cache.test.ts
+  ai_agent 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "0c304fdbe6240406ed19789550e62c3dea7e4ed2",
+  "prompts": {}
+}

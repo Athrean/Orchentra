@@ -1,0 +1,25 @@
+apps/web/components/marketing/Hero.tsx
+  b1d5c5b8db40de23 69
+apps/web/components/marketing/CodeWindow.tsx
+  b1d5c5b8db40de23 8,42-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "3feeaf09b7ca9623452c617f8536d4b2ec44dcf7",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 162,
+      "total_deletions": 164,
+      "accepted_lines": 567,
+      "overriden_lines": 0
+    }
+  }
+}

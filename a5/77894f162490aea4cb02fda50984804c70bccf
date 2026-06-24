@@ -1,0 +1,29 @@
+packages/cli-api/tests/oauth.test.ts
+  27be1972cf29b313 1-72
+packages/cli-api/src/anthropic/oauth.ts
+  27be1972cf29b313 111-116
+packages/cli-api/src/preflight.ts
+  27be1972cf29b313 8-9,11-14
+turbo.json
+  27be1972cf29b313 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a577894f162490aea4cb02fda50984804c70bccf",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 87,
+      "total_deletions": 2,
+      "accepted_lines": 85,
+      "overriden_lines": 0
+    }
+  }
+}

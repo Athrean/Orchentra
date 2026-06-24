@@ -1,0 +1,31 @@
+apps/cli/src/tui/markdown/inline.ts
+  b1d5c5b8db40de23 1-68
+apps/cli/src/tui/markdown/parse.ts
+  b1d5c5b8db40de23 1-131
+apps/cli/tests/markdown.test.ts
+  b1d5c5b8db40de23 1-74
+apps/cli/src/tui/components/MarkdownView.tsx
+  b1d5c5b8db40de23 1-104
+apps/cli/src/tui/components/Transcript.tsx
+  b1d5c5b8db40de23 9,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "46a7c9e05f3f7f769b13ac18f282cbcdf9a45c2a",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 379,
+      "total_deletions": 1,
+      "accepted_lines": 1071,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,11 @@
+apps/cli/src/tui/components/InputBox.tsx
+  ai_agent 57
+apps/cli/src/tui/Tui.tsx
+  ai_agent 520,689
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "288500b41c9f53e59431425c446221ee42f98cae",
+  "prompts": {}
+}

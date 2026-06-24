@@ -1,0 +1,9 @@
+apps/cli/src/repl.ts
+  ai_agent 85-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "c55cf72c00bfeb06f7d2bfb08e86880ef24dd493",
+  "prompts": {}
+}

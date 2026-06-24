@@ -1,0 +1,22 @@
+.gitignore
+  27be1972cf29b313 10-11,14-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "3e7d56c081e5fe277844b08b970be7f05698fbf3",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>",
+      "total_additions": 198,
+      "total_deletions": 22,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,35 @@
+apps/cli/src/repl.ts
+  c9f414a07c567e1e 1,22,44,46,54-58
+packages/cli-core/src/runtime/usage.ts
+  c9f414a07c567e1e 18-24,26-32,42,45
+apps/cli/src/args.ts
+  c9f414a07c567e1e 83,93-96
+packages/cli-core/tests/usage.test.ts
+  c9f414a07c567e1e 29-32,52-55,115,117-119
+apps/cli/src/main.ts
+  c9f414a07c567e1e 34-35,39
+apps/cli/tests/args.test.ts
+  c9f414a07c567e1e 11-13,17-18,22,26,34,42,50,58,66,74,78
+apps/cli/src/live-cli.ts
+  c9f414a07c567e1e 13,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "58be3bd60c1ae93ed5b64f3dd8bb93e70ffb9711",
+  "prompts": {
+    "c9f414a07c567e1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ed6b901-b10b-4dd9-b23a-c67508d4a8e9",
+        "model": "glm-5.1"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 617,
+      "total_deletions": 909,
+      "accepted_lines": 62,
+      "overriden_lines": 0
+    }
+  }
+}

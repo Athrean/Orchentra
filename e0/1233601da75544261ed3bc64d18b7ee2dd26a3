@@ -1,0 +1,30 @@
+packages/operations/src/ops/github/get-workflow-run-jobs.ts
+  s_27be1972cf29b3::t_05fff548bfd9d5 1-84
+packages/operations/src/ops/index.ts
+  s_27be1972cf29b3::t_cba273c6d64534 11
+  s_27be1972cf29b3::t_ed8e5c1f74b494 30
+packages/operations/src/index.ts
+  s_27be1972cf29b3::t_494d19d3a4f215 31-37
+packages/operations/tests/get-workflow-run-jobs.test.ts
+  s_27be1972cf29b3::t_29b2e6843a1b96 1-233
+apps/cli/tests/mcp-serve.test.ts
+  s_27be1972cf29b3::t_019bdae53e1b8d 139,154
+packages/mcp-server/tests/stdio-integration.test.ts
+  s_27be1972cf29b3::t_217483fbe22edf 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "e01233601da75544261ed3bc64d18b7ee2dd26a3",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}

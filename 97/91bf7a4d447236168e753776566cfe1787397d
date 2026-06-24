@@ -1,0 +1,29 @@
+apps/cli/src/tui/components/Card.tsx
+  b1d5c5b8db40de23 1-39
+apps/cli/src/tui/components/KVList.tsx
+  b1d5c5b8db40de23 1-39
+apps/cli/src/tui/components/Tabs.tsx
+  b1d5c5b8db40de23 1-36
+apps/cli/tests/tui-primitives.test.tsx
+  b1d5c5b8db40de23 1-26,28-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9791bf7a4d447236168e753776566cfe1787397d",
+  "prompts": {
+    "b1d5c5b8db40de23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "741273fa-ee3a-4177-9a61-b69c27b49989",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 253,
+      "total_deletions": 0,
+      "accepted_lines": 257,
+      "overriden_lines": 1
+    }
+  }
+}

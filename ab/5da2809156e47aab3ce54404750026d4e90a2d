@@ -1,0 +1,13 @@
+apps/web/app/(app)/settings/notifications/actions.ts
+  ai_agent 1-53
+apps/web/app/(app)/settings/notifications/page.tsx
+  ai_agent 1-35
+apps/web/components/pd/settings/NotificationsPanel.tsx
+  ai_agent 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab5da2809156e47aab3ce54404750026d4e90a2d",
+  "prompts": {}
+}

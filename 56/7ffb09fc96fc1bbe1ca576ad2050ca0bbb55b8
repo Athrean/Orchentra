@@ -1,0 +1,27 @@
+packages/cli-tools/tests/bash-tool-sandbox.test.ts
+  27be1972cf29b313 50-51,53-59,61-65,67-68
+packages/cli-tools/src/tools/bash-tool.ts
+  27be1972cf29b313 5,23,34-38
+packages/cli-core/src/runtime/tools.ts
+  27be1972cf29b313 43-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "567ffb09fc96fc1bbe1ca576ad2050ca0bbb55b8",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 40,
+      "total_deletions": 1,
+      "accepted_lines": 28,
+      "overriden_lines": 3
+    }
+  }
+}

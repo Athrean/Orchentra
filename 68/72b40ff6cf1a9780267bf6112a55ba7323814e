@@ -1,0 +1,21 @@
+apps/web/lib/ai-providers/catalog.ts
+  ai_agent 1-65
+apps/web/lib/ai-providers/key-tester.ts
+  ai_agent 1-71
+apps/web/components/pd/settings/AiProvidersTable.tsx
+  ai_agent 1-270
+apps/web/app/(app)/settings/ai-providers/page.tsx
+  ai_agent 1-23
+apps/web/app/(app)/settings/ai-providers/actions.ts
+  ai_agent 1-69
+apps/web/lib/ai-providers/credential-store.ts
+  ai_agent 1-110
+apps/web/tests/provider-key-tester.test.ts
+  ai_agent 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6872b40ff6cf1a9780267bf6112a55ba7323814e",
+  "prompts": {}
+}

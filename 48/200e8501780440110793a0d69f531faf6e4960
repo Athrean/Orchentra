@@ -1,0 +1,53 @@
+packages/cli-core/tests/session.test.ts
+  ba6e3fbdd2ec3746 1-75
+packages/cli-core/tests/permissions.test.ts
+  ba6e3fbdd2ec3746 1-43
+packages/cli-core/tests/events.test.ts
+  ba6e3fbdd2ec3746 1-33
+packages/cli-core/tests/conversation.test.ts
+  ba6e3fbdd2ec3746 1-203
+packages/cli-core/tests/budget.test.ts
+  ba6e3fbdd2ec3746 1-48
+packages/cli-core/tests/system-prompt.test.ts
+  ba6e3fbdd2ec3746 1-22
+packages/cli-core/tests/compaction.test.ts
+  ba6e3fbdd2ec3746 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "48200e8501780440110793a0d69f531faf6e4960",
+  "prompts": {
+    "457eca9997c47c46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c11221eb-bc48-49af-87a1-d7c9068dde5e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 41,
+      "overriden_lines": 0
+    },
+    "ba6e3fbdd2ec3746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4451c3c6-4ca0-4db4-bf5e-5f5667d48786",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 11,
+      "accepted_lines": 478,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}

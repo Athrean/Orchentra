@@ -1,0 +1,25 @@
+apps/cli/tests/transcript-rows.test.tsx
+  27be1972cf29b313 1-8,10-55
+apps/cli/src/tui/components/Transcript.tsx
+  27be1972cf29b313 61-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0fec3ac1fac886ca0d1cef40d984e70e8db163c5",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 370,
+      "total_deletions": 2,
+      "accepted_lines": 608,
+      "overriden_lines": 5
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli-core/tests/permission-store.test.ts
+  27be1972cf29b313 2-4,7-15,78-123
+apps/cli/src/live-cli.ts
+  27be1972cf29b313 70,94
+apps/cli/src/init.ts
+  27be1972cf29b313 31
+packages/cli-core/src/permissions/store.ts
+  27be1972cf29b313 1-3,10,21-43,60-61,69-90,92-113,130-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "ed37e6f855fa8227076e8b2f4b79fd7c45b0b294",
+  "prompts": {
+    "27be1972cf29b313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 137,
+      "total_deletions": 9,
+      "accepted_lines": 964,
+      "overriden_lines": 1
+    }
+  }
+}

@@ -1,0 +1,75 @@
+packages/cli-core/src/index.ts
+  ba6e3fbdd2ec3746 1
+packages/cli-tools/.eslintrc.cjs
+  ba6e3fbdd2ec3746 1-4
+packages/cli-core/src/runtime/index.ts
+  ba6e3fbdd2ec3746 1
+packages/cli-core/.eslintrc.cjs
+  ba6e3fbdd2ec3746 1-4
+packages/cli-api/package.json
+  ba6e3fbdd2ec3746 1-24
+packages/cli-tools/tsconfig.json
+  ba6e3fbdd2ec3746 1-8
+apps/cli/tsconfig.json
+  ba6e3fbdd2ec3746 1-8
+packages/cli-api/src/index.ts
+  ba6e3fbdd2ec3746 1
+apps/cli/.eslintrc.cjs
+  ba6e3fbdd2ec3746 1-4
+apps/cli/package.json
+  ba6e3fbdd2ec3746 1-26
+packages/cli-tools/src/index.ts
+  ba6e3fbdd2ec3746 1
+packages/cli-core/package.json
+  ba6e3fbdd2ec3746 1-22
+apps/cli/src/main.ts
+  ba6e3fbdd2ec3746 1-12,14-17
+packages/cli-core/tsconfig.json
+  ba6e3fbdd2ec3746 1-8
+packages/cli-tools/package.json
+  ba6e3fbdd2ec3746 1-24
+packages/cli-api/.eslintrc.cjs
+  ba6e3fbdd2ec3746 1-4
+packages/cli-api/tsconfig.json
+  ba6e3fbdd2ec3746 1-8
+apps/cli/src/version.ts
+  ba6e3fbdd2ec3746 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "429931fb06bffae21dbf0d81ad593a14bc72d9e3",
+  "prompts": {
+    "457eca9997c47c46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c11221eb-bc48-49af-87a1-d7c9068dde5e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 40,
+      "overriden_lines": 1
+    },
+    "ba6e3fbdd2ec3746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4451c3c6-4ca0-4db4-bf5e-5f5667d48786",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma",
+      "messages": [],
+      "total_additions": 169,
+      "total_deletions": 0,
+      "accepted_lines": 166,
+      "overriden_lines": 1
+    }
+  },
+  "humans": {
+    "h_ef2d7f928b1d51": {
+      "author": "Rishit Sharma"
+    }
+  }
+}

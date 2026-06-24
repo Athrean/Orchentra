@@ -1,0 +1,17 @@
+apps/web/components/pd/shared/ConnectCard.tsx
+  ai_agent 1-47
+apps/web/tests/graph-result.test.ts
+  ai_agent 1-31
+apps/web/lib/graph/result.ts
+  ai_agent 1-37
+apps/web/tests/permission-check.test.ts
+  ai_agent 1-44
+apps/web/lib/github/permission-check.ts
+  ai_agent 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6df47039907b5736fe21efc2e706f9a73d0228f7",
+  "prompts": {}
+}

@@ -1,0 +1,19 @@
+packages/operations/tests/get-repo-metadata-live.test.ts
+  s_27be1972cf29b3::t_e42d9681b07571 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "7cd2df31cc83277d413db720133e47ede382ace7",
+  "prompts": {},
+  "sessions": {
+    "s_27be1972cf29b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43c80201-62bd-4449-83f3-efdb7f31b7ac",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
