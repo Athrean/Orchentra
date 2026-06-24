@@ -1,3 +1,4 @@
+sh scripts/check-ref-leaks.sh
 npx lint-staged
 bun run typecheck
 bun run test:precommit
