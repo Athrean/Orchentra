@@ -14,6 +14,7 @@ import { PrCommand } from './pr'
 import { IssueCommand } from './issue'
 import { SessionCommand } from './session'
 import { ConfigCommand } from './config'
+import { PermissionsCommand } from './permissions'
 import { McpCommand } from './mcp-cmd'
 import { DoctorCommand } from './doctor-cmd'
 import { ExportCommand } from './export'
@@ -46,6 +47,7 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new IssueCommand())
   registry.register(new SessionCommand())
   registry.register(new ConfigCommand())
+  registry.register(new PermissionsCommand())
   registry.register(new McpCommand())
   registry.register(new DoctorCommand())
   registry.register(new ExportCommand())

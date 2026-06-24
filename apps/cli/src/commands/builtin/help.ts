@@ -29,6 +29,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   reauth: 'Auth',
   'auth-status': 'Auth',
   mcp: 'Tools',
+  permissions: 'Tools',
   doctor: 'Tools',
   config: 'Tools',
   export: 'Tools',
