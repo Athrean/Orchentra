@@ -1,10 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 import { PermissionsCommand } from '../src/commands/builtin/permissions'
 import type { CommandContext } from '../src/commands/registry'
-import type { SessionControl, PermissionMode, UsageTotals } from '@orchentra/cli-core'
+import type { PermissionMode, PolicyRule, SessionControl, StoredPermissionRule, UsageTotals } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
 
-function makeSession(initial: PermissionMode = 'workspace-write'): {
+function makeSession(
+  initial: PermissionMode = 'workspace-write',
+  opts: {
+    permissionRules?: readonly PolicyRule[]
+    storedRules?: readonly StoredPermissionRule[]
+  } = {},
+): {
   session: SessionControl
   calls: PermissionMode[]
 } {
@@ -23,6 +29,8 @@ function makeSession(initial: PermissionMode = 'workspace-write'): {
     getSessionId: () => 's',
     getTurns: () => 0,
     getUsage: () => usage,
+    listPermissionRules: opts.permissionRules ? () => opts.permissionRules ?? [] : undefined,
+    listStoredPermissionRules: opts.storedRules ? () => opts.storedRules ?? [] : undefined,
     clearHistory: () => {},
     forceCompact: () => {},
   }
@@ -46,6 +54,31 @@ describe('PermissionsCommand', () => {
     expect(text).toContain('workspace-write')
     expect(text).toContain('read-only')
     expect(text).toContain('danger-full-access')
+  })
+
+  test('no arg shows resolved allow, deny, and ask rules when available', async () => {
+    const { session } = makeSession('workspace-write', {
+      permissionRules: [
+        { decision: 'allow', tool: 'bash', pattern: 'git status*' },
+        { decision: 'deny', tool: 'bash', pattern: 'rm -rf*' },
+        { decision: 'ask', tool: 'github_create_pr', pattern: '*' },
+      ],
+      storedRules: [{ decision: 'allow', tool: 'bash', pattern: 'bun test*', addedAt: '2026-06-24T00:00:00.000Z' }],
+    })
+    const { ctx, events } = makeCtx(session)
+    await new PermissionsCommand().execute([], ctx)
+
+    const ev = events[0]
+    if (ev.kind !== 'card') throw new Error('expected card')
+    const text = JSON.stringify(ev)
+    expect(text).toContain('allow')
+    expect(text).toContain('bash git status*')
+    expect(text).toContain('deny')
+    expect(text).toContain('bash rm -rf*')
+    expect(text).toContain('ask')
+    expect(text).toContain('github_create_pr *')
+    expect(text).toContain('remembered allow')
+    expect(text).toContain('bash bun test*')
   })
 
   test('a valid mode arg switches the active mode', async () => {

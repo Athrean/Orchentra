@@ -71,6 +71,7 @@ export type {
   ChatMessage,
   ProviderToolSchema,
   ProviderRequest,
+  EffortTier,
   TextDelta,
   ThinkingDelta,
   ThinkingSignature,
@@ -82,6 +83,7 @@ export type {
   ProviderStreamEvent,
   Provider,
 } from './provider'
+export { EFFORT_TIERS, isEffortTier } from './provider'
 
 export type {
   TaskHandle,
