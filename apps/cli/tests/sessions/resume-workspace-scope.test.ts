@@ -28,6 +28,7 @@ function makeSession(): SessionControl {
     getModel: () => 'test-model',
     setModel: () => 'test-model',
     getPermissionMode: () => 'workspace-write',
+    setPermissionMode: (m) => m,
     getSessionId: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     getTurns: () => 0,
     getUsage: () => ({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }),

@@ -10,6 +10,8 @@ export interface SessionControl {
    */
   setModel(model: string): string
   getPermissionMode(): PermissionMode
+  /** Switch the active permission mode for the session. Returns the new mode. */
+  setPermissionMode(mode: PermissionMode): PermissionMode
   getSessionId(): string
   getTurns(): number
   getUsage(): UsageTotals
