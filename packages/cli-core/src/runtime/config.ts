@@ -9,6 +9,7 @@ import type {
   RuntimePermissionRuleConfig,
   ResolvedPermissionMode,
 } from './config-types'
+import { isEffortTier } from './provider'
 
 export class ConfigLoader {
   constructor(
@@ -91,10 +92,15 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
     hooks: extractHooks(merged),
     model: extractModel(merged),
     aliases: extractAliases(merged),
+    effort: extractEffort(merged),
     permissionMode: extractPermissionMode(merged),
     permissionRules: extractPermissionRules(merged),
     memory: extractMemoryConfig(merged),
   }
+}
+
+function extractEffort(merged: Record<string, unknown>): RuntimeFeatureConfig['effort'] {
+  return isEffortTier(merged.effort) ? merged.effort : 'medium'
 }
 
 function extractMemoryConfig(merged: Record<string, unknown>): MemoryFeatureConfig {

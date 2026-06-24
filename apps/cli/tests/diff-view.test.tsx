@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { classifyDiffLine, looksLikeDiff } from '../src/tui/components/DiffView'
+import React from 'react'
+import { render } from 'ink-testing-library'
+import { classifyDiffLine, DiffView, looksLikeDiff } from '../src/tui/components/DiffView'
 
 describe('looksLikeDiff', () => {
   test('detects unified-diff-style hunks', () => {
@@ -43,5 +45,24 @@ describe('classifyDiffLine', () => {
     expect(classifyDiffLine(' context').kind).toBe('context')
     expect(classifyDiffLine('+++ b/file').kind).toBe('meta')
     expect(classifyDiffLine('--- a/file').kind).toBe('meta')
+  })
+})
+
+describe('DiffView rendering', () => {
+  test('renders file headers, hunks, additions, and deletions with visible row labels', () => {
+    const sample = `diff --git a/src/app.ts b/src/app.ts
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,2 +1,2 @@
+-old line
++new line`
+    const { lastFrame } = render(<DiffView text={sample} />)
+    const out = lastFrame() ?? ''
+
+    expect(out).toContain('file')
+    expect(out).toContain('src/app.ts')
+    expect(out).toContain('hunk')
+    expect(out).toContain('-old line')
+    expect(out).toContain('+new line')
   })
 })

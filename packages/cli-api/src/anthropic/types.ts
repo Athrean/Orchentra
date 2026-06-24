@@ -38,6 +38,7 @@ export interface MessageRequest {
   messages: { role: 'user' | 'assistant'; content: string | ContentBlock[] }[]
   system?: string | SystemContentBlock[]
   tools?: ToolDefinition[]
+  thinking?: { type: 'enabled'; budget_tokens: number }
   stream?: boolean
   temperature?: number
   stop_sequences?: string[]

@@ -20,6 +20,15 @@ export interface ProviderRequest {
   tools: ProviderToolSchema[]
   model: string
   maxOutputTokens: number
+  effort?: EffortTier
+  thinkingTokenBudget?: number
+}
+
+export const EFFORT_TIERS = ['low', 'medium', 'high'] as const
+export type EffortTier = (typeof EFFORT_TIERS)[number]
+
+export function isEffortTier(value: unknown): value is EffortTier {
+  return typeof value === 'string' && (EFFORT_TIERS as readonly string[]).includes(value)
 }
 
 export interface TextDelta {

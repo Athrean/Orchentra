@@ -10,28 +10,10 @@ import {
   type ToolRegistry,
 } from '@orchentra/cli-core'
 import { getSessionsDirForWorkspace } from './session-config'
-import {
-  AnthropicProvider,
-  OpenAiCompatProvider,
-  GeminiProvider,
-  OPENAI_CONFIG,
-  XAI_CONFIG,
-  DASHSCOPE_CONFIG,
-} from '@orchentra/cli-api'
 import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
-
-const BUILTIN_MODEL_ALIASES: Record<string, string> = {
-  opus: 'claude-opus-4-20250514',
-  sonnet: 'claude-sonnet-4-20250514',
-  haiku: 'claude-haiku-4-20250514',
-  grok: 'grok-3',
-  'grok-mini': 'grok-3-mini',
-  gemini: 'gemini-2.0-flash',
-  'gemini-pro': 'gemini-2.0-pro',
-  'gemini-flash': 'gemini-2.0-flash',
-}
+import { builtinModelAliases, createProvider, resolveModelAlias } from './provider-factory'
 
 export interface ResolvedModel {
   readonly model: string
@@ -64,10 +46,10 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     const model = resolveModelAlias(raw, userAliases)
     if (!isKnownModel(model)) {
       process.stderr.write(
-        `[orchentra] warn: model '${model}' is not in the known-model list. Provider will still try to call it, but typos here usually surface as opaque API errors. Aliases: ${Object.keys(BUILTIN_MODEL_ALIASES).join(', ')}.\n`,
+        `[orchentra] warn: model '${model}' is not in the known-model list. Provider will still try to call it, but typos here usually surface as opaque API errors. Aliases: ${builtinModelAliases().join(', ')}.\n`,
       )
     }
-    return { model, provider: resolveProvider(model), providerName: resolveProviderName(model) }
+    return { model, ...createProvider(model) }
   }
 
   const rawModel = config.featureConfig.model ?? options.model
@@ -103,6 +85,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     cwd: options.cwd,
     sessionId,
     sharedState,
+    effort: config.featureConfig.effort,
     memoryConfig: config.featureConfig.memory,
     hookRunner,
   })
@@ -126,31 +109,6 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
       await mcpManager.shutdown()
     },
   }
-}
-
-function resolveModelAlias(input: string, userAliases?: Record<string, string>): string {
-  const lower = input.toLowerCase()
-  if (userAliases && userAliases[lower]) return userAliases[lower]
-  if (BUILTIN_MODEL_ALIASES[lower]) return BUILTIN_MODEL_ALIASES[lower]
-  return input
-}
-
-function resolveProvider(model: string): Provider {
-  const lower = model.toLowerCase()
-  if (lower.startsWith('gpt') || lower.includes('openai')) return new OpenAiCompatProvider(OPENAI_CONFIG)
-  if (lower.startsWith('grok') || lower.includes('xai')) return new OpenAiCompatProvider(XAI_CONFIG)
-  if (lower.includes('qwen') || lower.includes('dashscope')) return new OpenAiCompatProvider(DASHSCOPE_CONFIG)
-  if (lower.startsWith('gemini') || lower.includes('google')) return new GeminiProvider({ model })
-  return new AnthropicProvider()
-}
-
-function resolveProviderName(model: string): string {
-  const lower = model.toLowerCase()
-  if (lower.startsWith('gpt') || lower.includes('openai')) return 'openai'
-  if (lower.startsWith('grok') || lower.includes('xai')) return 'xai'
-  if (lower.includes('qwen') || lower.includes('dashscope')) return 'dashscope'
-  if (lower.startsWith('gemini') || lower.includes('google')) return 'gemini'
-  return 'anthropic'
 }
 
 function buildToolRegistry(): ToolRegistry {

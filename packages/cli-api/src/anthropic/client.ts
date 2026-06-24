@@ -88,12 +88,18 @@ export class AnthropicProvider implements Provider {
 
     const usingOAuth = authHeaders.authSource === 'bearer' || authHeaders.authSource === 'both'
     const system = injectCacheBoundary(request.systemStatic, request.systemDynamic, { usingOAuth })
+    const thinkingBudget = request.thinkingTokenBudget
+    const maxTokens = request.maxOutputTokens || this.maxTokens
     const body: MessageRequest = {
       model: request.model || this.model,
-      max_tokens: request.maxOutputTokens || this.maxTokens,
+      max_tokens: thinkingBudget ? Math.max(maxTokens, thinkingBudget + maxTokens) : maxTokens,
       messages: toAnthropicMessages(request.messages),
       system,
       stream: true,
+    }
+
+    if (thinkingBudget) {
+      body.thinking = { type: 'enabled', budget_tokens: thinkingBudget }
     }
 
     if (request.tools.length > 0) {

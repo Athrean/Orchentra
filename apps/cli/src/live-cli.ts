@@ -3,6 +3,7 @@ import type {
   ConversationConfig,
   ConversationDeps,
   HookRunner,
+  EffortTier,
   MemoryFeatureConfig,
   PermissionMode,
   Provider,
@@ -36,6 +37,7 @@ import type {
   PolicyHandle,
   PolicyRule,
   PromptChoice as ToolPromptChoice,
+  StoredPermissionRule,
 } from '@orchentra/cli-core'
 import {
   Spinner,
@@ -48,6 +50,7 @@ import {
 import { readLine } from './input'
 import { createHeadlessAskToolUser } from './headless-tool-prompt'
 import { isProviderAuthError, friendlyAuthErrorMessage } from '@orchentra/cli-api'
+import { thinkingTokenBudgetForEffort } from './provider-factory'
 
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
 
@@ -61,6 +64,7 @@ export type { ToolPromptChoice }
 export class LiveCli implements SessionControl {
   private model: string
   private permissionMode: PermissionMode
+  private effort: EffortTier
   private provider: Provider
   private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
@@ -93,6 +97,7 @@ export class LiveCli implements SessionControl {
     provider: Provider
     resolveModel: ModelResolver
     tools: ToolRegistry
+    effort?: EffortTier
     cwd: string
     sessionId: string
     sharedState: SharedToolState
@@ -101,6 +106,7 @@ export class LiveCli implements SessionControl {
   }) {
     this.model = deps.model
     this.permissionMode = deps.permissionMode
+    this.effort = deps.effort ?? 'medium'
     this.provider = deps.provider
     this.resolveModel = deps.resolveModel
     this.tools = deps.tools
@@ -140,6 +146,15 @@ export class LiveCli implements SessionControl {
   setPermissionMode(mode: PermissionMode): PermissionMode {
     this.permissionMode = mode
     return mode
+  }
+
+  getEffort(): EffortTier {
+    return this.effort
+  }
+
+  setEffort(effort: EffortTier): EffortTier {
+    this.effort = effort
+    return effort
   }
 
   setEventSink(sink: RuntimeEventSink | null): void {
@@ -192,6 +207,14 @@ export class LiveCli implements SessionControl {
 
   getUsage(): UsageTotals {
     return this.tracker.cumulativeUsage()
+  }
+
+  listPermissionRules(): readonly PolicyRule[] {
+    return this.policyHandle.ruleset.rules.slice()
+  }
+
+  listStoredPermissionRules(): readonly StoredPermissionRule[] {
+    return this.permissionStore.list()
   }
 
   clearHistory(): void {
@@ -287,6 +310,8 @@ export class LiveCli implements SessionControl {
       budget: { maxSteps: 50, maxTokens: 200_000 },
       sessionId: this.sessionId,
       cwd: this.cwd,
+      effort: this.effort,
+      thinkingTokenBudget: thinkingTokenBudgetForEffort(this.effort),
     }
 
     const systemPrompt: SystemPrompt = buildSystemPrompt({
