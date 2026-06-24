@@ -5,6 +5,7 @@ import { fileWriteTool } from './tools/file-write-tool'
 import { fileEditTool } from './tools/file-edit-tool'
 import { globTool } from './tools/glob-tool'
 import { grepTool } from './tools/grep-tool'
+import { diagnosticsTool } from './tools/diagnostics-tool'
 import { taskCreateTool } from './tools/task-create-tool'
 import { taskGetTool } from './tools/task-get-tool'
 import { taskListTool } from './tools/task-list-tool'
@@ -31,6 +32,7 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   fileEditTool,
   globTool,
   grepTool,
+  diagnosticsTool,
   taskCreateTool,
   taskGetTool,
   taskListTool,

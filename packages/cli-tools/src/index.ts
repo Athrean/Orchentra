@@ -55,6 +55,14 @@ export { fileWriteTool } from './tools/file-write-tool'
 export { fileEditTool } from './tools/file-edit-tool'
 export { globTool } from './tools/glob-tool'
 export { grepTool } from './tools/grep-tool'
+export { diagnosticsTool } from './tools/diagnostics-tool'
+export {
+  parseDiagnostics,
+  diagnosticsReport,
+  type Diagnostic,
+  type DiagnosticsReport,
+  type Severity,
+} from './diagnostics'
 export { taskCreateTool } from './tools/task-create-tool'
 export { taskGetTool } from './tools/task-get-tool'
 export { taskListTool } from './tools/task-list-tool'
