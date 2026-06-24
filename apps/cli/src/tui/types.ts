@@ -136,6 +136,7 @@ export type ActiveFlowState =
   | { readonly kind: 'anthropic-login' }
   | { readonly kind: 'login-picker' }
   | { readonly kind: 'model-picker'; readonly current: string }
+  | { readonly kind: 'command-palette' }
   | {
       readonly kind: 'repo-picker'
       readonly repos: readonly import('../commands/ui-output').RepoPickerItem[]
@@ -206,11 +207,11 @@ export type TuiAction =
   | { type: 'flow/end' }
 
 export const PERMISSION_MODE_CYCLE: readonly PermissionMode[] = [
-  'prompt',
-  'workspace-write',
   'read-only',
-  'allow',
+  'workspace-write',
   'danger-full-access',
+  'prompt',
+  'allow',
 ] as const
 
 // Deprecated: import from `theme.ts` instead. Kept as a re-export so the

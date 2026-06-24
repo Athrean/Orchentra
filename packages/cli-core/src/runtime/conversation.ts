@@ -11,6 +11,7 @@ import {
 } from './events'
 import { compact, shouldCompact, type TokenEstimator } from './compaction'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
+import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
 import type { SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
@@ -34,6 +35,8 @@ export interface ConversationConfig {
   budget: BudgetConfig
   sessionId: string
   cwd: string
+  effort?: EffortTier
+  thinkingTokenBudget?: number
   estimator?: TokenEstimator
 }
 
@@ -140,6 +143,8 @@ export class ConversationRuntime {
         tools: tools.list(),
         model: this.config.model,
         maxOutputTokens: this.config.maxOutputTokens,
+        effort: this.config.effort,
+        thinkingTokenBudget: this.config.thinkingTokenBudget,
       }
 
       const turn = await this.runTurn(provider.stream(request), budget)

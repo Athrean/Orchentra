@@ -12,6 +12,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   exit: 'Core',
   compact: 'Core',
   model: 'Core',
+  effort: 'Core',
   version: 'Core',
   cost: 'Core',
   diff: 'Workspace',

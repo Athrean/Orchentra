@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { SessionWriter, replaySession, resolveSessionPath } from '../src/runtime/session'
+import {
+  CURRENT_SESSION_PROTOCOL_VERSION,
+  SessionWriter,
+  replaySession,
+  resolveSessionPath,
+} from '../src/runtime/session'
 
 describe('SessionWriter', () => {
   function makeDir(): string {
@@ -30,6 +35,8 @@ describe('SessionWriter', () => {
       expect(records[0]!.event.kind).toBe('text')
       expect(records[1]!.event.kind).toBe('done')
       expect(records[0]!.meta.model).toBe('test')
+      const rawRecord = JSON.parse(readFileSync(writer.path, 'utf8').split('\n')[0]!)
+      expect(rawRecord.protocolVersion).toBe(CURRENT_SESSION_PROTOCOL_VERSION)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -45,6 +52,51 @@ describe('SessionWriter', () => {
       })
       await writer.close()
       expect(existsSync(join(dir, 'custom-id.jsonl'))).toBe(true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('session protocol migration', () => {
+  test('replays legacy records without protocolVersion', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-test-'))
+    try {
+      const path = join(dir, 'legacy.jsonl')
+      const meta = { id: 'legacy', createdAt: '2026-04-21T00:00:00.000Z', cwd: '/tmp', model: 'test' }
+      writeFileSync(path, JSON.stringify({ meta, event: { kind: 'text', delta: 'legacy' }, at: meta.createdAt }) + '\n')
+
+      const records = await replaySession(path)
+      expect(records).toHaveLength(1)
+      expect(records[0]!.protocolVersion).toBe(CURRENT_SESSION_PROTOCOL_VERSION)
+      expect(records[0]!.event).toEqual({ kind: 'text', delta: 'legacy' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('skips records from unknown future protocol versions', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-test-'))
+    try {
+      const path = join(dir, 'future.jsonl')
+      const meta = { id: 'future', createdAt: '2026-04-21T00:00:00.000Z', cwd: '/tmp', model: 'test' }
+      const current = {
+        protocolVersion: CURRENT_SESSION_PROTOCOL_VERSION,
+        meta,
+        event: { kind: 'text', delta: 'current' },
+        at: meta.createdAt,
+      }
+      const future = {
+        protocolVersion: CURRENT_SESSION_PROTOCOL_VERSION + 1,
+        meta,
+        event: { kind: 'text', delta: 'future' },
+        at: meta.createdAt,
+      }
+      writeFileSync(path, `${JSON.stringify(current)}\n${JSON.stringify(future)}\n`)
+
+      const records = await replaySession(path)
+      expect(records).toHaveLength(1)
+      expect(records[0]!.event).toEqual({ kind: 'text', delta: 'current' })
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

@@ -7,6 +7,7 @@ import type { RuntimeEvent } from './events'
 const MAX_SESSION_SIZE = 256 * 1024
 const MAX_ROTATED_FILES = 3
 const ROTATION_CHECK_INTERVAL = 10
+export const CURRENT_SESSION_PROTOCOL_VERSION = 1
 
 export interface SessionMeta {
   id: string
@@ -16,6 +17,7 @@ export interface SessionMeta {
 }
 
 export interface SessionRecord {
+  protocolVersion?: number
   meta: SessionMeta
   event: RuntimeEvent
   at: string
@@ -57,6 +59,7 @@ export class SessionWriter {
 
   async append(event: RuntimeEvent): Promise<void> {
     const line: SessionRecord = {
+      protocolVersion: CURRENT_SESSION_PROTOCOL_VERSION,
       meta: this.meta,
       event,
       at: new Date().toISOString(),
@@ -79,8 +82,9 @@ export class SessionWriter {
       model: this.meta.model,
     }
     const lines = raw.split('\n').filter((l) => l.length > 0)
-    const newLines = lines.map((line) => {
-      const record = JSON.parse(line) as SessionRecord
+    const newLines = lines.flatMap((line) => {
+      const record = migrateRecord(JSON.parse(line))
+      if (!record) return []
       return JSON.stringify({ ...record, meta, at: new Date().toISOString() })
     })
     const newPath = join(dirname(this.path), `${id}.jsonl`)
@@ -157,10 +161,30 @@ export class SessionWriter {
   }
 }
 
+export function migrateRecord(record: unknown): SessionRecord | null {
+  if (!isSessionRecordLike(record)) return null
+
+  if (record.protocolVersion === undefined) {
+    return {
+      ...record,
+      protocolVersion: CURRENT_SESSION_PROTOCOL_VERSION,
+    }
+  }
+
+  if (record.protocolVersion !== CURRENT_SESSION_PROTOCOL_VERSION) {
+    return null
+  }
+
+  return record
+}
+
 export async function replaySession(path: string): Promise<SessionRecord[]> {
   const raw = await readFile(path, 'utf8')
   const lines = raw.split('\n').filter((l) => l.length > 0)
-  return lines.map((line) => JSON.parse(line) as SessionRecord)
+  return lines.flatMap((line) => {
+    const record = migrateRecord(JSON.parse(line))
+    return record ? [record] : []
+  })
 }
 
 export async function resolveSessionPath(idOrLatest: string, rootDir: string = defaultSessionDir()): Promise<string> {
@@ -179,4 +203,10 @@ export async function resolveSessionPath(idOrLatest: string, rootDir: string = d
 
 export function defaultSessionDir(): string {
   return join(process.cwd(), '.orchentra', 'sessions')
+}
+
+function isSessionRecordLike(record: unknown): record is SessionRecord {
+  if (!record || typeof record !== 'object') return false
+  const candidate = record as Partial<SessionRecord>
+  return Boolean(candidate.meta && candidate.event && typeof candidate.at === 'string')
 }

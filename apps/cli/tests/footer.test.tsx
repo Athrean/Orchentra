@@ -78,4 +78,27 @@ describe('Footer — idle', () => {
     expect(out).toContain('claude-opus-4-7')
     expect(out).toContain('git:(main)')
   })
+
+  test('shows an explicit danger warning for danger-full-access mode', () => {
+    const { lastFrame } = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="danger-full-access"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+      />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).toContain('danger-full-access ⚠')
+  })
+
+  test('shows that allow mode skips permission prompts', () => {
+    const { lastFrame } = render(
+      <Footer model="claude-opus-4-7" mode="allow" cwd="/tmp" turn={IDLE} spinnerFrame={0} exitHintActive={false} />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).toContain('allow ⚠ skip permissions')
+  })
 })
