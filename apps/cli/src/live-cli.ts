@@ -25,6 +25,7 @@ import {
   estimateMessagesTokens,
   defaultEstimator,
   prepareMemoryContext,
+  captureMemoryFromTurn,
   PatternStore,
   embedText,
   createEnforcer,
@@ -48,6 +49,7 @@ import {
   renderErrorLine,
   renderCompactNotice,
   renderCostWarning,
+  renderMemorySaved,
 } from './renderer'
 import { readLine } from './input'
 import { createHeadlessAskToolUser } from './headless-tool-prompt'
@@ -409,10 +411,15 @@ export class LiveCli implements SessionControl {
 
     let steps = 0
     let lastUsage: UsageTotals = emptyUsage()
+    let assistantText = ''
+    let doneReason: string | undefined
 
     try {
       for await (const event of this.runtime.run({ userMessage: input, priorMessages: this.messages })) {
         await this.handleEvent(event)
+        if (event.kind === 'text') {
+          assistantText += event.delta
+        }
         if (event.kind === 'usage') {
           lastUsage = event.cumulative
           this.tracker.record(event.turn)
@@ -420,12 +427,17 @@ export class LiveCli implements SessionControl {
         if (event.kind === 'done') {
           steps = event.steps
           lastUsage = event.usage
+          doneReason = event.reason
         }
       }
 
       // Capture the full conversation state (user + assistant + tool messages)
       // so the next turn sees assistant/tool context, not just user prompts.
       this.messages = this.runtime.getFinalMessages()
+
+      if (doneReason === 'stop') {
+        await this.captureMemory(input, assistantText, sink)
+      }
       if (sink) {
         sink({ kind: 'done', reason: 'stop', steps, usage: lastUsage })
       } else {
@@ -475,6 +487,26 @@ export class LiveCli implements SessionControl {
 
     if (this.session) {
       await this.session.append(event)
+    }
+  }
+
+  // Auto-extract a failure→resolution memory after a successful turn. Gated on
+  // `memory.enabled`; failure-shaped turns only; deduped by signature. Best
+  // effort — embedding may be unavailable, so a throw here never breaks the turn.
+  private async captureMemory(input: string, resolution: string, sink: RuntimeEventSink | null): Promise<void> {
+    if (!this.memoryConfig?.enabled) return
+    try {
+      const receipt = await captureMemoryFromTurn(
+        { store: new PatternStore(), embed: embedText, config: this.memoryConfig },
+        { orgId: 'default', userMessage: input, resolution },
+      )
+      if (receipt.status !== 'saved') return
+      const event: RuntimeEvent = { kind: 'memory_saved', id: receipt.entryId, signatureHash: receipt.signatureHash }
+      if (this.session) await this.session.append(event)
+      if (sink) sink(event)
+      else process.stdout.write(renderMemorySaved(receipt.entryId) + '\n')
+    } catch {
+      // best effort — never block a turn on memory capture
     }
   }
 
