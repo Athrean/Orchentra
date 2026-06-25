@@ -87,6 +87,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     sharedState,
     effort: config.featureConfig.effort,
     memoryConfig: config.featureConfig.memory,
+    budgetConfig: config.featureConfig.budget,
     hookRunner,
   })
 

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { RuntimeBudget, type BudgetConfig } from './budget'
+import { RuntimeBudget, type BudgetConfig, type BudgetState } from './budget'
 import {
   addUsage,
   emptyUsage,
+  type DoneReason,
   type RuntimeEvent,
   type SpanAttributeValue,
   type ToolCall,
@@ -17,6 +18,12 @@ import type { SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
 import type { PermissionEnforcer } from './permission-enforcer'
 import type { Enforcer } from '../permissions/enforcer'
+
+function exhaustionReason(by: BudgetState['exhaustedBy']): DoneReason {
+  if (by === 'steps') return 'max_steps'
+  if (by === 'cost') return 'cost_exhausted'
+  return 'budget_exhausted'
+}
 
 const PLAN_MODE_ALLOWED_TOOLS = new Set<string>([
   'exit_plan_mode',
@@ -108,7 +115,7 @@ export class ConversationRuntime {
       if (pre.exhausted) {
         yield* this.emit({
           kind: 'done',
-          reason: pre.exhaustedBy === 'steps' ? 'max_steps' : 'budget_exhausted',
+          reason: exhaustionReason(pre.exhaustedBy),
           steps: pre.steps,
           usage: pre.usage,
         })
@@ -150,6 +157,16 @@ export class ConversationRuntime {
       const turn = await this.runTurn(provider.stream(request), budget)
       for (const ev of turn.events) yield* this.emit(ev)
 
+      const warning = budget.consumeCostWarning()
+      if (warning) {
+        yield* this.emit({
+          kind: 'cost_warning',
+          costUsd: warning.costUsd,
+          thresholdUsd: warning.thresholdUsd,
+          limitUsd: this.config.budget.maxCostUsd,
+        })
+      }
+
       if (turn.error) {
         yield* this.emit({
           kind: 'span_end',
@@ -185,7 +202,7 @@ export class ConversationRuntime {
         if (post.exhausted) {
           yield* this.emit({
             kind: 'done',
-            reason: post.exhaustedBy === 'steps' ? 'max_steps' : 'budget_exhausted',
+            reason: exhaustionReason(post.exhaustedBy),
             steps: budget.currentSteps,
             usage: budget.currentUsage,
           })

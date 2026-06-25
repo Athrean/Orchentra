@@ -5,6 +5,7 @@ import type {
   HookRunner,
   EffortTier,
   MemoryFeatureConfig,
+  BudgetFeatureConfig,
   PermissionMode,
   Provider,
   RuntimeEvent,
@@ -46,6 +47,7 @@ import {
   renderDoneLine,
   renderErrorLine,
   renderCompactNotice,
+  renderCostWarning,
 } from './renderer'
 import { readLine } from './input'
 import { createHeadlessAskToolUser } from './headless-tool-prompt'
@@ -74,6 +76,7 @@ export class LiveCli implements SessionControl {
   private readonly spinner: Spinner
   private readonly sharedState: SharedToolState
   private readonly memoryConfig: MemoryFeatureConfig | null
+  private readonly budgetConfig: BudgetFeatureConfig | null
   private readonly hookRunner: HookRunner | null
 
   private messages: ChatMessage[] = []
@@ -102,6 +105,7 @@ export class LiveCli implements SessionControl {
     sessionId: string
     sharedState: SharedToolState
     memoryConfig?: MemoryFeatureConfig
+    budgetConfig?: BudgetFeatureConfig
     hookRunner?: HookRunner
   }) {
     this.model = deps.model
@@ -114,6 +118,7 @@ export class LiveCli implements SessionControl {
     this.sessionId = deps.sessionId
     this.sharedState = deps.sharedState
     this.memoryConfig = deps.memoryConfig ?? null
+    this.budgetConfig = deps.budgetConfig ?? null
     this.hookRunner = deps.hookRunner ?? null
     this.tracker = new UsageTracker()
     this.spinner = new Spinner()
@@ -218,6 +223,13 @@ export class LiveCli implements SessionControl {
     return this.tracker.cumulativeUsage()
   }
 
+  getCostLimits(): { maxCostUsd?: number; warnCostUsd?: number } {
+    return {
+      maxCostUsd: this.budgetConfig?.maxCostUsd,
+      warnCostUsd: this.budgetConfig?.warnCostUsd,
+    }
+  }
+
   listPermissionRules(): readonly PolicyRule[] {
     return this.policyHandle.ruleset.rules.slice()
   }
@@ -316,7 +328,13 @@ export class LiveCli implements SessionControl {
       contextWindowTokens: 200_000,
       compactionThreshold: 0.8,
       keepRecentOnCompact: 6,
-      budget: { maxSteps: 50, maxTokens: 200_000 },
+      budget: {
+        maxSteps: 50,
+        maxTokens: 200_000,
+        maxCostUsd: this.budgetConfig?.maxCostUsd,
+        warnCostUsd: this.budgetConfig?.warnCostUsd,
+        model: this.model,
+      },
       sessionId: this.sessionId,
       cwd: this.cwd,
       effort: this.effort,
@@ -443,6 +461,9 @@ export class LiveCli implements SessionControl {
           break
         case 'compacted':
           process.stdout.write(renderCompactNotice(event.droppedMessageCount, event.tokensSaved) + '\n')
+          break
+        case 'cost_warning':
+          process.stdout.write(renderCostWarning(event.costUsd, event.thresholdUsd, event.limitUsd) + '\n')
           break
         case 'error':
           if (!event.retryable) {
