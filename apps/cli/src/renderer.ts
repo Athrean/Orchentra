@@ -93,3 +93,11 @@ export function costWarningText(costUsd: number, thresholdUsd: number, limitUsd?
 export function renderCostWarning(costUsd: number, thresholdUsd: number, limitUsd?: number): string {
   return `${YELLOW}${costWarningText(costUsd, thresholdUsd, limitUsd)}${RESET}`
 }
+
+export function memorySavedText(id: string): string {
+  return `Learned failure memory ${id.slice(0, 8)} — /memory show ${id.slice(0, 8)} to inspect`
+}
+
+export function renderMemorySaved(id: string): string {
+  return `${DIM}${memorySavedText(id)}${RESET}`
+}
