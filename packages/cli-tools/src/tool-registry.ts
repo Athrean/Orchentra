@@ -24,6 +24,7 @@ import { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'
 import { githubListIssuesTool, githubGetIssueTool } from './github/issues'
 import { githubListPullsTool, githubGetPullTool } from './github/pulls'
 import { githubSearchIssuesTool } from './github/search'
+import { gitStatusTool, gitDiffTool, gitLogTool } from './tools/git-tools'
 
 const BUILTIN_TOOLS: ToolDefinition[] = [
   bashTool,
@@ -54,6 +55,9 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   githubListPullsTool,
   githubGetPullTool,
   githubSearchIssuesTool,
+  gitStatusTool,
+  gitDiffTool,
+  gitLogTool,
 ]
 
 export class DefaultToolRegistry implements ToolRegistry {
