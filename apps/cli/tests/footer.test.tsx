@@ -31,6 +31,7 @@ describe('Footer — running', () => {
       <Footer
         model="claude-opus-4-7"
         mode="workspace-write"
+        terseMode="off"
         cwd="/tmp"
         turn={makeRunning()}
         spinnerFrame={0}
@@ -47,6 +48,7 @@ describe('Footer — running', () => {
       <Footer
         model="claude-opus-4-7"
         mode="workspace-write"
+        terseMode="off"
         cwd="/tmp"
         turn={turn}
         spinnerFrame={0}
@@ -66,6 +68,7 @@ describe('Footer — idle', () => {
       <Footer
         model="claude-opus-4-7"
         mode="workspace-write"
+        terseMode="off"
         cwd="/tmp"
         branch="main"
         turn={IDLE}
@@ -84,6 +87,7 @@ describe('Footer — idle', () => {
       <Footer
         model="claude-opus-4-7"
         mode="danger-full-access"
+        terseMode="off"
         cwd="/tmp"
         turn={IDLE}
         spinnerFrame={0}
@@ -96,9 +100,33 @@ describe('Footer — idle', () => {
 
   test('shows that allow mode skips permission prompts', () => {
     const { lastFrame } = render(
-      <Footer model="claude-opus-4-7" mode="allow" cwd="/tmp" turn={IDLE} spinnerFrame={0} exitHintActive={false} />,
+      <Footer
+        model="claude-opus-4-7"
+        mode="allow"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+      />,
     )
     const out = strip(lastFrame() ?? '')
     expect(out).toContain('allow ⚠ skip permissions')
+  })
+
+  test('shows terse mode when enabled', () => {
+    const { lastFrame } = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="full"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+      />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).toContain('terse:full')
   })
 })

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Box, Text } from 'ink'
-import type { PermissionMode, UsageTotals } from '@orchentra/cli-core'
+import type { PermissionMode, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import { formatUsd, pricingForModel } from '@orchentra/cli-core'
 import { THEME, modeAccent } from '../theme'
 import type { TurnStatus } from '../types'
@@ -9,6 +9,7 @@ import { ShimmerText } from './ShimmerText'
 export interface FooterProps {
   readonly model: string
   readonly mode: PermissionMode
+  readonly terseMode: TerseMode
   readonly cwd: string
   readonly branch?: string
   readonly turn: TurnStatus
@@ -37,6 +38,7 @@ export function Footer(props: FooterProps): React.ReactElement {
   const branchSegment = props.branch ? ` ${THEME.separator} git:(${props.branch})` : ''
   const costSegment = cost ? ` ${THEME.separator} ${cost}` : ''
   const modeSegment = props.mode === 'workspace-write' ? '' : ` ${THEME.separator} ${formatMode(props.mode)}`
+  const terseSegment = props.terseMode === 'off' ? '' : ` ${THEME.separator} terse:${props.terseMode}`
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -44,6 +46,7 @@ export function Footer(props: FooterProps): React.ReactElement {
         <Text dimColor>{props.model}</Text>
         <Text dimColor>{branchSegment}</Text>
         {modeSegment ? <Text color={modeAccent(props.mode)}>{modeSegment}</Text> : null}
+        {terseSegment ? <Text color={THEME.accent}>{terseSegment}</Text> : null}
         {costSegment ? <Text dimColor>{costSegment}</Text> : null}
       </Box>
       {props.exitHintActive ? <Text color={THEME.warn}>press Ctrl+C again to exit</Text> : null}
