@@ -17,7 +17,7 @@ export interface ToolResultPayload {
   isError: boolean
 }
 
-export type DoneReason = 'stop' | 'budget_exhausted' | 'aborted' | 'error' | 'max_steps'
+export type DoneReason = 'stop' | 'budget_exhausted' | 'aborted' | 'error' | 'max_steps' | 'cost_exhausted'
 
 export interface TextEvent {
   kind: 'text'
@@ -65,6 +65,14 @@ export interface CompactedEvent {
   summary: string
 }
 
+/** Emitted once when estimated spend first crosses the configured warn threshold. */
+export interface CostWarningEvent {
+  kind: 'cost_warning'
+  costUsd: number
+  thresholdUsd: number
+  limitUsd?: number
+}
+
 export interface ErrorEvent {
   kind: 'error'
   message: string
@@ -106,6 +114,7 @@ export type RuntimeEvent =
   | ToolResultEvent
   | UsageEvent
   | CompactedEvent
+  | CostWarningEvent
   | ErrorEvent
   | DoneEvent
   | SpanStartEvent

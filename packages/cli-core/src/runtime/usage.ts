@@ -104,6 +104,14 @@ export function costForTokens(tokens: number, usdPerMillion: number): number {
   return (tokens / 1_000_000) * usdPerMillion
 }
 
+// Total estimated spend for `usage` under the model's pricing. Unknown models
+// fall back to Sonnet pricing (same convention as summaryLines) so a configured
+// dollar budget still applies rather than silently disabling itself.
+export function estimatedCostUsd(usage: UsageTotals, model?: string): number {
+  const pricing = (model !== undefined ? pricingForModel(model) : undefined) ?? SONNET_PRICING
+  return totalCostUsd(estimateCost(usage, pricing))
+}
+
 export class UsageTracker {
   private latestTurn: UsageTotals = emptyUsage()
   private cumulative: UsageTotals = emptyUsage()
