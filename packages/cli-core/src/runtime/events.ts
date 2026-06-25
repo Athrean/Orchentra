@@ -73,6 +73,13 @@ export interface CostWarningEvent {
   limitUsd?: number
 }
 
+/** Emitted when a failure→resolution memory is auto-captured after a turn. */
+export interface MemorySavedEvent {
+  kind: 'memory_saved'
+  id: string
+  signatureHash: string
+}
+
 export interface ErrorEvent {
   kind: 'error'
   message: string
@@ -115,6 +122,7 @@ export type RuntimeEvent =
   | UsageEvent
   | CompactedEvent
   | CostWarningEvent
+  | MemorySavedEvent
   | ErrorEvent
   | DoneEvent
   | SpanStartEvent
