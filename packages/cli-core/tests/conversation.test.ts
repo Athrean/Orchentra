@@ -99,6 +99,42 @@ describe('ConversationRuntime', () => {
     expect(done.reason).toBe('budget_exhausted')
   })
 
+  test('dollar budget exhaustion stops with reason cost_exhausted', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'text-delta', delta: 'hi' },
+        { kind: 'usage', usage: { inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    // 1000 output tokens at Sonnet ($15/M) ≈ $0.015 > $0.01 cap.
+    const config = makeConfig({ budget: { maxSteps: 10, maxTokens: 100_000_000, maxCostUsd: 0.01 } })
+    const rt = new ConversationRuntime(config, makeDeps(provider))
+    const events = await collect(rt, 'go')
+
+    const done = events.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+    expect(done.reason).toBe('cost_exhausted')
+  })
+
+  test('emits a cost_warning event once when crossing the warn threshold', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'text-delta', delta: 'hi' },
+        { kind: 'usage', usage: { inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const config = makeConfig({ budget: { maxSteps: 10, maxTokens: 100_000_000, warnCostUsd: 0.005 } })
+    const rt = new ConversationRuntime(config, makeDeps(provider))
+    const events = await collect(rt, 'go')
+
+    const warnings = events.filter((e) => e.kind === 'cost_warning')
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toMatchObject({ kind: 'cost_warning', thresholdUsd: 0.005 })
+    const done = events.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+    expect(done.reason).toBe('stop')
+  })
+
   test('max steps exhaustion', async () => {
     const manyResponses = Array.from({ length: 20 }, (_, i): ProviderStreamEvent[] => [
       { kind: 'tool-use', call: { id: `tc${i}`, name: 'ping', input: {} } },

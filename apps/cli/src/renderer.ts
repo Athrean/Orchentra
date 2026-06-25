@@ -84,3 +84,12 @@ export function renderErrorLine(message: string): string {
 export function renderCompactNotice(dropped: number, saved: number): string {
   return `${DIM}Context compacted: ${dropped} messages dropped, ~${saved} tokens saved${RESET}`
 }
+
+export function costWarningText(costUsd: number, thresholdUsd: number, limitUsd?: number): string {
+  const cap = limitUsd !== undefined ? ` (cap ${formatUsd(limitUsd)})` : ''
+  return `Cost warning: estimated spend ${formatUsd(costUsd)} crossed the ${formatUsd(thresholdUsd)} threshold${cap}`
+}
+
+export function renderCostWarning(costUsd: number, thresholdUsd: number, limitUsd?: number): string {
+  return `${YELLOW}${costWarningText(costUsd, thresholdUsd, limitUsd)}${RESET}`
+}

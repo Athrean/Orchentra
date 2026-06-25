@@ -1,6 +1,7 @@
 import { join, dirname } from 'node:path'
 import { readFileSync } from 'node:fs'
 import type {
+  BudgetFeatureConfig,
   ConfigEntry,
   MemoryFeatureConfig,
   RuntimeConfig,
@@ -96,6 +97,16 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
     permissionMode: extractPermissionMode(merged),
     permissionRules: extractPermissionRules(merged),
     memory: extractMemoryConfig(merged),
+    budget: extractBudgetConfig(merged),
+  }
+}
+
+function extractBudgetConfig(merged: Record<string, unknown>): BudgetFeatureConfig {
+  const budget = isPlainObject(merged.budget) ? (merged.budget as Record<string, unknown>) : {}
+  const positive = (v: unknown): number | undefined => (typeof v === 'number' && v > 0 ? v : undefined)
+  return {
+    maxCostUsd: positive(budget.maxCostUsd),
+    warnCostUsd: positive(budget.warnCostUsd),
   }
 }
 

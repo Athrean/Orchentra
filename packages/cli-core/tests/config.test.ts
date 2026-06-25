@@ -51,6 +51,25 @@ describe('ConfigLoader', () => {
     cleanup()
   })
 
+  test('budget defaults to no caps when unset', () => {
+    setupTmp({})
+    const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    const config = loader.load()
+    expect(config.featureConfig.budget).toEqual({ maxCostUsd: undefined, warnCostUsd: undefined })
+    cleanup()
+  })
+
+  test('reads positive maxCostUsd / warnCostUsd and ignores non-positive values', () => {
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ budget: { maxCostUsd: 5, warnCostUsd: 0 } }),
+    })
+    const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    const config = loader.load()
+    expect(config.featureConfig.budget.maxCostUsd).toBe(5)
+    expect(config.featureConfig.budget.warnCostUsd).toBeUndefined()
+    cleanup()
+  })
+
   test('load deep-merges user and project settings', () => {
     setupTmp({
       'home/.orchentra/settings.json': JSON.stringify({ model: 'sonnet', aliases: { s: 'sonnet' } }),

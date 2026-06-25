@@ -45,4 +45,31 @@ describe('RuntimeBudget', () => {
   test('rejects non-positive maxTokens', () => {
     expect(() => new RuntimeBudget({ maxSteps: 5, maxTokens: -1 })).toThrow('maxTokens')
   })
+
+  test('exhausts on dollar cost limit', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, maxCostUsd: 0.01, model: 'sonnet' })
+    // 1000 output tokens at sonnet ($15/M) = $0.015 > $0.01
+    b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    const snap = b.snapshot()
+    expect(snap.exhausted).toBe(true)
+    expect(snap.exhaustedBy).toBe('cost')
+    expect(snap.costUsd).toBeGreaterThanOrEqual(0.01)
+  })
+
+  test('never cost-exhausts when no maxCostUsd is set', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, model: 'opus' })
+    b.addUsage({ inputTokens: 1_000_000, outputTokens: 1_000_000, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    expect(b.snapshot().exhausted).toBe(false)
+  })
+
+  test('emits a cost warning once when crossing warnCostUsd', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, warnCostUsd: 0.005, model: 'sonnet' })
+    expect(b.consumeCostWarning()).toBeNull()
+    b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 }) // $0.015
+    const warning = b.consumeCostWarning()
+    expect(warning).not.toBeNull()
+    expect(warning?.thresholdUsd).toBe(0.005)
+    expect(warning?.costUsd).toBeGreaterThanOrEqual(0.005)
+    expect(b.consumeCostWarning()).toBeNull() // only once
+  })
 })
