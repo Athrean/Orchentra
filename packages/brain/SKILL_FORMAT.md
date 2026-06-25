@@ -2,7 +2,7 @@
 
 A SKILL.md document is the export-friendly view of a runbook. Another agent
 (Claude Desktop, Cursor, or any LLM-driven tool) can load it as context the
-same way `@orchentra/operations` exposes `tools/list` over MCP.
+same way an MCP server exposes `tools/list`.
 
 The format intentionally mirrors the YAML-frontmatter conventions used by
 generic Markdown skill catalogs so the file is loadable without a custom
