@@ -42,6 +42,7 @@ import type {
   PolicyRule,
   PromptChoice as ToolPromptChoice,
   StoredPermissionRule,
+  TerseModeUsage,
 } from '@orchentra/cli-core'
 import {
   Spinner,
@@ -50,6 +51,7 @@ import {
   renderDoneLine,
   renderErrorLine,
   renderCompactNotice,
+  renderToolOutputBudgeted,
   renderCostWarning,
   renderMemorySaved,
 } from './renderer'
@@ -239,6 +241,10 @@ export class LiveCli implements SessionControl {
     return this.tracker.cumulativeUsage()
   }
 
+  getTerseBreakdown(): readonly TerseModeUsage[] {
+    return this.tracker.terseBreakdown()
+  }
+
   getCostLimits(): { maxCostUsd?: number; warnCostUsd?: number } {
     return {
       maxCostUsd: this.budgetConfig?.maxCostUsd,
@@ -344,6 +350,9 @@ export class LiveCli implements SessionControl {
       contextWindowTokens: 200_000,
       compactionThreshold: 0.8,
       keepRecentOnCompact: 6,
+      // ~12k-token safety net on a single tool result; raise if real outputs
+      // routinely exceed it before the model can narrow its query.
+      toolOutputBudgetChars: 50_000,
       budget: {
         maxSteps: 50,
         maxTokens: 200_000,
@@ -437,7 +446,7 @@ export class LiveCli implements SessionControl {
         }
         if (event.kind === 'usage') {
           lastUsage = event.cumulative
-          this.tracker.record(event.turn)
+          this.tracker.record(event.turn, this.terseMode)
         }
         if (event.kind === 'done') {
           steps = event.steps
@@ -488,6 +497,9 @@ export class LiveCli implements SessionControl {
           break
         case 'compacted':
           process.stdout.write(renderCompactNotice(event.droppedMessageCount, event.tokensSaved) + '\n')
+          break
+        case 'tool_output_budgeted':
+          process.stdout.write(renderToolOutputBudgeted(event.droppedChars, event.keptChars) + '\n')
           break
         case 'cost_warning':
           process.stdout.write(renderCostWarning(event.costUsd, event.thresholdUsd, event.limitUsd) + '\n')

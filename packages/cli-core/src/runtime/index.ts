@@ -133,6 +133,9 @@ export { SessionWriter, replaySession, resolveSessionPath, defaultSessionDir } f
 export type { CompactionInput, CompactionResult, TokenEstimator } from './compaction'
 export { shouldCompact, compact, estimateMessagesTokens, defaultEstimator } from './compaction'
 
+export type { ToolOutputBudgetResult } from './tool-output-budget'
+export { budgetToolOutput } from './tool-output-budget'
+
 export type { ConversationConfig, ConversationDeps, RunInput } from './conversation'
 export { ConversationRuntime } from './conversation'
 
@@ -194,7 +197,7 @@ export type {
 } from './config-types'
 export { ConfigLoader, defaultConfigHome } from './config'
 
-export type { ModelPricing, UsageCostEstimate } from './usage'
+export type { ModelPricing, UsageCostEstimate, TerseModeUsage } from './usage'
 export { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from './usage'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
