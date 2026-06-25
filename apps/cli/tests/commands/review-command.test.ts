@@ -45,19 +45,31 @@ describe('/review command', () => {
     expect(events[0]).toMatchObject({ kind: 'note', tone: 'warn' })
   })
 
-  test('verdict text reflects a failing gate', async () => {
+  test('tags a finding the failing gate references as corroborated', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'review-cmd2-'))
     await Bun.write(join(cwd, 'a.ts'), 'export const x = 1\n')
     await Bun.write(join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'bun test' } }))
     const { ctx, events } = makeCtx(cwd)
-    const run: CheckRunner = () => ({ exitCode: 1, output: 'FAIL a.test.ts' })
+    const run: CheckRunner = () => ({ exitCode: 1, output: 'FAIL a.ts:3 expected <= got <' })
     await new ReviewCommand({ llm: findingsLlm, run }).execute(['--path', 'a.ts'], ctx)
 
     expect(events).toHaveLength(1)
     const text = (events[0] as Extract<UiOutput, { kind: 'text' }>).text
-    expect(text).toContain('[P1] a.ts:3 — off-by-one')
-    expect(text).toContain('Verified by running:')
+    expect(text).toContain('[P1] a.ts:3 — off-by-one — corroborated by: test')
     expect(text).toContain('[FAIL] test — bun run test (exit 1)')
-    expect(text).toContain('findings corroborated by a real failing gate')
+    expect(text).toContain('1/1 finding(s) corroborated by a failing gate')
+  })
+
+  test('marks a finding unrelated to the failure as unverified', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'review-cmd3-'))
+    await Bun.write(join(cwd, 'a.ts'), 'export const x = 1\n')
+    await Bun.write(join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'bun test' } }))
+    const { ctx, events } = makeCtx(cwd)
+    const run: CheckRunner = () => ({ exitCode: 1, output: 'FAIL b.ts:9 unrelated' })
+    await new ReviewCommand({ llm: findingsLlm, run }).execute(['--path', 'a.ts'], ctx)
+
+    const text = (events[0] as Extract<UiOutput, { kind: 'text' }>).text
+    expect(text).toContain('off-by-one — unverified')
+    expect(text).toContain('none reference a proposed finding')
   })
 })
