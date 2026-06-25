@@ -1,5 +1,12 @@
 import type { UsageTotals } from './events'
 import { emptyUsage, addUsage, totalTokens } from './events'
+import { TERSE_MODES, type TerseMode } from './terse'
+
+export interface TerseModeUsage {
+  mode: TerseMode
+  outputTokens: number
+  turns: number
+}
 
 export interface ModelPricing {
   inputCostPerMillion: number
@@ -116,11 +123,27 @@ export class UsageTracker {
   private latestTurn: UsageTotals = emptyUsage()
   private cumulative: UsageTotals = emptyUsage()
   private turnCount: number = 0
+  // Output tokens + turns spent under each terse mode. Terse mode only shapes
+  // generation, so attribution is output-only; the avg output/turn drop across
+  // modes is the inspectable efficiency evidence (no fabricated baseline).
+  private readonly byTerseMode = new Map<TerseMode, { outputTokens: number; turns: number }>()
 
-  record(usage: UsageTotals): void {
+  record(usage: UsageTotals, terseMode: TerseMode = 'off'): void {
     this.latestTurn = usage
     this.cumulative = addUsage(this.cumulative, usage)
     this.turnCount += 1
+
+    const bucket = this.byTerseMode.get(terseMode) ?? { outputTokens: 0, turns: 0 }
+    bucket.outputTokens += usage.outputTokens
+    bucket.turns += 1
+    this.byTerseMode.set(terseMode, bucket)
+  }
+
+  terseBreakdown(): TerseModeUsage[] {
+    return TERSE_MODES.filter((mode) => this.byTerseMode.has(mode)).map((mode) => ({
+      mode,
+      ...this.byTerseMode.get(mode)!,
+    }))
   }
 
   currentTurnUsage(): UsageTotals {

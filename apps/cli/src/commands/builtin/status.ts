@@ -86,7 +86,7 @@ function sectionsFor(tab: TabName, ctx: CommandContext): UiCardSection[] {
     case 'Usage': {
       const u = session.getUsage()
       const total = u.inputTokens + u.outputTokens
-      return [
+      const sections: UiCardSection[] = [
         {
           title: 'Tokens',
           rows: [
@@ -98,6 +98,9 @@ function sectionsFor(tab: TabName, ctx: CommandContext): UiCardSection[] {
           ],
         },
       ]
+      const terse = terseSection(session)
+      if (terse) sections.push(terse)
+      return sections
     }
     case 'Stats': {
       const u = session.getUsage()
@@ -118,6 +121,21 @@ function sectionsFor(tab: TabName, ctx: CommandContext): UiCardSection[] {
         },
       ]
     }
+  }
+}
+
+// Output tokens spent per terse mode, with avg output/turn — the inspectable
+// efficiency evidence. Hidden until terse mode is actually used (an all-`off`
+// breakdown says nothing about terse savings).
+function terseSection(session: CommandContext['session']): UiCardSection | undefined {
+  const breakdown = session.getTerseBreakdown?.() ?? []
+  if (!breakdown.some((b) => b.mode !== 'off')) return undefined
+  return {
+    title: 'Output by terse mode',
+    rows: breakdown.map((b) => ({
+      key: b.mode,
+      value: `${formatNumber(b.outputTokens)} out · ${b.turns} turn${b.turns === 1 ? '' : 's'} · ${formatNumber(Math.round(b.outputTokens / b.turns))}/turn`,
+    })),
   }
 }
 
