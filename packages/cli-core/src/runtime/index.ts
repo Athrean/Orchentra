@@ -194,7 +194,7 @@ export type {
 } from './config-types'
 export { ConfigLoader, defaultConfigHome } from './config'
 
-export type { ModelPricing, UsageCostEstimate } from './usage'
+export type { ModelPricing, UsageCostEstimate, TerseModeUsage } from './usage'
 export { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from './usage'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'

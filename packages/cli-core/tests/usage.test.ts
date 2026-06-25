@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from '../src/runtime/usage'
-import { emptyUsage } from '../src/runtime/events'
+import { emptyUsage, type UsageTotals } from '../src/runtime/events'
 
 describe('pricingForModel', () => {
   test('returns haiku pricing', () => {
@@ -98,6 +98,36 @@ describe('UsageTracker', () => {
     const tracker = new UsageTracker()
     expect(tracker.turns()).toBe(0)
     expect(tracker.cumulativeUsage()).toEqual(emptyUsage())
+  })
+
+  test('buckets output tokens and turns by terse mode', () => {
+    const tracker = new UsageTracker()
+    const turn = (output: number): UsageTotals => ({
+      inputTokens: 100,
+      outputTokens: output,
+      cacheCreationTokens: 0,
+      cacheReadTokens: 0,
+    })
+    tracker.record(turn(800)) // defaults to 'off'
+    tracker.record(turn(900), 'off')
+    tracker.record(turn(400), 'full')
+
+    expect(tracker.terseBreakdown()).toEqual([
+      { mode: 'off', outputTokens: 1700, turns: 2 },
+      { mode: 'full', outputTokens: 400, turns: 1 },
+    ])
+  })
+
+  test('terseBreakdown is empty before any turn', () => {
+    expect(new UsageTracker().terseBreakdown()).toEqual([])
+  })
+
+  test('terseBreakdown is ordered by canonical terse-mode order', () => {
+    const tracker = new UsageTracker()
+    const turn = { inputTokens: 1, outputTokens: 1, cacheCreationTokens: 0, cacheReadTokens: 0 }
+    tracker.record(turn, 'ultra')
+    tracker.record(turn, 'lite')
+    expect(tracker.terseBreakdown().map((b) => b.mode)).toEqual(['lite', 'ultra'])
   })
 })
 

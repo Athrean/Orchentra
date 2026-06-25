@@ -42,6 +42,7 @@ import type {
   PolicyRule,
   PromptChoice as ToolPromptChoice,
   StoredPermissionRule,
+  TerseModeUsage,
 } from '@orchentra/cli-core'
 import {
   Spinner,
@@ -237,6 +238,10 @@ export class LiveCli implements SessionControl {
 
   getUsage(): UsageTotals {
     return this.tracker.cumulativeUsage()
+  }
+
+  getTerseBreakdown(): readonly TerseModeUsage[] {
+    return this.tracker.terseBreakdown()
   }
 
   getCostLimits(): { maxCostUsd?: number; warnCostUsd?: number } {
@@ -437,7 +442,7 @@ export class LiveCli implements SessionControl {
         }
         if (event.kind === 'usage') {
           lastUsage = event.cumulative
-          this.tracker.record(event.turn)
+          this.tracker.record(event.turn, this.terseMode)
         }
         if (event.kind === 'done') {
           steps = event.steps

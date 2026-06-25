@@ -2,6 +2,7 @@ import type { UsageTotals } from './events'
 import type { PermissionMode } from './permissions'
 import type { EffortTier } from './provider'
 import type { TerseMode } from './terse'
+import type { TerseModeUsage } from './usage'
 import type { PolicyRule } from '../permissions/policy'
 import type { StoredPermissionRule } from '../permissions/store'
 
@@ -19,6 +20,8 @@ export interface SessionControl {
   getSessionId(): string
   getTurns(): number
   getUsage(): UsageTotals
+  /** Output tokens + turns spent under each terse mode this session. */
+  getTerseBreakdown?(): readonly TerseModeUsage[]
   /** Configured dollar budget caps, when the session exposes them. */
   getCostLimits?(): { maxCostUsd?: number; warnCostUsd?: number }
   /** Resolved declarative allow/deny/ask rules, when the session exposes them. */
