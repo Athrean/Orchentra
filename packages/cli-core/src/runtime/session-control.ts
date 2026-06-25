@@ -18,6 +18,8 @@ export interface SessionControl {
   getSessionId(): string
   getTurns(): number
   getUsage(): UsageTotals
+  /** Configured dollar budget caps, when the session exposes them. */
+  getCostLimits?(): { maxCostUsd?: number; warnCostUsd?: number }
   /** Resolved declarative allow/deny/ask rules, when the session exposes them. */
   listPermissionRules?(): readonly PolicyRule[]
   /** Remembered interactive allow/deny rules, when the session exposes them. */

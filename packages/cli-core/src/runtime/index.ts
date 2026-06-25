@@ -187,6 +187,7 @@ export type {
   ResolvedPermissionMode,
   RuntimeConfig,
   MemoryFeatureConfig,
+  BudgetFeatureConfig,
 } from './config-types'
 export { ConfigLoader, defaultConfigHome } from './config'
 

@@ -28,6 +28,13 @@ export interface MemoryFeatureConfig {
   maxResults: number
 }
 
+export interface BudgetFeatureConfig {
+  /** Hard-stop the agent loop once estimated spend reaches this many USD. */
+  maxCostUsd: number | undefined
+  /** Warn once when estimated spend reaches this many USD. */
+  warnCostUsd: number | undefined
+}
+
 export interface RuntimeFeatureConfig {
   hooks: RuntimeHookConfig
   model: string | undefined
@@ -36,6 +43,7 @@ export interface RuntimeFeatureConfig {
   permissionMode: ResolvedPermissionMode | undefined
   permissionRules: RuntimePermissionRuleConfig
   memory: MemoryFeatureConfig
+  budget: BudgetFeatureConfig
 }
 
 export type ResolvedPermissionMode = 'read-only' | 'workspace-write' | 'danger-full-access'
