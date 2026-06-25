@@ -19,6 +19,7 @@ function makeSession(): SessionControl {
     getSessionId: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     getTurns: () => 7,
     getUsage: () => usage,
+    getTerseMode: () => 'full',
     clearHistory: () => {},
     forceCompact: () => {},
   }
@@ -68,6 +69,7 @@ describe('StatusCommand', () => {
     expect(keys).toContain('cwd')
     expect(keys).toContain('Model')
     expect(keys).toContain('Permission mode')
+    expect(keys).toContain('Terse mode')
   })
 
   test('Usage tab reports token columns', async () => {

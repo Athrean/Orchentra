@@ -4,6 +4,7 @@ import type {
   ConversationDeps,
   HookRunner,
   EffortTier,
+  TerseMode,
   MemoryFeatureConfig,
   BudgetFeatureConfig,
   PermissionMode,
@@ -26,6 +27,7 @@ import {
   defaultEstimator,
   prepareMemoryContext,
   captureMemoryFromTurn,
+  terseModePrompt,
   PatternStore,
   embedText,
   createEnforcer,
@@ -69,6 +71,7 @@ export class LiveCli implements SessionControl {
   private model: string
   private permissionMode: PermissionMode
   private effort: EffortTier
+  private terseMode: TerseMode
   private provider: Provider
   private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
@@ -103,6 +106,7 @@ export class LiveCli implements SessionControl {
     resolveModel: ModelResolver
     tools: ToolRegistry
     effort?: EffortTier
+    terseMode?: TerseMode
     cwd: string
     sessionId: string
     sharedState: SharedToolState
@@ -113,6 +117,7 @@ export class LiveCli implements SessionControl {
     this.model = deps.model
     this.permissionMode = deps.permissionMode
     this.effort = deps.effort ?? 'medium'
+    this.terseMode = deps.terseMode ?? 'off'
     this.provider = deps.provider
     this.resolveModel = deps.resolveModel
     this.tools = deps.tools
@@ -162,6 +167,15 @@ export class LiveCli implements SessionControl {
   setEffort(effort: EffortTier): EffortTier {
     this.effort = effort
     return effort
+  }
+
+  getTerseMode(): TerseMode {
+    return this.terseMode
+  }
+
+  setTerseMode(mode: TerseMode): TerseMode {
+    this.terseMode = mode
+    return mode
   }
 
   getPlanMode(): boolean {
@@ -345,12 +359,13 @@ export class LiveCli implements SessionControl {
 
     const systemPrompt: SystemPrompt = buildSystemPrompt({
       staticParts: [
-        "You are Orchentra, a DevOps engineer's daily co-pilot. " +
-          'Help with code, CI failures, GitHub issues/PRs, and ops tasks. ' +
+        'You are Orchentra, a terminal AI coding agent focused on efficient, verifiable software work. ' +
+          'Help with code, tests, pull-request review, GitHub issues/PRs, and local debugging. ' +
           'When asked about GitHub issues, pull requests, or pasted github.com URLs, ' +
           'always use github_list_issues, github_get_issue, github_list_pulls, github_get_pull, ' +
           'or github_search_issues. Never use web_fetch on github.com — it returns raw HTML and ' +
           'fails on private repos. Pass repos as "owner/repo" or the full URL; the tools parse both.',
+        terseModePrompt(this.terseMode),
       ],
       dynamicParts,
     })

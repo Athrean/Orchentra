@@ -4,25 +4,24 @@
 
 # Orchentra
 
-### The coding crew that spends less and writes less.
+### Efficient AI coding in the terminal, plus review that verifies by running.
 
-Orchentra is a CLI-first AI coding agent that spends fewer tokens and writes less, higher-quality code — paired with an AI code reviewer that verifies pull requests by running them.
-
-[**Why**](#why-orchentra) · [**Quick start**](#quick-start) · [**What ships today**](#what-ships-today) · [**CLI**](#cli) · [**The crew + the reviewer**](#the-crew--the-reviewer) · [**Status**](#status)
+[Quick start](#quick-start) · [Key features](#key-features) · [CLI](#cli) · [Web reviewer](#web-reviewer) · [Develop](#develop)
 
 </div>
 
 ---
 
-## Why Orchentra
+## What is Orchentra?
 
-Coding agents have crossed the capability bar. The next axis of competition is **economics and trust** — teams running agents at scale feel the token bill and the code bloat in equal measure, and "looks good to me" reviews from an AI nobody verifies don't earn trust.
+Orchentra is an AI coding agent that runs in your terminal. It can read and edit files, run shell commands, search the workspace, inspect git state, fetch web pages, use MCP tools, and continue from saved sessions.
 
-Orchentra attacks both:
+The product is tuned for two things:
 
-> **Spend less** — terse output saves output tokens; a context budget + compaction and a hard dollar cap save input tokens and prevent runaway spend. **Write less** — a lean-code discipline (reach for the stdlib, the platform, an existing dependency, one line — before new code). **Trust the review** — the reviewer proposes findings _and verifies them by running_ your tests; it does not just assert.
+- **Lower spend** — terse output mode, compaction, token tracking, and hard dollar budgets.
+- **Higher trust** — code review flows that check their findings by running tests, typechecks, or repro commands where possible.
 
-Not a capability race and not an observability stack. The bet is **efficiency and verifiable review**, not feature count.
+Orchentra also includes a standalone web reviewer for pull requests.
 
 ## Quick start
 
@@ -41,21 +40,22 @@ orchentra                         # interactive TUI
 orchentra "<prompt>"              # one-shot prompt
 orchentra doctor                  # environment preflight
 orchentra init                    # scaffold local .orchentra config
-orchentra resume latest           # resume the latest workspace session
+orchentra session replay latest   # replay the latest workspace session
 ```
 
-Bring your own model key. The CLI supports Anthropic, OpenAI-compatible providers, OpenRouter, Gemini, xAI, and DashScope through the provider layer.
+Bring your own model key. The CLI supports Anthropic, Gemini, OpenAI-compatible providers, OpenRouter, xAI, and DashScope.
 
-## What ships today
+## Key features
 
-- **Terminal-native agent CLI** — streaming Ink TUI, collapsible reasoning, command palette, model picker, theme picker, multi-line input modal, and `$EDITOR` handoff.
-- **General-purpose tools** — bash, file read/write/edit, glob, grep, web fetch/search, notebooks, todos, tasks, ask-user, and agent/task helpers.
-- **MCP client** — connect external MCP servers and register their tools into the CLI runtime.
-- **Session persistence** — per-workspace JSONL sessions with resume and replay.
-- **Permission system** — mode ladder, pattern rules, remembered approvals, workspace scoping checks, and hook-based pre/post tool gates.
-- **Provider effort control** — `/effort` and `/think` map low/medium/high reasoning effort into provider request options.
-- **Engineering-memory substrate** — `packages/brain` has episodes, patterns, runbooks, embedding-based similarity, and pattern context plumbing.
-- **Web product surface** — standalone Next.js/Supabase app for onboarding, repo insight surfaces, memory, detections, and settings.
+- **Terminal-native agent UI** — streaming Ink TUI, collapsible reasoning, command palette, model picker, theme picker, multi-line input, and `$EDITOR` handoff.
+- **Workspace tools** — bash, file read/write/edit, glob, grep, web fetch/search, notebooks, todos, tasks, ask-user, nested agent runs, and read-only git tools.
+- **MCP client** — connect external MCP servers and register their tools into the agent runtime.
+- **Sessions** — per-workspace JSONL sessions with resume and replay.
+- **Permissions** — mode ladder, allow/deny/ask rules, remembered approvals, workspace scoping checks, and pre/post tool hooks.
+- **Model controls** — `/model`, `/effort`, `/think`, and provider-specific reasoning settings.
+- **Cost controls** — `/cost`, token accounting, warning thresholds, and hard dollar caps.
+- **Memory** — local failure-memory capture, `/memory`, `/forget`, and `/debug` for diagnosing recent failed runs against stored context.
+- **Terse output mode** — `/terse off|lite|full|ultra` reduces output verbosity while keeping code, commands, paths, errors, and safety text intact.
 
 ## CLI
 
@@ -68,8 +68,8 @@ orchentra doctor
 orchentra init
 orchentra mcp list
 orchentra mcp test <server>
-orchentra session replay <id>
-orchentra login | logout | reauth | auth-status
+orchentra session replay <id|latest>
+orchentra login | logout | reauth | whoami
 ```
 
 ### REPL slash commands
@@ -79,23 +79,56 @@ Core:
 ```text
 /help (/h /?)   /status (/st)   /clear (/cls)   /exit (/q)
 /compact        /model (/m)     /effort         /think
-/plan           /cost           /version (/v)   /restart
+/terse          /plan           /cost           /version (/v)
 ```
 
 Workspace:
 
 ```text
 /init           /search         /scan           /review
-/diff (/d)      /commit         /pr             /issue (/iss)
-/session        /resume         /skills
+/debug          /diff (/d)      /commit         /pr
+/issue (/iss)   /session        /resume         /skills
 ```
 
 Tools and auth:
 
 ```text
 /mcp            /permissions    /doctor (/doc)  /config (/cfg)
-/export         /login (/li)    /logout (/lo)   /reauth
-/auth-status (/whoami)
+/memory         /forget         /export         /login (/li)
+/logout (/lo)   /reauth         /auth-status (/whoami)
+```
+
+## Web reviewer
+
+The web app is a standalone pull-request reviewer. It has its own auth, onboarding, settings, memory surfaces, and reviewer flows. It does not import the CLI app; shared data moves through the configured store.
+
+Run it locally:
+
+```bash
+bun run --cwd apps/web dev
+```
+
+## Configuration
+
+Project settings can live in:
+
+```text
+.orchentra/settings.json
+.orchentra/settings.local.json
+```
+
+Example:
+
+```json
+{
+  "model": "claude-sonnet-4-20250514",
+  "effort": "medium",
+  "terseMode": "lite",
+  "budget": {
+    "warnCostUsd": 1,
+    "maxCostUsd": 5
+  }
+}
 ```
 
 ## Skills and hooks
@@ -105,8 +138,6 @@ Skills are local `SKILL.md` files:
 ```text
 .orchentra/skills/<name>/SKILL.md
 ```
-
-Restart the CLI, or run `/skills reload`, then invoke the skill as `/<name>`.
 
 Hooks are repo-local shell gates:
 
@@ -120,67 +151,39 @@ Hooks are repo-local shell gates:
 }
 ```
 
-A pre-hook non-zero exit blocks the tool call and surfaces stderr as the reason. Hooks reload on CLI restart.
-
-## The crew + the reviewer
-
-Every built-in agent shares one spine: **spend less** (terse output, a context budget + compaction, and a hard dollar cap) and **write less** (a lean-code discipline — reach for the stdlib, the platform, and existing dependencies before writing new code). Specialist agents add focus on top:
-
-- **plan** — turns a need into the best stack with named alternatives and scaffolds the project.
-- **build** — implements test-first, delegating parallel slices to subagents under the budget cap.
-- **review** — proposes findings and **verifies them by running** tests, types, and repros.
-
-The **web** is the AI code reviewer: it reviews and tests pull requests with full-codebase context — a standalone product connected only through the shared store, never importing the CLI.
-
-These land in phases; today the CLI ships the agent loop, the efficiency controls, and the verification primitives in the table below.
-
-## Status
-
-| Area                                                    | Status  |
-| ------------------------------------------------------- | ------- |
-| CLI/TUI runtime, streaming, command palette             | shipped |
-| General tools (bash/file/glob/grep/web + read-only git) | shipped |
-| MCP client                                              | shipped |
-| Sessions, resume, replay                                | shipped |
-| Permissions, hooks, `/permissions`                      | shipped |
-| Dollar budget (warn + hard cap), `/cost`                | shipped |
-| `/effort` `/think` `/plan` `/review` `/search`          | shipped |
-| `/memory` `/forget`, failure signatures, auto-capture   | shipped |
-| Terse-output mode + savings badge                       | next    |
-| Planner + builder agents on the shared spine            | next    |
-| Verify-by-running review + speculative context          | next    |
-| Web AI code reviewer (review + test PRs)                | next    |
+A failing pre-hook blocks the tool call and surfaces stderr as the reason.
 
 ## Project structure
 
 ```text
 Orchentra/
 ├── apps/
-│   ├── cli/                 # TUI, slash commands, auth, sessions
-│   └── web/                 # standalone Next.js/Supabase product surface
+│   ├── cli/                 # terminal app, TUI, commands, auth
+│   └── web/                 # standalone web reviewer
 ├── packages/
-│   ├── brain/               # episodes, patterns, runbooks, memory matching
+│   ├── brain/               # episode/runbook/skill-export types
 │   ├── cli-api/             # provider clients, GitHub clients, auth helpers
-│   ├── cli-core/            # conversation runtime, sessions, permissions, skills
+│   ├── cli-core/            # runtime, sessions, permissions, memory, budget
 │   ├── cli-tools/           # built-in tools + MCP client
 │   ├── config-eslint/
 │   └── config-typescript/
 └── README.md
 ```
 
-## Development
+## Develop
 
 ```bash
 bun install
 bun run typecheck
 bun run lint
 bun run test:precommit
+bun run build
 ```
 
 ---
 
 <div align="center">
 
-Built by [Athrean](https://github.com/Athrean). Spend less, write less, verify the review.
+Built by [Athrean](https://github.com/Athrean).
 
 </div>

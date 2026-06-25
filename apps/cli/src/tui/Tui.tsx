@@ -54,6 +54,7 @@ export function Tui(props: TuiProps): React.ReactElement {
     initialState({
       model: props.model,
       mode: props.mode,
+      terseMode: cli.getTerseMode(),
     }),
   )
 
@@ -325,6 +326,8 @@ export function Tui(props: TuiProps): React.ReactElement {
               })
             }
             if (activeStreamId !== null) dispatch({ type: 'transcript/system-stream-end' })
+            dispatch({ type: 'mode/set', mode: cli.getPermissionMode() })
+            dispatch({ type: 'terse/set', mode: cli.getTerseMode() })
             if (!shouldContinue) exit()
           } catch (err) {
             const output = captured.stop().trimEnd()
@@ -781,6 +784,7 @@ export function Tui(props: TuiProps): React.ReactElement {
         <Footer
           model={state.model}
           mode={state.mode}
+          terseMode={state.terseMode}
           cwd={cwd}
           branch={props.branch}
           turn={state.turn}

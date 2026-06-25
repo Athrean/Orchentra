@@ -65,6 +65,7 @@ function sectionsFor(tab: TabName, ctx: CommandContext): UiCardSection[] {
             { key: 'Model', value: session.getModel() },
             { key: 'Provider', value: detectProvider() },
             { key: 'Permission mode', value: session.getPermissionMode() },
+            { key: 'Terse mode', value: session.getTerseMode?.() ?? 'off' },
             { key: 'Setting sources', value: detectSettingSources(ctx.cwd) },
           ],
         },
@@ -75,6 +76,7 @@ function sectionsFor(tab: TabName, ctx: CommandContext): UiCardSection[] {
           rows: [
             { key: 'Default model', value: session.getModel() },
             { key: 'Permission mode', value: session.getPermissionMode() },
+            { key: 'Terse mode', value: session.getTerseMode?.() ?? 'off' },
             { key: 'Server URL', value: process.env.ORCHENTRA_SERVER_URL ?? 'http://localhost:3001' },
             { key: 'Org ID', value: process.env.ORCHENTRA_ORG_ID ?? '<unset>' },
             { key: 'Theme', value: 'Dark mode' },

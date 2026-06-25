@@ -1,4 +1,4 @@
-import type { PermissionMode, UsageTotals } from '@orchentra/cli-core'
+import type { PermissionMode, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import type { UiCardSection, UiTabs } from '../commands/ui-output'
 
 export interface CardRow {
@@ -111,6 +111,7 @@ export interface TuiState {
   readonly transcript: readonly TranscriptRow[]
   readonly turn: TurnStatus
   readonly mode: PermissionMode
+  readonly terseMode: TerseMode
   readonly model: string
   readonly pastes: Readonly<Record<string, PasteChip>>
   /** Timestamp (ms) until which the "press Ctrl+C again to exit" hint is shown. */
@@ -196,6 +197,7 @@ export type TuiAction =
   | { type: 'tokens/set'; usage: UsageTotals }
   | { type: 'mode/cycle' }
   | { type: 'mode/set'; mode: PermissionMode }
+  | { type: 'terse/set'; mode: TerseMode }
   | { type: 'model/set'; model: string }
   | { type: 'paste/add'; chip: PasteChip }
   | { type: 'exit-hint/show'; until: number }

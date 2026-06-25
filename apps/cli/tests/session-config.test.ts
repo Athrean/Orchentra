@@ -2,7 +2,14 @@ import { describe, test, expect, beforeEach, afterEach } from 'bun:test'
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { getActiveRepo, setActiveRepo, clearActiveRepo, sessionConfigPath } from '../src/session-config'
+import {
+  getActiveRepo,
+  setActiveRepo,
+  clearActiveRepo,
+  getActiveTerseMode,
+  setActiveTerseMode,
+  sessionConfigPath,
+} from '../src/session-config'
 
 let tempDir: string
 let savedEnv: string | undefined
@@ -67,5 +74,20 @@ describe('session-config: activeRepo', () => {
     expect(getActiveRepo()).toBeNull()
     setActiveRepo('acme/api')
     expect(getActiveRepo()).toBe('acme/api')
+  })
+
+  test('round-trips active terse mode and preserves other session keys', () => {
+    setActiveRepo('acme/api')
+    setActiveTerseMode('full')
+
+    expect(getActiveRepo()).toBe('acme/api')
+    expect(getActiveTerseMode()).toBe('full')
+
+    const raw = JSON.parse(readFileSync(sessionConfigPath(), 'utf8')) as {
+      activeRepo?: string
+      activeTerseMode?: string
+    }
+    expect(raw.activeRepo).toBe('acme/api')
+    expect(raw.activeTerseMode).toBe('full')
   })
 })
