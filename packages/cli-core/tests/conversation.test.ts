@@ -196,6 +196,66 @@ describe('ConversationRuntime', () => {
     expect(done).toMatchObject({ kind: 'done', reason: 'stop' })
   })
 
+  test('trims oversized tool output for the provider but keeps the full result on the event', async () => {
+    const big = 'B'.repeat(5000)
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: {} } },
+        { kind: 'usage', usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'usage', usage: { inputTokens: 8, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read', description: 'read', inputSchema: {} }],
+      has: (n) => n === 'read',
+      execute: async () => ({ content: big, isError: false }),
+    }
+    const rt = new ConversationRuntime(makeConfig({ toolOutputBudgetChars: 1000 }), makeDeps(provider, tools))
+    const events = await collect(rt, 'read')
+
+    const budgeted = events.find((e) => e.kind === 'tool_output_budgeted')
+    expect(budgeted).toMatchObject({
+      kind: 'tool_output_budgeted',
+      toolCallId: 'tc1',
+      originalChars: 5000,
+      keptChars: 1000,
+      droppedChars: 4000,
+    })
+    // Display/session event keeps the full result.
+    const toolResult = events.find((e) => e.kind === 'tool_result')
+    expect(toolResult).toMatchObject({ kind: 'tool_result', result: { content: big } })
+    // Provider-bound message is trimmed.
+    const toolMsg = rt.getFinalMessages().find((m) => m.role === 'tool')
+    expect(toolMsg?.content.length).toBeLessThan(5000)
+    expect(toolMsg?.content).toContain('trimmed')
+  })
+
+  test('does not emit a budget event when output is within budget', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: {} } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'ok' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read', description: 'read', inputSchema: {} }],
+      has: (n) => n === 'read',
+      execute: async () => ({ content: 'small', isError: false }),
+    }
+    const rt = new ConversationRuntime(makeConfig({ toolOutputBudgetChars: 1000 }), makeDeps(provider, tools))
+    const events = await collect(rt, 'read')
+    expect(events.some((e) => e.kind === 'tool_output_budgeted')).toBe(false)
+  })
+
   test('forwards provider tool-args-delta chunks as tool_args_delta runtime events', async () => {
     const provider = fakeProvider([
       [

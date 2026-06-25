@@ -94,6 +94,14 @@ export function renderCostWarning(costUsd: number, thresholdUsd: number, limitUs
   return `${YELLOW}${costWarningText(costUsd, thresholdUsd, limitUsd)}${RESET}`
 }
 
+export function toolOutputBudgetedText(droppedChars: number, keptChars: number): string {
+  return `Tool output trimmed for context: ~${droppedChars.toLocaleString('en-US')} chars dropped, ${keptChars.toLocaleString('en-US')} kept (full result in session log)`
+}
+
+export function renderToolOutputBudgeted(droppedChars: number, keptChars: number): string {
+  return `${DIM}${toolOutputBudgetedText(droppedChars, keptChars)}${RESET}`
+}
+
 export function memorySavedText(id: string): string {
   return `Learned failure memory ${id.slice(0, 8)} — /memory show ${id.slice(0, 8)} to inspect`
 }

@@ -51,6 +51,7 @@ import {
   renderDoneLine,
   renderErrorLine,
   renderCompactNotice,
+  renderToolOutputBudgeted,
   renderCostWarning,
   renderMemorySaved,
 } from './renderer'
@@ -349,6 +350,9 @@ export class LiveCli implements SessionControl {
       contextWindowTokens: 200_000,
       compactionThreshold: 0.8,
       keepRecentOnCompact: 6,
+      // ~12k-token safety net on a single tool result; raise if real outputs
+      // routinely exceed it before the model can narrow its query.
+      toolOutputBudgetChars: 50_000,
       budget: {
         maxSteps: 50,
         maxTokens: 200_000,
@@ -493,6 +497,9 @@ export class LiveCli implements SessionControl {
           break
         case 'compacted':
           process.stdout.write(renderCompactNotice(event.droppedMessageCount, event.tokensSaved) + '\n')
+          break
+        case 'tool_output_budgeted':
+          process.stdout.write(renderToolOutputBudgeted(event.droppedChars, event.keptChars) + '\n')
           break
         case 'cost_warning':
           process.stdout.write(renderCostWarning(event.costUsd, event.thresholdUsd, event.limitUsd) + '\n')
