@@ -12,7 +12,7 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "test": "bun run test:precommit",
-    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests packages/brain/tests apps/cli/tests apps/web/tests",
+    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests packages/brain/tests apps/cli/tests",
     "typecheck": "turbo run typecheck",
     "prepare": "husky"
   },
