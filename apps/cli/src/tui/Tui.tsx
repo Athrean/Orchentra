@@ -25,6 +25,7 @@ import { AnthropicLoginCard } from './components/AnthropicLoginCard'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
 import { EffortSlider } from './components/EffortSlider'
+import { PlanLevelSlider } from './components/PlanLevelSlider'
 import { RepoPickerCard } from './components/RepoPickerCard'
 import { LoginPickerCard } from './components/LoginPickerCard'
 import { ThemePicker } from './components/ThemePicker'
@@ -306,6 +307,9 @@ export function Tui(props: TuiProps): React.ReactElement {
                 return
               case 'effort-picker':
                 dispatch({ type: 'flow/start', flow: { kind: 'effort-picker', current: output.current } })
+                return
+              case 'plan-level-picker':
+                dispatch({ type: 'flow/start', flow: { kind: 'plan-level-picker', current: output.current } })
                 return
               case 'repo-picker':
                 dispatch({
@@ -727,6 +731,22 @@ export function Tui(props: TuiProps): React.ReactElement {
               dispatch({
                 type: 'transcript/push',
                 row: { kind: 'system', id: randomUUID(), text: `✓ effort → ${set}`, tone: 'info' },
+              })
+            }}
+            onCancel={() => {
+              dispatch({ type: 'flow/end' })
+            }}
+          />
+        ) : null}
+        {state.activeFlow?.kind === 'plan-level-picker' ? (
+          <PlanLevelSlider
+            current={state.activeFlow.current}
+            onPick={(level) => {
+              const set = cli.setPlanLevel?.(level) ?? level
+              dispatch({ type: 'flow/end' })
+              dispatch({
+                type: 'transcript/push',
+                row: { kind: 'system', id: randomUUID(), text: `✓ plan depth → ${set}`, tone: 'info' },
               })
             }}
             onCancel={() => {

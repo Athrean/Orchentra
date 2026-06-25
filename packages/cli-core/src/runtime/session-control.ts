@@ -2,6 +2,7 @@ import type { UsageTotals } from './events'
 import type { PermissionMode } from './permissions'
 import type { EffortTier } from './provider'
 import type { TerseMode } from './terse'
+import type { PlanLevel } from './plan-level'
 import type { TerseModeUsage } from './usage'
 import type { PolicyRule } from '../permissions/policy'
 import type { StoredPermissionRule } from '../permissions/store'
@@ -32,6 +33,8 @@ export interface SessionControl {
   setEffort?(effort: EffortTier): EffortTier
   getTerseMode?(): TerseMode
   setTerseMode?(mode: TerseMode): TerseMode
+  getPlanLevel?(): PlanLevel
+  setPlanLevel?(level: PlanLevel): PlanLevel
   getPlanMode?(): boolean
   setPlanMode?(enabled: boolean): boolean
   clearHistory(): void

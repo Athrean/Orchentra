@@ -133,7 +133,7 @@ describe('small slash parity commands', () => {
     expect(text).toContain('packages/cli-tools/src/rate-limit.ts — the limiter')
   })
 
-  test('/plan with no need shows usage and does not call the model', async () => {
+  test('/plan with no need opens the depth picker and does not call the model', async () => {
     const { ctx, events } = makeCtx('/work')
     let called = false
     const llm: LlmCaller = async () => {
@@ -142,7 +142,7 @@ describe('small slash parity commands', () => {
     }
     await new PlanCommand(llm).execute([], ctx)
     expect(called).toBe(false)
-    expect(events[0]).toMatchObject({ kind: 'note', tone: 'warn' })
+    expect(events[0]).toEqual({ kind: 'plan-level-picker', current: 'plus' })
   })
 
   test('/search finds content under the workspace root', async () => {

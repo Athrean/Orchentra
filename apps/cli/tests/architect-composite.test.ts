@@ -69,4 +69,16 @@ describe('/plan architect composite', () => {
     await architect({ need: 'x', llm })
     expect(seenSystem().toUpperCase()).not.toContain('TERSE OUTPUT MODE')
   })
+
+  test('folds the plan-depth instruction into the system prompt', async () => {
+    const { llm, seenSystem } = fakeLlm(JSON.stringify(cannedPlan))
+    await architect({ need: 'x', llm, planLevel: 'max' })
+    expect(seenSystem().toUpperCase()).toContain('PLAN DEPTH: MAX')
+  })
+
+  test('defaults to plus depth when no level is given', async () => {
+    const { llm, seenSystem } = fakeLlm(JSON.stringify(cannedPlan))
+    await architect({ need: 'x', llm })
+    expect(seenSystem().toUpperCase()).toContain('PLAN DEPTH: PLUS')
+  })
 })

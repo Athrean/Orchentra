@@ -1,4 +1,4 @@
-import { terseModePrompt, type TerseMode } from '@orchentra/cli-core'
+import { planLevelPrompt, terseModePrompt, type PlanLevel, type TerseMode } from '@orchentra/cli-core'
 import type { LlmCaller } from './scan'
 
 export interface Alternative {
@@ -39,14 +39,16 @@ export interface ArchitectOptions {
   need: string
   llm: LlmCaller
   terseMode?: TerseMode
+  planLevel?: PlanLevel
 }
 
 export async function architect(opts: ArchitectOptions): Promise<ArchitectPlan | { error: string }> {
   const need = opts.need.trim()
   if (need.length === 0) return { error: 'describe what to build: /plan <need>' }
 
+  const depth = planLevelPrompt(opts.planLevel ?? 'plus')
   const terse = opts.terseMode ? terseModePrompt(opts.terseMode) : ''
-  const systemPrompt = terse ? `${SYSTEM_PROMPT}\n${terse}` : SYSTEM_PROMPT
+  const systemPrompt = [SYSTEM_PROMPT, depth, terse].filter(Boolean).join('\n')
 
   const llm = await opts.llm({ systemPrompt, userPrompt: need })
   const plan = parsePlan(llm.text)

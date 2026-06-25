@@ -5,6 +5,7 @@ import type {
   HookRunner,
   EffortTier,
   TerseMode,
+  PlanLevel,
   MemoryFeatureConfig,
   BudgetFeatureConfig,
   PermissionMode,
@@ -74,6 +75,7 @@ export class LiveCli implements SessionControl {
   private permissionMode: PermissionMode
   private effort: EffortTier
   private terseMode: TerseMode
+  private planLevel: PlanLevel = 'plus'
   private provider: Provider
   private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
@@ -178,6 +180,15 @@ export class LiveCli implements SessionControl {
   setTerseMode(mode: TerseMode): TerseMode {
     this.terseMode = mode
     return mode
+  }
+
+  getPlanLevel(): PlanLevel {
+    return this.planLevel
+  }
+
+  setPlanLevel(level: PlanLevel): PlanLevel {
+    this.planLevel = level
+    return level
   }
 
   getPlanMode(): boolean {

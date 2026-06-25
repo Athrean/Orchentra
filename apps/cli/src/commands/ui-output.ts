@@ -4,7 +4,7 @@
  * collect them or print plaintext.
  */
 
-import type { EffortTier } from '@orchentra/cli-core'
+import type { EffortTier, PlanLevel } from '@orchentra/cli-core'
 
 export interface UiKVRow {
   readonly key: string
@@ -84,6 +84,14 @@ export type UiOutput =
        */
       readonly kind: 'effort-picker'
       readonly current: EffortTier
+    }
+  | {
+      /**
+       * Open the horizontal plan-depth slider (Core/Plus/Max). Tighter ←→
+       * Deeper; the TUI owns input until confirm or escape.
+       */
+      readonly kind: 'plan-level-picker'
+      readonly current: PlanLevel
     }
   | {
       /**
