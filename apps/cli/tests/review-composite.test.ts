@@ -69,6 +69,51 @@ describe('/review composite (verify by running)', () => {
     expect(failed?.output).toContain('1 fail')
   })
 
+  test('corroborates a finding when a failing gate output references its file', async () => {
+    const repo = makeRepo()
+    const result = await review({
+      cwd: repo,
+      mode: 'path',
+      path: 'a.ts',
+      llm: fakeLlm([finding]),
+      checks: [{ name: 'test', command: 'bun run test' }],
+      run: () => ({ exitCode: 1, output: 'FAIL a.ts:1 expected <= got <' }),
+    })
+    expect('error' in result).toBe(false)
+    if ('error' in result) return
+    expect(result.findings[0].corroboratedBy).toEqual(['test'])
+  })
+
+  test('a finding no failing gate references stays unverified', async () => {
+    const repo = makeRepo()
+    const result = await review({
+      cwd: repo,
+      mode: 'path',
+      path: 'a.ts',
+      llm: fakeLlm([finding]),
+      checks: [{ name: 'test', command: 'bun run test' }],
+      run: () => ({ exitCode: 1, output: 'FAIL b.ts:9 unrelated' }),
+    })
+    expect('error' in result).toBe(false)
+    if ('error' in result) return
+    expect(result.findings[0].corroboratedBy).toEqual([])
+  })
+
+  test('a passing gate that references the file does not corroborate', async () => {
+    const repo = makeRepo()
+    const result = await review({
+      cwd: repo,
+      mode: 'path',
+      path: 'a.ts',
+      llm: fakeLlm([finding]),
+      checks: [{ name: 'test', command: 'bun run test' }],
+      run: () => ({ exitCode: 0, output: 'a.ts ok' }),
+    })
+    expect('error' in result).toBe(false)
+    if ('error' in result) return
+    expect(result.findings[0].corroboratedBy).toEqual([])
+  })
+
   test('a scan error short-circuits before running any check', async () => {
     const repo = makeRepo()
     let ranAny = false
