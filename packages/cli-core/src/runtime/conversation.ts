@@ -11,6 +11,7 @@ import {
   type UsageTotals,
 } from './events'
 import { compact, shouldCompact, type TokenEstimator } from './compaction'
+import { budgetToolOutput } from './tool-output-budget'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
@@ -39,6 +40,8 @@ export interface ConversationConfig {
   contextWindowTokens: number
   compactionThreshold: number
   keepRecentOnCompact: number
+  /** Max chars of a tool result sent to the provider; over this it's trimmed (head+tail). 0 disables. */
+  toolOutputBudgetChars?: number
   budget: BudgetConfig
   sessionId: string
   cwd: string
@@ -228,11 +231,23 @@ export class ConversationRuntime {
           attributes: { tool: call.name, tool_call_id: call.id },
         })
         const result = await this.runTool(call)
+        // Trim only the provider-bound copy; the full result still goes to the
+        // display + session log below, so the budget is transport-only.
+        const budgeted = budgetToolOutput(result.content, this.config.toolOutputBudgetChars ?? 0)
         messages.push({
           role: 'tool',
-          content: result.content,
+          content: budgeted.content,
           toolCallId: call.id,
         })
+        if (budgeted.trimmed) {
+          yield* this.emit({
+            kind: 'tool_output_budgeted',
+            toolCallId: call.id,
+            originalChars: budgeted.originalChars,
+            keptChars: budgeted.keptChars,
+            droppedChars: budgeted.originalChars - budgeted.keptChars,
+          })
+        }
         yield* this.emit({ kind: 'tool_result', result })
         const endAttrs: Record<string, SpanAttributeValue> = { tool: call.name, tool_call_id: call.id }
         const end: RuntimeEvent = {

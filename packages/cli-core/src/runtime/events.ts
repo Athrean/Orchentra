@@ -73,6 +73,15 @@ export interface CostWarningEvent {
   limitUsd?: number
 }
 
+/** Emitted when an oversized tool result is trimmed before entering provider input. */
+export interface ToolOutputBudgetedEvent {
+  kind: 'tool_output_budgeted'
+  toolCallId: string
+  originalChars: number
+  keptChars: number
+  droppedChars: number
+}
+
 /** Emitted when a failure→resolution memory is auto-captured after a turn. */
 export interface MemorySavedEvent {
   kind: 'memory_saved'
@@ -122,6 +131,7 @@ export type RuntimeEvent =
   | UsageEvent
   | CompactedEvent
   | CostWarningEvent
+  | ToolOutputBudgetedEvent
   | MemorySavedEvent
   | ErrorEvent
   | DoneEvent
