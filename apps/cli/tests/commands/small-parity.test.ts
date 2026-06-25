@@ -6,6 +6,8 @@ import type { EffortTier, SessionControl, UsageTotals } from '@orchentra/cli-cor
 
 import { createBuiltinRegistry } from '../../src/commands/builtin'
 import { PlanCommand } from '../../src/commands/builtin/plan'
+import { PlanModeCommand } from '../../src/commands/builtin/planmode'
+import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
 import type { CommandContext } from '../../src/commands/registry'
@@ -69,10 +71,10 @@ describe('small slash parity commands', () => {
     expect(events).toEqual([{ kind: 'note', text: 'Thinking effort set to: high' }])
   })
 
-  test('/plan enters and exits runtime plan mode', async () => {
+  test('/planmode enters and exits runtime plan mode', async () => {
     const session = makeSession()
     const { ctx, events } = makeCtx('/work', session)
-    const cmd = new PlanCommand()
+    const cmd = new PlanModeCommand()
 
     await cmd.execute([], ctx)
     expect(session.getPlanMode?.()).toBe(true)
@@ -80,9 +82,47 @@ describe('small slash parity commands', () => {
     await cmd.execute(['off'], ctx)
     expect(session.getPlanMode?.()).toBe(false)
     expect(events).toEqual([
-      { kind: 'note', text: 'Plan mode enabled. Tools are blocked until /plan off.' },
+      { kind: 'note', text: 'Plan mode enabled. Tools are blocked until /planmode off.' },
       { kind: 'note', text: 'Plan mode disabled. Tools may run again.' },
     ])
+  })
+
+  test('/plan architects a need into a rendered proposal', async () => {
+    const { ctx, events } = makeCtx('/work')
+    const llm: LlmCaller = async () => ({
+      text: JSON.stringify({
+        recommendedStack: 'token-bucket in cli-tools',
+        rationale: 'no new dep',
+        alternatives: [{ name: 'sliding-window', tradeoff: 'more state' }],
+        architecture: 'one pure module',
+        scaffold: [{ path: 'packages/cli-tools/src/rate-limit.ts', purpose: 'the limiter' }],
+        verification: ['unit test the refill math'],
+      }),
+      model: 'fake-model',
+      tokensIn: 10,
+      tokensOut: 20,
+    })
+
+    await new PlanCommand(llm).execute(['add', 'a', 'rate', 'limiter'], ctx)
+
+    expect(events).toHaveLength(1)
+    const text = (events[0] as Extract<UiOutput, { kind: 'text' }>).text
+    expect(text).toContain('Recommended: token-bucket in cli-tools')
+    expect(text).toContain('1. sliding-window — more state')
+    expect(text).toContain('Proposed scaffold (not written):')
+    expect(text).toContain('packages/cli-tools/src/rate-limit.ts — the limiter')
+  })
+
+  test('/plan with no need shows usage and does not call the model', async () => {
+    const { ctx, events } = makeCtx('/work')
+    let called = false
+    const llm: LlmCaller = async () => {
+      called = true
+      return { text: '{}', model: 'm', tokensIn: 0, tokensOut: 0 }
+    }
+    await new PlanCommand(llm).execute([], ctx)
+    expect(called).toBe(false)
+    expect(events[0]).toMatchObject({ kind: 'note', tone: 'warn' })
   })
 
   test('/search finds content under the workspace root', async () => {

@@ -16,6 +16,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   version: 'Core',
   cost: 'Core',
   plan: 'Core',
+  planmode: 'Core',
   think: 'Core',
   terse: 'Core',
   memory: 'Core',
