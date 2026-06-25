@@ -7,6 +7,7 @@ import type { EffortTier, SessionControl, UsageTotals } from '@orchentra/cli-cor
 import { createBuiltinRegistry } from '../../src/commands/builtin'
 import { PlanCommand } from '../../src/commands/builtin/plan'
 import { PlanModeCommand } from '../../src/commands/builtin/planmode'
+import { EffortCommand } from '../../src/commands/builtin/effort'
 import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
@@ -59,6 +60,25 @@ describe('small slash parity commands', () => {
 
     expect(registry.resolve('/review --diff')).not.toBeInstanceOf(Error)
     expect(registry.allSpecs().map((spec) => spec.name)).toContain('review')
+  })
+
+  test('/effort with no arg opens the slider picker in TUI mode', async () => {
+    const session = makeSession()
+    session.setEffort?.('xhigh')
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new EffortCommand().execute([], ctx)
+
+    expect(events).toEqual([{ kind: 'effort-picker', current: 'xhigh' }])
+  })
+
+  test('/effort accepts the new max tier', async () => {
+    const session = makeSession()
+    const { ctx } = makeCtx('/work', session)
+
+    await new EffortCommand().execute(['max'], ctx)
+
+    expect(session.getEffort?.()).toBe('max')
   })
 
   test('/think sets high effort by default', async () => {

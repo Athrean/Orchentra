@@ -178,7 +178,9 @@ function buildRequestBody(request: ProviderRequest, includeReasoningEffort = fal
   }
 
   if (includeReasoningEffort && request.effort) {
-    body.reasoning_effort = request.effort
+    // OpenAI's reasoning_effort only accepts low|medium|high; the higher
+    // Orchentra tiers clamp down to 'high' on the wire.
+    body.reasoning_effort = request.effort === 'xhigh' || request.effort === 'max' ? 'high' : request.effort
   }
 
   if (request.tools.length > 0) {

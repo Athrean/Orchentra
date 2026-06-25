@@ -24,6 +24,7 @@ import { ActiveCard } from './components/ActiveCard'
 import { AnthropicLoginCard } from './components/AnthropicLoginCard'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
+import { EffortSlider } from './components/EffortSlider'
 import { RepoPickerCard } from './components/RepoPickerCard'
 import { LoginPickerCard } from './components/LoginPickerCard'
 import { ThemePicker } from './components/ThemePicker'
@@ -302,6 +303,9 @@ export function Tui(props: TuiProps): React.ReactElement {
                 return
               case 'model-picker':
                 dispatch({ type: 'flow/start', flow: { kind: 'model-picker', current: output.current } })
+                return
+              case 'effort-picker':
+                dispatch({ type: 'flow/start', flow: { kind: 'effort-picker', current: output.current } })
                 return
               case 'repo-picker':
                 dispatch({
@@ -707,6 +711,22 @@ export function Tui(props: TuiProps): React.ReactElement {
               dispatch({
                 type: 'transcript/push',
                 row: { kind: 'system', id: randomUUID(), text: `✓ model → ${resolved}`, tone: 'info' },
+              })
+            }}
+            onCancel={() => {
+              dispatch({ type: 'flow/end' })
+            }}
+          />
+        ) : null}
+        {state.activeFlow?.kind === 'effort-picker' ? (
+          <EffortSlider
+            current={state.activeFlow.current}
+            onPick={(effort) => {
+              const set = cli.setEffort?.(effort) ?? effort
+              dispatch({ type: 'flow/end' })
+              dispatch({
+                type: 'transcript/push',
+                row: { kind: 'system', id: randomUUID(), text: `✓ effort → ${set}`, tone: 'info' },
               })
             }}
             onCancel={() => {

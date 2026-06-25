@@ -4,6 +4,8 @@
  * collect them or print plaintext.
  */
 
+import type { EffortTier } from '@orchentra/cli-core'
+
 export interface UiKVRow {
   readonly key: string
   readonly value: string
@@ -74,6 +76,14 @@ export type UiOutput =
        */
       readonly kind: 'model-picker'
       readonly current: string
+    }
+  | {
+      /**
+       * Open the Claude-style horizontal effort slider. ←/→ adjusts across
+       * the EFFORT_TIERS; the TUI owns input until confirm or escape.
+       */
+      readonly kind: 'effort-picker'
+      readonly current: EffortTier
     }
   | {
       /**
