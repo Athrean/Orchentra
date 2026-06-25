@@ -32,6 +32,7 @@ import { SearchCommand } from './search'
 import { ReviewCommand } from './review'
 import { PlanCommand } from './plan'
 import { ThinkCommand } from './think'
+import { TerseCommand } from './terse'
 import { MemoryCommand, ForgetCommand } from './memory'
 import { DebugCommand } from './debug'
 
@@ -82,6 +83,7 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new ReviewCommand())
   registry.register(new PlanCommand())
   registry.register(new ThinkCommand())
+  registry.register(new TerseCommand())
 
   // /memory + /forget — inspect and delete stored failure memories.
   registry.register(new MemoryCommand())

@@ -9,7 +9,7 @@ import {
   type SharedToolState,
   type ToolRegistry,
 } from '@orchentra/cli-core'
-import { getSessionsDirForWorkspace } from './session-config'
+import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config'
 import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
@@ -55,6 +55,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   const rawModel = config.featureConfig.model ?? options.model
   const initial = resolveModel(rawModel)
   const resolvedPermissionMode = config.featureConfig.permissionMode ?? options.permissionMode
+  const resolvedTerseMode = getActiveTerseMode() ?? config.featureConfig.terseMode
 
   const tools = buildToolRegistry()
   const rawMcp = (config.merged as Record<string, unknown>).mcp
@@ -86,6 +87,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     sessionId,
     sharedState,
     effort: config.featureConfig.effort,
+    terseMode: resolvedTerseMode,
     memoryConfig: config.featureConfig.memory,
     budgetConfig: config.featureConfig.budget,
     hookRunner,

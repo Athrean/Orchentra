@@ -1,4 +1,5 @@
 import type { EffortTier } from './provider'
+import type { TerseMode } from './terse'
 
 export type ConfigSource = 'user' | 'project' | 'local'
 
@@ -40,6 +41,7 @@ export interface RuntimeFeatureConfig {
   model: string | undefined
   aliases: Record<string, string>
   effort: EffortTier
+  terseMode: TerseMode
   permissionMode: ResolvedPermissionMode | undefined
   permissionRules: RuntimePermissionRuleConfig
   memory: MemoryFeatureConfig

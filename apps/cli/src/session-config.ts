@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { isTerseMode, type TerseMode } from '@orchentra/cli-core'
 import { fingerprintWorkspace } from './sessions/workspace-fingerprint'
 import { LEGACY_FINGERPRINT, migrateLegacySessions } from './sessions/migrate-legacy'
 
@@ -16,6 +17,8 @@ import { LEGACY_FINGERPRINT, migrateLegacySessions } from './sessions/migrate-le
 interface SessionConfigFile {
   version: 1
   activeRepo?: string
+  activeTerseMode?: TerseMode
+  [extra: string]: unknown
 }
 
 const FILE_MODE = 0o600
@@ -79,8 +82,10 @@ function load(): SessionConfigFile {
     if (!text.trim()) return { version: 1 }
     const parsed = JSON.parse(text) as Partial<SessionConfigFile>
     return {
+      ...parsed,
       version: 1,
       activeRepo: typeof parsed.activeRepo === 'string' ? parsed.activeRepo : undefined,
+      activeTerseMode: isTerseMode(parsed.activeTerseMode) ? parsed.activeTerseMode : undefined,
     }
   } catch {
     return { version: 1 }
@@ -123,5 +128,15 @@ export function setActiveRepo(repo: string): void {
 export function clearActiveRepo(): void {
   const file = load()
   delete file.activeRepo
+  persist(file)
+}
+
+export function getActiveTerseMode(): TerseMode | null {
+  return load().activeTerseMode ?? null
+}
+
+export function setActiveTerseMode(mode: TerseMode): void {
+  const file = load()
+  file.activeTerseMode = mode
   persist(file)
 }

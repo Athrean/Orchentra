@@ -59,6 +59,19 @@ describe('ConfigLoader', () => {
     cleanup()
   })
 
+  test('terse mode defaults to off and reads valid settings', () => {
+    setupTmp({})
+    let loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    expect(loader.load().featureConfig.terseMode).toBe('off')
+
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ terseMode: 'full' }),
+    })
+    loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    expect(loader.load().featureConfig.terseMode).toBe('full')
+    cleanup()
+  })
+
   test('reads positive maxCostUsd / warnCostUsd and ignores non-positive values', () => {
     setupTmp({
       'home/.orchentra/settings.json': JSON.stringify({ budget: { maxCostUsd: 5, warnCostUsd: 0 } }),
