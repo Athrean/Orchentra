@@ -18,8 +18,11 @@ export interface VerifiedCheck {
   output: string
 }
 
+/** A finding plus the failing gates whose output references its file. */
+export type ReviewFinding = Finding & { corroboratedBy: string[] }
+
 export interface ReviewResult {
-  findings: Finding[]
+  findings: ReviewFinding[]
   checks: VerifiedCheck[]
   model: string
   tokensIn: number
@@ -58,13 +61,27 @@ export async function review(opts: ReviewOptions): Promise<ReviewResult | { erro
     }
   })
 
+  const failed = results.filter((c) => !c.passed)
+  const findings: ReviewFinding[] = scanned.findings.map((f) => ({
+    ...f,
+    // Heuristic: substring/basename match on the file path — good enough to tie
+    // a finding to a failing gate; tighten to a line-level match if it over-ties.
+    corroboratedBy: failed.filter((c) => referencesFile(c.output, f.file)).map((c) => c.name),
+  }))
+
   return {
-    findings: scanned.findings,
+    findings,
     checks: results,
     model: scanned.model,
     tokensIn: scanned.tokensIn,
     tokensOut: scanned.tokensOut,
   }
+}
+
+function referencesFile(output: string, file: string): boolean {
+  if (output.includes(file)) return true
+  const base = file.split('/').pop()
+  return base !== undefined && base.length > 0 && output.includes(base)
 }
 
 function discoverChecks(cwd: string): { name: string; command: string }[] {

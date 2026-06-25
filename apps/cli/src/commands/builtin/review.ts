@@ -56,7 +56,8 @@ function render(r: ReviewResult): string {
   } else {
     lines.push('Findings (proposed — verify against the checks below):')
     for (const f of r.findings) {
-      lines.push(`  [${f.severity}] ${f.file}${f.line !== null ? `:${f.line}` : ''} — ${f.title}`)
+      const tag = f.corroboratedBy.length > 0 ? ` — corroborated by: ${f.corroboratedBy.join(', ')}` : ' — unverified'
+      lines.push(`  [${f.severity}] ${f.file}${f.line !== null ? `:${f.line}` : ''} — ${f.title}${tag}`)
       lines.push(`    ${f.description}`)
       if (f.suggestedFix) lines.push(`    fix: ${f.suggestedFix}`)
     }
@@ -75,11 +76,18 @@ function render(r: ReviewResult): string {
     }
     lines.push('')
     const failed = r.checks.filter((c) => !c.passed)
-    lines.push(
-      failed.length > 0
-        ? `Verdict: ${failed.length} check(s) failing — findings corroborated by a real failing gate.`
-        : 'Verdict: all checks pass — proposed findings are advisory (no gate reproduces them).',
-    )
+    const corroborated = r.findings.filter((f) => f.corroboratedBy.length > 0).length
+    if (failed.length === 0) {
+      lines.push('Verdict: all checks pass — proposed findings are advisory (no gate reproduces them).')
+    } else if (corroborated > 0) {
+      lines.push(
+        `Verdict: ${failed.length} check(s) failing; ${corroborated}/${r.findings.length} finding(s) corroborated by a failing gate.`,
+      )
+    } else {
+      lines.push(
+        `Verdict: ${failed.length} check(s) failing, but none reference a proposed finding — failures and findings look unrelated.`,
+      )
+    }
   }
 
   lines.push('')
