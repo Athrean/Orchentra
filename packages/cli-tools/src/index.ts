@@ -77,6 +77,7 @@ export { cronCreateTool } from './tools/cron-create-tool'
 export { cronDeleteTool } from './tools/cron-delete-tool'
 export { cronListTool } from './tools/cron-list-tool'
 export { notebookEditTool } from './tools/notebook-edit-tool'
+export { gitStatusTool, gitDiffTool, gitLogTool } from './tools/git-tools'
 export { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'
 export {
   githubListIssuesTool,
