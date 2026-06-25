@@ -64,6 +64,10 @@ export function thinkingTokenBudgetForEffort(effort: EffortTier): number {
       return 4096
     case 'high':
       return 8192
+    case 'xhigh':
+      return 16384
+    case 'max':
+      return 32768
   }
 }
 

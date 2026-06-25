@@ -7,6 +7,7 @@ import type { EffortTier, SessionControl, UsageTotals } from '@orchentra/cli-cor
 import { createBuiltinRegistry } from '../../src/commands/builtin'
 import { PlanCommand } from '../../src/commands/builtin/plan'
 import { PlanModeCommand } from '../../src/commands/builtin/planmode'
+import { EffortCommand } from '../../src/commands/builtin/effort'
 import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
@@ -61,6 +62,25 @@ describe('small slash parity commands', () => {
     expect(registry.allSpecs().map((spec) => spec.name)).toContain('review')
   })
 
+  test('/effort with no arg opens the slider picker in TUI mode', async () => {
+    const session = makeSession()
+    session.setEffort?.('xhigh')
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new EffortCommand().execute([], ctx)
+
+    expect(events).toEqual([{ kind: 'effort-picker', current: 'xhigh' }])
+  })
+
+  test('/effort accepts the new max tier', async () => {
+    const session = makeSession()
+    const { ctx } = makeCtx('/work', session)
+
+    await new EffortCommand().execute(['max'], ctx)
+
+    expect(session.getEffort?.()).toBe('max')
+  })
+
   test('/think sets high effort by default', async () => {
     const session = makeSession()
     const { ctx, events } = makeCtx('/work', session)
@@ -113,7 +133,7 @@ describe('small slash parity commands', () => {
     expect(text).toContain('packages/cli-tools/src/rate-limit.ts — the limiter')
   })
 
-  test('/plan with no need shows usage and does not call the model', async () => {
+  test('/plan with no need opens the depth picker and does not call the model', async () => {
     const { ctx, events } = makeCtx('/work')
     let called = false
     const llm: LlmCaller = async () => {
@@ -122,7 +142,7 @@ describe('small slash parity commands', () => {
     }
     await new PlanCommand(llm).execute([], ctx)
     expect(called).toBe(false)
-    expect(events[0]).toMatchObject({ kind: 'note', tone: 'warn' })
+    expect(events[0]).toEqual({ kind: 'plan-level-picker', current: 'plus' })
   })
 
   test('/search finds content under the workspace root', async () => {

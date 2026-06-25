@@ -24,7 +24,7 @@ export interface ProviderRequest {
   thinkingTokenBudget?: number
 }
 
-export const EFFORT_TIERS = ['low', 'medium', 'high'] as const
+export const EFFORT_TIERS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
 export type EffortTier = (typeof EFFORT_TIERS)[number]
 
 export function isEffortTier(value: unknown): value is EffortTier {

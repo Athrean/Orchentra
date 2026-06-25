@@ -25,5 +25,7 @@ describe('provider factory', () => {
     expect(thinkingTokenBudgetForEffort('low')).toBe(1024)
     expect(thinkingTokenBudgetForEffort('medium')).toBe(4096)
     expect(thinkingTokenBudgetForEffort('high')).toBe(8192)
+    expect(thinkingTokenBudgetForEffort('xhigh')).toBe(16384)
+    expect(thinkingTokenBudgetForEffort('max')).toBe(32768)
   })
 })

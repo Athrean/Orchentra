@@ -41,12 +41,12 @@ function makeCtx(session = makeSession()): { ctx: CommandContext; events: UiOutp
 }
 
 describe('/effort slash command', () => {
-  test('shows the current effort tier', async () => {
+  test('opens the slider picker (no arg) in TUI mode', async () => {
     const { ctx, events } = makeCtx(makeSession('high'))
 
     await new EffortCommand().execute([], ctx)
 
-    expect(events).toEqual([{ kind: 'note', text: 'Current effort: high' }])
+    expect(events).toEqual([{ kind: 'effort-picker', current: 'high' }])
   })
 
   test('sets low, medium, and high effort tiers', async () => {
@@ -63,10 +63,12 @@ describe('/effort slash command', () => {
     const session = makeSession('medium')
     const { ctx, events } = makeCtx(session)
 
-    await new EffortCommand().execute(['max'], ctx)
+    await new EffortCommand().execute(['ultra'], ctx)
 
     expect(session.getEffort?.()).toBe('medium')
-    expect(events).toEqual([{ kind: 'note', tone: 'warn', text: 'Unknown effort "max". Use low, medium, or high.' }])
+    expect(events).toEqual([
+      { kind: 'note', tone: 'warn', text: 'Unknown effort "ultra". Use low, medium, high, xhigh, or max.' },
+    ])
   })
 
   test('is registered in the builtin registry and help list', () => {

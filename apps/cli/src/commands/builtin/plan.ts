@@ -17,12 +17,23 @@ export class PlanCommand implements CommandHandler {
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
     const need = args.join(' ').trim()
     if (need.length === 0) {
+      // No need + TUI → open the depth slider (Core/Plus/Max). Plain sessions
+      // get the usage hint so scripts never hang on an interactive prompt.
+      if (ctx.ui) {
+        ctx.ui({ kind: 'plan-level-picker', current: ctx.session.getPlanLevel?.() ?? 'plus' })
+        return true
+      }
       emit(ctx, 'usage: /plan <what to build> — e.g. /plan add a rate limiter to the bash tool', 'warn')
       return true
     }
 
     const llm = this.llm ?? buildOneShotLlmCaller(ctx.session.getModel())
-    const result = await architect({ need, llm, terseMode: ctx.session.getTerseMode?.() })
+    const result = await architect({
+      need,
+      llm,
+      terseMode: ctx.session.getTerseMode?.(),
+      planLevel: ctx.session.getPlanLevel?.(),
+    })
     if ('error' in result) {
       emit(ctx, `error: ${result.error}`, 'warn')
       return false

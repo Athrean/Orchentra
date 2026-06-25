@@ -87,6 +87,8 @@ export { EFFORT_TIERS, isEffortTier } from './provider'
 
 export type { TerseMode } from './terse'
 export { TERSE_MODES, isTerseMode, terseModePrompt } from './terse'
+export type { PlanLevel } from './plan-level'
+export { PLAN_LEVELS, isPlanLevel, planLevelPrompt } from './plan-level'
 
 export type {
   TaskHandle,
