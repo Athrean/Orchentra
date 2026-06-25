@@ -42,6 +42,10 @@ export interface PatternBuilderInput {
   rootCause: string
   summary?: string
   failureType?: FailureType
+  jobName?: string
+  stepName?: string
+  /** Stable failure-signature hash, so the same failure class retrieves itself. */
+  signatureHash?: string
 }
 
 export interface MemoryStore {
