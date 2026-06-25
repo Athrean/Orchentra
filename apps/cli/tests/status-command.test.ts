@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import { StatusCommand } from '../src/commands/builtin/status'
 import type { CommandContext } from '../src/commands/registry'
-import type { SessionControl, UsageTotals } from '@orchentra/cli-core'
+import type { SessionControl, TerseModeUsage, UsageTotals } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
 
-function makeSession(): SessionControl {
+function makeSession(breakdown?: readonly TerseModeUsage[]): SessionControl {
   const usage: UsageTotals = {
     inputTokens: 1234,
     outputTokens: 567,
@@ -19,17 +19,18 @@ function makeSession(): SessionControl {
     getSessionId: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     getTurns: () => 7,
     getUsage: () => usage,
+    getTerseBreakdown: breakdown ? () => breakdown : undefined,
     getTerseMode: () => 'full',
     clearHistory: () => {},
     forceCompact: () => {},
   }
 }
 
-function makeCtx(): { ctx: CommandContext; events: UiOutput[] } {
+function makeCtx(breakdown?: readonly TerseModeUsage[]): { ctx: CommandContext; events: UiOutput[] } {
   const events: UiOutput[] = []
   return {
     events,
-    ctx: { cwd: '/work', session: makeSession(), ui: (o) => events.push(o) },
+    ctx: { cwd: '/work', session: makeSession(breakdown), ui: (o) => events.push(o) },
   }
 }
 
@@ -81,5 +82,31 @@ describe('StatusCommand', () => {
     expect(keys).toContain('Input')
     expect(keys).toContain('Output')
     expect(keys).toContain('Total')
+  })
+
+  test('Usage tab shows per-terse-mode output with avg/turn when terse was used', async () => {
+    const { ctx, events } = makeCtx([
+      { mode: 'off', outputTokens: 1600, turns: 2 },
+      { mode: 'full', outputTokens: 400, turns: 1 },
+    ])
+    await new StatusCommand().execute(['usage'], ctx)
+    const ev = events[0]
+    if (ev.kind !== 'card') throw new Error('expected card')
+    const section = ev.sectionsByTab![2].find((s) => s.title === 'Output by terse mode')
+    expect(section).toBeDefined()
+    const full = section!.rows.find((r) => r.key === 'full')
+    expect(full?.value).toContain('400 out')
+    expect(full?.value).toContain('1 turn')
+    expect(full?.value).toContain('400/turn')
+    const off = section!.rows.find((r) => r.key === 'off')
+    expect(off?.value).toContain('800/turn') // 1600 / 2
+  })
+
+  test('Usage tab omits terse section when only off mode was used', async () => {
+    const { ctx, events } = makeCtx([{ mode: 'off', outputTokens: 1600, turns: 2 }])
+    await new StatusCommand().execute(['usage'], ctx)
+    const ev = events[0]
+    if (ev.kind !== 'card') throw new Error('expected card')
+    expect(ev.sectionsByTab![2].some((s) => s.title === 'Output by terse mode')).toBe(false)
   })
 })
