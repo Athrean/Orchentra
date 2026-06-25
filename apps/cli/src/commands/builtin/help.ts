@@ -19,6 +19,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   think: 'Core',
   memory: 'Core',
   forget: 'Core',
+  debug: 'Workspace',
   diff: 'Workspace',
   commit: 'Workspace',
   pr: 'Workspace',

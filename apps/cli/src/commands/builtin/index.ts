@@ -33,6 +33,7 @@ import { ReviewCommand } from './review'
 import { PlanCommand } from './plan'
 import { ThinkCommand } from './think'
 import { MemoryCommand, ForgetCommand } from './memory'
+import { DebugCommand } from './debug'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -85,6 +86,9 @@ export function createBuiltinRegistry(): CommandRegistry {
   // /memory + /forget — inspect and delete stored failure memories.
   registry.register(new MemoryCommand())
   registry.register(new ForgetCommand())
+
+  // /debug — diagnose the latest failed run against stored failure memories.
+  registry.register(new DebugCommand())
 
   return registry
 }
