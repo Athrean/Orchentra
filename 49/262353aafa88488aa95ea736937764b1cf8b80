@@ -1,0 +1,19 @@
+apps/web/app/page.tsx
+  s_86624b090f6cc0::t_2d5fae8834b68e 1-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "49262353aafa88488aa95ea736937764b1cf8b80",
+  "prompts": {},
+  "sessions": {
+    "s_86624b090f6cc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c00cdf79-ba32-4d6d-a52d-8abe61a8f469",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
