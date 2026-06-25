@@ -28,20 +28,24 @@ export class CostCommand implements CommandHandler {
       { key: 'Estimated total', value: formatUsd(total), bold: true },
     ]
 
+    const limits = ctx.session.getCostLimits?.() ?? {}
+    const budgetRows = [
+      ...(limits.warnCostUsd !== undefined ? [{ key: 'Warn at', value: formatUsd(limits.warnCostUsd) }] : []),
+      ...(limits.maxCostUsd !== undefined ? [{ key: 'Hard cap', value: formatUsd(limits.maxCostUsd) }] : []),
+    ]
+
+    const sections = [
+      { title: 'Tokens', rows: tokenRows },
+      { title: 'Estimated cost', rows: costRows },
+      ...(budgetRows.length > 0 ? [{ title: 'Budget', rows: budgetRows }] : []),
+    ]
+
     if (ctx.ui) {
-      ctx.ui({
-        kind: 'card',
-        title: 'Cost',
-        subtitle: model,
-        sections: [
-          { title: 'Tokens', rows: tokenRows },
-          { title: 'Estimated cost', rows: costRows },
-        ],
-      })
+      ctx.ui({ kind: 'card', title: 'Cost', subtitle: model, sections })
       return true
     }
 
-    const all = [...tokenRows, ...costRows]
+    const all = [...tokenRows, ...costRows, ...budgetRows]
     const w = Math.max(...all.map((r) => r.key.length))
     const lines = [`Cost — ${model}`, ...all.map((r) => `  ${r.key.padEnd(w)}  ${r.value}`)]
     process.stdout.write(lines.join('\n') + '\n')
