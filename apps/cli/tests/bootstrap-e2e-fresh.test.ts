@@ -3,10 +3,9 @@
  *
  * Spins up:
  *   - a real Bun.serve HTTP server emulating /api/install-handoff/start and
- *     /auth/github/app/callback. The handler contract matches the server
- *     routes; their full Hono implementations are covered separately in
- *     apps/server/tests. Inlining the contract here keeps the CLI test from
- *     reaching across packages for Hono.
+ *     /auth/github/app/callback. The handler contract matches the install
+ *     handoff routes; inlining it here keeps the CLI test self-contained and
+ *     from reaching across packages.
  *   - a real loopback receiver via startLoopback().
  *   - the real bootstrap orchestrator pointed at the ephemeral server.
  *
