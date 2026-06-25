@@ -1,10 +1,11 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { scan, type LlmCaller } from '../../composites/scan'
+import { buildOneShotLlmCaller } from '../../composites/llm-caller'
 
 /**
- * Slice K /scan slash command. Hooks the diff/full/path collector into a
- * BYOK LLM caller. Until provider wiring lands in a follow-up, the default
- * caller short-circuits with a friendly message pointing to /login.
+ * /scan — LLM code review of a diff, the working tree, or a single file.
+ * The lighter sibling of /review (no verify-by-running). Resolves the BYOK
+ * caller from the session model at execute time; inject for tests.
  */
 export class ScanSlashCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -14,11 +15,7 @@ export class ScanSlashCommand implements CommandHandler {
     argumentHint: '[--diff|--full|--path <p>]',
   }
 
-  private readonly llm: LlmCaller
-
-  constructor(opts?: { llm?: LlmCaller }) {
-    this.llm = opts?.llm ?? defaultLlm
-  }
+  constructor(private readonly llm?: LlmCaller) {}
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
     let mode: 'diff' | 'full' | 'path' = 'diff'
@@ -32,7 +29,8 @@ export class ScanSlashCommand implements CommandHandler {
         path = args[++i]
       }
     }
-    const result = await scan({ cwd: ctx.cwd, mode, path, llm: this.llm })
+    const llm = this.llm ?? buildOneShotLlmCaller(ctx.session.getModel())
+    const result = await scan({ cwd: ctx.cwd, mode, path, llm })
     if ('error' in result) {
       const text = `error: ${result.error}`
       if (ctx.ui) ctx.ui({ kind: 'note', tone: 'warn', text })
@@ -56,8 +54,4 @@ export class ScanSlashCommand implements CommandHandler {
     else process.stdout.write(text + '\n')
     return true
   }
-}
-
-const defaultLlm: LlmCaller = async () => {
-  throw new Error('no LLM provider configured. Run `/login` (or `orchentra login <provider> --api-key ...`) first.')
 }
