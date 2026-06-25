@@ -3,7 +3,7 @@ import { Box, useApp, useInput, useStdin, useStdout } from 'ink'
 import { randomUUID } from 'node:crypto'
 import type { PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
 import type { LiveCli } from '../live-cli'
-import { costWarningText } from '../renderer'
+import { costWarningText, memorySavedText } from '../renderer'
 import type { CommandRegistry } from '../commands/builtin'
 import type { CommandContext } from '../commands/builtin'
 import { initialState, reducer } from './reducer'
@@ -926,6 +926,12 @@ function handleRuntimeEvent(
           tone: 'warn',
           text: costWarningText(event.costUsd, event.thresholdUsd, event.limitUsd),
         },
+      })
+      break
+    case 'memory_saved':
+      dispatch({
+        type: 'transcript/push',
+        row: { kind: 'system', id: randomUUID(), tone: 'info', text: memorySavedText(event.id) },
       })
       break
     case 'usage':
