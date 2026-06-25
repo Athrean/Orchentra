@@ -4,11 +4,11 @@
 
 # Orchentra
 
-### The engineering memory layer for repeated CI, deploy, and production failures.
+### The coding crew that spends less and writes less.
 
-Orchentra watches the debugging trail, remembers how your team fixed failures before, and gives agents the context to explain and safely fix the same class of issue next time.
+Orchentra is a CLI-first AI coding agent that spends fewer tokens and writes less, higher-quality code — paired with an AI code reviewer that verifies pull requests by running them.
 
-[**Why**](#why-orchentra) · [**Quick start**](#quick-start) · [**What ships today**](#what-ships-today) · [**CLI**](#cli) · [**Memory loop**](#memory-loop) · [**Status**](#status)
+[**Why**](#why-orchentra) · [**Quick start**](#quick-start) · [**What ships today**](#what-ships-today) · [**CLI**](#cli) · [**The crew + the reviewer**](#the-crew--the-reviewer) · [**Status**](#status)
 
 </div>
 
@@ -16,15 +16,13 @@ Orchentra watches the debugging trail, remembers how your team fixed failures be
 
 ## Why Orchentra
 
-Engineering teams do not need more dashboards. They need memory.
+Coding agents have crossed the capability bar. The next axis of competition is **economics and trust** — teams running agents at scale feel the token bill and the code bloat in equal measure, and "looks good to me" reviews from an AI nobody verifies don't earn trust.
 
-Every failed deploy, broken workflow, flaky test, rollback, and fix PR creates useful operational knowledge. Most teams throw that knowledge away after the incident is resolved. Orchentra captures the trail, extracts reusable patterns, and turns those patterns into context and executable actions for agents.
+Orchentra attacks both:
 
-The wedge is narrow on purpose:
+> **Spend less** — terse output saves output tokens; a context budget + compaction and a hard dollar cap save input tokens and prevent runaway spend. **Write less** — a lean-code discipline (reach for the stdlib, the platform, an existing dependency, one line — before new code). **Trust the review** — the reviewer proposes findings _and verifies them by running_ your tests; it does not just assert.
 
-> A GitHub Actions deploy fails. Orchentra inspects the logs, finds similar historical failures, explains the likely cause, and proposes or opens the fix PR.
-
-This is not a Datadog replacement, generic incident-management suite, or generic coding assistant. The product is the company brain for engineering operations.
+Not a capability race and not an observability stack. The bet is **efficiency and verifiable review**, not feature count.
 
 ## Quick start
 
@@ -124,42 +122,34 @@ Hooks are repo-local shell gates:
 
 A pre-hook non-zero exit blocks the tool call and surfaces stderr as the reason. Hooks reload on CLI restart.
 
-## Memory loop
+## The crew + the reviewer
 
-The Phase 5 loop is the product wedge:
+Every built-in agent shares one spine: **spend less** (terse output, a context budget + compaction, and a hard dollar cap) and **write less** (a lean-code discipline — reach for the stdlib, the platform, and existing dependencies before writing new code). Specialist agents add focus on top:
 
-```text
-CI/deploy failure
-  → normalize failure signature
-  → retrieve similar episodes/patterns/runbooks
-  → explain likely cause
-  → propose or open a fix PR
-  → record whether the fix was useful
-  → strengthen future retrieval
-```
+- **plan** — turns a need into the best stack with named alternatives and scaffolds the project.
+- **build** — implements test-first, delegating parallel slices to subagents under the budget cap.
+- **review** — proposes findings and **verifies them by running** tests, types, and repros.
 
-Current state:
+The **web** is the AI code reviewer: it reviews and tests pull requests with full-codebase context — a standalone product connected only through the shared store, never importing the CLI.
 
-- failure ingestion and execution graph concepts are established;
-- `packages/brain` contains the local memory primitives;
-- CLI sessions and tool trails are replayable;
-- the missing Phase 5 work is first-class failure records, automatic memory extraction, retrieval feedback, and `/debug`.
+These land in phases; today the CLI ships the agent loop, the efficiency controls, and the verification primitives in the table below.
 
 ## Status
 
-| Area                                               | Status  |
-| -------------------------------------------------- | ------- |
-| CLI/TUI runtime                                    | shipped |
-| General-purpose tools                              | shipped |
-| MCP client                                         | shipped |
-| Sessions, resume, replay                           | shipped |
-| Permissions, hooks, `/permissions` UX              | shipped |
-| `/effort`, `/think`, `/plan`, `/search`, `/review` | shipped |
-| Web onboarding/settings/memory surfaces            | partial |
-| Incident memory records + failure signatures       | next    |
-| Auto-extract memory after turns                    | next    |
-| `/debug latest failed deploy` loop                 | next    |
-| Auto-compact and budget hard stops                 | next    |
+| Area                                                    | Status  |
+| ------------------------------------------------------- | ------- |
+| CLI/TUI runtime, streaming, command palette             | shipped |
+| General tools (bash/file/glob/grep/web + read-only git) | shipped |
+| MCP client                                              | shipped |
+| Sessions, resume, replay                                | shipped |
+| Permissions, hooks, `/permissions`                      | shipped |
+| Dollar budget (warn + hard cap), `/cost`                | shipped |
+| `/effort` `/think` `/plan` `/review` `/search`          | shipped |
+| `/memory` `/forget`, failure signatures, auto-capture   | shipped |
+| Terse-output mode + savings badge                       | next    |
+| Planner + builder agents on the shared spine            | next    |
+| Verify-by-running review + speculative context          | next    |
+| Web AI code reviewer (review + test PRs)                | next    |
 
 ## Project structure
 
@@ -191,6 +181,6 @@ bun run test:precommit
 
 <div align="center">
 
-Built by [Athrean](https://github.com/Athrean). Depth before breadth: memory for repeated engineering failures.
+Built by [Athrean](https://github.com/Athrean). Spend less, write less, verify the review.
 
 </div>
