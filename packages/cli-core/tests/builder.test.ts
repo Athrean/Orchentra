@@ -34,6 +34,20 @@ describe('buildPatternText', () => {
     expect(text).toContain('summary: tests flaked')
     expect(text).toContain('failure_type: flaky_test')
   })
+
+  test('includes job, step, and signature when provided', () => {
+    const text = buildPatternText({
+      workflowName: 'ci',
+      branch: 'main',
+      rootCause: 'timeout',
+      jobName: 'test',
+      stepName: 'unit',
+      signatureHash: 'deadbeefcafe0000',
+    })
+    expect(text).toContain('job: test')
+    expect(text).toContain('step: unit')
+    expect(text).toContain('signature: deadbeefcafe0000')
+  })
 })
 
 describe('buildResolutionText', () => {
