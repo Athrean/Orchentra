@@ -7,20 +7,26 @@ export class EffortCommand implements CommandHandler {
     name: 'effort',
     aliases: [],
     summary: 'Show or set reasoning effort',
-    argumentHint: '[low|medium|high]',
+    argumentHint: '[low|medium|high|xhigh|max]',
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
     const requested = args.join(' ').trim().toLowerCase()
 
+    // No arg + TUI → open the slider. Plain sessions keep the text summary
+    // so scripts and pipes never hang on an interactive prompt.
     if (!requested) {
       const effort = ctx.session.getEffort?.() ?? 'medium'
+      if (ctx.ui) {
+        ctx.ui({ kind: 'effort-picker', current: effort })
+        return true
+      }
       emit(ctx, `Current effort: ${effort}`)
       return true
     }
 
     if (!isEffortTier(requested)) {
-      emit(ctx, `Unknown effort "${requested}". Use low, medium, or high.`, 'warn')
+      emit(ctx, `Unknown effort "${requested}". Use low, medium, high, xhigh, or max.`, 'warn')
       return true
     }
 

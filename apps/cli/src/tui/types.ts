@@ -1,4 +1,4 @@
-import type { PermissionMode, TerseMode, UsageTotals } from '@orchentra/cli-core'
+import type { EffortTier, PermissionMode, PlanLevel, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import type { UiCardSection, UiTabs } from '../commands/ui-output'
 
 export interface CardRow {
@@ -137,6 +137,8 @@ export type ActiveFlowState =
   | { readonly kind: 'anthropic-login' }
   | { readonly kind: 'login-picker' }
   | { readonly kind: 'model-picker'; readonly current: string }
+  | { readonly kind: 'effort-picker'; readonly current: EffortTier }
+  | { readonly kind: 'plan-level-picker'; readonly current: PlanLevel }
   | { readonly kind: 'command-palette' }
   | {
       readonly kind: 'repo-picker'
