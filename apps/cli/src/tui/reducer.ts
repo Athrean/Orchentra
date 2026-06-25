@@ -1,11 +1,16 @@
-import type { PermissionMode } from '@orchentra/cli-core'
+import type { PermissionMode, TerseMode } from '@orchentra/cli-core'
 import { emptyUsage } from '@orchentra/cli-core'
 import { pickVerb } from './components/loading-verbs'
 import { PERMISSION_MODE_CYCLE, type SuggestionState, type TranscriptRow, type TuiAction, type TuiState } from './types'
 
 export const HISTORY_CAP = 5000
 
-export function initialState(args: { model: string; mode: PermissionMode; history?: readonly string[] }): TuiState {
+export function initialState(args: {
+  model: string
+  mode: PermissionMode
+  terseMode?: TerseMode
+  history?: readonly string[]
+}): TuiState {
   return {
     buffer: '',
     cursor: 0,
@@ -16,6 +21,7 @@ export function initialState(args: { model: string; mode: PermissionMode; histor
     transcript: [],
     turn: { state: 'idle', startedAt: null, elapsedMs: 0, tokens: emptyUsage(), verb: null },
     mode: args.mode,
+    terseMode: args.terseMode ?? 'off',
     model: args.model,
     pastes: {},
     exitHintUntil: null,
@@ -300,6 +306,9 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
 
     case 'mode/set':
       return { ...state, mode: action.mode }
+
+    case 'terse/set':
+      return { ...state, terseMode: action.mode }
 
     case 'model/set':
       return { ...state, model: action.model }

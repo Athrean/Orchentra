@@ -11,6 +11,7 @@ import type {
   ResolvedPermissionMode,
 } from './config-types'
 import { isEffortTier } from './provider'
+import { isTerseMode } from './terse'
 
 export class ConfigLoader {
   constructor(
@@ -94,11 +95,16 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
     model: extractModel(merged),
     aliases: extractAliases(merged),
     effort: extractEffort(merged),
+    terseMode: extractTerseMode(merged),
     permissionMode: extractPermissionMode(merged),
     permissionRules: extractPermissionRules(merged),
     memory: extractMemoryConfig(merged),
     budget: extractBudgetConfig(merged),
   }
+}
+
+function extractTerseMode(merged: Record<string, unknown>): RuntimeFeatureConfig['terseMode'] {
+  return isTerseMode(merged.terseMode) ? merged.terseMode : 'off'
 }
 
 function extractBudgetConfig(merged: Record<string, unknown>): BudgetFeatureConfig {
