@@ -3,9 +3,9 @@
  * derived from the execution graph (executions + nodes). They do not own a
  * trigger surface of their own — they hang off existing executions.
  *
- * This file defines only the in-memory shapes. The Drizzle table defs (with
- * column-level metadata, indexes, FKs) live in `@orchentra/db` so the wider
- * codebase keeps a single source of truth for storage.
+ * This file defines only the in-memory shapes. There is no shared DB package:
+ * persistence is local on the CLI (the JSON pattern store) and Supabase on the
+ * web — each owns its own storage of these shapes.
  */
 
 /** Outcome of a single investigation/fix run, summarised for later distillation. */
