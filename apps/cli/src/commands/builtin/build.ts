@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { terseModePrompt, type UsageTotals } from '@orchentra/cli-core'
+import { PatternStore, terseModePrompt, type UsageTotals } from '@orchentra/cli-core'
+import type { MemoryStore } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { architect, type ArchitectPlan } from '../../composites/architect'
 import { planSlices, type Slice } from '../../composites/slices'
@@ -8,6 +9,7 @@ import { build, type BuildResult, type RunCheck, type RunSlice } from '../../com
 import { discoverChecks, defaultRun, type CheckRunner } from '../../composites/review'
 import { buildOneShotLlmCaller } from '../../composites/llm-caller'
 import type { LlmCaller } from '../../composites/scan'
+import { loadMemoryFeedbackGuidance } from '../../composites/memory-guidance'
 import { ensureDir } from '../../init'
 
 const BUILDER_PROMPT = [
@@ -34,7 +36,15 @@ export class BuildCommand implements CommandHandler {
   }
 
   // Inject for tests; production builds the caller + check runner from the cwd.
-  constructor(private readonly deps?: { llm?: LlmCaller; run?: CheckRunner; budget?: { maxTokens: number } }) {}
+  constructor(
+    private readonly deps?: {
+      llm?: LlmCaller
+      run?: CheckRunner
+      budget?: { maxTokens: number }
+      store?: MemoryStore
+      orgId?: string
+    },
+  ) {}
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
     const need = args.join(' ').trim()
@@ -57,12 +67,16 @@ export class BuildCommand implements CommandHandler {
       return true
     }
 
-    const builderSystem = [BUILDER_PROMPT, terse ? terseModePrompt(terse) : ''].filter(Boolean).join('\n')
+    const store = this.deps?.store ?? new PatternStore()
+    const memoryGuidance = loadMemoryFeedbackGuidance(store, this.deps?.orgId ?? 'default')
+    const builderSystem = [BUILDER_PROMPT, memoryGuidance, terse ? terseModePrompt(terse) : '']
+      .filter(Boolean)
+      .join('\n')
     const runTurn = ctx.runTurn
     const runSlice: RunSlice = runTurn
       ? async (slice) => {
           const before = snapshotUsage(ctx.session.getUsage())
-          await runTurn(builderTurn(slice, planned.verification))
+          await runTurn(builderTurn(slice, planned.verification, memoryGuidance))
           const after = snapshotUsage(ctx.session.getUsage())
           const delta = usageDelta(before, after)
           return {
@@ -107,7 +121,7 @@ function builderUser(slice: Slice, verification: string[]): string {
   return `Target file: ${slice.files[0]}\nIntent: ${slice.intent}${checks}\nReturn the file's complete contents.`
 }
 
-function builderTurn(slice: Slice, verification: string[]): string {
+function builderTurn(slice: Slice, verification: string[], memoryGuidance: string = ''): string {
   const checks =
     verification.length > 0 ? `\nVerification to satisfy:\n${verification.map((v) => `- ${v}`).join('\n')}` : ''
   return [
@@ -115,6 +129,7 @@ function builderTurn(slice: Slice, verification: string[]): string {
     `Target file(s): ${slice.files.join(', ')}`,
     `Intent: ${slice.intent}`,
     checks.trim(),
+    memoryGuidance,
     'Inspect before editing. Change the minimum files needed. Do not commit or push.',
   ]
     .filter(Boolean)

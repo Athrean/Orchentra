@@ -36,6 +36,7 @@ export interface ReviewOptions {
   mode: 'diff' | 'full' | 'path'
   path?: string
   llm: LlmCaller
+  memoryGuidance?: string
   /** Override the checks to run; defaults to the cwd package.json scripts. */
   checks?: { name: string; command: string }[]
   /** Inject for tests so verification doesn't spawn real processes. */
@@ -45,7 +46,13 @@ export interface ReviewOptions {
 const OUTPUT_TAIL = 2000
 
 export async function review(opts: ReviewOptions): Promise<ReviewResult | { error: string }> {
-  const scanned = await scan({ cwd: opts.cwd, mode: opts.mode, path: opts.path, llm: opts.llm })
+  const scanned = await scan({
+    cwd: opts.cwd,
+    mode: opts.mode,
+    path: opts.path,
+    llm: opts.llm,
+    memoryGuidance: opts.memoryGuidance,
+  })
   if ('error' in scanned) return scanned
 
   const checks = opts.checks ?? discoverChecks(opts.cwd)
