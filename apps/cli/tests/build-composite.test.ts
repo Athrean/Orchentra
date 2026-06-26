@@ -48,6 +48,25 @@ describe('build orchestrator', () => {
     expect(r.completed.map((s) => s.slice.id).sort()).toEqual(['a', 'b'])
   })
 
+  test('can run a wave serially for a shared runtime runner', async () => {
+    const events: string[] = []
+    const r = await build({
+      slices: [slice('a', ['a.ts']), slice('b', ['b.ts'])],
+      runSlice: async (s) => {
+        events.push(`run:${s.id}`)
+        return { text: 'done', tokensIn: 1, tokensOut: 1 }
+      },
+      runCheck: async (s) => {
+        events.push(`check:${s.id}`)
+        return { passed: true, output: '' }
+      },
+      parallel: false,
+    })
+
+    expect(r.completed.map((s) => s.slice.id)).toEqual(['a', 'b'])
+    expect(events).toEqual(['run:a', 'check:a', 'run:b', 'check:b'])
+  })
+
   test('stops at the budget and skips later waves without running them', async () => {
     const calls: string[] = []
     const trackRun: RunSlice = async (s) => {

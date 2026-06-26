@@ -35,6 +35,8 @@ export interface BuildOptions {
   runCheck: RunCheck
   /** Token budget: stop launching waves once total usage reaches this. */
   budget?: { maxTokens: number }
+  /** Single runtime turn is serial; parallel subagents can flip this back on later. */
+  parallel?: boolean
 }
 
 export async function build(opts: BuildOptions): Promise<BuildResult> {
@@ -47,14 +49,22 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
       continue
     }
 
-    // Slices in a wave are file-disjoint by construction → safe to run together.
-    const runs = await Promise.all(
-      wave.map(async (slice) => {
-        const run = await opts.runSlice(slice)
-        const check = await opts.runCheck(slice)
-        return { slice, run, check }
-      }),
-    )
+    const runOne = async (
+      slice: Slice,
+    ): Promise<{
+      slice: Slice
+      run: Awaited<ReturnType<RunSlice>>
+      check: Awaited<ReturnType<RunCheck>>
+    }> => {
+      const run = await opts.runSlice(slice)
+      const check = await opts.runCheck(slice)
+      return { slice, run, check }
+    }
+
+    // Slices in a wave are file-disjoint by construction → safe to run together
+    // unless the caller provides one shared runtime turn hook.
+    const runs =
+      opts.parallel === false ? await serial(wave, runOne) : await Promise.all(wave.map((slice) => runOne(slice)))
 
     for (const { slice, run, check } of runs) {
       result.tokensIn += run.tokensIn
@@ -73,6 +83,12 @@ export async function build(opts: BuildOptions): Promise<BuildResult> {
   }
 
   return result
+}
+
+async function serial<T, R>(items: T[], fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = []
+  for (const item of items) out.push(await fn(item))
+  return out
 }
 
 function skip(slice: Slice): SliceResult {

@@ -11,6 +11,8 @@ export interface SlashCommandSpec {
 export interface CommandContext {
   cwd: string
   session: SessionControl
+  /** Optional runtime turn hook for commands that need the repo-aware agent path. */
+  runTurn?: (input: string) => Promise<void>
   /**
    * Structured UI sink. Handlers should emit cards/notes/text here when
    * available; the TUI renders them as styled transcript rows. When absent
