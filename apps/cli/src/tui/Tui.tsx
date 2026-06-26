@@ -32,6 +32,7 @@ import { ThemePicker } from './components/ThemePicker'
 import { CommandPalette } from './components/CommandPalette'
 import { setActiveRepo, setDefaultModel } from '../session-config'
 import { loadActiveTheme, saveActiveTheme } from './theme-registry'
+import { planNeedFromTranscript } from './transcript-context'
 import type { BannerOptions } from '../render/banner'
 import type { TuiAction, TuiState } from './types'
 
@@ -326,6 +327,7 @@ export function Tui(props: TuiProps): React.ReactElement {
             cwd,
             session: cli,
             ui,
+            getRecentTranscriptContext: () => planNeedFromTranscript(stateRef.current.transcript),
             runTurn: async (input) => {
               streamingIdRef.current = null
               dispatch({ type: 'turn/start' })

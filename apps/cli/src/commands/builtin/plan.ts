@@ -21,7 +21,9 @@ export class PlanCommand implements CommandHandler {
       .filter((a) => a !== '--scaffold')
       .join(' ')
       .trim()
-    if (need.length === 0) {
+    const transcriptNeed = need.length === 0 ? (ctx.getRecentTranscriptContext?.() ?? '').trim() : ''
+    const effectiveNeed = need || transcriptNeed
+    if (effectiveNeed.length === 0) {
       // No need + TUI → open the depth slider (Core/Plus/Max). Plain sessions
       // get the usage hint so scripts never hang on an interactive prompt.
       if (ctx.ui) {
@@ -34,7 +36,7 @@ export class PlanCommand implements CommandHandler {
 
     const llm = this.llm ?? buildOneShotLlmCaller(ctx.session.getModel())
     const result = await architect({
-      need,
+      need: effectiveNeed,
       llm,
       terseMode: ctx.session.getTerseMode?.(),
       planLevel: ctx.session.getPlanLevel?.(),
