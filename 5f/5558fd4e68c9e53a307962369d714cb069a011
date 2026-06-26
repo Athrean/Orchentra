@@ -1,0 +1,25 @@
+apps/cli/src/commands/builtin/review.ts
+  s_1dc5625adb5729::t_d6f66ac4363d1e 1-11,16-17,29,33,36-37,64-129,178-210
+apps/cli/src/composites/review-feedback.ts
+  s_1dc5625adb5729::t_aec4c72398915d 1-93
+apps/cli/tests/commands/review-command.test.ts
+  s_1dc5625adb5729::t_0da9b27d295683 6-7,41-74,111-158
+apps/cli/tests/review-feedback.test.ts
+  s_1dc5625adb5729::t_d89f8babc18e21 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "5f5558fd4e68c9e53a307962369d714cb069a011",
+  "prompts": {},
+  "sessions": {
+    "s_1dc5625adb5729": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f02df-8e30-78f0-9c05-59932b1f0b60",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
