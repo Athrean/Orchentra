@@ -130,6 +130,75 @@ describe('findSimilarPatterns', () => {
     expect(results).toHaveLength(2)
   })
 
+  test('filters rejected memories out of retrieval', async () => {
+    const entries: PatternEntry[] = [
+      {
+        id: 'rejected',
+        orgId: 'org-1',
+        incidentId: 'inc-rejected',
+        embedding: [1, 0, 0],
+        pattern: 'bad match',
+        resolution: 'bad fix',
+        failureType: 'unknown',
+        usageCount: 0,
+        lastMatchedAt: null,
+        createdAt: '2026-04-21T00:00:00Z',
+        feedback: 'rejected',
+      },
+      {
+        id: 'neutral',
+        orgId: 'org-1',
+        incidentId: 'inc-neutral',
+        embedding: [0.95, 0.05, 0],
+        pattern: 'good match',
+        resolution: 'good fix',
+        failureType: 'unknown',
+        usageCount: 0,
+        lastMatchedAt: null,
+        createdAt: '2026-04-21T00:00:00Z',
+      },
+    ]
+    const store = makeStore(entries)
+    const embedFn: EmbedFn = async () => [1, 0, 0]
+    const results = await findSimilarPatterns(store, embedFn, defaultConfig, 'test', 'org-1')
+    expect(results.map((r) => r.entry.id)).toEqual(['neutral'])
+  })
+
+  test('boosts accepted memories ahead of close neutral matches', async () => {
+    const entries: PatternEntry[] = [
+      {
+        id: 'neutral',
+        orgId: 'org-1',
+        incidentId: 'inc-neutral',
+        embedding: [1, 0, 0],
+        pattern: 'neutral match',
+        resolution: 'neutral fix',
+        failureType: 'unknown',
+        usageCount: 0,
+        lastMatchedAt: null,
+        createdAt: '2026-04-21T00:00:00Z',
+      },
+      {
+        id: 'accepted',
+        orgId: 'org-1',
+        incidentId: 'inc-accepted',
+        embedding: [0.97, 0.24, 0],
+        pattern: 'accepted match',
+        resolution: 'accepted fix',
+        failureType: 'unknown',
+        usageCount: 0,
+        lastMatchedAt: null,
+        createdAt: '2026-04-21T00:00:00Z',
+        feedback: 'accepted',
+      },
+    ]
+    const store = makeStore(entries)
+    const embedFn: EmbedFn = async () => [1, 0, 0]
+    const results = await findSimilarPatterns(store, embedFn, defaultConfig, 'test', 'org-1')
+    expect(results.map((r) => r.entry.id)).toEqual(['accepted', 'neutral'])
+    expect(results[0].similarity).toBeLessThan(results[1].similarity)
+  })
+
   test('calls updateUsageBatch on matched entries', async () => {
     const updatedIds: string[] = []
     const entries: PatternEntry[] = [

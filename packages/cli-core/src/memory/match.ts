@@ -15,13 +15,14 @@ export async function findSimilarPatterns(
 
   const matches: PatternMatch[] = []
   for (const entry of allPatterns) {
+    if (entry.feedback === 'rejected') continue
     const score = cosineSimilarity(queryVec, entry.embedding)
     if (score >= (config.similarityThreshold ?? SIMILARITY_THRESHOLD)) {
       matches.push({ entry, similarity: score })
     }
   }
 
-  matches.sort((a, b) => b.similarity - a.similarity)
+  matches.sort((a, b) => rankScore(b) - rankScore(a))
   const results = matches.slice(0, limit)
 
   store.updateUsageBatch(
@@ -30,4 +31,8 @@ export async function findSimilarPatterns(
   )
 
   return results
+}
+
+function rankScore(match: PatternMatch): number {
+  return match.similarity + (match.entry.feedback === 'accepted' ? 0.05 : 0)
 }
