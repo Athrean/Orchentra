@@ -34,7 +34,7 @@ function fileExists(path: string): boolean {
   return existsSync(path)
 }
 
-function ensureDir(path: string): InitStatus {
+export function ensureDir(path: string): InitStatus {
   if (existsSync(path)) {
     return 'skipped'
   }
@@ -42,7 +42,7 @@ function ensureDir(path: string): InitStatus {
   return 'created'
 }
 
-function writeFileIfMissing(path: string, content: string): InitStatus {
+export function writeFileIfMissing(path: string, content: string): InitStatus {
   if (fileExists(path)) {
     return 'skipped'
   }
