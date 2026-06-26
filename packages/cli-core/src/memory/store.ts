@@ -1,7 +1,7 @@
 import { join, dirname } from 'node:path'
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { defaultConfigHome } from '../runtime/config'
-import type { PatternEntry, MemoryStore } from './types'
+import type { MemoryFeedback, PatternEntry, MemoryStore } from './types'
 
 export class PatternStoreError extends Error {
   readonly filePath: string
@@ -52,6 +52,19 @@ export class PatternStore implements MemoryStore {
       didUpdate = true
     }
     if (didUpdate) this.writeOrgFile(filePath, entries)
+  }
+
+  setFeedback(orgId: string, entryId: string, feedback: MemoryFeedback, at: Date = new Date()): void {
+    const filePath = this.orgFile(orgId)
+    const entries = this.readOrgFile(filePath)
+    let didUpdate = false
+    const feedbackAt = at.toISOString()
+    const next = entries.map((entry) => {
+      if (entry.id !== entryId) return entry
+      didUpdate = true
+      return { ...entry, feedback, feedbackAt }
+    })
+    if (didUpdate) this.writeOrgFile(filePath, next)
   }
 
   delete(orgId: string, entryId: string): void {
@@ -108,10 +121,5 @@ export class PatternStore implements MemoryStore {
 }
 
 function isErrnoCode(error: unknown, code: string): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: string }).code === code
-  )
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === code
 }

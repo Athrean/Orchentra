@@ -1,5 +1,5 @@
 import { PatternStore } from '@orchentra/cli-core'
-import type { MemoryStore, PatternEntry } from '@orchentra/cli-core'
+import type { MemoryFeedback, MemoryStore, PatternEntry } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import type { UiKVRow } from '../ui-output'
 
@@ -36,7 +36,7 @@ export class MemoryCommand implements CommandHandler {
     name: 'memory',
     aliases: ['mem'],
     summary: 'List or inspect stored failure memories',
-    argumentHint: '[list | show <id>]',
+    argumentHint: '[list | show <id> | mark <id> accepted|rejected]',
   }
 
   constructor(
@@ -47,6 +47,7 @@ export class MemoryCommand implements CommandHandler {
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
     const sub = (args[0] ?? '').toLowerCase()
     if (sub === 'show') return this.show(args[1], ctx)
+    if (sub === 'mark') return this.mark(args[1], args[2], ctx)
     return this.list(ctx)
   }
 
@@ -58,7 +59,7 @@ export class MemoryCommand implements CommandHandler {
     if (entries.length === 0) return note(ctx, 'No memories stored yet.')
 
     const rows: UiKVRow[] = entries.map((e) => ({
-      key: `${shortId(e.id)} · ${e.failureType}`,
+      key: `${shortId(e.id)} · ${e.failureType}${e.feedback ? ` · ${e.feedback}` : ''}`,
       value: `${e.createdAt.slice(0, 10)} — ${snippet(e.pattern)}`,
     }))
     if (ctx.ui) {
@@ -89,6 +90,8 @@ export class MemoryCommand implements CommandHandler {
       { key: 'created', value: e.createdAt },
       { key: 'used', value: String(e.usageCount) },
       { key: 'last matched', value: e.lastMatchedAt ?? 'never' },
+      { key: 'feedback', value: e.feedback ?? 'none' },
+      { key: 'feedback at', value: e.feedbackAt ?? 'never' },
       { key: 'incident', value: e.incidentId ?? '—' },
     ]
     if (ctx.ui) {
@@ -108,6 +111,23 @@ export class MemoryCommand implements CommandHandler {
     )
     return true
   }
+
+  private mark(idArg: string | undefined, feedbackArg: string | undefined, ctx: CommandContext): boolean {
+    if (!idArg || !feedbackArg) return note(ctx, 'usage: /memory mark <id> accepted|rejected', 'warn')
+    if (!isFeedback(feedbackArg)) return note(ctx, 'usage: /memory mark <id> accepted|rejected', 'warn')
+    const res = resolveByPrefix(this.store.load(this.orgId), idArg)
+    if (res.kind === 'none') return note(ctx, `No memory with id ${idArg}.`, 'warn')
+    if (res.kind === 'ambiguous')
+      return note(ctx, `Ambiguous id ${idArg} — matches ${res.count} memories; use more characters.`, 'warn')
+    if (!this.store.setFeedback) return note(ctx, 'Memory store does not support feedback.', 'warn')
+
+    this.store.setFeedback(this.orgId, res.entry.id, feedbackArg)
+    return note(ctx, `Marked memory ${shortId(res.entry.id)} ${feedbackArg}.`)
+  }
+}
+
+function isFeedback(value: string): value is MemoryFeedback {
+  return value === 'accepted' || value === 'rejected'
 }
 
 export class ForgetCommand implements CommandHandler {
