@@ -84,7 +84,7 @@ function referencesFile(output: string, file: string): boolean {
   return base !== undefined && base.length > 0 && output.includes(base)
 }
 
-function discoverChecks(cwd: string): { name: string; command: string }[] {
+export function discoverChecks(cwd: string): { name: string; command: string }[] {
   let scripts: Record<string, unknown>
   try {
     const pkg = JSON.parse(readFileSync(resolve(cwd, 'package.json'), 'utf-8')) as { scripts?: Record<string, unknown> }
@@ -100,7 +100,7 @@ function discoverChecks(cwd: string): { name: string; command: string }[] {
   return out
 }
 
-const defaultRun: CheckRunner = (command, cwd) => {
+export const defaultRun: CheckRunner = (command, cwd) => {
   const r = spawnSync(command, { cwd, shell: true, encoding: 'utf-8', timeout: 180_000 })
   const output = (r.stdout ?? '') + (r.stderr ?? '')
   // status is null on timeout/signal — treat as a failed check.

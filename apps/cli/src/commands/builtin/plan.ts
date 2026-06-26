@@ -1,5 +1,6 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { architect, type ArchitectPlan } from '../../composites/architect'
+import { writeScaffold, type ScaffoldReport } from '../../composites/scaffold'
 import { buildOneShotLlmCaller } from '../../composites/llm-caller'
 import type { LlmCaller } from '../../composites/scan'
 
@@ -8,14 +9,18 @@ export class PlanCommand implements CommandHandler {
     name: 'plan',
     aliases: [],
     summary: 'Architect a need into a stack, alternatives, and a scaffold (BYOK)',
-    argumentHint: '<what to build>',
+    argumentHint: '[--scaffold] <what to build>',
   }
 
   // Inject for tests; production builds a one-shot caller from the session model.
   constructor(private readonly llm?: LlmCaller) {}
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    const need = args.join(' ').trim()
+    const scaffold = args.includes('--scaffold')
+    const need = args
+      .filter((a) => a !== '--scaffold')
+      .join(' ')
+      .trim()
     if (need.length === 0) {
       // No need + TUI → open the depth slider (Core/Plus/Max). Plain sessions
       // get the usage hint so scripts never hang on an interactive prompt.
@@ -39,14 +44,15 @@ export class PlanCommand implements CommandHandler {
       return false
     }
 
-    const text = render(result)
+    const report = scaffold ? writeScaffold(result.scaffold, ctx.cwd) : null
+    const text = render(result, report)
     if (ctx.ui) ctx.ui({ kind: 'text', text })
     else process.stdout.write(text + '\n')
     return true
   }
 }
 
-function render(p: ArchitectPlan): string {
+function render(p: ArchitectPlan, report: ScaffoldReport | null): string {
   const lines: string[] = []
   lines.push(`Recommended: ${p.recommendedStack}`)
   lines.push(`  ${p.rationale}`)
@@ -57,8 +63,14 @@ function render(p: ArchitectPlan): string {
   lines.push('Architecture:')
   lines.push(`  ${p.architecture}`)
   lines.push('')
-  lines.push('Proposed scaffold (not written):')
-  for (const s of p.scaffold) lines.push(`  ${s.path} — ${s.purpose}`)
+  if (report) {
+    lines.push('Wrote scaffold:')
+    for (const path of report.created) lines.push(`  + ${path}`)
+    for (const path of report.skipped) lines.push(`  · ${path} (exists, skipped)`)
+  } else {
+    lines.push('Proposed scaffold (not written):')
+    for (const s of p.scaffold) lines.push(`  ${s.path} — ${s.purpose}`)
+  }
   lines.push('')
   lines.push('Verification:')
   for (const v of p.verification) lines.push(`  - ${v}`)

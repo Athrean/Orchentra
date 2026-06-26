@@ -31,6 +31,7 @@ import { InitSlashCommand } from './init-slash'
 import { SearchCommand } from './search'
 import { ReviewCommand } from './review'
 import { PlanCommand } from './plan'
+import { BuildCommand } from './build'
 import { PlanModeCommand } from './planmode'
 import { ThinkCommand } from './think'
 import { TerseCommand } from './terse'
@@ -83,6 +84,7 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new SearchCommand())
   registry.register(new ReviewCommand())
   registry.register(new PlanCommand())
+  registry.register(new BuildCommand())
   registry.register(new PlanModeCommand())
   registry.register(new ThinkCommand())
   registry.register(new TerseCommand())
