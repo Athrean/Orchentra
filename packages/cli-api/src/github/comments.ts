@@ -6,6 +6,12 @@ export interface IssueComment {
   readonly html_url: string
 }
 
+export interface PullReviewComment {
+  readonly id: number
+  readonly body: string
+  readonly html_url: string
+}
+
 export function triageMarker(key: string): string {
   return `<!-- orchentra:triage:${key} -->`
 }
@@ -17,6 +23,17 @@ export async function listIssueComments(
   issueNumber: number,
 ): Promise<IssueComment[]> {
   return client.request<IssueComment[]>(`/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
+    query: { per_page: 100 },
+  })
+}
+
+export async function listPullReviewComments(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  pullNumber: number,
+): Promise<PullReviewComment[]> {
+  return client.request<PullReviewComment[]>(`/repos/${owner}/${repo}/pulls/${pullNumber}/comments`, {
     query: { per_page: 100 },
   })
 }
