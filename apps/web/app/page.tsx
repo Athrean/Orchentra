@@ -1,5 +1,3 @@
-import Image from 'next/image'
-
 const GITHUB_URL = 'https://github.com/Athrean/Orchentra'
 
 export default function Page(): React.ReactNode {
@@ -20,7 +18,13 @@ export default function Page(): React.ReactNode {
 function Wordmark({ size = 24 }: { size?: number }): React.ReactNode {
   return (
     <span className="inline-flex items-center gap-2">
-      <Image src="/mascot.svg" alt="" width={size} height={size} priority />
+      <span
+        aria-hidden="true"
+        className="inline-flex items-center justify-center rounded-sm bg-[var(--color-accent)] font-[family-name:var(--font-mono)] text-[var(--color-canvas)]"
+        style={{ width: size, height: size, fontSize: Math.max(12, size * 0.58) }}
+      >
+        O
+      </span>
       <span className="text-[17px] tracking-tight">Orchentra</span>
     </span>
   )

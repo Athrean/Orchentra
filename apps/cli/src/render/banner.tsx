@@ -3,8 +3,6 @@ import { homedir } from 'node:os'
 import React from 'react'
 import { Box, render, Text, useApp, useStdout } from 'ink'
 import type { PermissionMode } from '@orchentra/cli-core'
-import { detectColorMode } from './ansi'
-import { mascotWidthCols, renderMascot } from './mascot'
 import { THEME } from '../tui/theme'
 import { humanizeModelId } from '../model-catalog'
 
@@ -21,7 +19,7 @@ export interface BannerOptions {
   readonly providerName?: string
   readonly username?: string
   /**
-   * Force the full bordered welcome card with mascot + tips column even
+   * Force the full bordered welcome card with tips even
    * when running in an IDE-integrated terminal. Used by the first-run
    * sign-in screen so the user sees the full Orchentra UX before
    * configuring credentials, instead of the IDE-compact fallback.
@@ -39,13 +37,12 @@ const TIPS: ReadonlyArray<readonly [string, string]> = [
 const BOX_MAX_WIDTH = 110
 const BOX_MIN_WIDTH = 24
 const TIPS_BREAKPOINT = 80
-const MASCOT_BREAKPOINT = 32
 const COLUMN_GAP = 4
 
 /**
  * Detect when we're running inside an IDE-integrated terminal where line
  * spacing is tight and the host UI already provides framing. In that case we
- * skip the bordered card and render the banner as a compact mascot+meta row,
+ * skip the bordered card and render the banner as a compact meta row,
  * matching how Claude Code presents itself in VSCode/Cursor terminals.
  */
 export function isIdeTerminal(): boolean {
@@ -64,34 +61,22 @@ function IdeCompactBanner(props: BannerOptions): React.ReactElement {
 
   const provider = props.providerName ?? 'anthropic'
   const cwd = prettyCwd(props.cwd)
-  const showMascot = cols >= 30
-  const mascotLines = showMascot ? renderMascot(detectColorMode()) : []
-  const mascotW = mascotWidthCols()
-  const infoMaxWidth = showMascot ? Math.max(8, cols - mascotW - 4) : Math.max(8, cols - 2)
+  const infoMaxWidth = Math.max(8, cols - 2)
 
   const titleLine = `${capitalize(props.cliName)} v${props.cliVersion}`
   const metaLine = `${humanizeModelId(props.model)} · ${provider}`
 
   return (
-    <Box flexDirection="row" alignItems="center" paddingX={1} paddingTop={1}>
-      {showMascot ? (
-        <Box flexDirection="column" marginRight={2}>
-          {mascotLines.map((line, i) => (
-            <Text key={i}>{line}</Text>
-          ))}
-        </Box>
-      ) : null}
-      <Box flexDirection="column" width={infoMaxWidth}>
-        <Text bold color={THEME.brand} wrap="truncate-end">
-          {titleLine}
-        </Text>
-        <Text dimColor wrap="truncate-end">
-          {metaLine}
-        </Text>
-        <Text dimColor wrap="truncate-end">
-          {cwd}
-        </Text>
-      </Box>
+    <Box flexDirection="column" paddingX={1} paddingTop={1} width={infoMaxWidth}>
+      <Text bold color={THEME.brand} wrap="truncate-end">
+        {titleLine}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {metaLine}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {cwd}
+      </Text>
     </Box>
   )
 }
@@ -108,9 +93,6 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
   const innerWidth = Math.max(boxWidth - 6, 8)
 
   const showTips = cols >= TIPS_BREAKPOINT
-  const showMascot = cols >= MASCOT_BREAKPOINT
-  const mascotLines = showMascot ? renderMascot(detectColorMode()) : []
-  const mascotW = mascotWidthCols()
 
   const titleLabel = ` ${capitalize(props.cliName)} v${props.cliVersion} `
   const dashesAfterTitle = Math.max(boxWidth - titleLabel.length - 3, 0)
@@ -135,15 +117,7 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
           <Box width={innerWidth} justifyContent="center">
             <Text bold wrap="truncate-end">{`Welcome back, ${username}!`}</Text>
           </Box>
-          {showMascot ? (
-            <Box flexDirection="column" paddingY={1}>
-              {mascotLines.map((line, i) => (
-                <Text key={i}>{line}</Text>
-              ))}
-            </Box>
-          ) : (
-            <Box height={1} />
-          )}
+          <Box height={1} />
           <Box width={innerWidth} justifyContent="center">
             <Text dimColor wrap="truncate-end">
               {meta}
@@ -159,7 +133,7 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
     )
   }
 
-  const leftWidth = Math.max(mascotW + 4, Math.floor(innerWidth * 0.4))
+  const leftWidth = Math.max(24, Math.floor(innerWidth * 0.4))
   const rightWidth = Math.max(innerWidth - leftWidth - COLUMN_GAP, 20)
 
   return (
@@ -178,11 +152,7 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
           <Box width={leftWidth} justifyContent="center">
             <Text bold wrap="truncate-end">{`Welcome back, ${username}!`}</Text>
           </Box>
-          <Box flexDirection="column" paddingY={1}>
-            {mascotLines.map((line, i) => (
-              <Text key={i}>{line}</Text>
-            ))}
-          </Box>
+          <Box height={1} />
           <Box width={leftWidth} justifyContent="center">
             <Text dimColor wrap="truncate-end">
               {meta}
