@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
@@ -131,6 +131,53 @@ describe('small slash parity commands', () => {
     expect(text).toContain('1. sliding-window — more state')
     expect(text).toContain('Proposed scaffold (not written):')
     expect(text).toContain('packages/cli-tools/src/rate-limit.ts — the limiter')
+  })
+
+  test('/plan --scaffold writes the proposed scaffold and reports it', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-plan-scaffold-'))
+    const { ctx, events } = makeCtx(cwd)
+    const llm: LlmCaller = async () => ({
+      text: JSON.stringify({
+        recommendedStack: 'token-bucket in cli-tools',
+        rationale: 'no new dep',
+        alternatives: [{ name: 'sliding-window', tradeoff: 'more state' }],
+        architecture: 'one pure module',
+        scaffold: [{ path: 'src/limiter.ts', purpose: 'the limiter' }],
+        verification: ['unit test the refill math'],
+      }),
+      model: 'fake-model',
+      tokensIn: 10,
+      tokensOut: 20,
+    })
+
+    await new PlanCommand(llm).execute(['--scaffold', 'add', 'a', 'limiter'], ctx)
+
+    expect(existsSync(join(cwd, 'src/limiter.ts'))).toBe(true)
+    const text = (events.find((e) => e.kind === 'text') as Extract<UiOutput, { kind: 'text' }>).text
+    expect(text).toContain('Wrote scaffold')
+    expect(text).toContain('src/limiter.ts')
+  })
+
+  test('/plan without --scaffold does not write files', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-plan-noscaffold-'))
+    const { ctx } = makeCtx(cwd)
+    const llm: LlmCaller = async () => ({
+      text: JSON.stringify({
+        recommendedStack: 's',
+        rationale: 'r',
+        alternatives: [{ name: 'a', tradeoff: 't' }],
+        architecture: 'arch',
+        scaffold: [{ path: 'src/limiter.ts', purpose: 'the limiter' }],
+        verification: ['v'],
+      }),
+      model: 'fake-model',
+      tokensIn: 1,
+      tokensOut: 1,
+    })
+
+    await new PlanCommand(llm).execute(['add', 'a', 'limiter'], ctx)
+
+    expect(existsSync(join(cwd, 'src/limiter.ts'))).toBe(false)
   })
 
   test('/plan with no need opens the depth picker and does not call the model', async () => {
