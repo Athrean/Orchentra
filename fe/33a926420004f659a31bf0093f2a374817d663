@@ -1,0 +1,33 @@
+apps/cli/src/composites/memory-guidance.ts
+  s_1dc5625adb5729::t_382bb50d940290 1-69
+apps/cli/src/commands/builtin/build.ts
+  s_1dc5625adb5729::t_fc0dea2414ca2c 3-4,12,39-47,70-74,79,124,132
+apps/cli/src/commands/builtin/review.ts
+  s_1dc5625adb5729::t_ed1b35015352c8 17,52-54
+apps/cli/src/composites/review.ts
+  s_1dc5625adb5729::t_32f52dc0627e0e 39,49-55
+apps/cli/src/composites/scan.ts
+  s_1dc5625adb5729::t_51b4090b2dcbb5 51,87-88
+apps/cli/tests/commands/build-command.test.ts
+  s_1dc5625adb5729::t_4218af183bf5de 6,24-54,204-264
+apps/cli/tests/commands/review-command.test.ts
+  s_1dc5625adb5729::t_d4c9c58c5c9e84 41,53,160-193
+apps/cli/tests/memory-guidance.test.ts
+  s_1dc5625adb5729::t_8e0191d46acde0 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "fe33a926420004f659a31bf0093f2a374817d663",
+  "prompts": {},
+  "sessions": {
+    "s_1dc5625adb5729": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f02df-8e30-78f0-9c05-59932b1f0b60",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
