@@ -13,7 +13,7 @@ const SELECTED = '› '
 const GUTTER = '  '
 
 /**
- * Dropdown rendered just above the input box. Borderless, two-column:
+ * Dropdown rendered just below the input box. Borderless, two-column:
  * label (fixed-width, brand-green for selected row) and description
  * (dim, truncated to terminal width).
  */
