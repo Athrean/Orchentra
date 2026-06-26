@@ -137,6 +137,7 @@ export {
   findCheckRunByExternalId,
   createCommitStatus,
   listIssueComments,
+  listPullReviewComments,
   createIssueComment,
   updateIssueComment,
   upsertMarkedComment,
@@ -152,6 +153,7 @@ export {
   type CommitStatusInput,
   type CommitStatusState,
   type IssueComment,
+  type PullReviewComment,
   type PullRequestRef,
   type CreatePullRequestInput,
 } from './github'

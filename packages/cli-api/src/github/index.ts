@@ -46,11 +46,13 @@ export { createCommitStatus, type CommitStatus, type CommitStatusInput, type Com
 
 export {
   listIssueComments,
+  listPullReviewComments,
   createIssueComment,
   updateIssueComment,
   upsertMarkedComment,
   triageMarker,
   type IssueComment,
+  type PullReviewComment,
 } from './comments'
 
 export {

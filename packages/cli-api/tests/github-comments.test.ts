@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { GitHubClient } from '../src/github/octokit'
-import { triageMarker, upsertMarkedComment } from '../src/github/comments'
+import { listPullReviewComments, triageMarker, upsertMarkedComment } from '../src/github/comments'
 
 function stubFetch(handler: (url: string, init?: RequestInit) => Response): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -62,5 +62,25 @@ describe('upsertMarkedComment', () => {
 
     expect(updatedId).toBe(99)
     expect(result.body).toContain('new text')
+  })
+})
+
+describe('listPullReviewComments', () => {
+  test('reads pull review comments from the PR comments endpoint', async () => {
+    let requested = ''
+    const fetchImpl = stubFetch((url) => {
+      requested = url
+      return new Response(JSON.stringify([{ id: 5, body: 'orchentra feedback: abc accepted', html_url: 'u' }]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    const client = new GitHubClient({ token: 't', fetchImpl })
+    const result = await listPullReviewComments(client, 'o', 'r', 7)
+
+    expect(requested).toContain('/repos/o/r/pulls/7/comments')
+    expect(requested).toContain('per_page=100')
+    expect(result).toEqual([{ id: 5, body: 'orchentra feedback: abc accepted', html_url: 'u' }])
   })
 })
