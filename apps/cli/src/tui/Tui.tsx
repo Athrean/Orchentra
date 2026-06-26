@@ -803,7 +803,6 @@ export function Tui(props: TuiProps): React.ReactElement {
           />
         ) : null}
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
-        {showSuggestions ? <Suggestions state={state.suggestions} width={suggestionsWidth} /> : null}
         {isMultilineModal ? (
           <InputModal
             buffer={state.buffer}
@@ -821,6 +820,7 @@ export function Tui(props: TuiProps): React.ReactElement {
             disabled={inputDisabled}
           />
         )}
+        {showSuggestions ? <Suggestions state={state.suggestions} width={suggestionsWidth} /> : null}
         <Footer
           model={state.model}
           mode={state.mode}
