@@ -1,0 +1,21 @@
+.github/workflows/publish-cli.yml
+  s_1dc5625adb5729::t_7de09c8726cd28 1-53
+apps/cli/tests/release-workflow.test.ts
+  s_1dc5625adb5729::t_1bbb8e997d6cec 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "b0eb26e12ebd5012b2c44bc883eec46a7326f994",
+  "prompts": {},
+  "sessions": {
+    "s_1dc5625adb5729": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f02df-8e30-78f0-9c05-59932b1f0b60",
+        "model": "unknown"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
