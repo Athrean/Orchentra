@@ -1,0 +1,29 @@
+apps/cli/scripts/verify-npm-package.ts
+  s_1dc5625adb5729::t_0724ea4c98e948 1-85
+bun.lock
+  s_1dc5625adb5729::t_1d6dbfa5050dbb 25-26,28,37,39,42-43,1167,1259-1260
+apps/cli/README.md
+  s_1dc5625adb5729::t_6f114170d79def 4-29,38
+apps/cli/package.json
+  s_1dc5625adb5729::t_4a2152a22a7ccc 4,6-15,22-24,28,37,39,41-43
+apps/cli/tests/package-contract.test.ts
+  s_1dc5625adb5729::t_4a6af1f5293994 1-81
+apps/cli/tsconfig.json
+  s_1dc5625adb5729::t_a5e43ed1e908ce 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "3647550e8dfef6bbc4da48b7ede239f7dda32bb8",
+  "prompts": {},
+  "sessions": {
+    "s_1dc5625adb5729": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f02df-8e30-78f0-9c05-59932b1f0b60",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
