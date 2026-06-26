@@ -1,0 +1,19 @@
+packages/cli-core/src/memory/store.ts
+  s_1dc5625adb5729::t_5cfbeb925ca1d5 4,57-69,124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "0e3eaaca8d0bb44190f09b1e295f5e5542cdd67f",
+  "prompts": {},
+  "sessions": {
+    "s_1dc5625adb5729": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f02df-8e30-78f0-9c05-59932b1f0b60",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
