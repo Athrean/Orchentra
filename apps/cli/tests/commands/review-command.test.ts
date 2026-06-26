@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import type { SessionControl, UsageTotals } from '@orchentra/cli-core'
+import type { MemoryStore, PatternEntry } from '@orchentra/cli-core'
+import type { GitHubClient } from '@orchentra/cli-api'
 
 import { ReviewCommand } from '../../src/commands/builtin/review'
 import type { CheckRunner } from '../../src/composites/review'
@@ -35,6 +37,40 @@ const findingsLlm: LlmCaller = async () => ({
   tokensIn: 10,
   tokensOut: 20,
 })
+
+function makeEntry(id: string): PatternEntry {
+  return {
+    id,
+    orgId: 'default',
+    incidentId: null,
+    embedding: [],
+    pattern: 'accepted review pattern',
+    resolution: 'reuse the accepted fix',
+    failureType: 'code_bug',
+    usageCount: 0,
+    lastMatchedAt: null,
+    createdAt: '2026-06-26T00:00:00.000Z',
+  }
+}
+
+class FakeStore implements MemoryStore {
+  constructor(public entries: PatternEntry[]) {}
+  save(): void {}
+  load(): PatternEntry[] {
+    return this.entries
+  }
+  updateUsage(): void {}
+  updateUsageBatch(): void {}
+  setFeedback(_org: string, id: string, feedback: 'accepted' | 'rejected', at = new Date()): void {
+    this.entries = this.entries.map((entry) =>
+      entry.id === id ? { ...entry, feedback, feedbackAt: at.toISOString() } : entry,
+    )
+  }
+  delete(): void {}
+  has(): boolean {
+    return false
+  }
+}
 
 describe('/review command', () => {
   test('a scan error surfaces as a warn note', async () => {
@@ -71,5 +107,53 @@ describe('/review command', () => {
     const text = (events[0] as Extract<UiOutput, { kind: 'text' }>).text
     expect(text).toContain('off-by-one — unverified')
     expect(text).toContain('none reference a proposed finding')
+  })
+
+  test('ingests review feedback markers from PR comments', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'review-feedback-'))
+    const store = new FakeStore([
+      makeEntry('11111111-1111-1111-1111-111111111111'),
+      makeEntry('22222222-2222-2222-2222-222222222222'),
+    ])
+    const { ctx, events } = makeCtx(cwd)
+
+    await new ReviewCommand({
+      store,
+      now: () => new Date('2026-06-26T12:00:00.000Z'),
+      inferRepo: () => ({ owner: 'o', repo: 'r' }),
+      resolveToken: () => ({ token: 't', source: 'env' }),
+      createClient: () => ({}) as GitHubClient,
+      listIssueComments: async () => [{ id: 1, body: 'orchentra feedback: 11111111 accepted', html_url: 'issue-url' }],
+      listPullReviewComments: async () => [{ id: 2, body: '/memory mark 22222222 rejected', html_url: 'review-url' }],
+    }).execute(['feedback', '--pr', '42'], ctx)
+
+    expect(store.entries[0].feedback).toBe('accepted')
+    expect(store.entries[0].feedbackAt).toBe('2026-06-26T12:00:00.000Z')
+    expect(store.entries[1].feedback).toBe('rejected')
+    expect(events[0]).toMatchObject({
+      kind: 'note',
+      tone: 'info',
+      text: 'Applied review feedback: 2 applied, 0 missing, 0 ambiguous, 0 ignored.',
+    })
+  })
+
+  test('feedback subcommand reports usage and missing prereqs', async () => {
+    const { ctx, events } = makeCtx(mkdtempSync(join(tmpdir(), 'review-feedback-prereq-')))
+
+    await new ReviewCommand().execute(['feedback'], ctx)
+    expect(events[0]).toMatchObject({ kind: 'note', tone: 'warn', text: 'usage: /review feedback --pr <number>' })
+
+    await new ReviewCommand({
+      inferRepo: () => null,
+    }).execute(['feedback', '--pr', '42'], ctx)
+    expect(events[1]).toMatchObject({ kind: 'note', tone: 'warn' })
+    expect((events[1] as Extract<UiOutput, { kind: 'note' }>).text).toContain('No GitHub origin')
+
+    await new ReviewCommand({
+      inferRepo: () => ({ owner: 'o', repo: 'r' }),
+      resolveToken: () => null,
+    }).execute(['feedback', '--pr', '42'], ctx)
+    expect(events[2]).toMatchObject({ kind: 'note', tone: 'warn' })
+    expect((events[2] as Extract<UiOutput, { kind: 'note' }>).text).toContain('No GitHub token')
   })
 })
