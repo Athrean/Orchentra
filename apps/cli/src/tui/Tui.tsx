@@ -322,7 +322,22 @@ export function Tui(props: TuiProps): React.ReactElement {
                 return
             }
           }
-          const ctx: CommandContext = { cwd, session: cli, ui }
+          const ctx: CommandContext = {
+            cwd,
+            session: cli,
+            ui,
+            runTurn: async (input) => {
+              streamingIdRef.current = null
+              dispatch({ type: 'turn/start' })
+              try {
+                await cli.runTurn(input)
+              } finally {
+                streamingIdRef.current = null
+                dispatch({ type: 'transcript/stream-end' })
+                dispatch({ type: 'turn/end' })
+              }
+            },
+          }
           const captured = captureStdio()
           try {
             const shouldContinue = await resolved.handler.execute(resolved.args, ctx)

@@ -29,8 +29,9 @@ function fakeLlm(code = 'export const a = 1\n'): LlmCaller {
       : { text: code, model: 'fake', tokensIn: 5, tokensOut: 3 }
 }
 
-function makeSession(): SessionControl {
-  const usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }
+function makeSession(
+  usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
+): SessionControl {
   return {
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
@@ -120,6 +121,34 @@ describe('/build command', () => {
     await new BuildCommand({ llm: fakeLlm('export const a = 1\n'), run: pass }).execute(['add', 'thing', 'a'], ctx)
 
     expect(readFileSync(target, 'utf8')).toBe('export const real = 99\n')
+  })
+
+  test('uses the repo-aware runtime runner when command context provides one', async () => {
+    const cwd = tmp()
+    const usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }
+    const session = makeSession(usage)
+    const events: UiOutput[] = []
+    let prompt = ''
+    const ctx: CommandContext = {
+      cwd,
+      session,
+      ui: (o) => events.push(o),
+      runTurn: async (input) => {
+        prompt = input
+        usage.inputTokens += 7
+        usage.outputTokens += 4
+      },
+    }
+
+    await new BuildCommand({ llm: fakeLlm('export const oneShot = true\n'), run: pass }).execute(
+      ['add', 'thing', 'a'],
+      ctx,
+    )
+
+    expect(prompt).toContain('Implement this /build slice using the workspace tools')
+    expect(prompt).toContain('Target file(s): src/a.ts')
+    expect(existsSync(join(cwd, 'src/a.ts'))).toBe(false)
+    expect(textOf(events)).toContain('(model: fake · in 17 · out 24)')
   })
 
   test('injects the active terse mode into the builder system prompt', async () => {

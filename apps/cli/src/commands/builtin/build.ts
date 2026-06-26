@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { terseModePrompt } from '@orchentra/cli-core'
+import { terseModePrompt, type UsageTotals } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { architect, type ArchitectPlan } from '../../composites/architect'
 import { planSlices, type Slice } from '../../composites/slices'
@@ -58,15 +58,28 @@ export class BuildCommand implements CommandHandler {
     }
 
     const builderSystem = [BUILDER_PROMPT, terse ? terseModePrompt(terse) : ''].filter(Boolean).join('\n')
-    const runSlice: RunSlice = async (slice) => {
-      const out = await llm({ systemPrompt: builderSystem, userPrompt: builderUser(slice, planned.verification) })
-      const wrote = writeImpl(join(ctx.cwd, slice.files[0]), stripFence(out.text))
-      return {
-        text: wrote ? `wrote ${slice.files[0]}` : `kept existing ${slice.files[0]}`,
-        tokensIn: out.tokensIn,
-        tokensOut: out.tokensOut,
-      }
-    }
+    const runTurn = ctx.runTurn
+    const runSlice: RunSlice = runTurn
+      ? async (slice) => {
+          const before = snapshotUsage(ctx.session.getUsage())
+          await runTurn(builderTurn(slice, planned.verification))
+          const after = snapshotUsage(ctx.session.getUsage())
+          const delta = usageDelta(before, after)
+          return {
+            text: `ran agent for ${slice.files.join(', ')}`,
+            tokensIn: delta.tokensIn,
+            tokensOut: delta.tokensOut,
+          }
+        }
+      : async (slice) => {
+          const out = await llm({ systemPrompt: builderSystem, userPrompt: builderUser(slice, planned.verification) })
+          const wrote = writeImpl(join(ctx.cwd, slice.files[0]), stripFence(out.text))
+          return {
+            text: wrote ? `wrote ${slice.files[0]}` : `kept existing ${slice.files[0]}`,
+            tokensIn: out.tokensIn,
+            tokensOut: out.tokensOut,
+          }
+        }
 
     const run = this.deps?.run ?? defaultRun
     const checks = discoverChecks(ctx.cwd)
@@ -80,7 +93,7 @@ export class BuildCommand implements CommandHandler {
       return { passed, output }
     }
 
-    const result = await build({ slices, runSlice, runCheck, budget: this.deps?.budget })
+    const result = await build({ slices, runSlice, runCheck, budget: this.deps?.budget, parallel: !runTurn })
     const text = render(result, planned)
     if (ctx.ui) ctx.ui({ kind: 'text', text })
     else process.stdout.write(text + '\n')
@@ -92,6 +105,37 @@ function builderUser(slice: Slice, verification: string[]): string {
   const checks =
     verification.length > 0 ? `\nVerification to satisfy:\n${verification.map((v) => `- ${v}`).join('\n')}` : ''
   return `Target file: ${slice.files[0]}\nIntent: ${slice.intent}${checks}\nReturn the file's complete contents.`
+}
+
+function builderTurn(slice: Slice, verification: string[]): string {
+  const checks =
+    verification.length > 0 ? `\nVerification to satisfy:\n${verification.map((v) => `- ${v}`).join('\n')}` : ''
+  return [
+    'Implement this /build slice using the workspace tools.',
+    `Target file(s): ${slice.files.join(', ')}`,
+    `Intent: ${slice.intent}`,
+    checks.trim(),
+    'Inspect before editing. Change the minimum files needed. Do not commit or push.',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function snapshotUsage(u: UsageTotals): UsageTotals {
+  return { ...u }
+}
+
+function usageDelta(before: UsageTotals, after: UsageTotals): { tokensIn: number; tokensOut: number } {
+  return {
+    tokensIn:
+      after.inputTokens -
+      before.inputTokens +
+      after.cacheReadTokens -
+      before.cacheReadTokens +
+      after.cacheCreationTokens -
+      before.cacheCreationTokens,
+    tokensOut: after.outputTokens - before.outputTokens,
+  }
 }
 
 /** A scaffold stub (empty or a lone TODO marker) is safe to fill; real code is not. */
