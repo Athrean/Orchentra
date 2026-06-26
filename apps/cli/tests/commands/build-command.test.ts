@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import type { SessionControl, UsageTotals } from '@orchentra/cli-core'
+import type { MemoryStore, PatternEntry } from '@orchentra/cli-core'
 
 import { BuildCommand } from '../../src/commands/builtin/build'
 import { createBuiltinRegistry } from '../../src/commands/builtin'
@@ -18,6 +19,37 @@ const PLAN = {
   architecture: 'arch',
   scaffold: [{ path: 'src/a.ts', purpose: 'thing a' }],
   verification: ['unit test a'],
+}
+
+function makeEntry(id: string, over: Partial<PatternEntry> = {}): PatternEntry {
+  return {
+    id,
+    orgId: 'default',
+    incidentId: null,
+    embedding: [],
+    pattern: 'default build pattern',
+    resolution: 'default build resolution',
+    failureType: 'code_bug',
+    usageCount: 0,
+    lastMatchedAt: null,
+    createdAt: '2026-06-26T00:00:00.000Z',
+    ...over,
+  }
+}
+
+class FakeStore implements MemoryStore {
+  constructor(private readonly entries: PatternEntry[]) {}
+  save(): void {}
+  load(): PatternEntry[] {
+    return this.entries
+  }
+  updateUsage(): void {}
+  updateUsageBatch(): void {}
+  setFeedback(): void {}
+  delete(): void {}
+  has(): boolean {
+    return false
+  }
 }
 
 // One injected caller serves both phases: architect (JSON plan) then the
@@ -168,5 +200,66 @@ describe('/build command', () => {
     await new BuildCommand({ llm, run: pass }).execute(['add', 'thing', 'a'], ctx)
 
     expect(builderSystem.toUpperCase()).toContain('TERSE OUTPUT MODE')
+  })
+
+  test('injects memory feedback guidance into the one-shot builder system prompt', async () => {
+    const cwd = tmp()
+    const { ctx } = makeCtx(cwd)
+    const store = new FakeStore([
+      makeEntry('11111111-1111-1111-1111-111111111111', {
+        feedback: 'accepted',
+        pattern: 'prefer existing dependency',
+        resolution: 'reuse the package already in package.json',
+      }),
+      makeEntry('22222222-2222-2222-2222-222222222222', {
+        feedback: 'rejected',
+        pattern: 'avoid hand-rolled parser',
+        resolution: 'use a structured parser',
+      }),
+      makeEntry('33333333-3333-3333-3333-333333333333', {
+        pattern: 'unmarked build memory stays out',
+      }),
+    ])
+    let builderSystem = ''
+    const llm: LlmCaller = async ({ systemPrompt }) => {
+      if (systemPrompt.includes('architect'))
+        return { text: JSON.stringify(PLAN), model: 'f', tokensIn: 1, tokensOut: 1 }
+      builderSystem = systemPrompt
+      return { text: 'export const a = 1\n', model: 'f', tokensIn: 1, tokensOut: 1 }
+    }
+
+    await new BuildCommand({ llm, run: pass, store }).execute(['add', 'thing', 'a'], ctx)
+
+    expect(builderSystem).toContain('Local Feedback Memory')
+    expect(builderSystem).toContain('prefer existing dependency')
+    expect(builderSystem).toContain('avoid hand-rolled parser')
+    expect(builderSystem).not.toContain('unmarked build memory')
+  })
+
+  test('injects memory feedback guidance into the repo-aware builder turn prompt', async () => {
+    const cwd = tmp()
+    const session = makeSession()
+    const events: UiOutput[] = []
+    const store = new FakeStore([
+      makeEntry('11111111-1111-1111-1111-111111111111', {
+        feedback: 'accepted',
+        pattern: 'prefer focused edits',
+        resolution: 'change only the target slice',
+      }),
+    ])
+    let prompt = ''
+    const ctx: CommandContext = {
+      cwd,
+      session,
+      ui: (o) => events.push(o),
+      runTurn: async (input) => {
+        prompt = input
+      },
+    }
+
+    await new BuildCommand({ llm: fakeLlm(), run: pass, store }).execute(['add', 'thing', 'a'], ctx)
+
+    expect(prompt).toContain('Local Feedback Memory')
+    expect(prompt).toContain('prefer focused edits')
   })
 })

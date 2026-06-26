@@ -14,6 +14,7 @@ import { review, type CheckRunner, type ReviewResult } from '../../composites/re
 import { buildOneShotLlmCaller } from '../../composites/llm-caller'
 import type { LlmCaller } from '../../composites/scan'
 import { applyReviewFeedback, parseReviewFeedbackComments } from '../../composites/review-feedback'
+import { loadMemoryFeedbackGuidance } from '../../composites/memory-guidance'
 import { inferGitHubOwner, type GitHubRepo } from '../../util/git-owner'
 
 /**
@@ -48,7 +49,9 @@ export class ReviewCommand implements CommandHandler {
     }
 
     const llm = this.deps?.llm ?? buildOneShotLlmCaller(ctx.session.getModel())
-    const result = await review({ cwd: ctx.cwd, mode, path, llm, run: this.deps?.run })
+    const store = this.deps?.store ?? new PatternStore()
+    const memoryGuidance = loadMemoryFeedbackGuidance(store, this.deps?.orgId ?? 'default')
+    const result = await review({ cwd: ctx.cwd, mode, path, llm, run: this.deps?.run, memoryGuidance })
     if ('error' in result) {
       const text = `error: ${result.error}`
       if (ctx.ui) ctx.ui({ kind: 'note', tone: 'warn', text })
