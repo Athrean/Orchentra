@@ -30,6 +30,11 @@ class FakeStore implements MemoryStore {
   }
   updateUsage(): void {}
   updateUsageBatch(): void {}
+  setFeedback(_org: string, id: string, feedback: 'accepted' | 'rejected', at = new Date()): void {
+    this.entries = this.entries.map((entry) =>
+      entry.id === id ? { ...entry, feedback, feedbackAt: at.toISOString() } : entry,
+    )
+  }
   delete(_org: string, id: string): void {
     this.entries = this.entries.filter((e) => e.id !== id)
   }
@@ -115,6 +120,27 @@ describe('MemoryCommand', () => {
     const ev = events[0]
     if (ev.kind !== 'note') throw new Error('expected note')
     expect(ev.text).toContain('/memory show')
+  })
+
+  test('mark <id> accepted persists feedback and confirms', async () => {
+    const store = new FakeStore([makeEntry()])
+    const { ctx, events } = makeCtx()
+    await new MemoryCommand(store).execute(['mark', '11111111', 'accepted'], ctx)
+    expect(store.entries[0].feedback).toBe('accepted')
+    expect(store.entries[0].feedbackAt).toBeTruthy()
+    const ev = events[0]
+    if (ev.kind !== 'note') throw new Error('expected note')
+    expect(ev.text).toContain('accepted')
+  })
+
+  test('mark rejects unknown feedback values', async () => {
+    const store = new FakeStore([makeEntry()])
+    const { ctx, events } = makeCtx()
+    await new MemoryCommand(store).execute(['mark', '11111111', 'maybe'], ctx)
+    expect(store.entries[0].feedback).toBeUndefined()
+    const ev = events[0]
+    if (ev.kind !== 'note') throw new Error('expected note')
+    expect(ev.text).toContain('accepted|rejected')
   })
 })
 

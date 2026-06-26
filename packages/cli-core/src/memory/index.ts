@@ -2,6 +2,7 @@ export type {
   EmbedFn,
   EmbeddingVector,
   FailureType,
+  MemoryFeedback,
   MemoryConfig,
   MemoryStore,
   PatternBuilderInput,

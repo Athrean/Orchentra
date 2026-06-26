@@ -7,6 +7,7 @@ export type FailureType =
   | 'unknown'
 
 export type EmbeddingVector = number[]
+export type MemoryFeedback = 'accepted' | 'rejected'
 
 export interface MemoryConfig {
   embeddingModel: string
@@ -28,6 +29,8 @@ export interface PatternEntry {
   failureType: FailureType
   usageCount: number
   lastMatchedAt: string | null
+  feedback?: MemoryFeedback
+  feedbackAt?: string
   createdAt: string
 }
 
@@ -53,6 +56,7 @@ export interface MemoryStore {
   load(orgId: string): PatternEntry[]
   updateUsage(orgId: string, entryId: string): void
   updateUsageBatch(orgId: string, entryIds: string[]): void
+  setFeedback?(orgId: string, entryId: string, feedback: MemoryFeedback, at?: Date): void
   delete(orgId: string, entryId: string): void
   has(orgId: string, incidentId: string): boolean
 }

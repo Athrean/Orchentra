@@ -96,6 +96,19 @@ describe('PatternStore', () => {
     expect(store.load('org-1')[0].usageCount).toBe(0)
   })
 
+  test('setFeedback persists accepted/rejected feedback metadata', () => {
+    store.save('org-1', makeEntry({ id: 'e1' }))
+    store.setFeedback('org-1', 'e1', 'accepted', new Date('2026-06-26T00:00:00.000Z'))
+    let loaded = store.load('org-1')
+    expect(loaded[0].feedback).toBe('accepted')
+    expect(loaded[0].feedbackAt).toBe('2026-06-26T00:00:00.000Z')
+
+    store.setFeedback('org-1', 'e1', 'rejected', new Date('2026-06-26T01:00:00.000Z'))
+    loaded = store.load('org-1')
+    expect(loaded[0].feedback).toBe('rejected')
+    expect(loaded[0].feedbackAt).toBe('2026-06-26T01:00:00.000Z')
+  })
+
   test('delete removes an entry', () => {
     store.save('org-1', makeEntry({ id: 'a', incidentId: 'ia' }))
     store.save('org-1', makeEntry({ id: 'b', incidentId: 'ib' }))
