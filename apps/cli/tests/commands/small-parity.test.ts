@@ -192,6 +192,35 @@ describe('small slash parity commands', () => {
     expect(events[0]).toEqual({ kind: 'plan-level-picker', current: 'plus' })
   })
 
+  test('/plan with no inline need can architect from recent transcript context', async () => {
+    const { ctx, events } = makeCtx('/work')
+    let userPrompt = ''
+    const llm: LlmCaller = async (req) => {
+      userPrompt = req.userPrompt
+      return {
+        text: JSON.stringify({
+          recommendedStack: 'small transcript-aware plan path',
+          rationale: 'reuse the existing architect',
+          alternatives: [{ name: 'force inline args', tradeoff: 'repeats context' }],
+          architecture: 'command context supplies compact transcript text',
+          scaffold: [{ path: 'apps/cli/src/commands/builtin/plan.ts', purpose: 'consume context' }],
+          verification: ['run command tests'],
+        }),
+        model: 'fake-model',
+        tokensIn: 11,
+        tokensOut: 22,
+      }
+    }
+    ctx.getRecentTranscriptContext = () => 'Recent transcript context:\nUser: add retry handling\nAssistant: Where?'
+
+    await new PlanCommand(llm).execute([], ctx)
+
+    expect(userPrompt).toContain('User: add retry handling')
+    expect(events).toHaveLength(1)
+    const text = (events[0] as Extract<UiOutput, { kind: 'text' }>).text
+    expect(text).toContain('Recommended: small transcript-aware plan path')
+  })
+
   test('/search finds content under the workspace root', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'orchentra-search-command-'))
     await Bun.write(join(cwd, 'src.ts'), 'export const needle = 42\n')
