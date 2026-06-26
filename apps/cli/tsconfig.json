@@ -4,6 +4,6 @@
     "types": ["bun"],
     "jsx": "react-jsx"
   },
-  "include": ["src"],
+  "include": ["src", "scripts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,7 +1,32 @@
 # `@orchentra/cli`
 
 The terminal surface for Orchentra. Ships as TypeScript + Bun for local
-development and as per-architecture single-file binaries for distribution.
+development, as a bundled npm CLI, and as optional per-architecture
+single-file binaries.
+
+## Install from npm
+
+The npm package installs the bundled Bun entrypoint and exposes both the
+canonical command and the short alias:
+
+```bash
+npm install -g @orchentra/cli
+orchentra --version
+otr --version
+```
+
+Bun must be available on `PATH`; the npm bin runs via `#!/usr/bin/env bun`.
+
+## Package dry run
+
+```bash
+bun run build
+bun run package:verify
+bun run package:dry-run
+```
+
+`package:dry-run` runs `prepack`, so it rebuilds `dist/main.js`, verifies the
+native keytar asset, and prints the tarball file list before publish.
 
 ## Run from source
 
@@ -10,7 +35,7 @@ bun run start                  # equivalent to: bun src/main.ts
 bun src/main.ts --version
 ```
 
-## Build single-file binaries
+## Build standalone binaries
 
 ```bash
 bun run build:binaries         # all four targets (darwin / linux × x64 / arm64)
