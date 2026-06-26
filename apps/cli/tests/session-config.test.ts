@@ -8,6 +8,8 @@ import {
   clearActiveRepo,
   getActiveTerseMode,
   setActiveTerseMode,
+  getDefaultModel,
+  setDefaultModel,
   sessionConfigPath,
 } from '../src/session-config'
 
@@ -89,5 +91,24 @@ describe('session-config: activeRepo', () => {
     }
     expect(raw.activeRepo).toBe('acme/api')
     expect(raw.activeTerseMode).toBe('full')
+  })
+
+  test('round-trips default model and preserves existing session keys', () => {
+    setActiveRepo('acme/api')
+    setActiveTerseMode('lite')
+    setDefaultModel('gpt-5')
+
+    expect(getDefaultModel()).toBe('gpt-5')
+    expect(getActiveRepo()).toBe('acme/api')
+    expect(getActiveTerseMode()).toBe('lite')
+
+    const raw = JSON.parse(readFileSync(sessionConfigPath(), 'utf8')) as {
+      activeRepo?: string
+      activeTerseMode?: string
+      defaultModel?: string
+    }
+    expect(raw.defaultModel).toBe('gpt-5')
+    expect(raw.activeRepo).toBe('acme/api')
+    expect(raw.activeTerseMode).toBe('lite')
   })
 })

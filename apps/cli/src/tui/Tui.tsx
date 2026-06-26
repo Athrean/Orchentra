@@ -30,7 +30,7 @@ import { RepoPickerCard } from './components/RepoPickerCard'
 import { LoginPickerCard } from './components/LoginPickerCard'
 import { ThemePicker } from './components/ThemePicker'
 import { CommandPalette } from './components/CommandPalette'
-import { setActiveRepo } from '../session-config'
+import { setActiveRepo, setDefaultModel } from '../session-config'
 import { loadActiveTheme, saveActiveTheme } from './theme-registry'
 import type { BannerOptions } from '../render/banner'
 import type { TuiAction, TuiState } from './types'
@@ -723,13 +723,19 @@ export function Tui(props: TuiProps): React.ReactElement {
         {state.activeFlow?.kind === 'model-picker' ? (
           <ModelPickerCard
             current={state.activeFlow.current}
-            onPick={(modelId) => {
+            onPick={(modelId, scope) => {
               const resolved = cli.setModel(modelId)
+              if (scope === 'default') setDefaultModel(resolved)
               dispatch({ type: 'model/set', model: resolved })
               dispatch({ type: 'flow/end' })
               dispatch({
                 type: 'transcript/push',
-                row: { kind: 'system', id: randomUUID(), text: `✓ model → ${resolved}`, tone: 'info' },
+                row: {
+                  kind: 'system',
+                  id: randomUUID(),
+                  text: scope === 'default' ? `✓ default model → ${resolved}` : `✓ model → ${resolved} (session)`,
+                  tone: 'info',
+                },
               })
             }}
             onCancel={() => {

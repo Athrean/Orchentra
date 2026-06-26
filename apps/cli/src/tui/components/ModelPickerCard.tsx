@@ -6,9 +6,11 @@ import { MODEL_CATALOG, type ModelOption } from '../../model-catalog'
 export type { ModelOption }
 export { MODEL_CATALOG }
 
+export type ModelPickScope = 'default' | 'session'
+
 export interface ModelPickerCardProps {
   readonly current: string
-  readonly onPick: (modelId: string) => void
+  readonly onPick: (modelId: string, scope: ModelPickScope) => void
   readonly onCancel: () => void
 }
 
@@ -35,7 +37,12 @@ export function ModelPickerCard(props: ModelPickerCardProps): React.ReactElement
       }
       if (key.return) {
         const picked = MODEL_CATALOG[index]
-        if (picked) props.onPick(picked.id)
+        if (picked) props.onPick(picked.id, 'default')
+        return
+      }
+      if (_input === 's') {
+        const picked = MODEL_CATALOG[index]
+        if (picked) props.onPick(picked.id, 'session')
         return
       }
     },
@@ -67,7 +74,7 @@ export function ModelPickerCard(props: ModelPickerCardProps): React.ReactElement
         })
       })()}
       <Box height={1} />
-      <Text dimColor>↑/↓ to move · Enter to select · Esc to cancel</Text>
+      <Text dimColor>↑/↓ move · Enter default · s session-only · Esc cancel</Text>
     </Box>
   )
 }
