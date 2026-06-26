@@ -30,6 +30,7 @@ const BUILTIN_CATEGORY: Record<string, TabName> = {
   resume: 'Workspace',
   scan: 'Workspace',
   review: 'Workspace',
+  build: 'Workspace',
   search: 'Workspace',
   init: 'Workspace',
   skills: 'Workspace',
