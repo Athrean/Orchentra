@@ -38,7 +38,7 @@ const findingsLlm: LlmCaller = async () => ({
   tokensOut: 20,
 })
 
-function makeEntry(id: string): PatternEntry {
+function makeEntry(id: string, over: Partial<PatternEntry> = {}): PatternEntry {
   return {
     id,
     orgId: 'default',
@@ -50,6 +50,7 @@ function makeEntry(id: string): PatternEntry {
     usageCount: 0,
     lastMatchedAt: null,
     createdAt: '2026-06-26T00:00:00.000Z',
+    ...over,
   }
 }
 
@@ -155,5 +156,39 @@ describe('/review command', () => {
     }).execute(['feedback', '--pr', '42'], ctx)
     expect(events[2]).toMatchObject({ kind: 'note', tone: 'warn' })
     expect((events[2] as Extract<UiOutput, { kind: 'note' }>).text).toContain('No GitHub token')
+  })
+
+  test('injects accepted and rejected memory feedback into the scan prompt', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'review-feedback-guidance-'))
+    await Bun.write(join(cwd, 'a.ts'), 'export const x = 1\n')
+    await Bun.write(join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'bun test' } }))
+    const { ctx } = makeCtx(cwd)
+    const store = new FakeStore([
+      makeEntry('11111111-1111-1111-1111-111111111111', {
+        feedback: 'accepted',
+        pattern: 'prefer exact file references',
+        resolution: 'include concrete file paths in findings',
+      }),
+      makeEntry('22222222-2222-2222-2222-222222222222', {
+        feedback: 'rejected',
+        pattern: 'avoid vague style-only findings',
+        resolution: 'skip generic comments without a failing gate',
+      }),
+      makeEntry('33333333-3333-3333-3333-333333333333', {
+        pattern: 'unmarked memory stays out',
+      }),
+    ])
+    let systemPrompt = ''
+    const llm: LlmCaller = async (input) => {
+      systemPrompt = input.systemPrompt
+      return { text: '[]', model: 'fake', tokensIn: 1, tokensOut: 1 }
+    }
+
+    await new ReviewCommand({ llm, run: () => ({ exitCode: 0, output: '' }), store }).execute(['--path', 'a.ts'], ctx)
+
+    expect(systemPrompt).toContain('Local Feedback Memory')
+    expect(systemPrompt).toContain('prefer exact file references')
+    expect(systemPrompt).toContain('avoid vague style-only findings')
+    expect(systemPrompt).not.toContain('unmarked memory')
   })
 })
