@@ -18,6 +18,7 @@ interface SessionConfigFile {
   version: 1
   activeRepo?: string
   activeTerseMode?: TerseMode
+  defaultModel?: string
   [extra: string]: unknown
 }
 
@@ -86,6 +87,7 @@ function load(): SessionConfigFile {
       version: 1,
       activeRepo: typeof parsed.activeRepo === 'string' ? parsed.activeRepo : undefined,
       activeTerseMode: isTerseMode(parsed.activeTerseMode) ? parsed.activeTerseMode : undefined,
+      defaultModel: typeof parsed.defaultModel === 'string' ? parsed.defaultModel : undefined,
     }
   } catch {
     return { version: 1 }
@@ -138,5 +140,15 @@ export function getActiveTerseMode(): TerseMode | null {
 export function setActiveTerseMode(mode: TerseMode): void {
   const file = load()
   file.activeTerseMode = mode
+  persist(file)
+}
+
+export function getDefaultModel(): string | null {
+  return load().defaultModel ?? null
+}
+
+export function setDefaultModel(model: string): void {
+  const file = load()
+  file.defaultModel = model
   persist(file)
 }

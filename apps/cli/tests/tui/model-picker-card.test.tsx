@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import { render } from 'ink-testing-library'
-import { ModelPickerCard, MODEL_CATALOG } from '../../src/tui/components/ModelPickerCard'
+import { ModelPickerCard, MODEL_CATALOG, type ModelPickScope } from '../../src/tui/components/ModelPickerCard'
 
 describe('ModelPickerCard', () => {
   test('aligns the provider column across rows with differing label widths', () => {
@@ -27,5 +27,54 @@ describe('ModelPickerCard', () => {
       expect(out).toContain(m.label)
       expect(out).toContain(m.provider)
     }
+  })
+
+  test('renders default vs session-only footer hints', () => {
+    const { lastFrame } = render(
+      <ModelPickerCard current={MODEL_CATALOG[0]!.id} onPick={() => {}} onCancel={() => {}} />,
+    )
+    const out = lastFrame() ?? ''
+    expect(out).toContain('Enter default')
+    expect(out).toContain('s session-only')
+  })
+
+  test('Enter picks the highlighted model as the default', async () => {
+    let picked: { id: string; scope: ModelPickScope } | null = null
+    const { stdin } = render(
+      <ModelPickerCard
+        current={MODEL_CATALOG[0]!.id}
+        onPick={(id, scope) => {
+          picked = { id, scope }
+        }}
+        onCancel={() => {}}
+      />,
+    )
+
+    stdin.write('\x1b[B')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    stdin.write('\r')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    expect(picked).toEqual({ id: MODEL_CATALOG[1]!.id, scope: 'default' })
+  })
+
+  test('s picks the highlighted model for this session only', async () => {
+    let picked: { id: string; scope: ModelPickScope } | null = null
+    const { stdin } = render(
+      <ModelPickerCard
+        current={MODEL_CATALOG[0]!.id}
+        onPick={(id, scope) => {
+          picked = { id, scope }
+        }}
+        onCancel={() => {}}
+      />,
+    )
+
+    stdin.write('\x1b[B')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    stdin.write('s')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    expect(picked).toEqual({ id: MODEL_CATALOG[1]!.id, scope: 'session' })
   })
 })

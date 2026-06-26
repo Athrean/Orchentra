@@ -1,5 +1,9 @@
 import { test, expect, describe } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { parseArgs } from '../src/args'
+import { setDefaultModel } from '../src/session-config'
 
 describe('parseArgs', () => {
   test('bare invocation returns REPL action', () => {
@@ -50,6 +54,45 @@ describe('parseArgs', () => {
     }
   })
 
+  test('saved default model is used when no --model is supplied', () => {
+    withConfigHome(() => {
+      setDefaultModel('gpt-5')
+
+      const action = parseArgs(['node', 'orchentra', '-p', 'hi'])
+
+      expect(action.kind).toBe('prompt')
+      if (action.kind === 'prompt') expect(action.model).toBe('gpt-5')
+    })
+  })
+
+  test('--model overrides the saved default for that invocation', () => {
+    withConfigHome(() => {
+      setDefaultModel('gpt-5')
+
+      const action = parseArgs(['node', 'orchentra', '--model', 'opus', '-p', 'hi'])
+
+      expect(action.kind).toBe('prompt')
+      if (action.kind === 'prompt') expect(action.model).toBe('opus')
+    })
+  })
+
+  test('model env override beats the saved default', () => {
+    withConfigHome(() => {
+      setDefaultModel('gpt-5')
+      const prev = process.env.ORCHENTRA_MODEL
+      process.env.ORCHENTRA_MODEL = 'gemini-2.5-pro'
+      try {
+        const action = parseArgs(['node', 'orchentra', '-p', 'hi'])
+
+        expect(action.kind).toBe('prompt')
+        if (action.kind === 'prompt') expect(action.model).toBe('gemini-2.5-pro')
+      } finally {
+        if (prev === undefined) delete process.env.ORCHENTRA_MODEL
+        else process.env.ORCHENTRA_MODEL = prev
+      }
+    })
+  })
+
   test('--permission-mode sets mode', () => {
     const action = parseArgs(['node', 'orchentra', '--permission-mode', 'read-only', '-p', 'hi'])
     expect(action.kind).toBe('prompt')
@@ -84,3 +127,24 @@ describe('parseArgs', () => {
     )
   })
 })
+
+function withConfigHome(fn: () => void): void {
+  const prevConfig = process.env.ORCHENTRA_CONFIG_HOME
+  const prevModel = process.env.ORCHENTRA_MODEL
+  const prevLegacyModel = process.env.ORCHESTRA_MODEL
+  const dir = mkdtempSync(join(tmpdir(), 'orchentra-args-'))
+  delete process.env.ORCHENTRA_MODEL
+  delete process.env.ORCHESTRA_MODEL
+  process.env.ORCHENTRA_CONFIG_HOME = dir
+  try {
+    fn()
+  } finally {
+    if (prevConfig === undefined) delete process.env.ORCHENTRA_CONFIG_HOME
+    else process.env.ORCHENTRA_CONFIG_HOME = prevConfig
+    if (prevModel === undefined) delete process.env.ORCHENTRA_MODEL
+    else process.env.ORCHENTRA_MODEL = prevModel
+    if (prevLegacyModel === undefined) delete process.env.ORCHESTRA_MODEL
+    else process.env.ORCHESTRA_MODEL = prevLegacyModel
+    rmSync(dir, { recursive: true, force: true })
+  }
+}

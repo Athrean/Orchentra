@@ -1,4 +1,5 @@
 import type { PermissionMode } from '@orchentra/cli-core'
+import { getDefaultModel } from './session-config'
 
 export type CliAction =
   | { kind: 'version' }
@@ -143,7 +144,7 @@ USAGE
 
 FLAGS
   -p, --prompt <text>                 One-shot prompt (non-interactive)
-  -m, --model <model>                 Model to use (default: claude-sonnet-4-20250514)
+  -m, --model <model>                 Model to use (overrides saved default)
       --permission-mode <mode>        Permission mode: read-only, workspace-write, danger-full-access
       --dangerously-skip-permissions  Shortcut for --permission-mode allow
       --resume <path>                 Resume a previous session
@@ -153,7 +154,7 @@ FLAGS
 }
 
 function defaultModel(): string {
-  return process.env.ORCHESTRA_MODEL ?? 'claude-sonnet-4-20250514'
+  return process.env.ORCHENTRA_MODEL ?? process.env.ORCHESTRA_MODEL ?? getDefaultModel() ?? 'claude-sonnet-4-20250514'
 }
 
 function parseSessionArgs(rest: string[]): CliAction {
