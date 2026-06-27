@@ -25,6 +25,7 @@ const HEAVY_MODULES = [
   './commands/run-auth',
   './commands/run-reauth',
   './commands/run-init',
+  './commands/run-update',
 ]
 
 describe('lazy verb imports — source contract', () => {
