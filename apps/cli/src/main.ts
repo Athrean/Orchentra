@@ -25,6 +25,11 @@ async function main(argv: string[]): Promise<number> {
       return runInitBootstrap({ owner: action.owner, serverUrl: action.serverUrl })
     }
 
+    case 'update': {
+      const { runUpdate } = await import('./commands/run-update')
+      return runUpdate({ dryRun: action.dryRun, tag: action.tag })
+    }
+
     case 'prompt': {
       const { runRepl } = await import('./repl')
       return runRepl({

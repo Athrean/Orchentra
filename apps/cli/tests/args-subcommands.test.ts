@@ -42,9 +42,32 @@ describe('parseArgs — subcommands', () => {
     expect(() => parseArgs(['bun', 'orchentra', 'mcp', 'serve'])).toThrow(/unknown subcommand/)
   })
 
+  test('update defaults to latest tag', () => {
+    expect(parseArgs(['bun', 'orchentra', 'update'])).toEqual({ kind: 'update', dryRun: false, tag: 'latest' })
+  })
+
+  test('update accepts dry-run and dist-tags', () => {
+    expect(parseArgs(['bun', 'orchentra', 'update', '--dry-run', '--tag', 'alpha'])).toEqual({
+      kind: 'update',
+      dryRun: true,
+      tag: 'alpha',
+    })
+    expect(parseArgs(['bun', 'orchentra', 'update', '--tag=beta'])).toEqual({
+      kind: 'update',
+      dryRun: false,
+      tag: 'beta',
+    })
+  })
+
+  test('update rejects invalid tags and flags', () => {
+    expect(() => parseArgs(['bun', 'orchentra', 'update', '--tag', 'nightly'])).toThrow(/invalid update tag/)
+    expect(() => parseArgs(['bun', 'orchentra', 'update', '--force'])).toThrow(/unknown argument/)
+  })
+
   test('help text lists core verbs, not DevOps', () => {
     const help = renderHelp()
     expect(help).toMatch(/orchentra mcp list/)
+    expect(help).toMatch(/orchentra update/)
     expect(help).not.toMatch(/graph|triage|investigate|watch/)
   })
 })

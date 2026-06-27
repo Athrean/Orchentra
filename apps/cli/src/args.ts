@@ -1,6 +1,8 @@
 import type { PermissionMode } from '@orchentra/cli-core'
 import { getDefaultModel } from './session-config'
 
+export type UpdateTag = 'alpha' | 'beta' | 'latest'
+
 export type CliAction =
   | { kind: 'version' }
   | { kind: 'help' }
@@ -21,6 +23,7 @@ export type CliAction =
   | { kind: 'logout'; provider: string }
   | { kind: 'reauth' }
   | { kind: 'auth-status' }
+  | { kind: 'update'; dryRun: boolean; tag: UpdateTag }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -46,6 +49,10 @@ export function parseArgs(argv: string[]): CliAction {
   }
   if (first === 'init') {
     return parseInitArgs(args.slice(1))
+  }
+
+  if (first === 'update') {
+    return parseUpdateArgs(args.slice(1))
   }
 
   if (first === 'session') {
@@ -140,6 +147,7 @@ USAGE
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra reauth                        Re-run the first-run LLM provider setup
   orchentra whoami                        Show signed-in providers and credential sources
+  orchentra update [--tag <tag>]           Self-update from npm (alpha|beta|latest)
   orchentra --version                     Print version
 
 FLAGS
@@ -208,6 +216,37 @@ function parseInitArgs(rest: string[]): CliAction {
     throw new Error(`init: unknown argument: ${arg}`)
   }
   return { kind: 'init', owner, serverUrl }
+}
+
+function parseUpdateArgs(rest: string[]): CliAction {
+  let dryRun = false
+  let tag: UpdateTag = 'latest'
+
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i]
+    if (arg === '--dry-run') {
+      dryRun = true
+      continue
+    }
+    if (arg === '--tag') {
+      const value = rest[++i]
+      if (!value) throw new Error('update: --tag requires a value')
+      tag = parseUpdateTag(value)
+      continue
+    }
+    if (arg.startsWith('--tag=')) {
+      tag = parseUpdateTag(arg.slice('--tag='.length))
+      continue
+    }
+    throw new Error(`update: unknown argument: ${arg}`)
+  }
+
+  return { kind: 'update', dryRun, tag }
+}
+
+function parseUpdateTag(value: string): UpdateTag {
+  if (value === 'alpha' || value === 'beta' || value === 'latest') return value
+  throw new Error(`invalid update tag: ${value}. valid: alpha, beta, latest`)
 }
 
 function parseLoginArgs(rest: string[]): CliAction {
