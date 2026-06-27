@@ -1,0 +1,29 @@
+apps/cli/tests/args-subcommands.test.ts
+  s_1dc5625adb5729::t_2a397346fb18af 19-39,92
+apps/cli/src/args.ts
+  s_1dc5625adb5729::t_4e1fd94db3f153 5,20,145-146,174-176,178,187-230
+apps/cli/src/commands/session-import.ts
+  s_1dc5625adb5729::t_4892f4b286982b 1-161
+apps/cli/src/main.ts
+  s_1dc5625adb5729::t_96fa8633070ced 65-76
+apps/cli/tests/main-lazy-imports.test.ts
+  s_1dc5625adb5729::t_38c26a6eb0f7c3 29
+apps/cli/tests/session-import.test.ts
+  s_1dc5625adb5729::t_d595f1472002a2 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "61b4ab10b2d1cf044dd9e0810063a289213b832b",
+  "prompts": {},
+  "sessions": {
+    "s_1dc5625adb5729": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f02df-8e30-78f0-9c05-59932b1f0b60",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Rishit Sharma <rishitsharmar89@gmail.com>"
+    }
+  }
+}
