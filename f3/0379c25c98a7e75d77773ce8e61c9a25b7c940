@@ -1,0 +1,19 @@
+apps/web/app/page.tsx
+  s_0531e7ca7531f8::t_28687da6d80167 7,10,282,316-324,538-601,610
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "f30379c25c98a7e75d77773ce8e61c9a25b7c940",
+  "prompts": {},
+  "sessions": {
+    "s_0531e7ca7531f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1843-664c-7b11-8ee3-d89b0b482cca",
+        "model": "unknown"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
