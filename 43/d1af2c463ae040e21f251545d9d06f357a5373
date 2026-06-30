@@ -1,0 +1,21 @@
+apps/web/app/page.tsx
+  s_0531e7ca7531f8::t_5eb4dcd6c7b487 29,33,37,41,45,53-54,60-61,67-68,74-75,81-82,88-89,103-105,107-108,115,127,140,154,159,163,168,173,262,266-267,341,380-381,416,446,516
+apps/web/app/layout.tsx
+  s_0531e7ca7531f8::t_73bcf3547c1e70 5,7,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "43d1af2c463ae040e21f251545d9d06f357a5373",
+  "prompts": {},
+  "sessions": {
+    "s_0531e7ca7531f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1843-664c-7b11-8ee3-d89b0b482cca",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
