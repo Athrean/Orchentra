@@ -1,0 +1,23 @@
+apps/web/app/page.tsx
+  s_0531e7ca7531f8::t_4d624e413eaec2 250-254,266,270,291-349
+apps/web/public/back.svg
+  s_0531e7ca7531f8::t_ec4d7f725f66b6 1-2649
+apps/web/app/globals.css
+  s_0531e7ca7531f8::t_a09d340ee0d751 55-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "e05f01f22b66fa7f340db3e7439f37c968bd240d",
+  "prompts": {},
+  "sessions": {
+    "s_0531e7ca7531f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1843-664c-7b11-8ee3-d89b0b482cca",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
