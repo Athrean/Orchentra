@@ -52,3 +52,324 @@
     color: #ffffff;
   }
 }
+
+@layer components {
+  .hero-backdrop {
+    position: absolute;
+    inset: -9%;
+    background-image: url('/back.svg');
+    background-position: center;
+    background-size: cover;
+    filter: blur(22px) saturate(0.92);
+    opacity: 0.5;
+    transform: scale(1.06);
+  }
+
+  .hero-motion {
+    color: #004700;
+    filter: drop-shadow(0 28px 52px rgba(0, 26, 0, 0.14));
+  }
+
+  .hero-core-fill {
+    fill: url('#heroTexture');
+    opacity: 0.44;
+    animation: hero-core 7.2s cubic-bezier(0.42, 0, 0.18, 1) infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .hero-core-ring {
+    fill: none;
+    stroke: #004700;
+    stroke-width: 1;
+    stroke-dasharray: 7 11;
+    opacity: 0.45;
+    animation: hero-core-ring 7.2s cubic-bezier(0.42, 0, 0.18, 1) infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .hero-ripple,
+  .hero-end-ripple {
+    fill: none;
+    stroke: #008000;
+    stroke-width: 1.6;
+    transform-box: fill-box;
+    transform-origin: center;
+    will-change: opacity, transform;
+  }
+
+  .hero-ripple {
+    opacity: 0;
+    animation: hero-origin-ripple 7.2s ease-out infinite;
+  }
+
+  .hero-ripple-two {
+    animation-delay: 0.2s;
+  }
+
+  .hero-ripple-three {
+    animation-delay: 0.4s;
+  }
+
+  .hero-end-ripple {
+    opacity: 0;
+    animation: hero-end-ripple 7.2s ease-out infinite;
+  }
+
+  .hero-end-ripple-two {
+    animation-delay: 0.18s;
+  }
+
+  .hero-end-ripple-three {
+    animation-delay: 0.36s;
+  }
+
+  .hero-fragment {
+    fill: url('#heroTexture');
+    stroke: rgba(0, 71, 0, 0.68);
+    stroke-width: 1.4;
+    opacity: 0.9;
+    animation: hero-fragment 7.2s cubic-bezier(0.42, 0, 0.18, 1) infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+    will-change: opacity, transform;
+  }
+
+  .hero-fragment-a {
+    --dx: 288px;
+    --dy: -112px;
+    --rot: 26deg;
+    --sx: 86px;
+    --sy: -34px;
+    --sr: 8deg;
+    --rx: 35px;
+    --ry: -13px;
+    --rr: 3deg;
+  }
+
+  .hero-fragment-b {
+    --dx: 338px;
+    --dy: -58px;
+    --rot: 48deg;
+    --sx: 102px;
+    --sy: -18px;
+    --sr: 14deg;
+    --rx: 41px;
+    --ry: -7px;
+    --rr: 6deg;
+  }
+
+  .hero-fragment-c {
+    --dx: 346px;
+    --dy: 18px;
+    --rot: 34deg;
+    --sx: 104px;
+    --sy: 6px;
+    --sr: 10deg;
+    --rx: 42px;
+    --ry: 2px;
+    --rr: 4deg;
+  }
+
+  .hero-fragment-d {
+    --dx: 306px;
+    --dy: 92px;
+    --rot: 72deg;
+    --sx: 92px;
+    --sy: 28px;
+    --sr: 22deg;
+    --rx: 37px;
+    --ry: 11px;
+    --rr: 9deg;
+  }
+
+  .hero-fragment-e {
+    --dx: 248px;
+    --dy: 126px;
+    --rot: -38deg;
+    --sx: 74px;
+    --sy: 38px;
+    --sr: -11deg;
+    --rx: 30px;
+    --ry: 15px;
+    --rr: -5deg;
+  }
+
+  .hero-fragment-f {
+    --dx: 230px;
+    --dy: 60px;
+    --rot: -64deg;
+    --sx: 69px;
+    --sy: 18px;
+    --sr: -19deg;
+    --rx: 28px;
+    --ry: 7px;
+    --rr: -8deg;
+  }
+
+  .hero-fragment-g {
+    --dx: 240px;
+    --dy: -28px;
+    --rot: -28deg;
+    --sx: 72px;
+    --sy: -8px;
+    --sr: -8deg;
+    --rx: 29px;
+    --ry: -3px;
+    --rr: -3deg;
+  }
+
+  .hero-fragment-h {
+    --dx: 262px;
+    --dy: -86px;
+    --rot: 58deg;
+    --sx: 79px;
+    --sy: -26px;
+    --sr: 17deg;
+    --rx: 31px;
+    --ry: -10px;
+    --rr: 7deg;
+  }
+
+  .hero-check-line {
+    fill: none;
+    stroke: #004700;
+    stroke-width: 1.2;
+    stroke-dasharray: 620;
+    stroke-dashoffset: 620;
+    opacity: 0.34;
+    animation: hero-path-draw 7.2s cubic-bezier(0.42, 0, 0.18, 1) infinite;
+  }
+
+  @keyframes hero-core {
+    0%,
+    17%,
+    88%,
+    100% {
+      opacity: 0.44;
+      transform: scale(1);
+    }
+
+    28%,
+    70% {
+      opacity: 0.04;
+      transform: scale(0.92);
+    }
+  }
+
+  @keyframes hero-core-ring {
+    0%,
+    16%,
+    90%,
+    100% {
+      opacity: 0.45;
+      transform: rotate(0deg) scale(1);
+    }
+
+    42%,
+    70% {
+      opacity: 0.12;
+      transform: rotate(24deg) scale(1.08);
+    }
+  }
+
+  @keyframes hero-origin-ripple {
+    0%,
+    10% {
+      opacity: 0;
+      transform: scale(0.62);
+    }
+
+    18% {
+      opacity: 0.38;
+    }
+
+    36%,
+    100% {
+      opacity: 0;
+      transform: scale(1.6);
+    }
+  }
+
+  @keyframes hero-fragment {
+    0%,
+    16%,
+    100% {
+      opacity: 0.9;
+      transform: translate(0, 0) rotate(0deg) scale(1);
+    }
+
+    30% {
+      opacity: 0.94;
+      transform: translate(var(--sx), var(--sy)) rotate(var(--sr)) scale(0.96);
+    }
+
+    52%,
+    68% {
+      opacity: 0.72;
+      transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.78);
+    }
+
+    84% {
+      opacity: 0.74;
+      transform: translate(var(--rx), var(--ry)) rotate(var(--rr)) scale(0.94);
+    }
+  }
+
+  @keyframes hero-end-ripple {
+    0%,
+    44% {
+      opacity: 0;
+      transform: scale(0.32);
+    }
+
+    55% {
+      opacity: 0.56;
+    }
+
+    76%,
+    100% {
+      opacity: 0;
+      transform: scale(2.5);
+    }
+  }
+
+  @keyframes hero-path-draw {
+    0%,
+    21% {
+      opacity: 0;
+      stroke-dashoffset: 620;
+    }
+
+    46%,
+    68% {
+      opacity: 0.34;
+      stroke-dashoffset: 0;
+    }
+
+    82%,
+    100% {
+      opacity: 0;
+      stroke-dashoffset: -620;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-motion * {
+      animation: none !important;
+    }
+
+    .hero-fragment,
+    .hero-core-fill,
+    .hero-core-ring {
+      opacity: 0.38;
+    }
+
+    .hero-ripple,
+    .hero-end-ripple,
+    .hero-check-line {
+      opacity: 0;
+    }
+  }
+}
