@@ -1,0 +1,21 @@
+apps/web/app/layout.tsx
+  s_0531e7ca7531f8::t_b801a3bd14fe2c 5,7,10
+apps/web/app/page.tsx
+  s_0531e7ca7531f8::t_94a2b479d4ef5d 17,20,29,33,37,41,45,52-55,59-62,66-69,73-76,80-83,87-90,104,108,113-122,125-128,131-134,138-147,155,158,160,163,165,175,198,223-224,259,264,268-269,274,277-278,342-343,382-383,418,441,443,446-448,518,549,564-567
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "72f3f3b0ea40558c12235db9397089cca6f2caa2",
+  "prompts": {},
+  "sessions": {
+    "s_0531e7ca7531f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1843-664c-7b11-8ee3-d89b0b482cca",
+        "model": "unknown"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
