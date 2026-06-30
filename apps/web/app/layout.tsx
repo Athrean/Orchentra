@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Orchentra — CLI-first coding crew',
+  title: 'Orchentra — spends less, writes less',
   description:
-    'A local coding-agent CLI that spends fewer tokens, writes less code, and verifies review findings by running the repo checks.',
+    'A CLI-first coding crew that spends fewer tokens, writes leaner code, and proves review findings by running repo checks.',
   openGraph: {
     title: 'Orchentra',
-    description: 'CLI-first coding crew with terse output, context budget, lean code, and review gates that run.',
+    description: 'Spends less. Writes less. Proves its work.',
     type: 'website',
   },
 }
