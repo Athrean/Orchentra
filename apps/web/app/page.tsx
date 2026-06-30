@@ -26,23 +26,23 @@ const sectionIds = sectionRailItems.map((section) => section.id)
 const workSteps = [
   {
     title: 'Read',
-    body: 'Start from the repository, not a blank prompt.',
+    body: 'Read the repo before touching it.',
   },
   {
     title: 'Plan',
-    body: 'Choose the smallest path that can be checked.',
+    body: 'Pick the smallest checkable path.',
   },
   {
     title: 'Patch',
-    body: 'Write narrow diffs in the project’s style.',
+    body: 'Patch in the project’s style.',
   },
   {
     title: 'Verify',
-    body: 'Run tests, typechecks, builds, or repros.',
+    body: 'Run the gate, then trust it.',
   },
   {
     title: 'Explain',
-    body: 'Report outcome, risk, and spend without filler.',
+    body: 'Report outcome without filler.',
   },
 ]
 
@@ -50,43 +50,43 @@ const runtimeCards = [
   {
     index: '01',
     label: 'terse',
-    title: 'Short answers, lower output spend.',
-    body: 'Terse modes cut filler while preserving code, paths, errors, approvals, and safety text exactly where clarity matters.',
+    title: 'Spends fewer tokens.',
+    body: 'Short output, budgeted context, visible usage. Code, paths, errors, and safety text stay exact.',
     signal: '/terse ultra',
   },
   {
     index: '02',
     label: 'budget',
-    title: 'Context budgets before the bill spikes.',
-    body: 'Tool output caps, compaction receipts, and per-step usage keep long sessions moving without flooding the model.',
+    title: 'Keeps context under control.',
+    body: 'Tool output caps and compaction receipts keep long sessions useful without flooding the model.',
     signal: '/status',
   },
   {
     index: '03',
     label: 'lean',
-    title: 'Less code is a product feature.',
-    body: 'The build and review paths bias toward YAGNI, existing helpers, standard libraries, and the smallest maintainable change.',
+    title: 'Writes less, better code.',
+    body: 'YAGNI, stdlib, native, existing dependency, one line, then custom code. In that order.',
     signal: '/review',
   },
   {
     index: '04',
     label: 'plan',
-    title: 'Architecture before files move.',
-    body: 'The planner names the recommended route, alternatives, tradeoffs, scaffold, and checks before implementation starts.',
+    title: 'Plans before files move.',
+    body: 'Best route, named alternatives, scaffold, and checks before implementation starts.',
     signal: '/plan <need>',
   },
   {
     index: '05',
     label: 'build',
-    title: 'A senior-dev loop in the terminal.',
-    body: 'The builder slices work vertically, patches the repo, and treats the project’s own gates as the definition of done.',
+    title: 'Builds in vertical slices.',
+    body: 'Small repo-aware diffs, project conventions, checks after each slice.',
     signal: '/build <need>',
   },
   {
     index: '06',
     label: 'review',
-    title: 'Review that checks itself.',
-    body: 'Findings are proposed first, then corroborated by commands that actually ran. Passing gates stay advisory; failing gates decide.',
+    title: 'Proves its review.',
+    body: 'Findings are proposals. Tests, typechecks, builds, and repros decide what is real.',
     signal: '/review',
   },
 ]
@@ -100,19 +100,19 @@ const flowRows = [
 ]
 
 const commands = [
-  ['/plan <need>', 'Architecture, alternatives, phases, and acceptance checks.'],
-  ['/build <need>', 'Small vertical implementation slices with checks after each step.'],
-  ['/review', 'Findings-first code review with verification attached.'],
+  ['/plan <need>', 'Architecture, alternatives, scaffold, checks.'],
+  ['/build <need>', 'Vertical slices, repo-aware patches, gates.'],
+  ['/review', 'Findings first, verification attached.'],
   ['/scan', 'A lighter pass over a tree, file, or diff.'],
-  ['/terse <mode>', 'Control response density and track spend.'],
-  ['session import', 'Bring previous coding-agent transcripts into Orchentra sessions.'],
+  ['/terse <mode>', 'Less prose, visible spend.'],
+  ['session import', 'Bring prior agent sessions forward.'],
 ]
 
 const plans = [
   {
     name: 'Install',
     price: 'npm',
-    description: 'Run the CLI in the current repository with your own model credentials.',
+    description: 'Put the crew in your terminal.',
     action: 'Open GitHub',
     features: [
       'orchentra and otr binaries',
@@ -124,7 +124,7 @@ const plans = [
   {
     name: 'Operate',
     price: 'local-first',
-    description: 'Keep work in git, sessions on disk, and review evidence tied to commands.',
+    description: 'Keep work in git and sessions on disk.',
     action: 'Read the README',
     featured: true,
     features: [
@@ -137,7 +137,7 @@ const plans = [
   {
     name: 'Scale',
     price: 'deferred',
-    description: 'Team credit resale or hosted proxy work is separate from the CLI core.',
+    description: 'Hosted credit resale stays outside the CLI core.',
     action: 'Track releases',
     features: [
       'BYOK remains the default',
@@ -151,28 +151,26 @@ const plans = [
 const faqs = [
   {
     question: 'Is Orchentra a model provider?',
-    answer:
-      'No. Orchentra is a CLI-first coding crew. You bring the model key or compatible provider route; Orchentra supplies the planning, build, review, budget, and verification spine.',
+    answer: 'No. Orchentra is the crew and spine around your model route: plan, build, review, budget, verify.',
   },
   {
     question: 'Is Orchentra hosted?',
     answer:
-      'No. The core product runs from your terminal, works against your local checkout, stores sessions locally, and ships through CLI plus git. The website is marketing only.',
+      'No. The product runs from your terminal, works against your checkout, stores sessions locally, and ships through CLI plus git.',
   },
   {
     question: 'How is it different from a normal coding chat?',
-    answer:
-      'It works from the repository outward: reads files, follows local patterns, runs commands, respects workspace policy, and reports the checks that prove or limit the result.',
+    answer: 'It works from the repo outward: read, plan, patch, run, report. The check output beats the prose.',
   },
   {
     question: 'What happens when a check fails?',
     answer:
-      'The failure is reported as the source of truth. Orchentra distinguishes proposed review findings from evidence produced by typechecks, tests, builds, or other gates.',
+      'The failure is the source of truth. Orchentra separates proposed findings from evidence produced by real gates.',
   },
   {
     question: 'Does it store private code?',
     answer:
-      'The CLI is designed for local-first work. Provider traffic depends on the model route you choose; Orchentra does not require a hosted project workspace or app database.',
+      'The CLI is local-first. Provider traffic depends on your model route; Orchentra does not require a hosted workspace or app database.',
   },
 ]
 
@@ -261,12 +259,12 @@ function Hero(): React.ReactNode {
         </a>
 
         <h1 className="mt-10 max-w-[1120px] text-[52px] font-semibold leading-[0.96] tracking-[-0.01em] text-[#001A00] sm:text-[78px] lg:text-[96px]">
-          Spend fewer tokens. Write less code. Prove the review by running it.
+          Spends less. Writes less. Proves its work.
         </h1>
 
         <p className="mt-8 max-w-[720px] text-[18px] leading-8 text-[#001A00]/68">
-          Orchentra is a local terminal agent built around one spine: terse output, context budget, lean code, and
-          verification gates. Bring your own model key; keep the work in your repo.
+          A coding crew in your terminal: fewer tokens, leaner diffs, review that runs the checks. Bring your own
+          provider key.
         </p>
 
         <div className="mt-9 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
@@ -340,7 +338,7 @@ function Runtime(): React.ReactNode {
         <SectionIntro
           marker="01 / runtime"
           title="The spine is the product."
-          body="Orchentra is not a hosted IDE or browser product. It is a CLI-first agent loop composed from three always-on disciplines: terse output, budgeted context, and lean implementation."
+          body="Every agent carries the same spine: terse output, budgeted context, lean code, and verification by running."
         />
 
         <div className="grid border-l border-t border-[#001A00]/10 md:grid-cols-2 lg:grid-cols-3">
@@ -379,8 +377,8 @@ function Flow(): React.ReactNode {
       <div className={shell}>
         <SectionIntro
           marker="02 / flow"
-          title="Plan, build, review. Then show the gate."
-          body="Every useful step should save tokens, reduce code, or make a review verifiable. If the repo’s checks disagree with the prose, the checks win."
+          title="Plan. Build. Review. Run."
+          body="Every useful step saves tokens, reduces code, or makes a review verifiable. If checks disagree with prose, checks win."
           dark
         />
 
@@ -415,7 +413,7 @@ function CommandWall(): React.ReactNode {
         <SectionIntro
           marker="03 / commands"
           title="Commands are the interface."
-          body="Slash commands are the product surface: planning, building, scanning, reviewing, memory, model selection, and session replay all stay in the terminal."
+          body="A small command surface for the whole crew: plan, build, review, scan, remember, resume."
         />
 
         <div className="border-t border-[#001A00]/14">
@@ -445,7 +443,7 @@ function Install(): React.ReactNode {
         <SectionIntro
           marker="04 / install"
           title="Install local. Keep control."
-          body="The CLI ships as an npm package with a short alias. BYOK is the default; hosted credit resale is a separate, deferred service, not the core product."
+          body="Npm package, short alias, BYOK by default. No app database in the CLI."
         />
 
         <div className="grid border-l border-t border-[#001A00]/10 lg:grid-cols-3">
@@ -515,7 +513,7 @@ function FAQ(): React.ReactNode {
             The practical questions.
           </h2>
           <p className="mt-6 text-[18px] leading-8 text-[#001A00]/64">
-            Short answers for the things developers ask before putting a coding agent near a real repository.
+            Short answers for putting a crew near a real repo.
           </p>
         </div>
 
