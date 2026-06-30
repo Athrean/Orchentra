@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react'
 const GITHUB_URL = 'https://github.com/Athrean/Orchentra'
 
 const shell = 'mx-auto w-full max-w-[1180px] px-5 sm:px-6'
-const railShell = 'mx-auto w-full max-w-[1180px]'
 const eyebrow = 'font-[family-name:var(--font-mono)] text-[12px] uppercase leading-[1.35] text-[#004700]'
 const buttonBase =
   'group inline-flex h-11 items-center justify-center gap-3 border px-5 text-[15px] font-semibold transition duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000] focus-visible:ring-offset-2'
@@ -17,7 +16,7 @@ const sectionRailItems = [
   { id: 'runtime', label: 'Agent spine' },
   { id: 'flow', label: 'How it works' },
   { id: 'commands', label: 'Command surface' },
-  { id: 'install', label: 'Install' },
+  { id: 'pricing', label: 'Pricing' },
   { id: 'faq', label: 'FAQ' },
 ] as const
 
@@ -111,7 +110,7 @@ const commands = [
 const plans = [
   {
     name: 'Install',
-    price: 'npm',
+    price: 'BYOK',
     description: 'Put the crew in your terminal.',
     action: 'Open GitHub',
     features: [
@@ -123,7 +122,7 @@ const plans = [
   },
   {
     name: 'Operate',
-    price: 'local-first',
+    price: 'Local-first',
     description: 'Keep work in git and sessions on disk.',
     action: 'Read the README',
     featured: true,
@@ -136,7 +135,7 @@ const plans = [
   },
   {
     name: 'Scale',
-    price: 'deferred',
+    price: 'Deferred',
     description: 'Hosted credit resale stays outside the CLI core.',
     action: 'Track releases',
     features: [
@@ -174,12 +173,13 @@ const faqs = [
   },
 ]
 
-type SocialName = 'x' | 'github' | 'linkedin' | 'discord'
+type SocialName = 'x' | 'github' | 'linkedin' | 'reddit' | 'discord'
 
 const socialLinks: Array<{ name: SocialName; label: string; href: string }> = [
   { name: 'x', label: 'X', href: '#' },
   { name: 'github', label: 'GitHub', href: GITHUB_URL },
   { name: 'linkedin', label: 'LinkedIn', href: '#' },
+  { name: 'reddit', label: 'Reddit', href: '#' },
   { name: 'discord', label: 'Discord', href: '#' },
 ]
 
@@ -193,7 +193,7 @@ export default function Page(): React.ReactNode {
       <Runtime />
       <Flow />
       <CommandWall />
-      <Install />
+      <Pricing />
       <FAQ />
       <Footer />
     </main>
@@ -218,8 +218,8 @@ function Nav(): React.ReactNode {
           <a className="transition hover:text-[#004700]" href="#commands">
             Commands
           </a>
-          <a className="transition hover:text-[#004700]" href="#install">
-            Install
+          <a className="transition hover:text-[#004700]" href="#pricing">
+            Pricing
           </a>
           <a className="transition hover:text-[#004700]" href="#faq">
             FAQ
@@ -272,8 +272,8 @@ function Hero(): React.ReactNode {
             Install the CLI
             <span className="transition group-hover:translate-x-1">→</span>
           </a>
-          <a href="#install" className={lightButton}>
-            See how it ships
+          <a href="#pricing" className={lightButton}>
+            View pricing
           </a>
         </div>
 
@@ -316,15 +316,17 @@ function SectionRail(): React.ReactNode {
 
   return (
     <section className="sticky top-[72px] z-40 border-y border-[#008000]/20 bg-white/95 backdrop-blur">
-      <div className={`${railShell} border-x border-[#008000]/20`}>
-        <div className="flex h-11 items-center justify-between gap-4 px-6 font-[family-name:var(--font-mono)] text-[12px] uppercase tracking-[0.16em]">
-          <a href={`#${activeSection.id}`} className="flex min-w-0 items-center gap-3 text-[#001A00]/50">
-            <span className="text-[#008000]">›</span>
-            <span className="truncate">{activeSection.label}</span>
-          </a>
-          <span className="shrink-0 text-[#004700]">
-            [{activeIndex + 1}/{sectionRailItems.length}]
-          </span>
+      <div className={shell}>
+        <div className="border-x border-[#008000]/20">
+          <div className="flex h-11 items-center justify-between gap-2 px-4 font-[family-name:var(--font-mono)] text-[12px] uppercase tracking-[0.1em] sm:gap-4 sm:px-6 sm:tracking-[0.16em]">
+            <a href={`#${activeSection.id}`} className="flex min-w-0 items-center gap-3 text-[#001A00]/50">
+              <span className="text-[#008000]">›</span>
+              <span className="truncate">{activeSection.label}</span>
+            </a>
+            <span className="shrink-0 text-[#004700]">
+              [{activeIndex + 1}/{sectionRailItems.length}]
+            </span>
+          </div>
         </div>
       </div>
     </section>
@@ -436,14 +438,14 @@ function CommandWall(): React.ReactNode {
   )
 }
 
-function Install(): React.ReactNode {
+function Pricing(): React.ReactNode {
   return (
-    <section id="install" className="scroll-mt-[132px] border-y border-[#001A00]/10 bg-white py-20 sm:py-28">
+    <section id="pricing" className="scroll-mt-[132px] border-y border-[#001A00]/10 bg-white py-20 sm:py-28">
       <div className={shell}>
         <SectionIntro
-          marker="04 / install"
-          title="Install local. Keep control."
-          body="Npm package, short alias, BYOK by default. No app database in the CLI."
+          marker="04 / pricing"
+          title="Start local. Scale when needed."
+          body="BYOK by default. Hosted credit resale stays outside the CLI core."
         />
 
         <div className="grid border-l border-t border-[#001A00]/10 lg:grid-cols-3">
@@ -559,17 +561,22 @@ function Footer(): React.ReactNode {
 
         <div className="grid gap-10">
           <div className="grid gap-8 sm:grid-cols-4">
-            <FooterColumn title="Product" links={['Spine', 'Commands', 'Install', 'Review']} />
+            <FooterColumn title="Product" links={['Spine', 'Commands', 'Pricing', 'Review']} />
             <FooterColumn title="CLI" links={['/plan', '/build', '/review', '/terse']} />
             <FooterColumn title="Proof" links={['Checks', 'Sessions', 'Memory', 'Receipts']} />
             <FooterColumn title="Project" links={['GitHub', 'Releases', 'Issues', 'Security']} />
           </div>
 
           <div className="flex flex-col gap-5 border-t border-white/12 pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              {socialLinks.map((social) => (
-                <SocialLink key={social.name} {...social} />
-              ))}
+            <div>
+              <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.18em] text-[#008000]">
+                Connect
+              </p>
+              <div className="mt-3 flex items-center gap-4">
+                {socialLinks.map((social) => (
+                  <SocialLink key={social.name} {...social} />
+                ))}
+              </div>
             </div>
             <span className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.18em] text-white/42">
               © {new Date().getFullYear()} Orchentra · All rights reserved
@@ -612,7 +619,7 @@ function SocialLink({ name, label, href }: { name: SocialName; label: string; hr
     <a
       href={href}
       aria-label={label}
-      className="flex size-8 items-center justify-center border border-white/16 text-white/68 transition hover:border-white/40 hover:text-white"
+      className="inline-flex size-5 items-center justify-center text-white/88 transition hover:-translate-y-0.5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
     >
       <SocialIcon name={name} />
     </a>
@@ -620,7 +627,15 @@ function SocialLink({ name, label, href }: { name: SocialName; label: string; hr
 }
 
 function SocialIcon({ name }: { name: SocialName }): React.ReactNode {
-  const className = 'size-4'
+  const className = 'size-5'
+
+  if (name === 'x') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26L22.827 21.75h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25h6.826l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+      </svg>
+    )
+  }
 
   if (name === 'github') {
     return (
@@ -646,11 +661,15 @@ function SocialIcon({ name }: { name: SocialName }): React.ReactNode {
     )
   }
 
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 4l16 16M20 4L4 20" />
-    </svg>
-  )
+  if (name === 'reddit') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+        <path d="M24 11.78a2.8 2.8 0 0 0-4.74-2.02c-1.75-1.15-4.1-1.9-6.7-2.02l1.14-5.36 3.72.8a2.04 2.04 0 1 0 .22-1.02l-4.3-.92a.54.54 0 0 0-.64.42l-1.3 6.08c-2.64.1-5.04.84-6.82 2A2.8 2.8 0 1 0 1.5 14.2a4.82 4.82 0 0 0-.08.84c0 4.04 4.74 7.3 10.58 7.3s10.58-3.26 10.58-7.3c0-.28-.02-.56-.08-.84A2.8 2.8 0 0 0 24 11.78ZM7.5 13.7a1.54 1.54 0 1 1 3.08 0 1.54 1.54 0 0 1-3.08 0Zm8.2 4.66c-1.06 1.06-3.08 1.14-3.7 1.14-.62 0-2.64-.08-3.7-1.14a.54.54 0 0 1 .76-.76c.66.66 2.08.82 2.94.82s2.28-.16 2.94-.82a.54.54 0 1 1 .76.76Zm-.24-3.12a1.54 1.54 0 1 1 0-3.08 1.54 1.54 0 0 1 0 3.08Z" />
+      </svg>
+    )
+  }
+
+  return null
 }
 
 function SectionIntro({
