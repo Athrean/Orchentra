@@ -1,0 +1,19 @@
+apps/web/app/page.tsx
+  s_0531e7ca7531f8::t_db16cd74180e54 9,291,316,334-341,376-386,390,413-420,422,427,444-453,507,516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "3053248f47b39f9cac028dce9451b897db9a254d",
+  "prompts": {},
+  "sessions": {
+    "s_0531e7ca7531f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1843-664c-7b11-8ee3-d89b0b482cca",
+        "model": "unknown"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
