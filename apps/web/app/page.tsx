@@ -4,8 +4,10 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 
 const GITHUB_URL = 'https://github.com/Athrean/Orchentra'
+const INSTALL_COMMAND = 'npm install -g @orchentra/cli'
 
 const shell = 'mx-auto w-full max-w-[1180px] px-5 sm:px-6'
+const railShell = 'mx-auto w-full max-w-[1180px]'
 const eyebrow = 'font-[family-name:var(--font-mono)] text-[12px] uppercase leading-[1.35] text-[#004700]'
 const buttonBase =
   'group inline-flex h-11 items-center justify-center gap-3 border px-5 text-[15px] font-semibold transition duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000] focus-visible:ring-offset-2'
@@ -277,12 +279,7 @@ function Hero(): React.ReactNode {
           </a>
         </div>
 
-        <code className="mt-3 flex w-full max-w-[430px] items-center justify-between border border-dashed border-[#001A00]/25 bg-white px-4 py-3 text-left font-[family-name:var(--font-mono)] text-[13px] text-[#001A00]/72">
-          <span>
-            <span className="text-[#008000]">$</span> npm install -g @orchentra/cli
-          </span>
-          <span className="text-[#004700]">copy</span>
-        </code>
+        <CopyCommand command={INSTALL_COMMAND} className="mt-3 w-full max-w-[430px]" />
       </div>
     </section>
   )
@@ -316,17 +313,15 @@ function SectionRail(): React.ReactNode {
 
   return (
     <section className="sticky top-[72px] z-40 border-y border-[#008000]/20 bg-white/95 backdrop-blur">
-      <div className={shell}>
-        <div className="border-x border-[#008000]/20">
-          <div className="flex h-11 items-center justify-between gap-2 px-4 font-[family-name:var(--font-mono)] text-[12px] uppercase tracking-[0.1em] sm:gap-4 sm:px-6 sm:tracking-[0.16em]">
-            <a href={`#${activeSection.id}`} className="flex min-w-0 items-center gap-3 text-[#001A00]/50">
-              <span className="text-[#008000]">›</span>
-              <span className="truncate">{activeSection.label}</span>
-            </a>
-            <span className="shrink-0 text-[#004700]">
-              [{activeIndex + 1}/{sectionRailItems.length}]
-            </span>
-          </div>
+      <div className={`${railShell} border-x border-[#008000]/20`}>
+        <div className="flex h-11 items-center justify-between gap-2 px-5 font-[family-name:var(--font-mono)] text-[12px] uppercase tracking-[0.1em] sm:gap-4 sm:px-6 sm:tracking-[0.16em]">
+          <a href={`#${activeSection.id}`} className="flex min-w-0 items-center gap-3 text-[#001A00]/50">
+            <span className="text-[#008000]">›</span>
+            <span className="truncate">{activeSection.label}</span>
+          </a>
+          <span className="shrink-0 text-[#004700]">
+            [{activeIndex + 1}/{sectionRailItems.length}]
+          </span>
         </div>
       </div>
     </section>
@@ -540,6 +535,70 @@ function FAQ(): React.ReactNode {
   )
 }
 
+function CopyCommand({
+  command,
+  className = '',
+  tone = 'light',
+}: {
+  command: string
+  className?: string
+  tone?: 'light' | 'dark'
+}): React.ReactNode {
+  const [copied, setCopied] = useState(false)
+  const isDark = tone === 'dark'
+
+  async function copyCommand(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(command)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  const idleClass = isDark
+    ? 'border-white/20 bg-white/[0.04] text-white/88 hover:border-white/42'
+    : 'border-[#001A00]/25 bg-white text-[#001A00]/76 hover:border-[#008000]/50'
+  const copiedClass = isDark
+    ? 'border-[#008000] bg-[#008000]/10 text-white'
+    : 'border-[#008000] bg-white text-[#004700]'
+
+  return (
+    <button
+      type="button"
+      onClick={copyCommand}
+      className={`${className} flex h-11 items-center justify-between border px-4 text-left font-[family-name:var(--font-mono)] text-[13px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000] ${copied ? `border-solid ${copiedClass}` : `border-dashed ${idleClass}`}`}
+      aria-label={copied ? 'Copied install command' : 'Copy install command'}
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span className={copied ? 'text-[#008000]' : 'text-[#4f7cff]'}>{copied ? 'Copied' : '$'}</span>
+        {!copied ? <span className="truncate text-current">{command}</span> : null}
+      </span>
+      <span className={copied ? 'text-[#008000]' : isDark ? 'text-white/42' : 'text-[#001A00]/28'}>
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </span>
+    </button>
+  )
+}
+
+function CopyIcon(): React.ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="9" y="9" width="10" height="10" rx="1.5" />
+      <path d="M5 15V6.5A1.5 1.5 0 0 1 6.5 5H15" />
+    </svg>
+  )
+}
+
+function CheckIcon(): React.ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m5 12 4 4 10-9" />
+    </svg>
+  )
+}
+
 function Footer(): React.ReactNode {
   return (
     <footer className="relative min-h-[520px] overflow-hidden bg-[#001A00] text-white">
@@ -548,9 +607,7 @@ function Footer(): React.ReactNode {
           <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.2em] text-[#008000]">
             Install
           </p>
-          <code className="mt-6 block border border-white/20 bg-white/[0.04] px-4 py-3 font-[family-name:var(--font-mono)] text-[13px] text-white">
-            $ npm install -g @orchentra/cli
-          </code>
+          <CopyCommand command={INSTALL_COMMAND} className="mt-6 w-full" tone="dark" />
           <a
             href={GITHUB_URL}
             className="mt-3 inline-flex h-11 w-full items-center justify-center gap-3 border border-white bg-white px-5 text-[15px] font-semibold text-[#001A00] transition hover:bg-white/90"
