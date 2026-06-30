@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Orchentra — terminal AI work with proof built in',
+  title: 'Orchentra — CLI-first coding crew',
   description:
-    'A CLI-first AI coding runtime that plans, builds, reviews, verifies, and explains repository work with green, terminal-native motion.',
+    'A local coding-agent CLI that spends fewer tokens, writes less code, and verifies review findings by running the repo checks.',
   openGraph: {
     title: 'Orchentra',
-    description: 'Terminal AI work with visible token spend, scoped diffs, real checks, and execution graph lineage.',
+    description: 'CLI-first coding crew with terse output, context budget, lean code, and review gates that run.',
     type: 'website',
   },
 }
