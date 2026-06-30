@@ -6,8 +6,8 @@ import { useEffect, useState } from 'react'
 const GITHUB_URL = 'https://github.com/Athrean/Orchentra'
 const INSTALL_COMMAND = 'npm install -g @orchentra/cli'
 
+const frame = 'mx-auto w-full max-w-[1180px]'
 const shell = 'mx-auto w-full max-w-[1180px] px-5 sm:px-6'
-const railShell = 'mx-auto w-full max-w-[1180px]'
 const eyebrow = 'font-[family-name:var(--font-mono)] text-[12px] uppercase leading-[1.35] text-[#004700]'
 const buttonBase =
   'group inline-flex h-11 items-center justify-center gap-3 border px-5 text-[15px] font-semibold transition duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#008000] focus-visible:ring-offset-2'
@@ -288,7 +288,7 @@ function Hero(): React.ReactNode {
 function WorkLoopBanner(): React.ReactNode {
   return (
     <section className="bg-[#001A00] text-white">
-      <div className={`${shell} grid border-l border-white/10 sm:grid-cols-5`}>
+      <div className={`${frame} grid border-l border-white/10 sm:grid-cols-5`}>
         {workSteps.map((step, index) => (
           <div key={step.title} className="min-h-[150px] border-b border-r border-white/10 p-5 sm:border-b-0">
             <div className="flex items-center justify-between font-[family-name:var(--font-mono)] text-[12px] uppercase">
@@ -313,7 +313,7 @@ function SectionRail(): React.ReactNode {
 
   return (
     <section className="sticky top-[72px] z-40 border-y border-[#008000]/20 bg-white/95 backdrop-blur">
-      <div className={`${railShell} border-x border-[#008000]/20`}>
+      <div className={`${frame} border-x border-[#008000]/20`}>
         <div className="flex h-11 items-center justify-between gap-2 px-5 font-[family-name:var(--font-mono)] text-[12px] uppercase tracking-[0.1em] sm:gap-4 sm:px-6 sm:tracking-[0.16em]">
           <a href={`#${activeSection.id}`} className="flex min-w-0 items-center gap-3 text-[#001A00]/50">
             <span className="text-[#008000]">›</span>
@@ -331,12 +331,14 @@ function SectionRail(): React.ReactNode {
 function Runtime(): React.ReactNode {
   return (
     <section id="runtime" className="scroll-mt-[132px] bg-white py-20 sm:py-28">
-      <div className={shell}>
-        <SectionIntro
-          marker="01 / runtime"
-          title="The spine is the product."
-          body="Every agent carries the same spine: terse output, budgeted context, lean code, and verification by running."
-        />
+      <div className={frame}>
+        <div className="px-5 sm:px-6">
+          <SectionIntro
+            marker="01 / runtime"
+            title="The spine is the product."
+            body="Every agent carries the same spine: terse output, budgeted context, lean code, and verification by running."
+          />
+        </div>
 
         <div className="grid border-l border-t border-[#001A00]/10 md:grid-cols-2 lg:grid-cols-3">
           {runtimeCards.map((card) => (
@@ -371,19 +373,21 @@ function Runtime(): React.ReactNode {
 function Flow(): React.ReactNode {
   return (
     <section id="flow" className="scroll-mt-[132px] bg-[#001A00] py-20 text-white sm:py-28">
-      <div className={shell}>
-        <SectionIntro
-          marker="02 / flow"
-          title="Plan. Build. Review. Run."
-          body="Every useful step saves tokens, reduces code, or makes a review verifiable. If checks disagree with prose, checks win."
-          dark
-        />
+      <div className={frame}>
+        <div className="px-5 sm:px-6">
+          <SectionIntro
+            marker="02 / flow"
+            title="Plan. Build. Review. Run."
+            body="Every useful step saves tokens, reduces code, or makes a review verifiable. If checks disagree with prose, checks win."
+            dark
+          />
+        </div>
 
-        <div className="divide-y divide-white/12 border-y border-white/12">
+        <div className="divide-y divide-white/12 border-x border-y border-white/12">
           {flowRows.map(([step, body], index) => (
             <div
               key={step}
-              className="group grid min-h-[104px] gap-4 py-6 transition hover:bg-white/[0.04] sm:grid-cols-[90px_240px_1fr_80px] sm:items-center sm:px-4"
+              className="group grid min-h-[104px] gap-4 px-5 py-6 transition hover:bg-white/[0.04] sm:grid-cols-[90px_240px_1fr_80px] sm:items-center sm:px-4"
             >
               <span className="font-[family-name:var(--font-mono)] text-[13px] text-[#008000]">
                 {String(index + 1).padStart(2, '0')}
@@ -406,19 +410,21 @@ function Flow(): React.ReactNode {
 function CommandWall(): React.ReactNode {
   return (
     <section id="commands" className="scroll-mt-[132px] bg-white py-20 sm:py-28">
-      <div className={shell}>
-        <SectionIntro
-          marker="03 / commands"
-          title="Commands are the interface."
-          body="A small command surface for the whole crew: plan, build, review, scan, remember, resume."
-        />
+      <div className={frame}>
+        <div className="px-5 sm:px-6">
+          <SectionIntro
+            marker="03 / commands"
+            title="Commands are the interface."
+            body="A small command surface for the whole crew: plan, build, review, scan, remember, resume."
+          />
+        </div>
 
-        <div className="border-t border-[#001A00]/14">
+        <div className="border-x border-t border-[#001A00]/14">
           {commands.map(([command, description]) => (
             <a
               key={command}
               href={GITHUB_URL}
-              className="group grid gap-3 border-b border-[#001A00]/14 py-6 transition hover:bg-[#008000]/[0.035] sm:grid-cols-[280px_1fr_48px] sm:items-center sm:px-4"
+              className="group grid gap-3 border-b border-[#001A00]/14 px-5 py-6 transition hover:bg-[#008000]/[0.035] sm:grid-cols-[280px_1fr_48px] sm:items-center sm:px-4"
             >
               <code className="font-[family-name:var(--font-mono)] text-[15px] text-[#001A00]">{command}</code>
               <span className="text-[18px] leading-7 text-[#001A00]/65">{description}</span>
@@ -435,13 +441,16 @@ function CommandWall(): React.ReactNode {
 
 function Pricing(): React.ReactNode {
   return (
-    <section id="pricing" className="scroll-mt-[132px] border-y border-[#001A00]/10 bg-white py-20 sm:py-28">
-      <div className={shell}>
-        <SectionIntro
-          marker="04 / pricing"
-          title="Start local. Scale when needed."
-          body="BYOK by default. Hosted credit resale stays outside the CLI core."
-        />
+    <section id="pricing" className="scroll-mt-[132px] bg-white py-20 sm:py-28">
+      <div className={frame}>
+        <div className="border-t border-[#001A00]/10" />
+        <div className="px-5 sm:px-6">
+          <SectionIntro
+            marker="04 / pricing"
+            title="Start local. Scale when needed."
+            body="BYOK by default. Hosted credit resale stays outside the CLI core."
+          />
+        </div>
 
         <div className="grid border-l border-t border-[#001A00]/10 lg:grid-cols-3">
           {plans.map((plan) => (
@@ -495,6 +504,7 @@ function Pricing(): React.ReactNode {
             </article>
           ))}
         </div>
+        <div className="border-b border-[#001A00]/10" />
       </div>
     </section>
   )
@@ -503,7 +513,7 @@ function Pricing(): React.ReactNode {
 function FAQ(): React.ReactNode {
   return (
     <section id="faq" className="scroll-mt-[132px] bg-white py-20 sm:py-28">
-      <div className={`${shell} grid gap-10 lg:grid-cols-[360px_1fr]`}>
+      <div className={`${frame} grid gap-10 border-x border-[#001A00]/10 px-5 sm:px-6 lg:grid-cols-[360px_1fr]`}>
         <div className="max-w-[360px]">
           <p className={eyebrow}>05 / FAQ</p>
           <h2 className="mt-5 text-[42px] font-semibold leading-[1] text-[#001A00] sm:text-[58px]">
