@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 
-/* ── Nocturn — display + body face for the marketing site ── */
 @font-face {
   font-family: 'Nocturn';
   src: url('/fonts/Nocturn-regular.woff2') format('woff2');
@@ -8,6 +7,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Nocturn';
   src: url('/fonts/Nocturn-semibold.woff2') format('woff2');
@@ -15,6 +15,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Nocturn';
   src: url('/fonts/Nocturn-bold.woff2') format('woff2');
@@ -24,16 +25,9 @@
 }
 
 @theme {
-  /* Clean, light-first canvas. Restrained: one ink, one near-black action,
-     one green accent. Color earns its place; chrome stays quiet. */
-  --color-canvas: #ffffff;
-  --color-stone: #f5f5f1; /* soft neutral surface block */
-  --color-ink: #1c1c1a; /* default text */
-  --color-ink-near: #17171c; /* primary CTA + deepest contrast */
-  --color-muted: #6c6c64; /* metadata, secondary text */
-  --color-hairline: #e7e7e1; /* dividers + card borders */
-  --color-accent: #147a52; /* one green action / marker */
-
+  --color-orch-dark: #001a00;
+  --color-orch-mid: #004700;
+  --color-orch-green: #008000;
   --font-display: 'Nocturn', ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', monospace;
 }
@@ -41,82 +35,20 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    background: #ffffff;
   }
+
   body {
-    background-color: var(--color-canvas);
-    color: var(--color-ink);
+    margin: 0;
+    background: #ffffff;
+    color: #001a00;
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* Monumental display headlines: tight line height, negative tracking. */
-  h1,
-  h2 {
-    letter-spacing: -0.02em;
-    line-height: 1.02;
-  }
+
   ::selection {
-    background-color: var(--color-accent);
+    background: #008000;
     color: #ffffff;
-  }
-}
-
-@layer components {
-  /* Uppercase mono system marker. */
-  .mono-label {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--color-muted);
-  }
-  /* Near-black pill CTA. */
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px 24px;
-    border-radius: 32px;
-    background-color: var(--color-ink-near);
-    color: #ffffff;
-    font-size: 15px;
-    transition: opacity 120ms ease-out;
-  }
-  .btn-primary:hover {
-    opacity: 0.88;
-  }
-  /* Underlined text link action. */
-  .btn-link {
-    font-size: 15px;
-    color: var(--color-ink);
-    text-decoration: underline;
-    text-underline-offset: 4px;
-    text-decoration-color: var(--color-hairline);
-    transition: text-decoration-color 120ms ease-out;
-  }
-  .btn-link:hover {
-    text-decoration-color: var(--color-ink);
-  }
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(120, 120, 110, 0.3);
-  border-radius: 99px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
   }
 }
