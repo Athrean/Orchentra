@@ -54,6 +54,7 @@ const runtimeCards = [
     title: 'Spends fewer tokens.',
     body: 'Short output, budgeted context, visible usage. Code, paths, errors, and safety text stay exact.',
     signal: '/terse ultra',
+    image: '/heads/1.png',
   },
   {
     index: '02',
@@ -61,6 +62,7 @@ const runtimeCards = [
     title: 'Keeps context under control.',
     body: 'Tool output caps and compaction receipts keep long sessions useful without flooding the model.',
     signal: '/status',
+    image: '/heads/2.png',
   },
   {
     index: '03',
@@ -68,6 +70,7 @@ const runtimeCards = [
     title: 'Writes less, better code.',
     body: 'YAGNI, stdlib, native, existing dependency, one line, then custom code. In that order.',
     signal: '/review',
+    image: '/heads/3.png',
   },
   {
     index: '04',
@@ -75,6 +78,7 @@ const runtimeCards = [
     title: 'Plans before files move.',
     body: 'Best route, named alternatives, scaffold, and checks before implementation starts.',
     signal: '/plan <need>',
+    image: '/heads/4.png',
   },
   {
     index: '05',
@@ -82,6 +86,7 @@ const runtimeCards = [
     title: 'Builds in vertical slices.',
     body: 'Small repo-aware diffs, project conventions, checks after each slice.',
     signal: '/build <need>',
+    image: '/heads/5.png',
   },
   {
     index: '06',
@@ -89,6 +94,7 @@ const runtimeCards = [
     title: 'Proves its review.',
     body: 'Findings are proposals. Tests, typechecks, builds, and repros decide what is real.',
     signal: '/review',
+    image: '/heads/6.png',
   },
 ]
 
@@ -206,10 +212,8 @@ function Nav(): React.ReactNode {
   return (
     <header className="sticky top-0 z-50 border-b border-[#001A00]/10 bg-white/90 backdrop-blur">
       <nav className={`${shell} flex h-[72px] items-center justify-between gap-5`} aria-label="Main navigation">
-        <a href="#" aria-label="Orchentra home" className="flex items-center gap-3 text-[18px] font-semibold">
-          <span className="flex size-9 items-center justify-center border border-[#008000]/30 bg-white p-1.5">
-            <Image src="/green-logo.svg" alt="" width={28} height={28} priority />
-          </span>
+        <a href="#" aria-label="Orchentra home" className="flex items-center gap-1.5 text-[18px] font-semibold">
+          <Image src="/black-logo.png" alt="" width={32} height={32} priority className="object-contain" />
           <span>Orchentra</span>
         </a>
 
@@ -346,7 +350,7 @@ function Runtime(): React.ReactNode {
               key={card.index}
               className="group relative min-h-[320px] overflow-hidden border-b border-r border-[#001A00]/10 bg-white p-6 transition duration-200 hover:-translate-y-1 hover:border-[#001A00]"
             >
-              <EdgeOverlay />
+              <EdgeOverlay headImage={card.image} />
               <div className="relative z-10">
                 <div className="flex items-center justify-between font-[family-name:var(--font-mono)] text-[13px] text-[#001A00]/50 transition group-hover:text-white/62">
                   <span>{card.index}</span>
@@ -767,14 +771,20 @@ function SectionIntro({
   )
 }
 
-function EdgeOverlay(): React.ReactNode {
+function EdgeOverlay({ headImage }: { headImage?: string }): React.ReactNode {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 opacity-0 transition duration-200 group-hover:opacity-100"
+      className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100"
     >
       <span className="absolute inset-0 bg-[#001A00]" />
-      <span className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,128,0,0.36)_1px,transparent_0)] bg-[length:8px_8px] opacity-70" />
+      {headImage ? (
+        <span className="absolute inset-0 z-0 overflow-hidden mix-blend-screen invert opacity-40">
+          <Image src={headImage} alt="" fill className="object-cover" />
+        </span>
+      ) : (
+        <span className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,128,0,0.36)_1px,transparent_0)] bg-[length:8px_8px] opacity-70" />
+      )}
       <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,71,0,0.7),transparent_18%,transparent_82%,rgba(0,71,0,0.7)),linear-gradient(0deg,rgba(0,71,0,0.7),transparent_22%,transparent_78%,rgba(0,71,0,0.7))] opacity-50" />
       <span className="absolute left-4 top-4 size-7 border-l border-t border-[#008000]" />
       <span className="absolute right-4 top-4 size-7 border-r border-t border-[#008000]" />
