@@ -247,11 +247,8 @@ function Nav(): React.ReactNode {
 
 function Hero(): React.ReactNode {
   return (
-    <section className="relative overflow-hidden border-b border-[#001A00]/10 bg-white">
-      <HeroMotion />
-      <div
-        className={`${shell} relative z-10 flex min-h-[650px] flex-col items-center justify-center py-16 text-center md:py-20`}
-      >
+    <section className="overflow-hidden border-b border-[#001A00]/10 bg-white">
+      <div className={`${shell} flex min-h-[650px] flex-col items-center justify-center py-16 text-center md:py-20`}>
         <a
           href="#runtime"
           className="group inline-flex items-center border border-[#008000]/30 bg-white text-[13px] text-[#001A00]"
@@ -263,11 +260,11 @@ function Hero(): React.ReactNode {
           <span className="border-l border-[#008000]/30 px-3 py-2 transition group-hover:translate-x-1">→</span>
         </a>
 
-        <h1 className="mt-10 w-full max-w-[1120px] text-[46px] font-semibold leading-[0.96] tracking-[-0.01em] text-[#001A00] sm:text-[78px] lg:text-[96px]">
+        <h1 className="mt-10 max-w-[1120px] text-[52px] font-semibold leading-[0.96] tracking-[-0.01em] text-[#001A00] sm:text-[78px] lg:text-[96px]">
           Spends less. Writes less. Proves its work.
         </h1>
 
-        <p className="mt-8 w-full max-w-[720px] text-[18px] leading-8 text-[#001A00]/68">
+        <p className="mt-8 max-w-[720px] text-[18px] leading-8 text-[#001A00]/68">
           A coding crew in your terminal: fewer tokens, leaner diffs, review that runs the checks. Bring your own
           provider key.
         </p>
@@ -285,65 +282,6 @@ function Hero(): React.ReactNode {
         <CopyCommand command={INSTALL_COMMAND} className="mt-3 w-full max-w-[430px]" />
       </div>
     </section>
-  )
-}
-
-function HeroMotion(): React.ReactNode {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div className="hero-backdrop" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.62),rgba(255,255,255,0.86)_54%,rgba(255,255,255,0.95))]" />
-      <svg
-        viewBox="0 0 900 560"
-        className="hero-motion absolute left-1/2 top-1/2 h-[min(74vw,620px)] w-[min(94vw,900px)] -translate-x-1/2 -translate-y-[48%]"
-        role="img"
-      >
-        <title>Textured circle breaking into verified ripples</title>
-        <desc>A texture-filled circle separates into pieces, moves to the right edge, then triggers ripple rings.</desc>
-        <defs>
-          <pattern id="heroTexture" patternUnits="userSpaceOnUse" width="900" height="560">
-            <image href="/back.svg" x="-120" y="-85" width="1120" height="630" preserveAspectRatio="xMidYMid slice" />
-          </pattern>
-          <filter id="heroSoftGlow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        <g className="hero-origin-ripples" transform="translate(418 280)">
-          <circle className="hero-ripple hero-ripple-one" r="86" />
-          <circle className="hero-ripple hero-ripple-two" r="104" />
-          <circle className="hero-ripple hero-ripple-three" r="126" />
-        </g>
-
-        <g className="hero-end-ripples" transform="translate(752 282)">
-          <circle className="hero-end-ripple hero-end-ripple-one" r="44" />
-          <circle className="hero-end-ripple hero-end-ripple-two" r="44" />
-          <circle className="hero-end-ripple hero-end-ripple-three" r="44" />
-        </g>
-
-        <g className="hero-orb" transform="translate(418 280)" filter="url(#heroSoftGlow)">
-          <circle className="hero-core-fill" r="114" />
-          <circle className="hero-core-ring" r="119" />
-        </g>
-
-        <g className="hero-shards" transform="translate(418 280)">
-          <path className="hero-fragment hero-fragment-a" d="M0 0 L0 -112 A112 112 0 0 1 79 -79 Z" />
-          <path className="hero-fragment hero-fragment-b" d="M0 0 L79 -79 A112 112 0 0 1 112 0 Z" />
-          <path className="hero-fragment hero-fragment-c" d="M0 0 L112 0 A112 112 0 0 1 79 79 Z" />
-          <path className="hero-fragment hero-fragment-d" d="M0 0 L79 79 A112 112 0 0 1 0 112 Z" />
-          <path className="hero-fragment hero-fragment-e" d="M0 0 L0 112 A112 112 0 0 1 -79 79 Z" />
-          <path className="hero-fragment hero-fragment-f" d="M0 0 L-79 79 A112 112 0 0 1 -112 0 Z" />
-          <path className="hero-fragment hero-fragment-g" d="M0 0 L-112 0 A112 112 0 0 1 -79 -79 Z" />
-          <path className="hero-fragment hero-fragment-h" d="M0 0 L-79 -79 A112 112 0 0 1 0 -112 Z" />
-        </g>
-
-        <path className="hero-check-line" d="M295 281 C338 242, 382 238, 418 280 S510 344, 558 295 S641 228, 752 282" />
-      </svg>
-    </div>
   )
 }
 
