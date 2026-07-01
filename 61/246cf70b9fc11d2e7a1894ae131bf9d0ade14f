@@ -1,0 +1,19 @@
+apps/web/package.json
+  s_3573b3ba9aded2::t_75a2b5564bae91 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "61246cf70b9fc11d2e7a1894ae131bf9d0ade14f",
+  "prompts": {},
+  "sessions": {
+    "s_3573b3ba9aded2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f17a8-e0eb-73e1-b243-9259b5b1324b",
+        "model": "unknown"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
