@@ -1,0 +1,29 @@
+apps/web/app/page.tsx
+  s_d8008997080475::t_a308cebf8b9f81 249-266,269,271,275,278,282,288,292-295,300
+apps/web/package.json
+  s_3573b3ba9aded2::t_75a2b5564bae91 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "0cd7929651948dc8966e62abf13cf0bf62c30f74",
+  "prompts": {},
+  "sessions": {
+    "s_3573b3ba9aded2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f17a8-e0eb-73e1-b243-9259b5b1324b",
+        "model": "unknown"
+      },
+      "human_author": "Test <test@example.com>"
+    },
+    "s_d8008997080475": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1bf5-657d-7930-b2fc-92c5f4291596",
+        "model": "unknown"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
