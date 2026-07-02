@@ -25,9 +25,8 @@
 }
 
 @theme {
-  --color-orch-dark: #001a00;
-  --color-orch-mid: #004700;
-  --color-orch-green: #008000;
+  --color-cod: #080808;
+  --color-emerald-ai: #10a37f;
   --font-display: 'Nocturn', ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', monospace;
 }
@@ -35,20 +34,20 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    background: #ffffff;
+    background: #080808;
   }
 
   body {
     margin: 0;
-    background: #ffffff;
-    color: #001a00;
+    background: #080808;
+    color: #ffffff;
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background: #008000;
-    color: #ffffff;
+    background: #10a37f;
+    color: #000000;
   }
 }
