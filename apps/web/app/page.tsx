@@ -11,8 +11,8 @@ const frame = 'mx-auto w-full max-w-[1180px]'
 const shell = 'mx-auto w-full max-w-[1180px] px-5 sm:px-6'
 const eyebrow = 'font-[family-name:var(--font-mono)] text-[12px] uppercase leading-[1.35] text-[#10A37F]'
 const buttonBase =
-  'group inline-flex h-11 items-center justify-center gap-3 border px-5 text-[15px] font-semibold transition duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#10A37F] focus-visible:ring-offset-2 focus-visible:ring-offset-black'
-const ghostButton = `${buttonBase} border-white/20 bg-transparent text-white hover:border-white/60`
+  'group inline-flex h-11 items-center justify-center gap-3 border px-5 text-[15px] font-semibold transition duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#10A37F] focus-visible:ring-offset-2 focus-visible:ring-offset-base'
+const ghostButton = `${buttonBase} border-ink/20 bg-transparent text-ink hover:border-ink/60`
 const emeraldButton = `${buttonBase} border-[#10A37F] bg-[#10A37F] text-black hover:bg-[#0e8c6d]`
 
 const sectionRailItems = [
@@ -177,9 +177,9 @@ const plans: Array<{
 
 const planTones: Record<PlanTone, { name: string; tile: string; button: string }> = {
   grey: {
-    name: 'text-white',
+    name: 'text-ink',
     tile: 'bg-[#d4d4d8]',
-    button: `${buttonBase} border-[#d4d4d8] bg-[#d4d4d8] text-black hover:bg-white`,
+    button: `${buttonBase} border-[#d4d4d8] bg-[#d4d4d8] text-black hover:bg-[#e8e8ec]`,
   },
   emerald: {
     name: 'text-[#10A37F]',
@@ -187,9 +187,9 @@ const planTones: Record<PlanTone, { name: string; tile: string; button: string }
     button: emeraldButton,
   },
   white: {
-    name: 'text-white/60',
+    name: 'text-ink/60',
     tile: 'bg-white',
-    button: `${buttonBase} border-white bg-white text-black hover:bg-white/85`,
+    button: `${buttonBase} border-ink/15 bg-white text-black hover:bg-white/85`,
   },
 }
 
@@ -231,7 +231,7 @@ const socialLinks: Array<{ name: SocialName; label: string; href: string }> = [
 
 export default function Page(): React.ReactNode {
   return (
-    <main className="min-h-screen bg-[#080808] text-white">
+    <main className="min-h-screen bg-base text-ink">
       <Nav />
       <Hero />
       <WorkLoopBanner />
@@ -246,26 +246,42 @@ export default function Page(): React.ReactNode {
   )
 }
 
+function Logo({ size = 40 }: { size?: number }): React.ReactNode {
+  return (
+    <>
+      <Image src="/black-logo.svg" alt="" width={size} height={size} priority className="object-contain dark:hidden" />
+      <Image
+        src="/white-logo.svg"
+        alt=""
+        width={size}
+        height={size}
+        priority
+        className="hidden object-contain dark:block"
+      />
+    </>
+  )
+}
+
 function Nav(): React.ReactNode {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#080808]/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-ink/10 bg-base/90 backdrop-blur">
       <nav className={`${shell} flex h-[72px] items-center justify-between gap-5`} aria-label="Main navigation">
-        <a href="#" aria-label="Orchentra home" className="flex items-center gap-1.5 text-[18px] font-semibold">
-          <Image src="/white-logo.png" alt="" width={32} height={32} priority className="object-contain" />
-          <span>Orchentra</span>
+        <a href="#" aria-label="Orchentra home" className="flex items-center gap-2">
+          <Logo />
+          <span className="text-[21px] font-semibold tracking-[-0.02em]">Orchentra</span>
         </a>
 
-        <div className="hidden items-center gap-8 text-[15px] text-white/60 md:flex">
-          <a className="transition hover:text-white" href="#runtime">
+        <div className="hidden items-center gap-8 text-[15px] text-ink/60 md:flex">
+          <a className="transition hover:text-ink" href="#runtime">
             Runtime
           </a>
-          <a className="transition hover:text-white" href="#commands">
+          <a className="transition hover:text-ink" href="#commands">
             Commands
           </a>
-          <a className="transition hover:text-white" href="#pricing">
+          <a className="transition hover:text-ink" href="#pricing">
             Pricing
           </a>
-          <a className="transition hover:text-white" href="#faq">
+          <a className="transition hover:text-ink" href="#faq">
             FAQ
           </a>
         </div>
@@ -273,7 +289,7 @@ function Nav(): React.ReactNode {
         <div className="flex items-center gap-2">
           <a
             href={GITHUB_URL}
-            className="hidden sm:inline-flex sm:h-11 sm:items-center sm:border sm:border-white/20 sm:bg-transparent sm:px-5 sm:text-[15px] sm:font-semibold sm:text-white sm:transition sm:hover:border-white/60"
+            className="hidden sm:inline-flex sm:h-11 sm:items-center sm:border sm:border-ink/20 sm:bg-transparent sm:px-5 sm:text-[15px] sm:font-semibold sm:text-ink sm:transition sm:hover:border-ink/60"
           >
             GitHub
           </a>
@@ -289,7 +305,7 @@ function Nav(): React.ReactNode {
 
 function Hero(): React.ReactNode {
   return (
-    <section className="relative overflow-hidden bg-[#080808]">
+    <section className="relative overflow-hidden bg-base">
       {/* 6 Column Cards Background */}
       <div className="absolute inset-0 grid grid-cols-6">
         {[1, 2, 3, 4, 5, 6].map((num) => (
@@ -298,7 +314,7 @@ function Hero(): React.ReactNode {
             initial="rest"
             whileHover="hover"
             animate="rest"
-            className="group relative h-full cursor-pointer border-l border-white/[0.04] first:border-l-0"
+            className="group relative h-full cursor-pointer border-l border-ink/[0.04] first:border-l-0"
           >
             <EdgeOverlay headImage={`/heads/${num}.png`} />
           </motion.div>
@@ -310,7 +326,7 @@ function Hero(): React.ReactNode {
       >
         <a
           href="#runtime"
-          className="group inline-flex items-center border border-[#10A37F]/40 bg-[#080808] text-[13px] text-white/85 pointer-events-auto"
+          className="group inline-flex items-center border border-[#10A37F]/40 bg-base text-[13px] text-ink/85 pointer-events-auto"
         >
           <span className="border-r border-[#10A37F]/40 px-3 py-2 font-[family-name:var(--font-mono)] text-[#10A37F]">
             New
@@ -319,11 +335,11 @@ function Hero(): React.ReactNode {
           <span className="border-l border-[#10A37F]/40 px-3 py-2 transition group-hover:translate-x-1">→</span>
         </a>
 
-        <h1 className="mt-10 max-w-[1120px] text-[52px] font-semibold leading-[0.96] tracking-[-0.01em] text-white sm:text-[78px] lg:text-[96px] pointer-events-auto">
+        <h1 className="mt-10 max-w-[1120px] text-[52px] font-semibold leading-[0.96] tracking-[-0.01em] text-ink sm:text-[78px] lg:text-[96px] pointer-events-auto">
           Spends less. Writes less. Proves its work.
         </h1>
 
-        <p className="mt-8 max-w-[720px] text-[18px] leading-8 text-white/60 pointer-events-auto">
+        <p className="mt-8 max-w-[720px] text-[18px] leading-8 text-ink/60 pointer-events-auto">
           A coding crew in your terminal: fewer tokens, leaner diffs, review that runs the checks. Bring your own
           provider key.
         </p>
@@ -348,15 +364,15 @@ function Hero(): React.ReactNode {
 
 function WorkLoopBanner(): React.ReactNode {
   return (
-    <section className="border-y border-white/10 bg-black text-white">
-      <div className={`${frame} grid border-l border-white/10 sm:grid-cols-5`}>
+    <section className="border-y border-ink/10 bg-panel text-ink">
+      <div className={`${frame} grid border-l border-ink/10 sm:grid-cols-5`}>
         {workSteps.map((step, index) => (
-          <div key={step.title} className="min-h-[150px] border-b border-r border-white/10 p-5 sm:border-b-0">
+          <div key={step.title} className="min-h-[150px] border-b border-r border-ink/10 p-5 sm:border-b-0">
             <div className="flex items-center justify-between font-[family-name:var(--font-mono)] text-[12px] uppercase">
               <span className="text-[#10A37F]">{step.title}</span>
-              <span className="text-white/25">{String(index + 1).padStart(2, '0')}</span>
+              <span className="text-ink/25">{String(index + 1).padStart(2, '0')}</span>
             </div>
-            <p className="mt-5 text-[14px] leading-6 text-white/60">{step.body}</p>
+            <p className="mt-5 text-[14px] leading-6 text-ink/60">{step.body}</p>
           </div>
         ))}
       </div>
@@ -373,10 +389,10 @@ function SectionRail(): React.ReactNode {
   const activeSection = sectionRailItems[activeIndex] ?? sectionRailItems[0]
 
   return (
-    <section className="sticky top-[72px] z-40 border-b border-white/10 bg-[#080808]/95 backdrop-blur">
-      <div className={`${frame} border-x border-white/10`}>
+    <section className="sticky top-[72px] z-40 border-b border-ink/10 bg-base/95 backdrop-blur">
+      <div className={`${frame} border-x border-ink/10`}>
         <div className="flex h-11 items-center justify-between gap-2 px-5 font-[family-name:var(--font-mono)] text-[12px] uppercase tracking-[0.1em] sm:gap-4 sm:px-6 sm:tracking-[0.16em]">
-          <a href={`#${activeSection.id}`} className="flex min-w-0 items-center gap-3 text-white/50">
+          <a href={`#${activeSection.id}`} className="flex min-w-0 items-center gap-3 text-ink/50">
             <span className="text-[#10A37F]">›</span>
             <span className="truncate">{activeSection.label}</span>
           </a>
@@ -391,7 +407,7 @@ function SectionRail(): React.ReactNode {
 
 function Runtime(): React.ReactNode {
   return (
-    <section id="runtime" className="scroll-mt-[132px] bg-[#080808] py-20 sm:py-28">
+    <section id="runtime" className="scroll-mt-[132px] bg-base py-20 sm:py-28">
       <div className={frame}>
         <div className="px-5 sm:px-6">
           <SectionIntro
@@ -401,28 +417,28 @@ function Runtime(): React.ReactNode {
           />
         </div>
 
-        <div className="grid border-l border-t border-white/10 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid border-l border-t border-ink/10 md:grid-cols-2 lg:grid-cols-3">
           {runtimeCards.map((card) => (
             <motion.article
               key={card.index}
               initial="rest"
               whileHover="hover"
               animate="rest"
-              className="group relative min-h-[320px] overflow-hidden border-b border-r border-white/10 bg-[#080808] p-6 transition duration-200 hover:-translate-y-1 hover:border-white/50"
+              className="group relative min-h-[320px] overflow-hidden border-b border-r border-ink/10 bg-base p-6 transition duration-200 hover:-translate-y-1 hover:border-ink/50"
             >
               <EdgeOverlay headImage={card.image} />
               <div className="relative z-10">
-                <div className="flex items-center justify-between font-[family-name:var(--font-mono)] text-[13px] text-white/40 transition group-hover:text-white/60">
+                <div className="flex items-center justify-between font-[family-name:var(--font-mono)] text-[13px] text-ink/40 transition group-hover:text-white/60">
                   <span>{card.index}</span>
                   <span className="text-[#10A37F] transition group-hover:text-white">{card.label}</span>
                 </div>
-                <h3 className="mt-12 max-w-[23rem] text-[29px] font-semibold leading-[1.08] text-white">
+                <h3 className="mt-12 max-w-[23rem] text-[29px] font-semibold leading-[1.08] text-ink transition group-hover:text-white">
                   {card.title}
                 </h3>
-                <p className="mt-5 max-w-[23rem] text-[16px] leading-7 text-white/60 transition group-hover:text-white/70">
+                <p className="mt-5 max-w-[23rem] text-[16px] leading-7 text-ink/60 transition group-hover:text-white/70">
                   {card.body}
                 </p>
-                <code className="mt-7 inline-flex border border-white/20 bg-transparent px-3 py-2 font-[family-name:var(--font-mono)] text-[13px] text-white/80 transition group-hover:border-white/70 group-hover:bg-black group-hover:text-white">
+                <code className="mt-7 inline-flex border border-ink/20 bg-transparent px-3 py-2 font-[family-name:var(--font-mono)] text-[13px] text-ink/80 transition group-hover:border-white/70 group-hover:bg-black group-hover:text-white">
                   {card.signal}
                 </code>
               </div>
@@ -436,7 +452,7 @@ function Runtime(): React.ReactNode {
 
 function Flow(): React.ReactNode {
   return (
-    <section id="flow" className="scroll-mt-[132px] border-y border-white/10 bg-black py-20 text-white sm:py-28">
+    <section id="flow" className="scroll-mt-[132px] border-y border-ink/10 bg-panel py-20 text-ink sm:py-28">
       <div className={frame}>
         <div className="px-5 sm:px-6">
           <SectionIntro
@@ -446,19 +462,19 @@ function Flow(): React.ReactNode {
           />
         </div>
 
-        <div className="divide-y divide-white/10 border-x border-y border-white/10">
+        <div className="divide-y divide-ink/10 border-x border-y border-ink/10">
           {flowRows.map(([step, body], index) => (
             <div
               key={step}
-              className="group grid min-h-[104px] gap-4 px-5 py-6 transition hover:bg-white/[0.04] sm:grid-cols-[90px_240px_1fr_80px] sm:items-center sm:px-4"
+              className="group grid min-h-[104px] gap-4 px-5 py-6 transition hover:bg-ink/[0.04] sm:grid-cols-[90px_240px_1fr_80px] sm:items-center sm:px-4"
             >
               <span className="font-[family-name:var(--font-mono)] text-[13px] text-[#10A37F]">
                 {String(index + 1).padStart(2, '0')}
               </span>
-              <h3 className="text-[34px] font-semibold leading-none text-white transition group-hover:translate-x-2 sm:text-[44px]">
+              <h3 className="text-[34px] font-semibold leading-none text-ink transition group-hover:translate-x-2 sm:text-[44px]">
                 {step}
               </h3>
-              <p className="max-w-[620px] text-[17px] leading-7 text-white/60">{body}</p>
+              <p className="max-w-[620px] text-[17px] leading-7 text-ink/60">{body}</p>
               <span className="font-[family-name:var(--font-mono)] text-[24px] text-[#10A37F] transition group-hover:translate-x-2">
                 →
               </span>
@@ -472,7 +488,7 @@ function Flow(): React.ReactNode {
 
 function CommandWall(): React.ReactNode {
   return (
-    <section id="commands" className="scroll-mt-[132px] bg-[#080808] py-20 sm:py-28">
+    <section id="commands" className="scroll-mt-[132px] bg-base py-20 sm:py-28">
       <div className={frame}>
         <div className="px-5 sm:px-6">
           <SectionIntro
@@ -482,15 +498,15 @@ function CommandWall(): React.ReactNode {
           />
         </div>
 
-        <div className="border-x border-t border-white/10">
+        <div className="border-x border-t border-ink/10">
           {commands.map(([command, description]) => (
             <a
               key={command}
               href={GITHUB_URL}
-              className="group grid gap-3 border-b border-white/10 px-5 py-6 transition hover:bg-white/[0.03] sm:grid-cols-[280px_1fr_48px] sm:items-center sm:px-4"
+              className="group grid gap-3 border-b border-ink/10 px-5 py-6 transition hover:bg-ink/[0.03] sm:grid-cols-[280px_1fr_48px] sm:items-center sm:px-4"
             >
-              <code className="font-[family-name:var(--font-mono)] text-[15px] text-white">{command}</code>
-              <span className="text-[18px] leading-7 text-white/60">{description}</span>
+              <code className="font-[family-name:var(--font-mono)] text-[15px] text-ink">{command}</code>
+              <span className="text-[18px] leading-7 text-ink/60">{description}</span>
               <span className="font-[family-name:var(--font-mono)] text-[24px] text-[#10A37F] transition group-hover:translate-x-2">
                 →
               </span>
@@ -504,39 +520,39 @@ function CommandWall(): React.ReactNode {
 
 function Pricing(): React.ReactNode {
   return (
-    <section id="pricing" className="scroll-mt-[132px] bg-[#080808] py-20 sm:py-28">
+    <section id="pricing" className="scroll-mt-[132px] bg-base py-20 sm:py-28">
       <div className={frame}>
-        <div className="border border-white/10">
-          <div className="flex flex-col gap-5 border-b border-white/10 px-5 py-10 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="border border-ink/10">
+          <div className="flex flex-col gap-5 border-b border-ink/10 px-5 py-10 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className={eyebrow}>04 / pricing</p>
-              <h2 className="mt-4 text-[38px] font-semibold leading-[1] text-white sm:text-[50px]">
+              <h2 className="mt-4 text-[38px] font-semibold leading-[1] text-ink sm:text-[50px]">
                 Start local. Scale when needed.
               </h2>
             </div>
-            <p className="max-w-[380px] text-[16px] leading-7 text-white/55">
+            <p className="max-w-[380px] text-[16px] leading-7 text-ink/55">
               BYOK by default. Hosted credit resale stays outside the CLI core.
             </p>
           </div>
 
-          <div className="grid divide-y divide-white/10 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+          <div className="grid divide-y divide-ink/10 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
             {plans.map((plan) => {
               const tone = planTones[plan.tone]
 
               return (
                 <article key={plan.name} className="flex flex-col p-5 sm:p-8">
                   <h3 className={`text-[26px] font-semibold leading-none ${tone.name}`}>{plan.name}</h3>
-                  <p className="mt-4 text-[20px] font-semibold text-white">
-                    {plan.price} <span className="font-normal text-white/45">· {plan.priceNote}</span>
+                  <p className="mt-4 text-[20px] font-semibold text-ink">
+                    {plan.price} <span className="font-normal text-ink/45">· {plan.priceNote}</span>
                   </p>
-                  <p className="mt-3 min-h-[56px] text-[16px] leading-7 text-white/60">{plan.description}</p>
+                  <p className="mt-3 min-h-[56px] text-[16px] leading-7 text-ink/60">{plan.description}</p>
 
                   <a href={GITHUB_URL} className={`mt-5 w-full ${tone.button}`}>
                     {plan.action}
                     <span className="transition group-hover:translate-x-1">→</span>
                   </a>
 
-                  <div className={`mt-6 h-[190px] overflow-hidden ${tone.tile}`}>
+                  <div className={`mt-6 h-[190px] overflow-hidden border border-ink/10 ${tone.tile}`}>
                     <Image
                       src={plan.image}
                       alt=""
@@ -546,12 +562,12 @@ function Pricing(): React.ReactNode {
                     />
                   </div>
 
-                  <p className="mt-6 font-[family-name:var(--font-mono)] text-[12px] uppercase text-white/45">
+                  <p className="mt-6 font-[family-name:var(--font-mono)] text-[12px] uppercase text-ink/45">
                     Includes:
                   </p>
                   <ul className="mt-4 grid gap-3">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-3 text-[15px] leading-6 text-white/80">
+                      <li key={feature} className="flex items-center gap-3 text-[15px] leading-6 text-ink/80">
                         <CheckBadge />
                         <span>{feature}</span>
                       </li>
@@ -569,7 +585,7 @@ function Pricing(): React.ReactNode {
 
 function CheckBadge(): React.ReactNode {
   return (
-    <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-white text-black">
+    <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-ink text-(--bg-base)">
       <svg
         viewBox="0 0 24 24"
         aria-hidden="true"
@@ -586,30 +602,28 @@ function CheckBadge(): React.ReactNode {
 
 function FAQ(): React.ReactNode {
   return (
-    <section id="faq" className="scroll-mt-[132px] bg-[#080808] py-20 sm:py-28">
+    <section id="faq" className="scroll-mt-[132px] bg-base py-20 sm:py-28">
       <div className={frame}>
-        <div className="border-t border-white/10" />
-        <div className="grid gap-10 border-x border-white/10 px-5 py-20 sm:px-6 lg:grid-cols-[360px_1fr]">
+        <div className="border-t border-ink/10" />
+        <div className="grid gap-10 border-x border-ink/10 px-5 py-20 sm:px-6 lg:grid-cols-[360px_1fr]">
           <div className="max-w-[360px]">
             <p className={eyebrow}>05 / FAQ</p>
-            <h2 className="mt-5 text-[42px] font-semibold leading-[1] text-white sm:text-[58px]">
+            <h2 className="mt-5 text-[42px] font-semibold leading-[1] text-ink sm:text-[58px]">
               The practical questions.
             </h2>
-            <p className="mt-6 text-[18px] leading-8 text-white/60">
-              Short answers for putting a crew near a real repo.
-            </p>
+            <p className="mt-6 text-[18px] leading-8 text-ink/60">Short answers for putting a crew near a real repo.</p>
           </div>
 
-          <div className="border-t border-white/10">
+          <div className="border-t border-ink/10">
             {faqs.map((item, index) => (
-              <details key={item.question} className="group border-b border-white/10 py-6">
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-[22px] font-semibold leading-7 text-white">
+              <details key={item.question} className="group border-b border-ink/10 py-6">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-[22px] font-semibold leading-7 text-ink">
                   <span>{item.question}</span>
                   <span className="font-[family-name:var(--font-mono)] text-[#10A37F] transition group-open:rotate-45">
                     +
                   </span>
                 </summary>
-                <p className="mt-5 max-w-[720px] text-[16px] leading-7 text-white/60">{item.answer}</p>
+                <p className="mt-5 max-w-[720px] text-[16px] leading-7 text-ink/60">{item.answer}</p>
                 <p className="mt-4 font-[family-name:var(--font-mono)] text-[12px] text-[#10A37F]/70">
                   [{String(index + 1).padStart(2, '0')}]
                 </p>
@@ -617,7 +631,7 @@ function FAQ(): React.ReactNode {
             ))}
           </div>
         </div>
-        <div className="border-b border-white/10" />
+        <div className="border-b border-ink/10" />
       </div>
     </section>
   )
@@ -642,8 +656,8 @@ function CopyCommand({ command, className = '' }: { command: string; className?:
       onClick={copyCommand}
       className={`${className} flex h-11 items-center justify-between border px-4 text-left font-[family-name:var(--font-mono)] text-[13px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#10A37F] ${
         copied
-          ? 'border-solid border-[#10A37F] bg-[#10A37F]/10 text-white'
-          : 'border-dashed border-white/20 bg-white/[0.04] text-white/85 hover:border-white/45'
+          ? 'border-solid border-[#10A37F] bg-[#10A37F]/10 text-ink'
+          : 'border-dashed border-ink/25 bg-ink/[0.04] text-ink/85 hover:border-ink/45'
       }`}
       aria-label={copied ? 'Copied install command' : 'Copy install command'}
     >
@@ -651,7 +665,7 @@ function CopyCommand({ command, className = '' }: { command: string; className?:
         <span className="text-[#10A37F]">{copied ? 'Copied' : '$'}</span>
         {!copied ? <span className="truncate text-current">{command}</span> : null}
       </span>
-      <span className={copied ? 'text-[#10A37F]' : 'text-white/40'}>{copied ? <CheckIcon /> : <CopyIcon />}</span>
+      <span className={copied ? 'text-[#10A37F]' : 'text-ink/40'}>{copied ? <CheckIcon /> : <CopyIcon />}</span>
     </button>
   )
 }
@@ -675,7 +689,7 @@ function CheckIcon(): React.ReactNode {
 
 function Footer(): React.ReactNode {
   return (
-    <footer className="relative min-h-[520px] overflow-hidden border-t border-white/10 bg-black text-white">
+    <footer className="relative min-h-[520px] overflow-hidden border-t border-ink/10 bg-panel text-ink">
       <div className={`${shell} relative z-10 grid gap-14 py-16 lg:grid-cols-[360px_1fr]`}>
         <div className="max-w-[360px]">
           <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.2em] text-[#10A37F]">
@@ -698,7 +712,7 @@ function Footer(): React.ReactNode {
             <FooterColumn title="Project" links={['GitHub', 'Releases', 'Issues', 'Security']} />
           </div>
 
-          <div className="flex flex-col gap-5 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-5 border-t border-ink/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.18em] text-[#10A37F]">
                 Connect
@@ -709,14 +723,14 @@ function Footer(): React.ReactNode {
                 ))}
               </div>
             </div>
-            <span className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.18em] text-white/40">
+            <span className="font-[family-name:var(--font-mono)] text-[11px] uppercase tracking-[0.18em] text-ink/40">
               © {new Date().getFullYear()} Orchentra · All rights reserved
             </span>
           </div>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute -bottom-[2.8vw] left-0 right-0 select-none text-center text-[18vw] font-semibold leading-none text-white/[0.045]">
+      <div className="pointer-events-none absolute -bottom-[2.8vw] left-0 right-0 select-none text-center text-[18vw] font-semibold leading-none text-ink/[0.045]">
         Orchentra.
       </div>
     </footer>
@@ -734,7 +748,7 @@ function FooterColumn({ title, links }: { title: string; links: string[] }): Rea
           <li key={link}>
             <a
               href={link === 'GitHub' ? GITHUB_URL : '#'}
-              className="text-[14px] text-white/70 transition group-hover/list:text-white/25 hover:!text-white"
+              className="text-[14px] text-ink/70 transition group-hover/list:text-ink/25 hover:!text-ink"
             >
               {link}
             </a>
@@ -750,7 +764,7 @@ function SocialLink({ name, label, href }: { name: SocialName; label: string; hr
     <a
       href={href}
       aria-label={label}
-      className="inline-flex size-5 items-center justify-center text-white/85 transition hover:-translate-y-0.5 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      className="inline-flex size-5 items-center justify-center text-ink/85 transition hover:-translate-y-0.5 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/60"
     >
       <SocialIcon name={name} />
     </a>
@@ -808,9 +822,9 @@ function SectionIntro({ marker, title, body }: { marker: string; title: string; 
     <div className="mb-12 grid gap-6 md:grid-cols-2 md:items-end">
       <div className="max-w-[560px]">
         <p className={eyebrow}>{marker}</p>
-        <h2 className="mt-5 text-[42px] font-semibold leading-[1] text-white sm:text-[58px]">{title}</h2>
+        <h2 className="mt-5 text-[42px] font-semibold leading-[1] text-ink sm:text-[58px]">{title}</h2>
       </div>
-      <p className="max-w-[560px] text-[18px] leading-8 text-white/60">{body}</p>
+      <p className="max-w-[560px] text-[18px] leading-8 text-ink/60">{body}</p>
     </div>
   )
 }
