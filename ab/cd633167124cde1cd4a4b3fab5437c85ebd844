@@ -1,0 +1,25 @@
+docs/README.md
+  s_f3f3a859522f2e::t_6cfd1c4450f74a 13
+.gitignore
+  s_f3f3a859522f2e::t_bb45e90388f34b 57
+docs/current/handover.md
+  s_f3f3a859522f2e::t_04acabb2288d14 1-48
+docs/current/roadmap.md
+  s_f3f3a859522f2e::t_a3177a08ac7baf 15,21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "abcd633167124cde1cd4a4b3fab5437c85ebd844",
+  "prompts": {},
+  "sessions": {
+    "s_f3f3a859522f2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2180-2ee6-7540-842a-42250ecf1dbf",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
