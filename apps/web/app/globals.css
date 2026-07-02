@@ -24,8 +24,24 @@
   font-display: swap;
 }
 
-@theme {
-  --color-cod: #080808;
+:root {
+  --bg-base: #f7f7f8;
+  --bg-panel: #ffffff;
+  --ink: #0a0a0a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-base: #080808;
+    --bg-panel: #000000;
+    --ink: #ffffff;
+  }
+}
+
+@theme inline {
+  --color-base: var(--bg-base);
+  --color-panel: var(--bg-panel);
+  --color-ink: var(--ink);
   --color-emerald-ai: #10a37f;
   --font-display: 'Nocturn', ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', monospace;
@@ -34,13 +50,13 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    background: #080808;
+    background: var(--bg-base);
   }
 
   body {
     margin: 0;
-    background: #080808;
-    color: #ffffff;
+    background: var(--bg-base);
+    color: var(--ink);
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="apps/web/public/black-logo.png" alt="Orchentra" width="120">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/white-logo.svg">
+  <img src="apps/web/public/black-logo.svg" alt="Orchentra" width="120">
+</picture>
 
 # Orchentra
 
