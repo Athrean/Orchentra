@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 
 const GITHUB_URL = 'https://github.com/Athrean/Orchentra'
 const INSTALL_COMMAND = 'npm install -g @orchentra/cli'
@@ -251,11 +252,28 @@ function Nav(): React.ReactNode {
 
 function Hero(): React.ReactNode {
   return (
-    <section className="overflow-hidden border-b border-[#001A00]/10 bg-white">
-      <div className={`${shell} flex min-h-[650px] flex-col items-center justify-center py-16 text-center md:py-20`}>
+    <section className="relative overflow-hidden bg-white">
+      {/* 6 Column Cards Background */}
+      <div className="absolute inset-0 grid grid-cols-6">
+        {[1, 2, 3, 4, 5, 6].map((num) => (
+          <motion.div
+            key={num}
+            initial="rest"
+            whileHover="hover"
+            animate="rest"
+            className="group relative h-full cursor-pointer"
+          >
+            <EdgeOverlay headImage={`/heads/${num}.png`} />
+          </motion.div>
+        ))}
+      </div>
+
+      <div
+        className={`${shell} relative z-10 flex min-h-[650px] flex-col items-center justify-center py-16 text-center md:py-20 pointer-events-none`}
+      >
         <a
           href="#runtime"
-          className="group inline-flex items-center border border-[#008000]/30 bg-white text-[13px] text-[#001A00]"
+          className="group inline-flex items-center border border-[#008000]/30 bg-white text-[13px] text-[#001A00] pointer-events-auto"
         >
           <span className="border-r border-[#008000]/30 px-3 py-2 font-[family-name:var(--font-mono)] text-[#008000]">
             New
@@ -264,16 +282,16 @@ function Hero(): React.ReactNode {
           <span className="border-l border-[#008000]/30 px-3 py-2 transition group-hover:translate-x-1">→</span>
         </a>
 
-        <h1 className="mt-10 max-w-[1120px] text-[52px] font-semibold leading-[0.96] tracking-[-0.01em] text-[#001A00] sm:text-[78px] lg:text-[96px]">
+        <h1 className="mt-10 max-w-[1120px] text-[52px] font-semibold leading-[0.96] tracking-[-0.01em] text-[#001A00] sm:text-[78px] lg:text-[96px] pointer-events-auto">
           Spends less. Writes less. Proves its work.
         </h1>
 
-        <p className="mt-8 max-w-[720px] text-[18px] leading-8 text-[#001A00]/68">
+        <p className="mt-8 max-w-[720px] text-[18px] leading-8 text-[#001A00]/68 pointer-events-auto">
           A coding crew in your terminal: fewer tokens, leaner diffs, review that runs the checks. Bring your own
           provider key.
         </p>
 
-        <div className="mt-9 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
+        <div className="mt-9 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row pointer-events-auto">
           <a href={GITHUB_URL} className={greenButton}>
             Install the CLI
             <span className="transition group-hover:translate-x-1">→</span>
@@ -283,7 +301,9 @@ function Hero(): React.ReactNode {
           </a>
         </div>
 
-        <CopyCommand command={INSTALL_COMMAND} className="mt-3 w-full max-w-[430px]" />
+        <div className="mt-3 w-full max-w-[430px] pointer-events-auto">
+          <CopyCommand command={INSTALL_COMMAND} className="w-full" />
+        </div>
       </div>
     </section>
   )
@@ -346,8 +366,11 @@ function Runtime(): React.ReactNode {
 
         <div className="grid border-l border-t border-[#001A00]/10 md:grid-cols-2 lg:grid-cols-3">
           {runtimeCards.map((card) => (
-            <article
+            <motion.article
               key={card.index}
+              initial="rest"
+              whileHover="hover"
+              animate="rest"
               className="group relative min-h-[320px] overflow-hidden border-b border-r border-[#001A00]/10 bg-white p-6 transition duration-200 hover:-translate-y-1 hover:border-[#001A00]"
             >
               <EdgeOverlay headImage={card.image} />
@@ -366,7 +389,7 @@ function Runtime(): React.ReactNode {
                   {card.signal}
                 </code>
               </div>
-            </article>
+            </motion.article>
           ))}
         </div>
       </div>
@@ -458,7 +481,10 @@ function Pricing(): React.ReactNode {
 
         <div className="grid border-l border-t border-[#001A00]/10 lg:grid-cols-3">
           {plans.map((plan) => (
-            <article
+            <motion.article
+              initial="rest"
+              whileHover="hover"
+              animate="rest"
               key={plan.name}
               className={`group relative flex min-h-[500px] flex-col border-b border-r border-[#001A00]/10 p-6 ${
                 plan.featured ? 'bg-[#001A00] text-white' : 'bg-white text-[#001A00] transition hover:border-[#001A00]'
@@ -505,7 +531,7 @@ function Pricing(): React.ReactNode {
                   <span className="transition group-hover:translate-x-1">→</span>
                 </a>
               </div>
-            </article>
+            </motion.article>
           ))}
         </div>
         <div className="border-b border-[#001A00]/10" />
@@ -517,33 +543,37 @@ function Pricing(): React.ReactNode {
 function FAQ(): React.ReactNode {
   return (
     <section id="faq" className="scroll-mt-[132px] bg-white py-20 sm:py-28">
-      <div className={`${frame} grid gap-10 border-x border-[#001A00]/10 px-5 sm:px-6 lg:grid-cols-[360px_1fr]`}>
-        <div className="max-w-[360px]">
-          <p className={eyebrow}>05 / FAQ</p>
-          <h2 className="mt-5 text-[42px] font-semibold leading-[1] text-[#001A00] sm:text-[58px]">
-            The practical questions.
-          </h2>
-          <p className="mt-6 text-[18px] leading-8 text-[#001A00]/64">
-            Short answers for putting a crew near a real repo.
-          </p>
-        </div>
+      <div className={frame}>
+        <div className="border-t border-[#001A00]/10" />
+        <div className="grid gap-10 border-x border-[#001A00]/10 px-5 py-20 sm:px-6 lg:grid-cols-[360px_1fr]">
+          <div className="max-w-[360px]">
+            <p className={eyebrow}>05 / FAQ</p>
+            <h2 className="mt-5 text-[42px] font-semibold leading-[1] text-[#001A00] sm:text-[58px]">
+              The practical questions.
+            </h2>
+            <p className="mt-6 text-[18px] leading-8 text-[#001A00]/64">
+              Short answers for putting a crew near a real repo.
+            </p>
+          </div>
 
-        <div className="border-t border-[#001A00]/14">
-          {faqs.map((item, index) => (
-            <details key={item.question} className="group border-b border-[#001A00]/14 py-6">
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-[22px] font-semibold leading-7 text-[#001A00]">
-                <span>{item.question}</span>
-                <span className="font-[family-name:var(--font-mono)] text-[#008000] transition group-open:rotate-45">
-                  +
-                </span>
-              </summary>
-              <p className="mt-5 max-w-[720px] text-[16px] leading-7 text-[#001A00]/64">{item.answer}</p>
-              <p className="mt-4 font-[family-name:var(--font-mono)] text-[12px] text-[#004700]">
-                [{String(index + 1).padStart(2, '0')}]
-              </p>
-            </details>
-          ))}
+          <div className="border-t border-[#001A00]/14">
+            {faqs.map((item, index) => (
+              <details key={item.question} className="group border-b border-[#001A00]/14 py-6">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-[22px] font-semibold leading-7 text-[#001A00]">
+                  <span>{item.question}</span>
+                  <span className="font-[family-name:var(--font-mono)] text-[#008000] transition group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-5 max-w-[720px] text-[16px] leading-7 text-[#001A00]/64">{item.answer}</p>
+                <p className="mt-4 font-[family-name:var(--font-mono)] text-[12px] text-[#004700]">
+                  [{String(index + 1).padStart(2, '0')}]
+                </p>
+              </details>
+            ))}
+          </div>
         </div>
+        <div className="border-b border-[#001A00]/10" />
       </div>
     </section>
   )
@@ -775,12 +805,12 @@ function EdgeOverlay({ headImage }: { headImage?: string }): React.ReactNode {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100"
+      className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
     >
       <span className="absolute inset-0 bg-[#001A00]" />
       {headImage ? (
-        <span className="absolute inset-0 z-0 overflow-hidden mix-blend-screen invert opacity-40">
-          <Image src={headImage} alt="" fill className="object-cover" />
+        <span className="absolute inset-0 z-0 overflow-hidden mix-blend-screen invert opacity-[0.65]">
+          <Image src={headImage} alt="" fill className="object-cover object-center" />
         </span>
       ) : (
         <span className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,128,0,0.36)_1px,transparent_0)] bg-[length:8px_8px] opacity-70" />
