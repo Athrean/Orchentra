@@ -1,0 +1,83 @@
+apps/cli/src/hooks/match.ts
+  s_f3f3a859522f2e::t_7312ba4f4babea 8-11
+packages/cli-tools/src/tools/grep-tool.ts
+  s_f3f3a859522f2e::t_ed733f667c7269 2,38,45-59
+apps/cli/src/hooks/cli-core-adapter.ts
+  s_f3f3a859522f2e::t_db7893eded1afd 1,4-12,18,30-91,103,106-125,127-131,142,148
+apps/cli/src/live-cli.ts
+  s_f3f3a859522f2e::t_a73e01ff3c272e 440
+apps/cli/tests/hooks/cli-core-adapter.test.ts
+  s_f3f3a859522f2e::t_045a4c6e0b91cf 60-92
+apps/cli/tests/hooks/match.test.ts
+  s_f3f3a859522f2e::t_5cc6b8c5378a75 21-25
+apps/cli/tests/live-cli-permissions.test.ts
+  s_f3f3a859522f2e::t_68bf0671a83494 1-77
+packages/cli-core/src/permissions/enforcer.ts
+  s_f3f3a859522f2e::t_5105819d700320 1,91-92,113-115,128,154,158,187-190,192-195,213,218-223,225,232-236
+packages/cli-core/src/permissions/policy.ts
+  s_f3f3a859522f2e::t_ef3bb238484f71 40
+packages/cli-core/src/runtime/conversation.ts
+  s_f3f3a859522f2e::t_d20efd03c5f925 65,344,357-361,370-381,389-391,398-399
+packages/cli-core/src/runtime/index.ts
+  s_f3f3a859522f2e::t_f1beb2ad8acc78 42
+packages/cli-core/src/runtime/permissions.ts
+  s_f3f3a859522f2e::t_5d526f92c70e03 23-28,157,296-297,308
+packages/cli-core/src/runtime/tools.ts
+  s_f3f3a859522f2e::t_312005276d01c1 69
+packages/cli-core/tests/conversation.test.ts
+  s_f3f3a859522f2e::t_9442100dcfc621 3,5,8,201-318
+packages/cli-core/tests/enforcer.test.ts
+  s_f3f3a859522f2e::t_fbc2cee9a2259c 7,23-60,423-458,531-532,535-536,605,619-628,639,774-788
+packages/cli-core/tests/permissions.test.ts
+  s_f3f3a859522f2e::t_7eb1fcec4fe7bb 190-197
+packages/cli-core/tests/policy.test.ts
+  s_f3f3a859522f2e::t_e0ea342d84c1e9 26-30
+packages/cli-tools/src/file-ops.ts
+  s_f3f3a859522f2e::t_7703355feddb48 1-2,108-113,115-127,131-163,481,483-503,511,513-514,524,526-527,535-542
+packages/cli-tools/src/index.ts
+  s_f3f3a859522f2e::t_19f2c22f4dbd37 45-46
+packages/cli-tools/src/tool-registry.ts
+  s_f3f3a859522f2e::t_944726999d3461 1-9,93-100
+packages/cli-tools/src/tools/bash-tool.ts
+  s_f3f3a859522f2e::t_b80f4282674fe7 90
+packages/cli-tools/src/tools/file-edit-tool.ts
+  s_a868557e201fdf::t_a14096e8edbfac 2,26,33-39
+packages/cli-tools/src/tools/file-read-tool.ts
+  s_a868557e201fdf::t_8a051e091a9647 2,24,31
+packages/cli-tools/src/tools/file-write-tool.ts
+  s_a868557e201fdf::t_f69611f243971a 2,22,29
+packages/cli-tools/src/tools/glob-tool.ts
+  s_a868557e201fdf::t_c488234e0bb6d0 2,22,29
+packages/cli-tools/src/tools/notebook-edit-tool.ts
+  s_f3f3a859522f2e::t_648aca3cd27dff 2,34,39-41,76
+packages/cli-tools/tests/file-ops.test.ts
+  s_f3f3a859522f2e::t_665455f1f79ea8 2,8,10,13,15,154-164,173-286,298-309
+packages/cli-tools/tests/mcp-stdio-e2e.test.ts
+  s_f3f3a859522f2e::t_cf54a3fa052d9b 52
+packages/cli-tools/tests/tool-registry.test.ts
+  s_f3f3a859522f2e::t_182fa65058bcd5 2,55-79,160-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "2300f0d769a36568e65f48720c48d5b4ca4fd9bd",
+  "prompts": {},
+  "sessions": {
+    "s_a868557e201fdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f21d1-07c6-7521-a669-02bab7d48348",
+        "model": "unknown"
+      },
+      "human_author": "Test <test@example.com>"
+    },
+    "s_f3f3a859522f2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2180-2ee6-7540-842a-42250ecf1dbf",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
