@@ -1,14 +1,18 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, symlinkSync } from 'node:fs'
 import {
   writeFile,
   readFile,
   editFile,
   globSearch,
+  globSearchInWorkspace,
   grepSearch,
+  grepSearchInWorkspace,
   expandBraces,
   isSymlinkEscape,
+  editFileInWorkspace,
   readFileInWorkspace,
+  writeFileInWorkspace,
 } from '../src/file-ops'
 
 function tempPath(name: string): string {
@@ -147,6 +151,17 @@ describe('workspace boundary enforcement', () => {
     expect(result.file.content).toBe('safe content')
   })
 
+  test('resolves relative reads and writes against workspace root', async () => {
+    const ws = tempPath('ws-relative')
+    mkdirSync(`${ws}/src`, { recursive: true })
+
+    await writeFileInWorkspace('src/inside.txt', 'safe content', ws)
+
+    const result = await readFileInWorkspace('src/inside.txt', ws)
+    expect(result.file.filePath).toBe(`${ws}/src/inside.txt`)
+    expect(result.file.content).toBe('safe content')
+  })
+
   test('rejects reads outside workspace', async () => {
     const ws = tempPath('ws-boundary')
     const outside = tempPath('ws-outside.txt')
@@ -154,6 +169,120 @@ describe('workspace boundary enforcement', () => {
 
     mkdirSync(ws, { recursive: true })
     expect(readFileInWorkspace(outside, ws)).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects parent traversal reads after resolution', async () => {
+    const root = tempPath('ws-read-traversal')
+    const ws = `${root}/project`
+    const outside = `${root}/outside.txt`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(outside, 'unsafe')
+
+    expect(readFileInWorkspace('../outside.txt', ws)).rejects.toThrow('escapes workspace')
+  })
+
+  test('allows writes and edits inside workspace', async () => {
+    const ws = tempPath('ws-write-edit')
+    const filePath = `${ws}/inside.txt`
+
+    const write = await writeFileInWorkspace(filePath, 'alpha', ws)
+    expect(write.type).toBe('create')
+
+    const edit = await editFileInWorkspace(filePath, 'alpha', 'omega', false, ws)
+    expect(edit.filePath).toBe(filePath)
+
+    const readBack = await readFileInWorkspace(filePath, ws)
+    expect(readBack.file.content).toBe('omega')
+  })
+
+  test('rejects writes outside workspace', async () => {
+    const ws = tempPath('ws-write-boundary')
+    const outside = tempPath('ws-write-outside.txt')
+    mkdirSync(ws, { recursive: true })
+
+    expect(writeFileInWorkspace(outside, 'unsafe', ws)).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects glob base paths outside workspace', async () => {
+    const ws = tempPath('ws-glob-boundary')
+    const outside = tempPath('ws-glob-outside')
+    await Bun.write(`${outside}/a.ts`, 'unsafe')
+    mkdirSync(ws, { recursive: true })
+
+    expect(globSearchInWorkspace('*.ts', ws, outside)).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects glob patterns that traverse outside workspace', async () => {
+    const root = tempPath('ws-glob-traversal')
+    const ws = `${root}/project`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(`${root}/outside.ts`, 'unsafe')
+
+    expect(globSearchInWorkspace('../*.ts', ws)).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects glob base symlinks that escape workspace', async () => {
+    const root = tempPath('ws-glob-symlink')
+    const ws = `${root}/project`
+    const outside = `${root}/outside`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(`${outside}/a.ts`, 'unsafe')
+    symlinkSync(outside, `${ws}/linked`)
+
+    expect(globSearchInWorkspace('*.ts', ws, 'linked')).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects grep paths outside workspace', async () => {
+    const ws = tempPath('ws-grep-boundary')
+    const outside = tempPath('ws-grep-outside')
+    await Bun.write(`${outside}/a.txt`, 'unsafe')
+    mkdirSync(ws, { recursive: true })
+
+    expect(grepSearchInWorkspace({ pattern: 'unsafe', path: outside }, ws)).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects grep relative paths that traverse outside workspace', async () => {
+    const root = tempPath('ws-grep-traversal')
+    const ws = `${root}/project`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(`${root}/outside.txt`, 'unsafe')
+
+    expect(grepSearchInWorkspace({ pattern: 'unsafe', path: '../outside.txt' }, ws)).rejects.toThrow(
+      'escapes workspace',
+    )
+  })
+
+  test('rejects grep base symlinks that escape workspace', async () => {
+    const root = tempPath('ws-grep-symlink')
+    const ws = `${root}/project`
+    const outside = `${root}/outside`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(`${outside}/a.txt`, 'unsafe')
+    symlinkSync(outside, `${ws}/linked`)
+
+    expect(grepSearchInWorkspace({ pattern: 'unsafe', path: 'linked' }, ws)).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects reads through symlinks that escape workspace', async () => {
+    const root = tempPath('ws-read-symlink')
+    const ws = `${root}/project`
+    const outside = `${root}/outside.txt`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(outside, 'unsafe')
+    symlinkSync(outside, `${ws}/link.txt`)
+
+    expect(readFileInWorkspace('link.txt', ws)).rejects.toThrow('escapes workspace')
+  })
+
+  test('rejects writes through symlinks that escape workspace', async () => {
+    const root = tempPath('ws-write-symlink')
+    const ws = `${root}/project`
+    const outside = `${root}/outside.txt`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(outside, 'unsafe')
+    symlinkSync(outside, `${ws}/link.txt`)
+
+    expect(writeFileInWorkspace('link.txt', 'still unsafe', ws)).rejects.toThrow('escapes workspace')
   })
 })
 
@@ -165,5 +294,17 @@ describe('isSymlinkEscape', () => {
 
     const result = await isSymlinkEscape(filePath, ws)
     expect(result).toBe(false)
+  })
+
+  test('symlink pointing outside workspace is an escape', async () => {
+    const root = tempPath('ws-symlink-escape')
+    const ws = `${root}/project`
+    const outside = `${root}/outside.txt`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(outside, 'unsafe')
+    symlinkSync(outside, `${ws}/link.txt`)
+
+    const result = await isSymlinkEscape(`${ws}/link.txt`, ws)
+    expect(result).toBe(true)
   })
 })

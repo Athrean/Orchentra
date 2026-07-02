@@ -66,6 +66,7 @@ export interface ToolDefinition {
 
 export interface ToolRegistry {
   list(): ProviderToolSchema[]
+  requirements?(): Readonly<Record<string, import('./permissions').PermissionMode>>
   has(name: string): boolean
   execute(name: string, args: unknown, ctx: ToolContext): Promise<ToolResult>
   register(tool: ToolDefinition): void

@@ -1,5 +1,5 @@
 import type { ToolDefinition, ToolResult, ToolContext } from '@orchentra/cli-core'
-import { readFile } from '../file-ops'
+import { readFileInWorkspace } from '../file-ops'
 
 interface ReadFileInput {
   path: string
@@ -21,14 +21,14 @@ export const fileReadTool: ToolDefinition = {
     required: ['path'],
     additionalProperties: false,
   },
-  async execute(args: unknown, _ctx: ToolContext): Promise<ToolResult> {
+  async execute(args: unknown, ctx: ToolContext): Promise<ToolResult> {
     const input = args as ReadFileInput
     if (!input?.path) {
       return { content: 'error: path is required', isError: true }
     }
 
     try {
-      const result = await readFile(input.path, input.offset, input.limit)
+      const result = await readFileInWorkspace(input.path, ctx.cwd, input.offset, input.limit)
       return { content: result.file.content, isError: false }
     } catch (e) {
       return { content: `read error: ${(e as Error).message}`, isError: true }

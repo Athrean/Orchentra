@@ -5,5 +5,8 @@ import type { HookConfig, HookEvent, HookMatch } from './types'
  * `tools` list contains either an exact `toolName` or the wildcard `*`.
  */
 export function matchHooks(config: HookConfig, event: HookEvent, toolName: string): readonly HookMatch[] {
-  return config.hooks.filter((h) => h.event === event && (h.tools.includes('*') || h.tools.includes(toolName)))
+  const normalizedToolName = toolName.toLowerCase()
+  return config.hooks.filter(
+    (h) => h.event === event && h.tools.some((tool) => tool === '*' || tool.toLowerCase() === normalizedToolName),
+  )
 }

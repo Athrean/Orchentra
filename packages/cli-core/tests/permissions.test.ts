@@ -187,6 +187,14 @@ describe('PermissionPolicy', () => {
     if (denied.kind === 'deny') expect(denied.reason).toContain('denied by rule')
   })
 
+  test('matches rule tool names case-insensitively', () => {
+    const policy = new PermissionPolicy('read-only')
+      .withToolRequirement('bash', 'danger-full-access')
+      .withPermissionRules({ allow: ['Bash(git:*)'], deny: [], ask: [] })
+
+    expect(policy.authorize('bash', '{"command":"git status"}')).toEqual({ kind: 'allow' })
+  })
+
   test('ask rules force prompt even when mode allows', () => {
     const policy = new PermissionPolicy('danger-full-access')
       .withToolRequirement('bash', 'danger-full-access')

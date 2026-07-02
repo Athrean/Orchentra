@@ -39,6 +39,7 @@ export {
   decide,
   isPermissionMode,
   permissionModeRank,
+  requiredModeForLevel,
   parseRule,
   extractPermissionSubject,
   PermissionPolicy,

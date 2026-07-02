@@ -1,5 +1,5 @@
 import type { ToolDefinition, ToolResult, ToolContext } from '@orchentra/cli-core'
-import { globSearch } from '../file-ops'
+import { globSearchInWorkspace } from '../file-ops'
 
 interface GlobInput {
   pattern: string
@@ -19,14 +19,14 @@ export const globTool: ToolDefinition = {
     required: ['pattern'],
     additionalProperties: false,
   },
-  async execute(args: unknown, _ctx: ToolContext): Promise<ToolResult> {
+  async execute(args: unknown, ctx: ToolContext): Promise<ToolResult> {
     const input = args as GlobInput
     if (!input?.pattern) {
       return { content: 'error: pattern is required', isError: true }
     }
 
     try {
-      const result = await globSearch(input.pattern, input.path)
+      const result = await globSearchInWorkspace(input.pattern, ctx.cwd, input.path)
       return {
         content: `${result.numFiles} files found (${result.durationMs}ms)${result.truncated ? ' [truncated]' : ''}\n${result.filenames.join('\n')}`,
         isError: false,

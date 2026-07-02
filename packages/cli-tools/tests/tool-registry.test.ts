@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { mkdirSync } from 'node:fs'
 import { DefaultToolRegistry, BUILTIN_TOOLS } from '../src/tool-registry'
 import type { ToolDefinition, ToolContext } from '@orchentra/cli-core'
 
@@ -49,6 +50,31 @@ describe('DefaultToolRegistry', () => {
     registry.register(custom)
     expect(registry.has('custom_test')).toBe(true)
     expect(registry.list().length).toBe(BUILTIN_TOOLS.length + 1)
+  })
+
+  test('requirements() derives permission modes from registered tool levels', () => {
+    const registry = new DefaultToolRegistry()
+    const requirements = registry.requirements()
+
+    expect(requirements.read_file).toBe('read-only')
+    expect(requirements.write_file).toBe('workspace-write')
+    expect(requirements.bash).toBe('danger-full-access')
+    expect(requirements.todo_write).toBe('workspace-write')
+    expect(requirements.web_search).toBe('danger-full-access')
+  })
+
+  test('requirements() includes custom registrations', () => {
+    const registry = new DefaultToolRegistry()
+    const custom: ToolDefinition = {
+      name: 'custom_admin',
+      description: 'test admin tool',
+      level: 'admin',
+      inputSchema: { type: 'object', properties: {} },
+      execute: async () => ({ content: 'custom result', isError: false }),
+    }
+    registry.register(custom)
+
+    expect(registry.requirements().custom_admin).toBe('danger-full-access')
   })
 
   test('execute() dispatches to read_file', async () => {
@@ -130,6 +156,43 @@ describe('DefaultToolRegistry', () => {
     const result = await registry.execute('grep_search', {}, mockCtx)
     expect(result.isError).toBe(true)
     expect(result.content).toContain('pattern is required')
+  })
+
+  test('execute() passes bash permissionMode through validation', async () => {
+    const registry = new DefaultToolRegistry()
+    const result = await registry.execute(
+      'bash',
+      { command: 'touch blocked-by-read-only' },
+      { ...mockCtx, permissionMode: 'read-only' },
+    )
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('blocked')
+  })
+
+  test('execute() rejects notebook edits outside workspace', async () => {
+    const registry = new DefaultToolRegistry()
+    const root = `/tmp/orchentra-tool-notebook-${Date.now().toString(36)}`
+    const ws = `${root}/workspace`
+    const outside = `${root}/outside.ipynb`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(
+      outside,
+      JSON.stringify({
+        cells: [{ cell_type: 'markdown', metadata: {}, source: 'before' }],
+        metadata: {},
+        nbformat: 4,
+        nbformat_minor: 5,
+      }),
+    )
+
+    const result = await registry.execute(
+      'notebook_edit',
+      { notebook_path: '../outside.ipynb', cell_number: 0, new_source: 'after' },
+      { ...mockCtx, cwd: ws },
+    )
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('escapes workspace')
   })
 })
 

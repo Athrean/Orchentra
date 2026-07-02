@@ -1,5 +1,5 @@
 import type { ToolDefinition, ToolResult, ToolContext } from '@orchentra/cli-core'
-import { writeFile } from '../file-ops'
+import { writeFileInWorkspace } from '../file-ops'
 
 interface WriteFileInput {
   path: string
@@ -19,14 +19,14 @@ export const fileWriteTool: ToolDefinition = {
     required: ['path', 'content'],
     additionalProperties: false,
   },
-  async execute(args: unknown, _ctx: ToolContext): Promise<ToolResult> {
+  async execute(args: unknown, ctx: ToolContext): Promise<ToolResult> {
     const input = args as WriteFileInput
     if (!input?.path || input.content === undefined) {
       return { content: 'error: path and content are required', isError: true }
     }
 
     try {
-      const result = await writeFile(input.path, input.content)
+      const result = await writeFileInWorkspace(input.path, input.content, ctx.cwd)
       return {
         content: `${result.type}: ${result.filePath}`,
         isError: false,
