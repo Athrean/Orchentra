@@ -12,10 +12,13 @@ Last refreshed: 2026-07-02.
 - Review/build feedback memory guidance.
 - Tool-output budgeting receipts.
 - Terse output accounting.
+- P0 permission safety for real registry tool names, workspace-safe file/search/notebook tools, hook permission decisions, and admin tool escalation.
 
 ## Build Order
 
 ### P0: Safety And Truth
+
+Status: shipped in `0c4412a9 fix(cli): wire permission safety for real tools`.
 
 1. Fix permission/tool-name mismatch so real tools like `read_file`, `write_file`, `edit_file`, `glob_search`, and `grep_search` are enforced.
 2. Pass `workspaceRoot`, tool requirements, hook overrides, and permission mode through `ConversationRuntime`.

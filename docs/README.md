@@ -10,6 +10,7 @@ Root `README.md` is the public entry point. Everything else that explains produc
 | [`current/architecture.md`](current/architecture.md) | Current package/module map after the CLI-only cut              |
 | [`current/commands.md`](current/commands.md)         | Current slash commands and planned naming cleanup              |
 | [`current/roadmap.md`](current/roadmap.md)           | What shipped recently and what should build next               |
+| [`current/handover.md`](current/handover.md)         | Latest shipped state, verification, and next handoff notes     |
 | [`current/competitors.md`](current/competitors.md)   | Current competitor notes, including CommandCode                |
 | [`current/marketing.md`](current/marketing.md)       | Static marketing-site design direction                         |
 | [`current/canonical.md`](current/canonical.md)       | Full agent operating contract                                  |
