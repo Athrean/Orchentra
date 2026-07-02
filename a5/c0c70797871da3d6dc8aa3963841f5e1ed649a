@@ -1,0 +1,41 @@
+README.md
+  s_f3f3a859522f2e::t_8def6516136a47 3,7,9,15,19,21,23,25-37,61,68,75,80-86,89,114,136,142-143
+docs/README.md
+  s_f3f3a859522f2e::t_1de35fc9307913 1-26
+docs/current/agents.md
+  s_f3f3a859522f2e::t_13abdeccb17a2a 1-59
+docs/current/architecture.md
+  s_f3f3a859522f2e::t_c2c9e56ebf46f6 1-58
+docs/current/canonical.md
+  s_f3f3a859522f2e::t_59a3df9e70640a 1-259
+docs/current/commands.md
+  s_f3f3a859522f2e::t_594506f9f950db 1-46
+docs/current/marketing.md
+  s_f3f3a859522f2e::t_9183f921ea53fb 1-389
+docs/current/product.md
+  s_f3f3a859522f2e::t_0b1d84e6916271 1-48
+.gitignore
+  s_f3f3a859522f2e::t_1ba0003e7abf5b 31-38
+docs/current/competitors.md
+  s_f3f3a859522f2e::t_f98a90d4ee2f22 1-67
+docs/current/roadmap.md
+  s_f3f3a859522f2e::t_8ab82c6291f025 1-55
+docs/proposals/hosted-credit-proxy.md
+  s_f3f3a859522f2e::t_632ee86fc97dae 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "a5c0c70797871da3d6dc8aa3963841f5e1ed649a",
+  "prompts": {},
+  "sessions": {
+    "s_f3f3a859522f2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2180-2ee6-7540-842a-42250ecf1dbf",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Test <test@example.com>"
+    }
+  }
+}
