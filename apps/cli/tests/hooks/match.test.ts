@@ -18,6 +18,11 @@ describe('matchHooks', () => {
     expect(out.map((h) => h.command)).toEqual(['cmd-pre-bash'])
   })
 
+  test('matches tool names case-insensitively', () => {
+    const out = matchHooks(cfg, 'pre_tool_use', 'bash')
+    expect(out.map((h) => h.command)).toEqual(['cmd-pre-bash'])
+  })
+
   test('matches via wildcard *', () => {
     const out = matchHooks(cfg, 'post_tool_use', 'SomethingObscure')
     expect(out.map((h) => h.command)).toEqual(['cmd-post-all'])

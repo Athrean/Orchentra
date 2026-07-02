@@ -1,6 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import type { ToolDefinition, ToolResult, ToolContext } from '@orchentra/cli-core'
+import { readFileInWorkspace, writeFileInWorkspace } from '../file-ops'
 
 interface NotebookEditInput {
   notebook_path: string
@@ -32,13 +31,14 @@ export const notebookEditTool: ToolDefinition = {
       return { content: 'error: notebook_path is required', isError: true }
     }
 
-    const filePath = resolve(ctx.cwd, input.notebook_path)
-    if (!filePath.endsWith('.ipynb')) {
+    if (!input.notebook_path.endsWith('.ipynb')) {
       return { content: 'error: file must be a .ipynb notebook', isError: true }
     }
 
     try {
-      const raw = readFileSync(filePath, 'utf8')
+      const read = await readFileInWorkspace(input.notebook_path, ctx.cwd)
+      const raw = read.file.content
+      const filePath = read.file.filePath
       const nb = JSON.parse(raw) as { cells: Array<Record<string, unknown>> }
       const mode = input.edit_mode ?? 'replace'
 
@@ -73,7 +73,7 @@ export const notebookEditTool: ToolDefinition = {
         nb.cells[input.cell_number].source = input.new_source
       }
 
-      writeFileSync(filePath, JSON.stringify(nb, null, 1) + '\n')
+      await writeFileInWorkspace(filePath, JSON.stringify(nb, null, 1) + '\n', ctx.cwd)
       return { content: `Notebook ${filePath} updated (${mode} cell ${input.cell_number})`, isError: false }
     } catch (e) {
       return { content: `notebook_edit error: ${(e as Error).message}`, isError: true }

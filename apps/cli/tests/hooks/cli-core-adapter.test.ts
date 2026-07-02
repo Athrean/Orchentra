@@ -57,6 +57,39 @@ describe('CliCoreHookAdapter', () => {
     expect(result.messages).toEqual(['audit: bash invocation logged'])
   })
 
+  test('pre-tool hook matches runtime lower-case tool names against Bash config', async () => {
+    const dir = makeWorkspace()
+    const script = writeScript(dir, 'note.sh', '#!/bin/sh\necho "matched lower-case bash"\n')
+    writeConfig(dir, [{ event: 'pre_tool_use', tools: ['Bash'], command: script }])
+    const adapter = new CliCoreHookAdapter(dir)
+
+    const result = await adapter.runPreToolUse('bash', '{"command":"ls"}')
+
+    expect(result.denied).toBe(false)
+    expect(result.messages).toEqual(['matched lower-case bash'])
+  })
+
+  test('pre-tool hook JSON permission decision is preserved for core runtime', async () => {
+    const dir = makeWorkspace()
+    const script = writeScript(
+      dir,
+      'permission.sh',
+      [
+        '#!/bin/sh',
+        `echo '{"hookSpecificOutput":{"permissionDecision":"ask","permissionDecisionReason":"confirm deploy","updatedInput":{"command":"npm test"}}}'`,
+      ].join('\n'),
+    )
+    writeConfig(dir, [{ event: 'pre_tool_use', tools: ['Bash'], command: script }])
+    const adapter = new CliCoreHookAdapter(dir)
+
+    const result = await adapter.runPreToolUse('bash', '{"command":"npm publish"}')
+
+    expect(result.denied).toBe(false)
+    expect(result.permissionOverride).toBe('ask')
+    expect(result.permissionReason).toBe('confirm deploy')
+    expect(result.updatedInput).toBe('{"command":"npm test"}')
+  })
+
   test('post-tool hook stdout becomes annotation message', async () => {
     const dir = makeWorkspace()
     const script = writeScript(dir, 'log.sh', '#!/bin/sh\necho "post-log: Bash completed"\n')

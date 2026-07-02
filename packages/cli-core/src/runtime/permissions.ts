@@ -20,6 +20,12 @@ export function permissionModeRank(mode: PermissionMode): number {
   return MODE_RANK[mode]
 }
 
+export function requiredModeForLevel(level: ToolLevel): PermissionMode {
+  if (level === 'read') return 'read-only'
+  if (level === 'write') return 'workspace-write'
+  return 'danger-full-access'
+}
+
 export type PermissionOverride = 'allow' | 'deny' | 'ask'
 
 export interface PermissionContext {
@@ -148,7 +154,7 @@ export function extractPermissionSubject(input: string): string | null {
 }
 
 function ruleMatches(rule: PermissionRule, toolName: string, input: string): boolean {
-  if (rule.toolName !== toolName) return false
+  if (rule.toolName.toLowerCase() !== toolName.toLowerCase()) return false
   const subject = extractPermissionSubject(input)
   switch (rule.matcher.kind) {
     case 'any':
@@ -287,6 +293,8 @@ function promptOrDeny(
 }
 
 export function decide(mode: PermissionMode, level: ToolLevel): PermissionDecision {
+  const requiredMode = requiredModeForLevel(level)
+
   if (mode === 'danger-full-access' || mode === 'allow') {
     return { allowed: true, requiresConfirmation: false }
   }
@@ -297,7 +305,7 @@ export function decide(mode: PermissionMode, level: ToolLevel): PermissionDecisi
     return {
       allowed: false,
       requiresConfirmation: false,
-      reason: `blocked: session is read-only, tool requires ${level}`,
+      reason: `blocked: session is read-only, tool requires ${requiredMode}`,
     }
   }
   if (mode === 'prompt') {

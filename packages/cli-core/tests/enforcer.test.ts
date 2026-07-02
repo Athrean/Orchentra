@@ -4,7 +4,7 @@ import { createPermissionStore } from '../src/permissions/store'
 import type { ToolCall } from '../src/runtime/events'
 
 const bashCall: ToolCall = { id: 't1', name: 'bash', input: { command: 'npm publish --access public' } }
-const readCall: ToolCall = { id: 't2', name: 'read', input: { path: '/tmp/x' } }
+const readCall: ToolCall = { id: 't2', name: 'read_file', input: { path: '/tmp/x' } }
 
 const ctx = (askUser: AskUser): { mode: 'workspace-write'; askUser: AskUser } => ({ mode: 'workspace-write', askUser })
 
@@ -18,6 +18,44 @@ describe('enforce', () => {
     const decision = await createEnforcer().enforce(readCall, ctx(askUser))
     expect(decision.kind).toBe('allow')
     expect(called).toBe(false)
+  })
+
+  test('auto-allows actual read-class registry tools without consulting askUser', async () => {
+    for (const name of ['read_file', 'glob_search', 'grep_search', 'task_get', 'task_list', 'git_status']) {
+      let called = false
+      const decision = await createEnforcer().enforce(
+        { id: name, name, input: { path: '/tmp/x', pattern: 'TODO' } },
+        {
+          mode: 'workspace-write',
+          askUser: async () => {
+            called = true
+            return 'deny'
+          },
+          toolRequirements: {
+            [name]: 'read-only',
+          },
+        },
+      )
+      expect(decision.kind).toBe('allow')
+      expect(called).toBe(false)
+    }
+  })
+
+  test('admin web tools do not use the read auto-allow path', async () => {
+    let prompted = false
+    const decision = await createEnforcer().enforce(
+      { id: 'web', name: 'web_search', input: { query: 'release notes' } },
+      {
+        mode: 'workspace-write',
+        askUser: async () => {
+          prompted = true
+          return 'allow-once'
+        },
+        toolRequirements: { web_search: 'danger-full-access' },
+      },
+    )
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
   })
 
   test('prompts for non-read tools and allows on "allow-once"', async () => {
@@ -382,6 +420,42 @@ describe('enforce — mode escalation prompt', () => {
     expect(prompted).toBe(true)
   })
 
+  test('read-only + actual write-level registry tools → prompts for escalation', async () => {
+    for (const name of ['todo_write', 'task_update', 'mcp__fake__write_file']) {
+      let prompted = false
+      const decision = await createEnforcer().enforce(
+        { id: name, name, input: { todos: [], taskId: 't1', status: 'completed' } },
+        {
+          mode: 'read-only',
+          askUser: async () => {
+            prompted = true
+            return 'allow-once'
+          },
+          toolRequirements: { [name]: 'workspace-write' },
+        },
+      )
+      expect(prompted).toBe(true)
+      expect(decision.kind).toBe('allow')
+    }
+  })
+
+  test('workspace-write + dynamic MCP admin tool → prompts for danger escalation', async () => {
+    let prompted = false
+    const decision = await createEnforcer().enforce(
+      { id: 'mcp', name: 'mcp__deploy__apply', input: { plan: 'prod' } },
+      {
+        mode: 'workspace-write',
+        askUser: async () => {
+          prompted = true
+          return 'allow-once'
+        },
+        toolRequirements: { mcp__deploy__apply: 'danger-full-access' },
+      },
+    )
+    expect(prompted).toBe(true)
+    expect(decision.kind).toBe('allow')
+  })
+
   test('danger-full-access mode + danger-full-access-required → no escalation prompt', async () => {
     const store = createPermissionStore()
     store.remember({ tool: 'bash', pattern: '*', decision: 'allow' })
@@ -454,12 +528,12 @@ describe('enforce — mode escalation prompt', () => {
 })
 
 describe('workspace boundary check (write/edit tools)', () => {
-  const writeOutside: ToolCall = { id: 'w', name: 'write', input: { file_path: '/etc/passwd', content: 'x' } }
-  const writeInside: ToolCall = { id: 'w', name: 'write', input: { file_path: '/work/src/x.ts', content: 'x' } }
+  const writeOutside: ToolCall = { id: 'w', name: 'write_file', input: { path: '/etc/passwd', content: 'x' } }
+  const writeInside: ToolCall = { id: 'w', name: 'write_file', input: { path: '/work/src/x.ts', content: 'x' } }
   const editOutside: ToolCall = {
     id: 'e',
-    name: 'edit',
-    input: { file_path: '/etc/hosts', old_string: 'a', new_string: 'b' },
+    name: 'edit_file',
+    input: { path: '/etc/hosts', old_string: 'a', new_string: 'b' },
   }
 
   test('write outside workspace + mode=workspace-write → deny', async () => {
@@ -528,7 +602,7 @@ describe('workspace boundary check (write/edit tools)', () => {
   })
 
   test('relative path normalized against workspace root', async () => {
-    const writeRelative: ToolCall = { id: 'w', name: 'write', input: { file_path: 'src/x.ts', content: 'x' } }
+    const writeRelative: ToolCall = { id: 'w', name: 'write_file', input: { path: 'src/x.ts', content: 'x' } }
     let prompted = false
     const decision = await createEnforcer().enforce(writeRelative, {
       mode: 'workspace-write',
@@ -542,6 +616,16 @@ describe('workspace boundary check (write/edit tools)', () => {
     expect(decision.kind).toBe('allow')
   })
 
+  test('relative parent traversal is denied after path resolution', async () => {
+    const traversal: ToolCall = { id: 'w', name: 'write_file', input: { path: '../outside.txt', content: 'x' } }
+    const decision = await createEnforcer().enforce(traversal, {
+      mode: 'workspace-write',
+      askUser: async () => 'allow-once',
+      workspaceRoot: '/work/project',
+    })
+    expect(decision.kind).toBe('deny')
+  })
+
   test('workspace root with trailing slash handled', async () => {
     const decision = await createEnforcer().enforce(writeInside, {
       mode: 'workspace-write',
@@ -552,7 +636,7 @@ describe('workspace boundary check (write/edit tools)', () => {
   })
 
   test('prefix match boundary bug: /workspacex/hack must not pass for /workspace', async () => {
-    const sneaky: ToolCall = { id: 's', name: 'write', input: { file_path: '/workspacex/hack', content: 'x' } }
+    const sneaky: ToolCall = { id: 's', name: 'write_file', input: { path: '/workspacex/hack', content: 'x' } }
     const decision = await createEnforcer().enforce(sneaky, {
       mode: 'workspace-write',
       askUser: async () => 'allow-once',
@@ -684,6 +768,21 @@ describe('enforce — hook context override', () => {
       store,
     })
     expect(prompted).toBe(false)
+    expect(decision.kind).toBe('allow')
+  })
+
+  test('hookOverride.decision="allow" cannot bypass required mode escalation', async () => {
+    let prompted = false
+    const decision = await createEnforcer().enforce(bashCall, {
+      mode: 'workspace-write',
+      askUser: async () => {
+        prompted = true
+        return 'allow-once'
+      },
+      hookOverride: { decision: 'allow', reason: 'hook approved' },
+      toolRequirements: { bash: 'danger-full-access' },
+    })
+    expect(prompted).toBe(true)
     expect(decision.kind).toBe('allow')
   })
 

@@ -49,6 +49,7 @@ describe('MCP stdio end-to-end', () => {
       const added = manager.registerInto(registry)
       expect(added).toBe(1)
       expect(registry.has('mcp__fake__echo')).toBe(true)
+      expect(registry.requirements().mcp__fake__echo).toBe('workspace-write')
       const result = await registry.execute(
         'mcp__fake__echo',
         { message: 'from registry' },

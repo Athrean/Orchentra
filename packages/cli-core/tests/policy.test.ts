@@ -23,6 +23,11 @@ describe('evaluate — single rule', () => {
     if (v.kind !== 'no-match') expect(v.rule.pattern).toBe('gh issue *')
   })
 
+  test('tool names match case-insensitively', () => {
+    const r = rules({ tool: 'Bash', pattern: 'gh issue *', decision: 'allow' })
+    expect(evaluate(ghList, r).kind).toBe('allow')
+  })
+
   test('deny rule that matches → deny', () => {
     const r = rules({ tool: 'bash', pattern: 'npm publish *', decision: 'deny' })
     expect(evaluate(npmPub, r).kind).toBe('deny')

@@ -42,6 +42,8 @@ export {
   globSearch,
   grepSearch,
   readFileInWorkspace,
+  globSearchInWorkspace,
+  grepSearchInWorkspace,
   writeFileInWorkspace,
   editFileInWorkspace,
   isSymlinkEscape,

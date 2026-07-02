@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { ConversationRuntime, type ConversationConfig, type ConversationDeps } from '../src/runtime/conversation'
+import type { HookRunner } from '../src/runtime/hooks'
 import type { Provider, ProviderStreamEvent } from '../src/runtime/provider'
-import type { ToolRegistry, ToolResult } from '../src/runtime/tools'
+import type { ToolContext, ToolRegistry, ToolResult } from '../src/runtime/tools'
 import type { RuntimeEvent } from '../src/runtime/events'
 import { buildSystemPrompt } from '../src/runtime/system-prompt'
+import { createEnforcer } from '../src/permissions/enforcer'
 
 function fakeProvider(responses: ProviderStreamEvent[][]): Provider {
   let callIndex = 0
@@ -194,6 +196,124 @@ describe('ConversationRuntime', () => {
     expect(toolResult).toMatchObject({ kind: 'tool_result', result: { content: 'file content', isError: false } })
     const done = events.find((e) => e.kind === 'done')
     expect(done).toMatchObject({ kind: 'done', reason: 'stop' })
+  })
+
+  test('passes permission mode into tool context', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'bash', input: { command: 'echo ok' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+
+    let capturedCtx: ToolContext | undefined
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'bash', description: 'bash', inputSchema: {} }],
+      has: (n) => n === 'bash',
+      execute: async (_name, _args, ctx) => {
+        capturedCtx = ctx
+        return { content: 'ok', isError: false }
+      },
+    }
+
+    const rt = new ConversationRuntime(makeConfig(), {
+      ...makeDeps(provider, tools),
+      permissionMode: 'danger-full-access',
+    })
+    await collect(rt, 'run bash')
+
+    expect(capturedCtx?.permissionMode).toBe('danger-full-access')
+  })
+
+  test('passes workspace root, tool requirements, and pre-hook override to rich enforcer', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'bash', input: { command: 'npm publish' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'bash', description: 'bash', inputSchema: {} }],
+      has: (n) => n === 'bash',
+      execute: async () => ({ content: 'ok', isError: false }),
+    }
+    const hookRunner = {
+      runPreToolUse: async () => ({
+        denied: false,
+        failed: false,
+        cancelled: false,
+        messages: ['hook asked'],
+        permissionOverride: 'ask' as const,
+        permissionReason: 'needs confirmation',
+      }),
+      runPostToolUse: async () => ({ denied: false, failed: false, cancelled: false, messages: [] }),
+      runPostToolUseFailure: async () => ({ denied: false, failed: false, cancelled: false, messages: [] }),
+    } as unknown as HookRunner
+    const requirements = { bash: 'danger-full-access' as const }
+    let captured: Parameters<NonNullable<ConversationDeps['enforcer']>['enforce']>[1] | undefined
+    const enforcer: NonNullable<ConversationDeps['enforcer']> = {
+      enforce: async (_call, ctx) => {
+        captured = ctx
+        return { kind: 'allow' }
+      },
+    }
+
+    const rt = new ConversationRuntime(makeConfig({ cwd: '/workspace/project' }), {
+      ...makeDeps(provider, tools),
+      hookRunner,
+      enforcer,
+      enforcerAskUser: async () => 'allow-once',
+      enforcerToolRequirements: requirements,
+      permissionMode: 'workspace-write',
+    })
+    await collect(rt, 'run bash')
+
+    expect(captured?.workspaceRoot).toBe('/workspace/project')
+    expect(captured?.toolRequirements).toBe(requirements)
+    expect(captured?.hookOverride).toEqual({ decision: 'ask', reason: 'needs confirmation' })
+  })
+
+  test('denies outside-workspace write_file before executing the tool', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'write_file', input: { path: '../outside.txt', content: 'x' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+
+    let executed = false
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'write_file', description: 'write', inputSchema: {} }],
+      has: (n) => n === 'write_file',
+      execute: async () => {
+        executed = true
+        return { content: 'wrote', isError: false }
+      },
+    }
+    const rt = new ConversationRuntime(makeConfig({ cwd: '/workspace/project' }), {
+      ...makeDeps(provider, tools),
+      enforcer: createEnforcer(),
+      enforcerAskUser: async () => {
+        throw new Error('askUser should not be called for boundary denial')
+      },
+      permissionMode: 'workspace-write',
+    })
+
+    const events = await collect(rt, 'write outside')
+    const result = events.find((e) => e.kind === 'tool_result')
+
+    expect(executed).toBe(false)
+    expect(result).toMatchObject({
+      kind: 'tool_result',
+      result: { isError: true },
+    })
+    if (result?.kind === 'tool_result') {
+      expect(result.result.content).toContain('outside workspace root')
+    }
   })
 
   test('trims oversized tool output for the provider but keeps the full result on the event', async () => {

@@ -62,6 +62,7 @@ export interface ConversationDeps {
   enforcerNotifyDeny?: import('../permissions/enforcer').EnforcerContext['notifyDeny']
   enforcerPolicy?: import('../permissions/enforcer').EnforcerContext['policy']
   enforcerNotifyPolicy?: import('../permissions/enforcer').EnforcerContext['notifyPolicy']
+  enforcerToolRequirements?: import('../permissions/enforcer').EnforcerContext['toolRequirements']
   permissionMode?: import('./permissions').PermissionMode
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
@@ -340,6 +341,7 @@ export class ConversationRuntime {
       askUser: this.deps.askUser,
       provider: this.deps.provider,
       tools: this.deps.tools,
+      permissionMode: this.deps.permissionMode,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {
@@ -352,6 +354,11 @@ export class ConversationRuntime {
 
     const inputJson = JSON.stringify(call.input)
 
+    let preHook: Awaited<ReturnType<HookRunner['runPreToolUse']>> | undefined
+    if (this.deps.hookRunner) {
+      preHook = await this.deps.hookRunner.runPreToolUse(call.name, inputJson)
+    }
+
     if (this.deps.permissionEnforcer) {
       const enforcement = this.deps.permissionEnforcer.check(call.name, inputJson)
       if (enforcement.kind === 'denied') {
@@ -360,6 +367,18 @@ export class ConversationRuntime {
     }
 
     if (this.deps.enforcer && this.deps.enforcerAskUser && this.deps.permissionMode) {
+      const hookReason = preHook?.permissionReason ?? (preHook?.messages.join('; ') || undefined)
+      const hookOverride = preHook?.permissionOverride
+        ? {
+            decision: preHook.permissionOverride,
+            reason: hookReason,
+          }
+        : preHook?.denied
+          ? {
+              decision: 'deny' as const,
+              reason: hookReason ?? 'denied by pre-tool hook',
+            }
+          : undefined
       const decision = await this.deps.enforcer.enforce(call, {
         mode: this.deps.permissionMode,
         askUser: this.deps.enforcerAskUser,
@@ -367,17 +386,17 @@ export class ConversationRuntime {
         notifyDeny: this.deps.enforcerNotifyDeny,
         policy: this.deps.enforcerPolicy,
         notifyPolicy: this.deps.enforcerNotifyPolicy,
+        toolRequirements: this.deps.enforcerToolRequirements,
+        hookOverride,
+        workspaceRoot: this.config.cwd,
       })
       if (decision.kind === 'deny') {
         return { id: call.id, content: `permission denied: ${decision.reason}`, isError: true }
       }
     }
 
-    if (this.deps.hookRunner) {
-      const preHook = await this.deps.hookRunner.runPreToolUse(call.name, inputJson)
-      if (preHook.denied) {
-        return { id: call.id, content: `hook denied: ${preHook.messages.join('; ')}`, isError: true }
-      }
+    if (preHook?.denied) {
+      return { id: call.id, content: `hook denied: ${preHook.messages.join('; ')}`, isError: true }
     }
 
     try {

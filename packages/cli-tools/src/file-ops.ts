@@ -1,5 +1,5 @@
-import { join, resolve, dirname, basename, extname } from 'node:path'
-import { lstatSync } from 'node:fs'
+import { join, resolve, dirname, basename, extname, relative } from 'node:path'
+import { existsSync, lstatSync, realpathSync } from 'node:fs'
 
 const MAX_READ_SIZE = 10 * 1024 * 1024
 const MAX_WRITE_SIZE = 10 * 1024 * 1024
@@ -105,11 +105,60 @@ function normalizePathAllowMissing(filePath: string): string {
   }
 }
 
+function resolveWorkspacePath(filePath: string, workspaceRoot: string, allowMissing = false): string {
+  const root = resolve(workspaceRoot)
+  const candidate = filePath.startsWith('/') ? filePath : join(root, filePath)
+  return allowMissing ? normalizePathAllowMissing(candidate) : normalizePath(candidate)
+}
+
 function validateWorkspaceBoundary(resolved: string, workspaceRoot: string): void {
-  const normalizedRoot = workspaceRoot.endsWith('/') ? workspaceRoot : workspaceRoot + '/'
-  if (!resolved.startsWith(normalizedRoot) && resolved !== workspaceRoot.replace(/\/$/, '')) {
-    throw new Error(`path ${resolved} escapes workspace boundary ${workspaceRoot}`)
+  const normalizedRoot = resolve(workspaceRoot)
+  const normalizedPath = resolve(resolved)
+  const rootWithSlash = normalizedRoot.endsWith('/') ? normalizedRoot : normalizedRoot + '/'
+  if (!normalizedPath.startsWith(rootWithSlash) && normalizedPath !== normalizedRoot) {
+    throw new Error(`path ${normalizedPath} escapes workspace boundary ${normalizedRoot}`)
   }
+}
+
+function realpathOrResolve(path: string): string {
+  try {
+    return realpathSync(path)
+  } catch {
+    return resolve(path)
+  }
+}
+
+function nearestExistingParent(path: string): string {
+  let current = dirname(path)
+  while (!existsSync(current)) {
+    const parent = dirname(current)
+    if (parent === current) return current
+    current = parent
+  }
+  return current
+}
+
+function canonicalizeAllowMissing(path: string): string {
+  if (existsSync(path)) return realpathSync(path)
+  const parent = nearestExistingParent(path)
+  return resolve(realpathOrResolve(parent), relative(parent, path))
+}
+
+function validateFilesystemBoundary(resolved: string, workspaceRoot: string, allowMissing = false): void {
+  const canonicalRoot = canonicalizeAllowMissing(workspaceRoot)
+  if (existsSync(resolved)) {
+    validateWorkspaceBoundary(realpathSync(resolved), canonicalRoot)
+    return
+  }
+
+  if (!allowMissing) return
+  validateWorkspaceBoundary(canonicalizeAllowMissing(resolved), canonicalRoot)
+}
+
+function validateGlobPatternBoundary(pattern: string, basePath: string, workspaceRoot: string): void {
+  const staticPrefix = pattern.split(/[*?{[]/, 1)[0] ?? pattern
+  const candidate = pattern.startsWith('/') ? staticPrefix || '/' : resolve(basePath, staticPrefix || '.')
+  validateWorkspaceBoundary(candidate, workspaceRoot)
 }
 
 function makePatch(original: string, updated: string): StructuredPatchHunk[] {
@@ -429,9 +478,29 @@ export async function readFileInWorkspace(
   offset?: number,
   limit?: number,
 ): Promise<ReadFileOutput> {
-  const absolutePath = normalizePath(filePath)
+  const absolutePath = resolveWorkspacePath(filePath, workspaceRoot)
   validateWorkspaceBoundary(absolutePath, workspaceRoot)
-  return readFile(filePath, offset, limit)
+  validateFilesystemBoundary(absolutePath, workspaceRoot)
+  return readFile(absolutePath, offset, limit)
+}
+
+export async function globSearchInWorkspace(
+  pattern: string,
+  workspaceRoot: string,
+  basePath?: string,
+): Promise<GlobSearchOutput> {
+  const base = basePath ? resolveWorkspacePath(basePath, workspaceRoot) : resolve(workspaceRoot)
+  validateWorkspaceBoundary(base, workspaceRoot)
+  validateFilesystemBoundary(base, workspaceRoot)
+  validateGlobPatternBoundary(pattern, base, workspaceRoot)
+  return globSearch(pattern, base)
+}
+
+export async function grepSearchInWorkspace(input: GrepSearchInput, workspaceRoot: string): Promise<GrepSearchOutput> {
+  const basePath = input.path ? resolveWorkspacePath(input.path, workspaceRoot) : resolve(workspaceRoot)
+  validateWorkspaceBoundary(basePath, workspaceRoot)
+  validateFilesystemBoundary(basePath, workspaceRoot)
+  return grepSearch({ ...input, path: basePath })
 }
 
 export async function writeFileInWorkspace(
@@ -439,9 +508,10 @@ export async function writeFileInWorkspace(
   content: string,
   workspaceRoot: string,
 ): Promise<WriteFileOutput> {
-  const absolutePath = normalizePathAllowMissing(filePath)
+  const absolutePath = resolveWorkspacePath(filePath, workspaceRoot, true)
   validateWorkspaceBoundary(absolutePath, workspaceRoot)
-  return writeFile(filePath, content)
+  validateFilesystemBoundary(absolutePath, workspaceRoot, true)
+  return writeFile(absolutePath, content)
 }
 
 export async function editFileInWorkspace(
@@ -451,9 +521,10 @@ export async function editFileInWorkspace(
   replaceAll: boolean,
   workspaceRoot: string,
 ): Promise<EditFileOutput> {
-  const absolutePath = normalizePath(filePath)
+  const absolutePath = resolveWorkspacePath(filePath, workspaceRoot)
   validateWorkspaceBoundary(absolutePath, workspaceRoot)
-  return editFile(filePath, oldString, newString, replaceAll)
+  validateFilesystemBoundary(absolutePath, workspaceRoot)
+  return editFile(absolutePath, oldString, newString, replaceAll)
 }
 
 export async function isSymlinkEscape(filePath: string, workspaceRoot: string): Promise<boolean> {
@@ -461,9 +532,14 @@ export async function isSymlinkEscape(filePath: string, workspaceRoot: string): 
     const stat = lstatSync(filePath)
     if (!stat.isSymbolicLink()) return false
 
-    const resolved = normalizePath(filePath)
-    const canonicalRoot = resolve(workspaceRoot)
-    return !resolved.startsWith(canonicalRoot)
+    const resolved = realpathSync(filePath)
+    const canonicalRoot = realpathOrResolve(workspaceRoot)
+    try {
+      validateWorkspaceBoundary(resolved, canonicalRoot)
+      return false
+    } catch {
+      return true
+    }
   } catch {
     return false
   }

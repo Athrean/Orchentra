@@ -437,6 +437,7 @@ export class LiveCli implements SessionControl {
         const verb = info.kind === 'allow' ? 'auto-allowed' : 'denied'
         process.stderr.write(`\n${verb} by policy: ${info.rule.tool} ${info.rule.pattern}\n`)
       },
+      enforcerToolRequirements: this.tools.requirements?.(),
       permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,
       hookRunner: this.hookRunner ?? undefined,

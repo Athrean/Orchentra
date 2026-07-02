@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import type { ToolCall } from '../runtime/events'
 import { permissionModeRank, type PermissionMode } from '../runtime/permissions'
 import { detectDestructive } from './destructive'
@@ -87,8 +88,8 @@ export interface Enforcer {
   enforce(toolCall: ToolCall, ctx: EnforcerContext): Promise<Decision>
 }
 
-const READ_TOOLS = new Set(['read', 'glob', 'grep', 'web_search'])
-const WRITE_TOOLS = new Set(['write', 'edit', 'notebook_edit'])
+const READ_TOOLS = new Set(['read', 'read_file', 'glob', 'glob_search', 'grep', 'grep_search'])
+const WRITE_TOOLS = new Set(['write', 'write_file', 'edit', 'edit_file', 'notebook_edit'])
 
 export function createEnforcer(): Enforcer {
   return {
@@ -109,7 +110,9 @@ export function createEnforcer(): Enforcer {
         }
       }
 
-      if (WRITE_TOOLS.has(toolCall.name.toLowerCase())) {
+      const toolName = normalizeToolName(toolCall.name)
+
+      if (WRITE_TOOLS.has(toolName)) {
         const writeDeny = checkFileWrite(ctx, toolCall)
         if (writeDeny) return writeDeny
       }
@@ -122,7 +125,7 @@ export function createEnforcer(): Enforcer {
         return promptUser(toolCall, ctx, { reason: hook.reason })
       }
 
-      if (toolCall.name.toLowerCase() === 'bash' && !hook) {
+      if (toolName === 'bash' && !hook) {
         const cmd = extractBashCommand(toolCall.input)
         if (cmd && isBashReadOnly(cmd)) return { kind: 'allow' }
       }
@@ -148,10 +151,11 @@ export function createEnforcer(): Enforcer {
       }
 
       if (hook?.decision === 'allow') {
+        if (needsEscalation(ctx, toolCall)) return promptUser(toolCall, ctx, escalationReason(ctx, toolCall))
         return { kind: 'allow' }
       }
 
-      if (READ_TOOLS.has(toolCall.name.toLowerCase())) return { kind: 'allow' }
+      if (isReadAllowed(ctx, toolCall)) return { kind: 'allow' }
 
       if (ctx.store) {
         const verdict = ctx.store.decide(toolCall.name, toolCall.input)
@@ -180,10 +184,15 @@ function extractWritePath(input: unknown): string | null {
   return null
 }
 
+function normalizeToolName(toolName: string): string {
+  return toolName.toLowerCase()
+}
+
 function isWithinWorkspace(path: string, workspaceRoot: string): boolean {
-  const normalized = path.startsWith('/') ? path : `${workspaceRoot.replace(/\/+$/, '')}/${path}`
-  const root = workspaceRoot.endsWith('/') ? workspaceRoot : `${workspaceRoot}/`
-  return normalized.startsWith(root) || normalized === workspaceRoot.replace(/\/+$/, '')
+  const root = resolve(workspaceRoot)
+  const normalized = path.startsWith('/') ? resolve(path) : resolve(root, path)
+  const rootWithSlash = root.endsWith('/') ? root : `${root}/`
+  return normalized === root || normalized.startsWith(rootWithSlash)
 }
 
 function checkFileWrite(ctx: EnforcerContext, toolCall: ToolCall): Decision | null {
@@ -201,18 +210,28 @@ function checkFileWrite(ctx: EnforcerContext, toolCall: ToolCall): Decision | nu
 }
 
 function needsEscalation(ctx: EnforcerContext, toolCall: ToolCall): boolean {
-  if (!ctx.toolRequirements) return false
-  const required = ctx.toolRequirements[toolCall.name]
+  const required = requiredModeFor(ctx, toolCall.name)
   if (!required) return false
   return permissionModeRank(ctx.mode) < permissionModeRank(required)
 }
 
+function isReadAllowed(ctx: EnforcerContext, toolCall: ToolCall): boolean {
+  const required = requiredModeFor(ctx, toolCall.name)
+  if (required) return required === 'read-only' && !needsEscalation(ctx, toolCall)
+  return READ_TOOLS.has(normalizeToolName(toolCall.name))
+}
+
 function escalationReason(ctx: EnforcerContext, toolCall: ToolCall): { reason: string; requiredMode?: PermissionMode } {
-  const required = ctx.toolRequirements?.[toolCall.name]
+  const required = requiredModeFor(ctx, toolCall.name)
   return {
     reason: `requires escalation from ${ctx.mode} to ${required ?? ctx.mode}`,
     requiredMode: required,
   }
+}
+
+function requiredModeFor(ctx: EnforcerContext, toolName: string): PermissionMode | undefined {
+  if (!ctx.toolRequirements) return undefined
+  return ctx.toolRequirements[toolName] ?? ctx.toolRequirements[normalizeToolName(toolName)]
 }
 
 interface PromptOptions {

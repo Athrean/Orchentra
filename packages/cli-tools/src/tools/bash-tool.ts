@@ -87,7 +87,7 @@ export const bashTool: ToolDefinition = {
       return { content: 'error: command is required', isError: true }
     }
 
-    const validation = validateCommand(input.command, 'workspace-write' as never, ctx.cwd)
+    const validation = validateCommand(input.command, ctx.permissionMode ?? 'workspace-write', ctx.cwd)
     if (validation.kind === 'block') {
       return { content: `blocked: ${validation.reason}`, isError: true }
     }

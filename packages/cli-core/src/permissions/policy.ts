@@ -37,7 +37,7 @@ export function evaluate(toolCall: ToolCall, ruleset: Ruleset): PolicyVerdict {
   let lastAsk: PolicyRule | null = null
   let lastDeny: PolicyRule | null = null
   for (const rule of ruleset.rules) {
-    if (rule.tool !== toolCall.name) continue
+    if (rule.tool.toLowerCase() !== toolCall.name.toLowerCase()) continue
     if (!matches(rule.pattern, canonical)) continue
     if (rule.decision === 'deny') lastDeny = rule
     else if (rule.decision === 'ask') lastAsk = rule

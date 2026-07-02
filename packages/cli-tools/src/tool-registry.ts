@@ -1,4 +1,12 @@
-import type { ToolRegistry, ToolDefinition, ToolContext, ToolResult, ProviderToolSchema } from '@orchentra/cli-core'
+import {
+  requiredModeForLevel,
+  type ToolRegistry,
+  type ToolDefinition,
+  type ToolContext,
+  type ToolResult,
+  type ProviderToolSchema,
+  type PermissionMode,
+} from '@orchentra/cli-core'
 import { bashTool } from './tools/bash-tool'
 import { fileReadTool } from './tools/file-read-tool'
 import { fileWriteTool } from './tools/file-write-tool'
@@ -80,6 +88,14 @@ export class DefaultToolRegistry implements ToolRegistry {
       })
     }
     return schemas
+  }
+
+  requirements(): Readonly<Record<string, PermissionMode>> {
+    const requirements: Record<string, PermissionMode> = {}
+    for (const tool of Array.from(this.tools.values())) {
+      requirements[tool.name] = requiredModeForLevel(tool.level)
+    }
+    return requirements
   }
 
   has(name: string): boolean {
