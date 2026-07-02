@@ -28,8 +28,14 @@ secrets/
 .vscode/
 .idea/
 
-# Internal docs (git-ignored, local only)
-docs/
+# Product docs. Only the curated current/proposal docs are tracked; archived
+# planning dumps, images, and local research notes stay local-only.
+docs/*
+!docs/README.md
+!docs/current/
+!docs/current/**
+!docs/proposals/
+!docs/proposals/**
 # Tracked product docs that live alongside the app they document
 !apps/*/docs/
 UBIQUITOUS_LANGUAGE.md

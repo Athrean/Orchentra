@@ -1,29 +1,40 @@
 <div align="center">
 
-<img src="apps/web/public/stripped-black.png" alt="Orchentra" width="120">
+<img src="apps/web/public/black-logo.png" alt="Orchentra" width="120">
 
 # Orchentra
 
-### Efficient AI coding in the terminal, plus review that verifies by running.
+### A CLI-first coding crew that spends less, writes less, and proves its review by running the code.
 
-[Quick start](#quick-start) · [Key features](#key-features) · [CLI](#cli) · [Web reviewer](#web-reviewer) · [Develop](#develop)
+[Quick start](#quick-start) · [Spine](#spine) · [CLI](#cli) · [Develop](#develop)
 
 </div>
 
 ---
 
-## What is Orchentra?
+## What Is Orchentra?
 
 Orchentra is an AI coding agent that runs in your terminal. It can read and edit files, run shell commands, search the workspace, inspect git state, fetch web pages, use MCP tools, and continue from saved sessions.
 
-The product is tuned for two things:
+The product is CLI-only and zero-DB. The web app in `apps/web` is a static marketing site for the CLI; it has no auth, database, GitHub App flow, dashboard, subscription management, or standalone pull-request reviewer.
 
-- **Lower spend** — terse output mode, compaction, token tracking, and hard dollar budgets.
-- **Higher trust** — code review flows that check their findings by running tests, typechecks, or repro commands where possible.
+## Spine
 
-Orchentra also includes a standalone web reviewer for pull requests.
+Every built-in agent should inherit the same spine:
 
-## Quick start
+| Spine skill           | Job                                                                 | Saves                |
+| --------------------- | ------------------------------------------------------------------- | -------------------- |
+| **output discipline** | terse output that keeps code, paths, errors, and safety text intact | output tokens        |
+| **context budget**    | compaction, tool-output caps, and dollar ceilings                   | input tokens + spend |
+| **lean code**         | YAGNI, stdlib-first, minimum-code implementation discipline         | code size + quality  |
+
+Specialist commands layer task focus on top of that spine:
+
+- `/plan` — architect a need into stack, alternatives, architecture, scaffold, and checks.
+- `/build` — implement vertical slices and run project checks.
+- `/review` — propose findings, then verify by running typecheck/tests/repro gates.
+
+## Quick Start
 
 ```bash
 git clone https://github.com/Athrean/Orchentra.git
@@ -45,68 +56,37 @@ orchentra session replay latest   # replay the latest workspace session
 
 Bring your own model key. The CLI supports Anthropic, Gemini, OpenAI-compatible providers, OpenRouter, xAI, and DashScope.
 
-## Key features
-
-- **Terminal-native agent UI** — streaming Ink TUI, collapsible reasoning, command palette, model picker, theme picker, multi-line input, and `$EDITOR` handoff.
-- **Workspace tools** — bash, file read/write/edit, glob, grep, web fetch/search, notebooks, todos, tasks, ask-user, nested agent runs, and read-only git tools.
-- **MCP client** — connect external MCP servers and register their tools into the agent runtime.
-- **Sessions** — per-workspace JSONL sessions with resume and replay.
-- **Permissions** — mode ladder, allow/deny/ask rules, remembered approvals, workspace scoping checks, and pre/post tool hooks.
-- **Model controls** — `/model`, `/effort`, `/think`, and provider-specific reasoning settings.
-- **Cost controls** — `/cost`, token accounting, warning thresholds, and hard dollar caps.
-- **Memory** — local failure-memory capture, `/memory`, `/forget`, and `/debug` for diagnosing recent failed runs against stored context.
-- **Terse output mode** — `/terse off|lite|full|ultra` reduces output verbosity while keeping code, commands, paths, errors, and safety text intact.
-
 ## CLI
 
-### Shell verbs
+### Shell Verbs
 
 ```bash
 orchentra
 orchentra "<prompt>"
 orchentra doctor
 orchentra init
+orchentra update
 orchentra mcp list
 orchentra mcp test <server>
 orchentra session replay <id|latest>
 orchentra login | logout | reauth | whoami
 ```
 
-### REPL slash commands
-
-Core:
+### Slash Commands
 
 ```text
 /help (/h /?)   /status (/st)   /clear (/cls)   /exit (/q)
 /compact        /model (/m)     /effort         /think
-/terse          /plan           /cost           /version (/v)
+/terse          /plan           /build          /review
+/cost           /version (/v)   /init           /search
+/scan           /debug          /diff (/d)      /commit
+/pr             /issue (/iss)   /session        /resume
+/skills         /mcp            /permissions    /doctor (/doc)
+/config (/cfg) /memory (/mem)  /forget         /export
+/login (/li)   /logout (/lo)   /reauth         /auth (/whoami)
 ```
 
-Workspace:
-
-```text
-/init           /search         /scan           /review
-/debug          /diff (/d)      /commit         /pr
-/issue (/iss)   /session        /resume         /skills
-```
-
-Tools and auth:
-
-```text
-/mcp            /permissions    /doctor (/doc)  /config (/cfg)
-/memory         /forget         /export         /login (/li)
-/logout (/lo)   /reauth         /auth-status (/whoami)
-```
-
-## Web reviewer
-
-The web app is a standalone pull-request reviewer. It has its own auth, onboarding, settings, memory surfaces, and reviewer flows. It does not import the CLI app; shared data moves through the configured store.
-
-Run it locally:
-
-```bash
-bun run --cwd apps/web dev
-```
+Planned naming cleanup: keep existing names for compatibility, strengthen `/terse`, and add `/budget` plus `/lean` once those controls are first-class.
 
 ## Configuration
 
@@ -131,7 +111,7 @@ Example:
 }
 ```
 
-## Skills and hooks
+## Skills And Hooks
 
 Skills are local `SKILL.md` files:
 
@@ -153,13 +133,14 @@ Hooks are repo-local shell gates:
 
 A failing pre-hook blocks the tool call and surfaces stderr as the reason.
 
-## Project structure
+## Project Structure
 
 ```text
 Orchentra/
 ├── apps/
 │   ├── cli/                 # terminal app, TUI, commands, auth
-│   └── web/                 # standalone web reviewer
+│   └── web/                 # static marketing site
+├── docs/                    # current docs + proposals
 ├── packages/
 │   ├── brain/               # episode/runbook/skill-export types
 │   ├── cli-api/             # provider clients, GitHub clients, auth helpers
