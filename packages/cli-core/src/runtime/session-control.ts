@@ -7,6 +7,27 @@ import type { TerseModeUsage } from './usage'
 import type { PolicyRule } from '../permissions/policy'
 import type { StoredPermissionRule } from '../permissions/store'
 
+export interface ContextStats {
+  readonly messages: number
+  readonly estimatedTokens: number
+  readonly contextWindowTokens?: number
+  readonly compactThresholdRatio?: number
+}
+
+export interface SessionGoal {
+  readonly objective: string
+  readonly createdAt: string
+}
+
+export interface SessionTaskSummary {
+  readonly id: string
+  readonly status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  readonly prompt?: string
+  readonly output?: string
+  readonly createdAt: string
+  readonly completedAt?: string
+}
+
 export interface SessionControl {
   getModel(): string
   /**
@@ -19,8 +40,19 @@ export interface SessionControl {
   /** Switch the active permission mode for the session. Returns the new mode. */
   setPermissionMode(mode: PermissionMode): PermissionMode
   getSessionId(): string
+  getCwd?(): string
+  setCwd?(cwd: string): string
   getTurns(): number
   getUsage(): UsageTotals
+  /** Estimated live conversation footprint before provider-side caching. */
+  getContextStats?(): ContextStats
+  /** Current session goal, when one has been set with /goal. */
+  getGoal?(): SessionGoal | null
+  setGoal?(objective: string): SessionGoal
+  clearGoal?(): void
+  /** Background agent task summaries available to /tasks. */
+  listTaskSummaries?(): readonly SessionTaskSummary[]
+  cancelTask?(id: string): boolean
   /** Output tokens + turns spent under each terse mode this session. */
   getTerseBreakdown?(): readonly TerseModeUsage[]
   /** Configured dollar budget caps, when the session exposes them. */
@@ -38,5 +70,11 @@ export interface SessionControl {
   getPlanMode?(): boolean
   setPlanMode?(enabled: boolean): boolean
   clearHistory(): void
+  /**
+   * Start a fresh conversation/session while preserving the previous session
+   * file on disk. Implementations without session persistence may omit this
+   * and rely on clearHistory().
+   */
+  startNewSession?(): Promise<void>
   forceCompact(): void
 }

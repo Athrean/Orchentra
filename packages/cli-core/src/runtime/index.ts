@@ -102,7 +102,7 @@ export type {
   ToolRegistry,
 } from './tools'
 
-export type { SessionControl } from './session-control'
+export type { ContextStats, SessionControl, SessionGoal, SessionTaskSummary } from './session-control'
 
 export { isKnownModel } from './model-availability'
 
