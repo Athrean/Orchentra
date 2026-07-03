@@ -41,6 +41,7 @@ describe('CLI npm package contract', () => {
     expect(pkg.scripts?.['package:verify']).toBe('bun run scripts/verify-npm-package.ts')
     expect(pkg.scripts?.prepack).toBe('bun run build && bun run package:verify')
     expect(pkg.scripts?.['package:dry-run']).toBe('npm pack --dry-run')
+    expect(pkg.scripts?.['test:smoke']).toBe('./scripts/pack-smoke.sh')
   })
 
   test('verifier rejects a package without built dist artifacts', () => {

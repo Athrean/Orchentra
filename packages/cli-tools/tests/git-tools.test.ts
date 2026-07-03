@@ -10,17 +10,52 @@ afterAll(() => {
   for (const d of dirs) rmSync(d, { recursive: true, force: true })
 })
 
+const GIT_LOCAL_ENV_KEYS = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_CONFIG',
+  'GIT_CONFIG_PARAMETERS',
+  'GIT_CONFIG_COUNT',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_IMPLICIT_WORK_TREE',
+  'GIT_GRAFT_FILE',
+  'GIT_INDEX_FILE',
+  'GIT_NO_REPLACE_OBJECTS',
+  'GIT_REPLACE_REF_BASE',
+  'GIT_PREFIX',
+  'GIT_SHALLOW_FILE',
+  'GIT_COMMON_DIR',
+] as const
+
 function git(cwd: string, ...args: string[]): void {
   const proc = Bun.spawnSync(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: cleanGitEnv() })
   if (proc.exitCode !== 0) throw new Error(`git ${args.join(' ')} failed: ${proc.stderr.toString()}`)
 }
 
 function cleanGitEnv(): Record<string, string> {
-  const env: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
-  }
+  const env: Record<string, string> = { ...(process.env as Record<string, string>) }
+  for (const key of GIT_LOCAL_ENV_KEYS) delete env[key]
   return env
+}
+
+async function withGitEnv<T>(vars: Record<string, string>, run: () => Promise<T>): Promise<T> {
+  const prev = new Map<string, string | undefined>()
+  for (const [key, value] of Object.entries(vars)) {
+    prev.set(key, process.env[key])
+    process.env[key] = value
+  }
+  try {
+    return await run()
+  } finally {
+    for (const [key, value] of prev) {
+      if (value === undefined) {
+        delete process.env[key]
+      } else {
+        process.env[key] = value
+      }
+    }
+  }
 }
 
 function makeRepo(): string {
@@ -54,6 +89,24 @@ describe('gitStatusTool', () => {
     const res = await gitStatusTool.execute({}, ctx(dir))
     expect(res.isError).toBe(false)
     expect(res.content).toContain('new.txt')
+  })
+
+  test('ignores ambient hook Git env when cwd points at another repo', async () => {
+    const dir = makeRepo()
+    const poisoned = mkdtempSync(join(tmpdir(), 'orchentra-git-env-'))
+    dirs.push(poisoned)
+
+    const res = await withGitEnv(
+      {
+        GIT_DIR: join(poisoned, '.git'),
+        GIT_WORK_TREE: poisoned,
+        GIT_INDEX_FILE: join(poisoned, 'index'),
+      },
+      () => gitStatusTool.execute({}, ctx(dir)),
+    )
+
+    expect(res.isError).toBe(false)
+    expect(res.content.toLowerCase()).toContain('clean')
   })
 
   test('errors helpfully outside a git repo', async () => {

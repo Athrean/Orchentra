@@ -8,16 +8,16 @@ function tempDir(label: string): string {
 }
 
 function runGit(cwd: string, args: string[]): void {
-  // Strip ambient GIT_* env so `cwd` is the only source of repo discovery.
-  // Without this, running inside a `git commit` hook (which exports GIT_DIR /
-  // GIT_INDEX_FILE for child processes) makes `git init` and `git config`
-  // target the parent repo instead of the tmp dir, corrupting the host repo.
-  const env: Record<string, string> = {}
-  for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined && !k.startsWith('GIT_')) env[k] = v
-  }
-  const proc = Bun.spawnSync(['git', ...args], { cwd, env, stdout: 'pipe', stderr: 'pipe' })
+  const proc = Bun.spawnSync(['git', ...args], { cwd, env: cleanGitEnv(), stdout: 'pipe', stderr: 'pipe' })
   if (!proc.success) throw new Error(`git ${args.join(' ')} failed in ${cwd}`)
+}
+
+function cleanGitEnv(): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
+  }
+  return env
 }
 
 function gitTest(name: string, fn: () => void | Promise<void>): void {

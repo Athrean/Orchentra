@@ -16,11 +16,12 @@
   },
   "scripts": {
     "start": "bun run src/main.ts",
-    "build": "bun build src/main.ts --outdir dist --target bun --external react-devtools-core",
+    "build": "bun build src/main.ts --outdir dist --target bun",
     "build:binaries": "./scripts/build-binaries.sh",
     "build:binaries:host": "./scripts/build-binaries.sh host",
     "package:verify": "bun run scripts/verify-npm-package.ts",
     "package:dry-run": "npm pack --dry-run",
+    "test:smoke": "./scripts/pack-smoke.sh",
     "prepack": "bun run build && bun run package:verify",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
