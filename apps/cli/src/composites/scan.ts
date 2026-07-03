@@ -49,6 +49,7 @@ export interface ScanOptions {
   path?: string
   llm: LlmCaller
   memoryGuidance?: string
+  spinePrompt?: string
 }
 
 export async function scan(opts: ScanOptions): Promise<ScanResult | { error: string }> {
@@ -84,7 +85,7 @@ export async function scan(opts: ScanOptions): Promise<ScanResult | { error: str
     return { findings: [], model: 'noop', tokensIn: 0, tokensOut: 0 }
   }
 
-  const systemPrompt = [SYSTEM_PROMPT, opts.memoryGuidance].filter(Boolean).join('\n\n')
+  const systemPrompt = [SYSTEM_PROMPT, opts.spinePrompt, opts.memoryGuidance].filter(Boolean).join('\n\n')
   const llm = await opts.llm({ systemPrompt, userPrompt: payload })
   const findings = parseFindings(llm.text)
   if (!findings) return { error: `LLM returned malformed JSON: ${llm.text.slice(0, 200)}` }

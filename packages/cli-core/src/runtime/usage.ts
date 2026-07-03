@@ -8,6 +8,18 @@ export interface TerseModeUsage {
   turns: number
 }
 
+/**
+ * Measured spine savings for a session — real numbers from the runtime's own
+ * accounting (compaction results, tool-output budget trims), never estimates
+ * invented for display.
+ */
+export interface SpineSavings {
+  compactions: number
+  compactionTokensSaved: number
+  toolOutputTrims: number
+  toolOutputCharsTrimmed: number
+}
+
 export interface ModelPricing {
   inputCostPerMillion: number
   outputCostPerMillion: number
@@ -127,6 +139,12 @@ export class UsageTracker {
   // generation, so attribution is output-only; the avg output/turn drop across
   // modes is the inspectable efficiency evidence (no fabricated baseline).
   private readonly byTerseMode = new Map<TerseMode, { outputTokens: number; turns: number }>()
+  private readonly spineSavings: SpineSavings = {
+    compactions: 0,
+    compactionTokensSaved: 0,
+    toolOutputTrims: 0,
+    toolOutputCharsTrimmed: 0,
+  }
 
   record(usage: UsageTotals, terseMode: TerseMode = 'off'): void {
     this.latestTurn = usage
@@ -137,6 +155,20 @@ export class UsageTracker {
     bucket.outputTokens += usage.outputTokens
     bucket.turns += 1
     this.byTerseMode.set(terseMode, bucket)
+  }
+
+  recordCompaction(tokensSaved: number): void {
+    this.spineSavings.compactions += 1
+    this.spineSavings.compactionTokensSaved += tokensSaved
+  }
+
+  recordToolOutputTrim(droppedChars: number): void {
+    this.spineSavings.toolOutputTrims += 1
+    this.spineSavings.toolOutputCharsTrimmed += droppedChars
+  }
+
+  savings(): SpineSavings {
+    return { ...this.spineSavings }
   }
 
   terseBreakdown(): TerseModeUsage[] {

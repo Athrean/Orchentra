@@ -11,10 +11,18 @@ interface GitRun {
 }
 
 async function runGit(args: string[], cwd: string): Promise<GitRun> {
-  const proc = Bun.spawn(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe' })
+  const proc = Bun.spawn(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: cleanGitEnv() })
   const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()])
   await proc.exited
   return { stdout, stderr, exitCode: proc.exitCode ?? 0 }
+}
+
+function cleanGitEnv(): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
+  }
+  return env
 }
 
 function cap(text: string): string {

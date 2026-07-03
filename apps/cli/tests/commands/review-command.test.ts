@@ -186,6 +186,8 @@ describe('/review command', () => {
 
     await new ReviewCommand({ llm, run: () => ({ exitCode: 0, output: '' }), store }).execute(['--path', 'a.ts'], ctx)
 
+    expect(systemPrompt).toContain('ORCHENTRA SPINE')
+    expect(systemPrompt).toContain('Task focus: /review verifier')
     expect(systemPrompt).toContain('Local Feedback Memory')
     expect(systemPrompt).toContain('prefer exact file references')
     expect(systemPrompt).toContain('avoid vague style-only findings')

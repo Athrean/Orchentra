@@ -35,6 +35,8 @@ import { BuildCommand } from './build'
 import { PlanModeCommand } from './planmode'
 import { ThinkCommand } from './think'
 import { TerseCommand } from './terse'
+import { BudgetCommand } from './budget'
+import { LeanCommand } from './lean'
 import { MemoryCommand, ForgetCommand } from './memory'
 import { DebugCommand } from './debug'
 import {
@@ -105,6 +107,8 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new PlanModeCommand())
   registry.register(new ThinkCommand())
   registry.register(new TerseCommand())
+  registry.register(new BudgetCommand())
+  registry.register(new LeanCommand())
 
   // /memory + /forget — inspect and delete stored failure memories.
   registry.register(new MemoryCommand())

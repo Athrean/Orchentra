@@ -10,6 +10,7 @@ import type {
   PlanLevel,
   MemoryFeatureConfig,
   BudgetFeatureConfig,
+  SpineBudgetControls,
   PermissionMode,
   Provider,
   RuntimeEvent,
@@ -31,7 +32,7 @@ import {
   defaultEstimator,
   prepareMemoryContext,
   captureMemoryFromTurn,
-  terseModePrompt,
+  spinePrompt,
   PatternStore,
   embedText,
   createEnforcer,
@@ -46,6 +47,7 @@ import type {
   PolicyHandle,
   PolicyRule,
   PromptChoice as ToolPromptChoice,
+  SpineSavings,
   StoredPermissionRule,
   TerseModeUsage,
 } from '@orchentra/cli-core'
@@ -89,7 +91,10 @@ export class LiveCli implements SessionControl {
   private readonly spinner: Spinner
   private readonly sharedState: SharedToolState
   private readonly memoryConfig: MemoryFeatureConfig | null
-  private readonly budgetConfig: BudgetFeatureConfig | null
+  private budgetConfig: BudgetFeatureConfig | null
+  private toolOutputBudgetChars = 50_000
+  private compactionThreshold = 0.8
+  private keepRecentOnCompact = 6
   private readonly hookRunner: HookRunner | null
 
   private messages: ChatMessage[] = []
@@ -276,7 +281,7 @@ export class LiveCli implements SessionControl {
       messages: this.messages.length,
       estimatedTokens: estimateMessagesTokens(this.messages, defaultEstimator),
       contextWindowTokens: 200_000,
-      compactThresholdRatio: 0.75,
+      compactThresholdRatio: this.compactionThreshold,
     }
   }
 
@@ -313,6 +318,33 @@ export class LiveCli implements SessionControl {
 
   getTerseBreakdown(): readonly TerseModeUsage[] {
     return this.tracker.terseBreakdown()
+  }
+
+  getSavings(): SpineSavings {
+    return this.tracker.savings()
+  }
+
+  getBudgetControls(): SpineBudgetControls {
+    return {
+      maxCostUsd: this.budgetConfig?.maxCostUsd,
+      warnCostUsd: this.budgetConfig?.warnCostUsd,
+      toolOutputBudgetChars: this.toolOutputBudgetChars,
+      compactionThreshold: this.compactionThreshold,
+      keepRecentOnCompact: this.keepRecentOnCompact,
+    }
+  }
+
+  setBudgetControls(controls: Partial<SpineBudgetControls>): SpineBudgetControls {
+    this.budgetConfig = {
+      maxCostUsd: controls.maxCostUsd ?? this.budgetConfig?.maxCostUsd,
+      warnCostUsd: controls.warnCostUsd ?? this.budgetConfig?.warnCostUsd,
+    }
+    if ('maxCostUsd' in controls && controls.maxCostUsd === undefined) this.budgetConfig.maxCostUsd = undefined
+    if ('warnCostUsd' in controls && controls.warnCostUsd === undefined) this.budgetConfig.warnCostUsd = undefined
+    if (controls.toolOutputBudgetChars !== undefined) this.toolOutputBudgetChars = controls.toolOutputBudgetChars
+    if (controls.compactionThreshold !== undefined) this.compactionThreshold = controls.compactionThreshold
+    if (controls.keepRecentOnCompact !== undefined) this.keepRecentOnCompact = controls.keepRecentOnCompact
+    return this.getBudgetControls()
   }
 
   getCostLimits(): { maxCostUsd?: number; warnCostUsd?: number } {
@@ -394,6 +426,7 @@ export class LiveCli implements SessionControl {
         })
         if (result.compacted) {
           this.messages = result.messages
+          this.tracker.recordCompaction(result.tokensSaved)
           if (sink) {
             sink({
               kind: 'compacted',
@@ -441,11 +474,11 @@ export class LiveCli implements SessionControl {
       model: this.model,
       maxOutputTokens: 4096,
       contextWindowTokens: 200_000,
-      compactionThreshold: 0.8,
-      keepRecentOnCompact: 6,
+      compactionThreshold: this.compactionThreshold,
+      keepRecentOnCompact: this.keepRecentOnCompact,
       // ~12k-token safety net on a single tool result; raise if real outputs
       // routinely exceed it before the model can narrow its query.
-      toolOutputBudgetChars: 50_000,
+      toolOutputBudgetChars: this.toolOutputBudgetChars,
       budget: {
         maxSteps: 50,
         maxTokens: 200_000,
@@ -467,7 +500,7 @@ export class LiveCli implements SessionControl {
           'always use github_list_issues, github_get_issue, github_list_pulls, github_get_pull, ' +
           'or github_search_issues. Never use web_fetch on github.com — it returns raw HTML and ' +
           'fails on private repos. Pass repos as "owner/repo" or the full URL; the tools parse both.',
-        terseModePrompt(this.terseMode),
+        spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'runtime agent' }),
       ],
       dynamicParts,
     })
@@ -523,6 +556,7 @@ export class LiveCli implements SessionControl {
       permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,
       hookRunner: this.hookRunner ?? undefined,
+      spinePrompt: spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'sub-agent' }),
     }
 
     this.runtime = new ConversationRuntime(config, deps)
@@ -541,6 +575,12 @@ export class LiveCli implements SessionControl {
         if (event.kind === 'usage') {
           lastUsage = event.cumulative
           this.tracker.record(event.turn, this.terseMode)
+        }
+        if (event.kind === 'compacted') {
+          this.tracker.recordCompaction(event.tokensSaved)
+        }
+        if (event.kind === 'tool_output_budgeted') {
+          this.tracker.recordToolOutputTrim(event.droppedChars)
         }
         if (event.kind === 'done') {
           steps = event.steps

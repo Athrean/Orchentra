@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { PatternStore, terseModePrompt, type UsageTotals } from '@orchentra/cli-core'
+import { PatternStore, spinePrompt, type UsageTotals } from '@orchentra/cli-core'
 import type { MemoryStore } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { architect, type ArchitectPlan } from '../../composites/architect'
@@ -55,7 +55,12 @@ export class BuildCommand implements CommandHandler {
 
     const llm = this.deps?.llm ?? buildOneShotLlmCaller(ctx.session.getModel())
     const terse = ctx.session.getTerseMode?.()
-    const planned = await architect({ need, llm, terseMode: terse })
+    const spine = spinePrompt({
+      terseMode: terse,
+      budget: ctx.session.getBudgetControls?.(),
+      taskFocus: '/build vertical slice',
+    })
+    const planned = await architect({ need, llm, terseMode: terse, spinePrompt: spine })
     if ('error' in planned) {
       emit(ctx, `error: ${planned.error}`, 'warn')
       return false
@@ -69,14 +74,12 @@ export class BuildCommand implements CommandHandler {
 
     const store = this.deps?.store ?? new PatternStore()
     const memoryGuidance = loadMemoryFeedbackGuidance(store, this.deps?.orgId ?? 'default')
-    const builderSystem = [BUILDER_PROMPT, memoryGuidance, terse ? terseModePrompt(terse) : '']
-      .filter(Boolean)
-      .join('\n')
+    const builderSystem = [BUILDER_PROMPT, spine, memoryGuidance].filter(Boolean).join('\n')
     const runTurn = ctx.runTurn
     const runSlice: RunSlice = runTurn
       ? async (slice) => {
           const before = snapshotUsage(ctx.session.getUsage())
-          await runTurn(builderTurn(slice, planned.verification, memoryGuidance))
+          await runTurn(builderTurn(slice, planned.verification, spine, memoryGuidance))
           const after = snapshotUsage(ctx.session.getUsage())
           const delta = usageDelta(before, after)
           return {
@@ -121,13 +124,14 @@ function builderUser(slice: Slice, verification: string[]): string {
   return `Target file: ${slice.files[0]}\nIntent: ${slice.intent}${checks}\nReturn the file's complete contents.`
 }
 
-function builderTurn(slice: Slice, verification: string[], memoryGuidance: string = ''): string {
+function builderTurn(slice: Slice, verification: string[], spine: string, memoryGuidance: string = ''): string {
   const checks =
     verification.length > 0 ? `\nVerification to satisfy:\n${verification.map((v) => `- ${v}`).join('\n')}` : ''
   return [
     'Implement this /build slice using the workspace tools.',
     `Target file(s): ${slice.files.join(', ')}`,
     `Intent: ${slice.intent}`,
+    spine,
     checks.trim(),
     memoryGuidance,
     'Inspect before editing. Change the minimum files needed. Do not commit or push.',

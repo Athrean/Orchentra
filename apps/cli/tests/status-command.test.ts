@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import { StatusCommand } from '../src/commands/builtin/status'
 import type { CommandContext } from '../src/commands/registry'
-import type { SessionControl, TerseModeUsage, UsageTotals } from '@orchentra/cli-core'
+import type { SessionControl, SpineSavings, TerseModeUsage, UsageTotals } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
 
-function makeSession(breakdown?: readonly TerseModeUsage[]): SessionControl {
+function makeSession(breakdown?: readonly TerseModeUsage[], savings?: SpineSavings): SessionControl {
   const usage: UsageTotals = {
     inputTokens: 1234,
     outputTokens: 567,
@@ -20,17 +20,21 @@ function makeSession(breakdown?: readonly TerseModeUsage[]): SessionControl {
     getTurns: () => 7,
     getUsage: () => usage,
     getTerseBreakdown: breakdown ? () => breakdown : undefined,
+    getSavings: savings ? () => savings : undefined,
     getTerseMode: () => 'full',
     clearHistory: () => {},
     forceCompact: () => {},
   }
 }
 
-function makeCtx(breakdown?: readonly TerseModeUsage[]): { ctx: CommandContext; events: UiOutput[] } {
+function makeCtx(
+  breakdown?: readonly TerseModeUsage[],
+  savings?: SpineSavings,
+): { ctx: CommandContext; events: UiOutput[] } {
   const events: UiOutput[] = []
   return {
     events,
-    ctx: { cwd: '/work', session: makeSession(breakdown), ui: (o) => events.push(o) },
+    ctx: { cwd: '/work', session: makeSession(breakdown, savings), ui: (o) => events.push(o) },
   }
 }
 
@@ -108,5 +112,21 @@ describe('StatusCommand', () => {
     const ev = events[0]
     if (ev.kind !== 'card') throw new Error('expected card')
     expect(ev.sectionsByTab![2].some((s) => s.title === 'Output by terse mode')).toBe(false)
+  })
+
+  test('Usage tab shows measured spine savings when present', async () => {
+    const { ctx, events } = makeCtx(undefined, {
+      compactions: 1,
+      compactionTokensSaved: 2000,
+      toolOutputTrims: 1,
+      toolOutputCharsTrimmed: 70000,
+    })
+    await new StatusCommand().execute(['usage'], ctx)
+    const ev = events[0]
+    if (ev.kind !== 'card') throw new Error('expected card')
+    const section = ev.sectionsByTab![2].find((s) => s.title === 'Measured spine savings')
+    expect(section).toBeDefined()
+    expect(JSON.stringify(section)).toContain('2,000 tokens saved')
+    expect(JSON.stringify(section)).toContain('70,000 chars trimmed')
   })
 })

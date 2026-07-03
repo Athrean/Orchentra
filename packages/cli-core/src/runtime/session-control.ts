@@ -3,7 +3,8 @@ import type { PermissionMode } from './permissions'
 import type { EffortTier } from './provider'
 import type { TerseMode } from './terse'
 import type { PlanLevel } from './plan-level'
-import type { TerseModeUsage } from './usage'
+import type { SpineBudgetControls } from './spine'
+import type { SpineSavings, TerseModeUsage } from './usage'
 import type { PolicyRule } from '../permissions/policy'
 import type { StoredPermissionRule } from '../permissions/store'
 
@@ -55,6 +56,12 @@ export interface SessionControl {
   cancelTask?(id: string): boolean
   /** Output tokens + turns spent under each terse mode this session. */
   getTerseBreakdown?(): readonly TerseModeUsage[]
+  /** Measured compaction + tool-output-trim savings, when the session tracks them. */
+  getSavings?(): SpineSavings
+  /** Live context/cost/tool-output controls that make up the context budget spine. */
+  getBudgetControls?(): SpineBudgetControls
+  /** Replace live context/cost/tool-output controls for subsequent turns. */
+  setBudgetControls?(controls: Partial<SpineBudgetControls>): SpineBudgetControls
   /** Configured dollar budget caps, when the session exposes them. */
   getCostLimits?(): { maxCostUsd?: number; warnCostUsd?: number }
   /** Resolved declarative allow/deny/ask rules, when the session exposes them. */

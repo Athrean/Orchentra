@@ -49,6 +49,8 @@ export interface ToolContext {
   askUser?: (prompt: string) => Promise<string>
   provider?: Provider
   tools?: ToolRegistry
+  /** Shared Orchentra spine prompt for nested model calls such as sub-agents. */
+  spinePrompt?: string
 }
 
 export interface ToolResult {

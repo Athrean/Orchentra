@@ -37,6 +37,7 @@ export interface ReviewOptions {
   path?: string
   llm: LlmCaller
   memoryGuidance?: string
+  spinePrompt?: string
   /** Override the checks to run; defaults to the cwd package.json scripts. */
   checks?: { name: string; command: string }[]
   /** Inject for tests so verification doesn't spawn real processes. */
@@ -52,6 +53,7 @@ export async function review(opts: ReviewOptions): Promise<ReviewResult | { erro
     path: opts.path,
     llm: opts.llm,
     memoryGuidance: opts.memoryGuidance,
+    spinePrompt: opts.spinePrompt,
   })
   if ('error' in scanned) return scanned
 

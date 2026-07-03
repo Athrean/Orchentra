@@ -1,3 +1,4 @@
+import { spinePrompt } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { architect, type ArchitectPlan } from '../../composites/architect'
 import { writeScaffold, type ScaffoldReport } from '../../composites/scaffold'
@@ -40,6 +41,11 @@ export class PlanCommand implements CommandHandler {
       llm,
       terseMode: ctx.session.getTerseMode?.(),
       planLevel: ctx.session.getPlanLevel?.(),
+      spinePrompt: spinePrompt({
+        terseMode: ctx.session.getTerseMode?.(),
+        budget: ctx.session.getBudgetControls?.(),
+        taskFocus: '/plan architect',
+      }),
     })
     if ('error' in result) {
       emit(ctx, `error: ${result.error}`, 'warn')

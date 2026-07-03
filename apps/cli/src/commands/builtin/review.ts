@@ -1,4 +1,4 @@
-import { PatternStore } from '@orchentra/cli-core'
+import { PatternStore, spinePrompt } from '@orchentra/cli-core'
 import type { MemoryStore } from '@orchentra/cli-core'
 import {
   GitHubClient,
@@ -51,7 +51,19 @@ export class ReviewCommand implements CommandHandler {
     const llm = this.deps?.llm ?? buildOneShotLlmCaller(ctx.session.getModel())
     const store = this.deps?.store ?? new PatternStore()
     const memoryGuidance = loadMemoryFeedbackGuidance(store, this.deps?.orgId ?? 'default')
-    const result = await review({ cwd: ctx.cwd, mode, path, llm, run: this.deps?.run, memoryGuidance })
+    const result = await review({
+      cwd: ctx.cwd,
+      mode,
+      path,
+      llm,
+      run: this.deps?.run,
+      memoryGuidance,
+      spinePrompt: spinePrompt({
+        terseMode: ctx.session.getTerseMode?.(),
+        budget: ctx.session.getBudgetControls?.(),
+        taskFocus: '/review verifier',
+      }),
+    })
     if ('error' in result) {
       const text = `error: ${result.error}`
       if (ctx.ui) ctx.ui({ kind: 'note', tone: 'warn', text })

@@ -251,6 +251,39 @@ describe('small slash parity commands', () => {
 
   test('/plan architects a need into a rendered proposal', async () => {
     const { ctx, events } = makeCtx('/work')
+    let systemPrompt = ''
+    const llm: LlmCaller = async () => ({
+      text: JSON.stringify({
+        recommendedStack: 'token-bucket in cli-tools',
+        rationale: 'no new dep',
+        alternatives: [{ name: 'sliding-window', tradeoff: 'more state' }],
+        architecture: 'one pure module',
+        scaffold: [{ path: 'packages/cli-tools/src/rate-limit.ts', purpose: 'the limiter' }],
+        verification: ['unit test the refill math'],
+      }),
+      model: 'fake-model',
+      tokensIn: 10,
+      tokensOut: 20,
+    })
+    const recordingLlm: LlmCaller = async (input) => {
+      systemPrompt = input.systemPrompt
+      return llm(input)
+    }
+
+    await new PlanCommand(recordingLlm).execute(['add', 'a', 'rate', 'limiter'], ctx)
+
+    expect(systemPrompt).toContain('ORCHENTRA SPINE')
+    expect(systemPrompt).toContain('Task focus: /plan architect')
+    expect(events).toHaveLength(1)
+    const text = (events[0] as Extract<UiOutput, { kind: 'text' }>).text
+    expect(text).toContain('Recommended: token-bucket in cli-tools')
+    expect(text).toContain('1. sliding-window — more state')
+    expect(text).toContain('Proposed scaffold (not written):')
+    expect(text).toContain('packages/cli-tools/src/rate-limit.ts — the limiter')
+  })
+
+  test('/plan supports a bare architect llm', async () => {
+    const { ctx, events } = makeCtx('/work')
     const llm: LlmCaller = async () => ({
       text: JSON.stringify({
         recommendedStack: 'token-bucket in cli-tools',

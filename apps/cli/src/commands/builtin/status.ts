@@ -100,6 +100,8 @@ function sectionsFor(tab: TabName, ctx: CommandContext): UiCardSection[] {
       ]
       const terse = terseSection(session)
       if (terse) sections.push(terse)
+      const savings = savingsSection(session)
+      if (savings) sections.push(savings)
       return sections
     }
     case 'Stats': {
@@ -136,6 +138,25 @@ function terseSection(session: CommandContext['session']): UiCardSection | undef
       key: b.mode,
       value: `${formatNumber(b.outputTokens)} out · ${b.turns} turn${b.turns === 1 ? '' : 's'} · ${formatNumber(Math.round(b.outputTokens / b.turns))}/turn`,
     })),
+  }
+}
+
+function savingsSection(session: CommandContext['session']): UiCardSection | undefined {
+  const savings = session.getSavings?.()
+  if (!savings) return undefined
+  if (savings.compactions === 0 && savings.toolOutputTrims === 0) return undefined
+  return {
+    title: 'Measured spine savings',
+    rows: [
+      {
+        key: 'Compaction',
+        value: `${savings.compactions} run(s), ${formatNumber(savings.compactionTokensSaved)} tokens saved`,
+      },
+      {
+        key: 'Tool trims',
+        value: `${savings.toolOutputTrims} trim(s), ${formatNumber(savings.toolOutputCharsTrimmed)} chars trimmed`,
+      },
+    ],
   }
 }
 

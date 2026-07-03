@@ -88,6 +88,8 @@ export { EFFORT_TIERS, isEffortTier } from './provider'
 
 export type { TerseMode } from './terse'
 export { TERSE_MODES, isTerseMode, terseModePrompt } from './terse'
+export type { SpineBudgetControls, SpinePromptOptions } from './spine'
+export { spinePrompt } from './spine'
 export type { PlanLevel } from './plan-level'
 export { PLAN_LEVELS, isPlanLevel, planLevelPrompt } from './plan-level'
 
@@ -200,7 +202,7 @@ export type {
 } from './config-types'
 export { ConfigLoader, defaultConfigHome } from './config'
 
-export type { ModelPricing, UsageCostEstimate, TerseModeUsage } from './usage'
+export type { ModelPricing, UsageCostEstimate, TerseModeUsage, SpineSavings } from './usage'
 export { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from './usage'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'

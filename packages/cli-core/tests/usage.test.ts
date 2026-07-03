@@ -129,6 +129,29 @@ describe('UsageTracker', () => {
     tracker.record(turn, 'lite')
     expect(tracker.terseBreakdown().map((b) => b.mode)).toEqual(['lite', 'ultra'])
   })
+
+  test('savings start at zero', () => {
+    expect(new UsageTracker().savings()).toEqual({
+      compactions: 0,
+      compactionTokensSaved: 0,
+      toolOutputTrims: 0,
+      toolOutputCharsTrimmed: 0,
+    })
+  })
+
+  test('accumulates measured compaction and tool-output-trim savings', () => {
+    const tracker = new UsageTracker()
+    tracker.recordCompaction(1200)
+    tracker.recordCompaction(300)
+    tracker.recordToolOutputTrim(70_000)
+
+    expect(tracker.savings()).toEqual({
+      compactions: 2,
+      compactionTokensSaved: 1500,
+      toolOutputTrims: 1,
+      toolOutputCharsTrimmed: 70_000,
+    })
+  })
 })
 
 describe('summaryLines', () => {

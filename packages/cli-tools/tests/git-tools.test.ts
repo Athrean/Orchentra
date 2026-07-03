@@ -11,8 +11,16 @@ afterAll(() => {
 })
 
 function git(cwd: string, ...args: string[]): void {
-  const proc = Bun.spawnSync(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe' })
+  const proc = Bun.spawnSync(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: cleanGitEnv() })
   if (proc.exitCode !== 0) throw new Error(`git ${args.join(' ')} failed: ${proc.stderr.toString()}`)
+}
+
+function cleanGitEnv(): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
+  }
+  return env
 }
 
 function makeRepo(): string {

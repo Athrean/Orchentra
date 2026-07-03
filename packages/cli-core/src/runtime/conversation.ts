@@ -64,6 +64,7 @@ export interface ConversationDeps {
   enforcerNotifyPolicy?: import('../permissions/enforcer').EnforcerContext['notifyPolicy']
   enforcerToolRequirements?: import('../permissions/enforcer').EnforcerContext['toolRequirements']
   permissionMode?: import('./permissions').PermissionMode
+  spinePrompt?: string
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -342,6 +343,7 @@ export class ConversationRuntime {
       provider: this.deps.provider,
       tools: this.deps.tools,
       permissionMode: this.deps.permissionMode,
+      spinePrompt: this.deps.spinePrompt,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {

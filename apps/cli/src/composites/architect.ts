@@ -40,6 +40,7 @@ export interface ArchitectOptions {
   llm: LlmCaller
   terseMode?: TerseMode
   planLevel?: PlanLevel
+  spinePrompt?: string
 }
 
 export async function architect(opts: ArchitectOptions): Promise<ArchitectPlan | { error: string }> {
@@ -48,7 +49,7 @@ export async function architect(opts: ArchitectOptions): Promise<ArchitectPlan |
 
   const depth = planLevelPrompt(opts.planLevel ?? 'plus')
   const terse = opts.terseMode ? terseModePrompt(opts.terseMode) : ''
-  const systemPrompt = [SYSTEM_PROMPT, depth, terse].filter(Boolean).join('\n')
+  const systemPrompt = [SYSTEM_PROMPT, opts.spinePrompt, depth, terse].filter(Boolean).join('\n')
 
   const llm = await opts.llm({ systemPrompt, userPrompt: need })
   const plan = parsePlan(llm.text)

@@ -50,7 +50,13 @@ export const agentTool: ToolDefinition = {
       const toolSchemas = ctx.tools.list()
 
       const request: ProviderRequest = {
-        systemStatic: 'You are a helpful coding assistant completing a specific sub-task. Be thorough but concise.',
+        systemStatic: [
+          'You are a helpful coding assistant completing a specific sub-task.',
+          ctx.spinePrompt,
+          'Complete the delegated scope only. Do not push or perform destructive git operations.',
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
         systemDynamic: '',
         messages,
         tools: toolSchemas,
