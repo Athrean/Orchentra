@@ -81,6 +81,44 @@ describe('tui reducer', () => {
     expect(s.streamingRowId).toBeNull()
   })
 
+  test('session/clear-visible resets chat surface and leaves only the fresh note', () => {
+    let s = reducer(base(), { type: 'buffer/set', buffer: 'draft', cursor: 5 })
+    s = reducer(s, {
+      type: 'suggestions/set',
+      state: {
+        open: true,
+        trigger: '/',
+        query: '',
+        items: [{ value: '/help', label: 'help' }],
+        selected: 0,
+        anchorStart: 0,
+      },
+    })
+    s = reducer(s, {
+      type: 'card/open',
+      card: {
+        id: 'card-1',
+        title: 'Status',
+        activeTab: 0,
+        sectionsByTab: [[{ rows: [{ key: 'Model', value: 'x' }] }]],
+      },
+    })
+    s = reducer(s, { type: 'transcript/push', row: { kind: 'user', id: 'u1', text: 'hi' } })
+    s = reducer(s, { type: 'transcript/stream-begin', rowId: 'a1' })
+
+    const beforeGeneration = s.screenGeneration
+    s = reducer(s, { type: 'session/clear-visible', note: 'Conversation cleared.', noteId: 'n1' })
+
+    expect(s.buffer).toBe('')
+    expect(s.cursor).toBe(0)
+    expect(s.suggestions.open).toBe(false)
+    expect(s.activeCard).toBeNull()
+    expect(s.activeFlow).toBeNull()
+    expect(s.streamingRowId).toBeNull()
+    expect(s.screenGeneration).toBe(beforeGeneration + 1)
+    expect(s.transcript).toEqual([{ kind: 'system', id: 'n1', text: 'Conversation cleared.', tone: 'info' }])
+  })
+
   test('turn/start sets running and turn/end clears stream id', () => {
     let s = reducer(base(), { type: 'turn/start' })
     expect(s.turn.state).toBe('running')

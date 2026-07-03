@@ -11,6 +11,7 @@ import { EffortCommand } from '../../src/commands/builtin/effort'
 import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
+import { ClearCommand } from '../../src/commands/builtin/clear'
 import { CdCommand, CopyCommand, GoalCommand, TasksCommand } from '../../src/commands/builtin/terminal-parity'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
@@ -209,6 +210,27 @@ describe('small slash parity commands', () => {
 
     expect(session.getEffort?.()).toBe('high')
     expect(events).toEqual([{ kind: 'note', text: 'Thinking effort set to: high' }])
+  })
+
+  test('/clear starts a fresh session and asks the TUI to reset visible chat', async () => {
+    let started = false
+    let cleared = false
+    const session: SessionControl = {
+      ...makeSession(),
+      clearHistory: () => {
+        cleared = true
+      },
+      startNewSession: async () => {
+        started = true
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ClearCommand().execute([], ctx)
+
+    expect(started).toBe(true)
+    expect(cleared).toBe(false)
+    expect(events).toEqual([{ kind: 'clear-session', text: 'Conversation cleared.' }])
   })
 
   test('/planmode enters and exits runtime plan mode', async () => {

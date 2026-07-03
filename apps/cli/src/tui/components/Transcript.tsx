@@ -16,6 +16,7 @@ export const TOOL_ROW_DIM_AFTER_MS = 5_000
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
+  readonly generation: number
   /** The currently-streaming row, if any. Pulled out of `rows` because Static
    * commits each row exactly once — we render the live one separately until
    * it stops streaming. */
@@ -62,17 +63,24 @@ export function Transcript(props: TranscriptProps): React.ReactElement {
   }
   return (
     <>
-      <Static items={items}>
+      <Static key={props.generation} items={items}>
         {(item) =>
           item.kind === 'banner' ? (
-            <WelcomeBanner key="__banner__" {...item.props} />
+            <Box key={`__banner__:${props.generation}`} flexDirection="column">
+              <WelcomeBanner {...item.props} />
+              <Box height={1} />
+            </Box>
           ) : (
-            <TranscriptRowView key={item.row.id} row={item.row} dim={isOldTool(item.row, now)} />
+            <Box key={`${props.generation}:${item.row.id}`} flexDirection="column" marginBottom={1}>
+              <TranscriptRowView row={item.row} dim={isOldTool(item.row, now)} />
+            </Box>
           )
         }
       </Static>
       {live.map((row) => (
-        <TranscriptRowView key={row.id} row={row} streaming dim={isOldTool(row, now)} />
+        <Box key={row.id} flexDirection="column" marginBottom={1}>
+          <TranscriptRowView row={row} streaming dim={isOldTool(row, now)} />
+        </Box>
       ))}
     </>
   )
@@ -229,6 +237,7 @@ export function TranscriptRowView(props: RowProps): React.ReactElement {
               {row.subtitle ? <Text dimColor>{`  ${row.subtitle}`}</Text> : null}
             </Text>
           ) : null}
+          {row.title ? <Box height={1} /> : null}
           <CardSections sections={row.sections} />
         </Box>
       )

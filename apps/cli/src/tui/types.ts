@@ -118,6 +118,8 @@ export interface TuiState {
   readonly exitHintUntil: number | null
   /** Id of the assistant row currently being streamed into, if any. */
   readonly streamingRowId: string | null
+  /** Bumps when `/clear` resets the screen so Ink replays Static output from a fresh identity. */
+  readonly screenGeneration: number
   /**
    * Currently-focused interactive card, if any. The card lives in the live
    * region (not in Static), so the user can switch tabs with ←/→ or Tab and
@@ -163,6 +165,7 @@ export type TuiAction =
   | { type: 'suggestions/move'; delta: number }
   | { type: 'transcript/push'; row: TranscriptRow }
   | { type: 'transcript/clear' }
+  | { type: 'session/clear-visible'; note?: string; noteId: string }
   | { type: 'transcript/stream-begin'; rowId: string }
   | { type: 'transcript/stream-append'; rowId: string; delta: string }
   | { type: 'transcript/stream-end' }

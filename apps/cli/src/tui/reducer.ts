@@ -26,6 +26,7 @@ export function initialState(args: {
     pastes: {},
     exitHintUntil: null,
     streamingRowId: null,
+    screenGeneration: 0,
     activeCard: null,
     activeFlow: null,
   }
@@ -90,6 +91,27 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
 
     case 'transcript/clear':
       return { ...state, transcript: [] }
+
+    case 'session/clear-visible': {
+      const transcript: TranscriptRow[] = action.note
+        ? [{ kind: 'system', id: action.noteId, text: action.note, tone: 'info' }]
+        : []
+      return {
+        ...state,
+        buffer: '',
+        cursor: 0,
+        draft: '',
+        historyIndex: -1,
+        suggestions: emptySuggestions(),
+        transcript,
+        pastes: {},
+        exitHintUntil: null,
+        streamingRowId: null,
+        screenGeneration: state.screenGeneration + 1,
+        activeCard: null,
+        activeFlow: null,
+      }
+    }
 
     case 'transcript/stream-begin': {
       const row: TranscriptRow = { kind: 'assistant', id: action.rowId, text: '' }

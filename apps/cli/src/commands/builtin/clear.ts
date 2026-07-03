@@ -8,8 +8,9 @@ export class ClearCommand implements CommandHandler {
   }
 
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
-    ctx.session.clearHistory()
-    if (ctx.ui) ctx.ui({ kind: 'note', text: 'Conversation cleared.' })
+    if (ctx.session.startNewSession) await ctx.session.startNewSession()
+    else ctx.session.clearHistory()
+    if (ctx.ui) ctx.ui({ kind: 'clear-session', text: 'Conversation cleared.' })
     else process.stdout.write('Conversation cleared.\n')
     return true
   }

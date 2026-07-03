@@ -34,7 +34,7 @@ import { setActiveRepo, setDefaultModel } from '../session-config'
 import { loadActiveTheme, saveActiveTheme } from './theme-registry'
 import { planNeedFromTranscript } from './transcript-context'
 import type { BannerOptions } from '../render/banner'
-import type { TuiAction, TuiState } from './types'
+import type { TranscriptRow, TuiAction, TuiState } from './types'
 
 export interface TuiProps {
   readonly cli: LiveCli
@@ -44,13 +44,15 @@ export interface TuiProps {
   readonly mode: PermissionMode
   readonly branch?: string
   readonly banner?: BannerOptions
+  readonly clearScreen?: () => void
 }
 
 export function Tui(props: TuiProps): React.ReactElement {
-  const { cli, registry, cwd } = props
+  const { cli, registry, clearScreen } = props
   const { exit } = useApp()
   const { stdout } = useStdout()
   const cols = stdout?.columns ?? 80
+  const [cwd, setCwd] = useState(props.cwd)
 
   const [state, dispatch] = useReducer(
     reducer,
@@ -253,6 +255,10 @@ export function Tui(props: TuiProps): React.ReactElement {
                   row: { kind: 'system', id: randomUUID(), text: output.text, tone: output.tone ?? 'info' },
                 })
                 return
+              case 'clear-session':
+                clearScreen?.()
+                dispatch({ type: 'session/clear-visible', note: output.text, noteId: randomUUID() })
+                return
               case 'card':
                 if (output.sectionsByTab && output.tabs) {
                   dispatch({
@@ -327,7 +333,12 @@ export function Tui(props: TuiProps): React.ReactElement {
             cwd,
             session: cli,
             ui,
+            setCwd: (next) => {
+              setCwd(next)
+              cli.setCwd?.(next)
+            },
             getRecentTranscriptContext: () => planNeedFromTranscript(stateRef.current.transcript),
+            getTranscriptText: () => transcriptText(stateRef.current.transcript),
             runTurn: async (input) => {
               streamingIdRef.current = null
               dispatch({ type: 'turn/start' })
@@ -399,7 +410,7 @@ export function Tui(props: TuiProps): React.ReactElement {
         dispatch({ type: 'turn/end' })
       }
     },
-    [cli, cwd, registry, exit],
+    [cli, cwd, registry, exit, clearScreen],
   )
 
   // Ctrl+x ctrl+e — open the current buffer in $EDITOR. The chord state
@@ -675,7 +686,12 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   return (
     <Box flexDirection="column">
-      <Transcript rows={state.transcript} streamingRowId={state.streamingRowId} banner={props.banner} />
+      <Transcript
+        rows={state.transcript}
+        streamingRowId={state.streamingRowId}
+        generation={state.screenGeneration}
+        banner={props.banner}
+      />
       <Box flexDirection="column">
         {state.activeFlow?.kind === 'anthropic-login' ? (
           <AnthropicLoginCard
@@ -1029,6 +1045,53 @@ function handleRuntimeEvent(
       dispatch({ type: 'transcript/stream-end' })
       break
   }
+}
+
+function transcriptText(rows: readonly TranscriptRow[]): string | null {
+  const lines: string[] = []
+  for (const row of rows) {
+    switch (row.kind) {
+      case 'user':
+        lines.push(`User: ${row.text}`)
+        break
+      case 'assistant':
+        lines.push(`Assistant: ${row.text}`)
+        break
+      case 'system':
+        lines.push(`System: ${row.text}`)
+        break
+      case 'error':
+        lines.push(`Error: ${row.message}`)
+        break
+      case 'tool_call':
+        lines.push(`Tool ${row.name}: ${row.input}`)
+        break
+      case 'tool_result':
+        lines.push(`Tool result${row.name ? ` ${row.name}` : ''}: ${row.preview}`)
+        break
+      case 'stream':
+        lines.push(`${row.label ?? 'Stream'}: ${row.text}`)
+        break
+      case 'reasoning':
+        if (row.text.trim()) lines.push(`Reasoning: ${row.text}`)
+        break
+      case 'done':
+        lines.push(`Done: ${row.steps} steps, ${row.usage.inputTokens + row.usage.outputTokens} tokens`)
+        break
+      case 'compacted':
+        lines.push(`Compacted: dropped ${row.dropped}, saved ${row.saved}`)
+        break
+      case 'card':
+        lines.push([row.title, row.subtitle].filter(Boolean).join(' - '))
+        for (const section of row.sections) {
+          if (section.title) lines.push(section.title)
+          for (const r of section.rows) lines.push(`${r.key}: ${r.value}`)
+        }
+        break
+    }
+  }
+  const out = lines.join('\n').trim()
+  return out.length === 0 ? null : out
 }
 
 function moveLine(state: TuiState, delta: -1 | 1, dispatch: React.Dispatch<TuiAction>): void {

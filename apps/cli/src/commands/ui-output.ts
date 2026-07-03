@@ -27,6 +27,14 @@ export type UiOutput =
   | { readonly kind: 'text'; readonly text: string }
   | { readonly kind: 'note'; readonly tone?: 'info' | 'warn'; readonly text: string }
   | {
+      /**
+       * Reset the visible TUI transcript/input after a command has reset
+       * conversation state. A follow-up note may be shown on the fresh screen.
+       */
+      readonly kind: 'clear-session'
+      readonly text?: string
+    }
+  | {
       readonly kind: 'card'
       readonly title?: string
       readonly subtitle?: string

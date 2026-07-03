@@ -85,6 +85,11 @@ interface InkInstanceInternals {
   lastOutputHeight?: number
 }
 
+interface InkInstanceHandle {
+  cleanup(): void
+  clear(): void
+}
+
 export async function runTui(opts: RunTuiOptions): Promise<void> {
   const ide = isIdeTerminal()
 
@@ -96,7 +101,7 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
   // bump lands before Ink's own handler reads the field.
   process.stdout.prependListener('resize', onResize)
 
-  const instanceRef: { current: { cleanup: () => void } | null } = { current: null }
+  const instanceRef: { current: InkInstanceHandle | null } = { current: null }
   const instance = render(
     React.createElement(
       TuiErrorBoundary,
@@ -112,6 +117,7 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
         mode: opts.mode,
         branch: opts.branch,
         banner: opts.banner,
+        clearScreen: (): void => instanceRef.current?.clear(),
       }),
     ),
     {
