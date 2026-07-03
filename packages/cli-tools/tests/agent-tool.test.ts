@@ -91,3 +91,84 @@ describe('agentTool', () => {
     expect(budget.snapshot().exhausted).toBe(true)
   })
 })
+
+function scriptedProvider(turns: ProviderStreamEvent[][]): Provider {
+  let i = 0
+  return {
+    async *stream(_req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+      const turn = turns[i++] ?? []
+      for (const ev of turn) yield ev
+    },
+  }
+}
+
+// Routes the `agent` tool back to itself (as the real registry does) and records
+// the subagentDepth each nested invocation is called with.
+function recursiveRegistry(depthLog: number[]): ToolRegistry {
+  return {
+    list: () => [],
+    has: (n) => n === 'agent',
+    register: () => {},
+    execute: async (name, input, ctx) => {
+      if (name !== 'agent') return { content: '', isError: true }
+      depthLog.push(ctx.subagentDepth ?? -1)
+      return agentTool.execute(input, ctx)
+    },
+  }
+}
+
+describe('agentTool recursion cap', () => {
+  test('refuses to spawn when already at the recursion depth cap', async () => {
+    const result = await agentTool.execute({ prompt: 'x' }, baseCtx({ subagentDepth: 2 }))
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('depth')
+  })
+
+  test('allows one nested level under the cap and increments depth for the child', async () => {
+    const depthLog: number[] = []
+    const turns: ProviderStreamEvent[][] = [
+      [
+        { kind: 'tool-use', call: { id: 'a1', name: 'agent', input: { prompt: 'inner' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'inner-ran' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'outer-done' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ]
+    const result = await agentTool.execute(
+      { prompt: 'outer' },
+      baseCtx({ provider: scriptedProvider(turns), tools: recursiveRegistry(depthLog) }),
+    )
+    expect(result.isError).toBe(false)
+    expect(result.content).toBe('outer-done')
+    // Root ctx is depth 0, so the spawned sub-agent runs its tool calls at depth 1.
+    expect(depthLog).toEqual([1])
+  })
+
+  test('a sub-agent at the cap depth refuses to recurse further', async () => {
+    const depthLog: number[] = []
+    const turns: ProviderStreamEvent[][] = [
+      [
+        { kind: 'tool-use', call: { id: 'a1', name: 'agent', input: { prompt: 'too-deep' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'gave-up' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ]
+    const result = await agentTool.execute(
+      { prompt: 'deep' },
+      baseCtx({ subagentDepth: 1, provider: scriptedProvider(turns), tools: recursiveRegistry(depthLog) }),
+    )
+    // Outer call is depth 1 → child runs at depth 2 → its nested agent call is refused.
+    expect(result.isError).toBe(false)
+    expect(result.content).toBe('gave-up')
+    expect(depthLog).toEqual([2])
+  })
+})
