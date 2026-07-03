@@ -28,16 +28,69 @@ export interface BannerOptions {
 }
 
 const TIPS: ReadonlyArray<readonly [string, string]> = [
-  ['/help', 'list every command grouped by category'],
-  ['/triage', 'debug a failing GitHub Actions run in one slash'],
-  ['/clean', 'prune old workflow runs and expired artifacts'],
-  ['/login', 'connect Anthropic, OpenAI, or Gemini providers'],
+  ['/help', 'list commands grouped by category'],
+  ['/status', 'inspect session, config, usage, and stats'],
+  ['/skills', 'show loaded workspace skills'],
+  ['/review', 'verify changes by running real checks'],
 ]
 
 const BOX_MAX_WIDTH = 110
 const BOX_MIN_WIDTH = 24
 const TIPS_BREAKPOINT = 80
 const COLUMN_GAP = 4
+
+const SMALL_MASCOT_LINES = ['  ▄██▄  ', '▄█ ▄▄ █▄', '▀█▄▄▄▄█▀'] as const
+
+const COMPACT_MASCOT_LINES = [
+  '   ▄▄██▀▀██▄▄',
+  ' ▄█▀   ▄▄   ▀█▄',
+  '▄█ ▄█▀▀▀▀▀█▄  █▄',
+  '███▀ ▄▄▄▄▄▄█▄ ▀█',
+  '██  █▀    ▀██  █',
+  '█  ██▄    ▄█  ██',
+  '█▄ ██▀▀██▀▀ ▄███',
+  '▀█  ▀▄▄▄▄▄▄█▀ █▀',
+  ' ▀█▄  ▀▀▀▀  ▄█▀',
+  '   ▀▀██▄▄██▀▀',
+] as const
+
+const FULL_MASCOT_LINES = [
+  '      ▄▄▄██████▄▄▄',
+  '    ▄██▀▀      ▀▀██▄',
+  '  ▄██▀   ▄▄▄▄▄    ▀██▄',
+  ' ██▀ ▄▄██▀▀▀▀▀██▄   ▀██',
+  '▄█▀▄██▀         ██▄  ▀█▄',
+  '████▀   ▄██████▄ ██   ██',
+  '███   ▄█▀▀     ▀███   ██',
+  '██   ██          ██   ██',
+  '██   ███▄      ▄██   ███',
+  '██   ██▀███▄▄███▀  ▄████',
+  '▀█▄  ▀█▄         ▄██▀▄█▀',
+  ' ██▄  ▀██▄▄▄▄▄▄███▀ ▄██',
+  '  ▀██▄   ▀▀▀▀▀▀▀  ▄██▀',
+  '    ▀██▄▄      ▄▄██▀',
+  '      ▀▀▀██████▀▀▀',
+] as const
+
+type MascotSize = 'small' | 'compact' | 'full'
+
+function maxLineWidth(lines: readonly string[]): number {
+  return Math.max(...lines.map((line) => line.length))
+}
+
+const COMPACT_MASCOT_WIDTH = maxLineWidth(COMPACT_MASCOT_LINES)
+const FULL_MASCOT_WIDTH = maxLineWidth(FULL_MASCOT_LINES)
+const SMALL_MASCOT_WIDTH = maxLineWidth(SMALL_MASCOT_LINES)
+
+function mascotLines(size: MascotSize): readonly string[] {
+  if (size === 'small') return SMALL_MASCOT_LINES
+  return size === 'full' ? FULL_MASCOT_LINES : COMPACT_MASCOT_LINES
+}
+
+function mascotWidth(size: MascotSize): number {
+  if (size === 'small') return SMALL_MASCOT_WIDTH
+  return size === 'full' ? FULL_MASCOT_WIDTH : COMPACT_MASCOT_WIDTH
+}
 
 /**
  * Detect when we're running inside an IDE-integrated terminal where line
@@ -65,18 +118,40 @@ function IdeCompactBanner(props: BannerOptions): React.ReactElement {
 
   const titleLine = `${capitalize(props.cliName)} v${props.cliVersion}`
   const metaLine = `${humanizeModelId(props.model)} · ${provider}`
+  const markWidth = mascotWidth('small')
+  const lines = mascotLines('small')
 
   return (
     <Box flexDirection="column" paddingX={1} paddingTop={1} width={infoMaxWidth}>
-      <Text bold color={THEME.brand} wrap="truncate-end">
-        {titleLine}
-      </Text>
-      <Text dimColor wrap="truncate-end">
-        {metaLine}
-      </Text>
-      <Text dimColor wrap="truncate-end">
-        {cwd}
-      </Text>
+      {lines.map((line, index) => (
+        <Box key={`${index}:${line}`} flexDirection="row" width={infoMaxWidth}>
+          <Text color={THEME.brand}>{line.padEnd(markWidth)}</Text>
+          {index === 0 ? (
+            <>
+              <Text>{'  '}</Text>
+              <Text bold color={THEME.brand} wrap="truncate-end">
+                {titleLine}
+              </Text>
+            </>
+          ) : null}
+          {index === 1 ? (
+            <>
+              <Text>{'  '}</Text>
+              <Text dimColor wrap="truncate-end">
+                {metaLine}
+              </Text>
+            </>
+          ) : null}
+          {index === 2 ? (
+            <>
+              <Text>{'  '}</Text>
+              <Text dimColor wrap="truncate-end">
+                {cwd}
+              </Text>
+            </>
+          ) : null}
+        </Box>
+      ))}
     </Box>
   )
 }
@@ -114,6 +189,8 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
           paddingY={1}
           width={boxWidth}
         >
+          <MascotMark size="compact" />
+          <Box height={1} />
           <Box width={innerWidth} justifyContent="center">
             <Text bold wrap="truncate-end">{`Welcome back, ${username}!`}</Text>
           </Box>
@@ -133,7 +210,8 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
     )
   }
 
-  const leftWidth = Math.max(24, Math.floor(innerWidth * 0.4))
+  const mascotSize: MascotSize = 'full'
+  const leftWidth = Math.max(24, mascotWidth(mascotSize), Math.floor(innerWidth * 0.4))
   const rightWidth = Math.max(innerWidth - leftWidth - COLUMN_GAP, 20)
 
   return (
@@ -149,6 +227,8 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
         width={boxWidth}
       >
         <Box flexDirection="column" alignItems="center" width={leftWidth}>
+          <MascotMark size={mascotSize} />
+          <Box height={1} />
           <Box width={leftWidth} justifyContent="center">
             <Text bold wrap="truncate-end">{`Welcome back, ${username}!`}</Text>
           </Box>
@@ -187,6 +267,21 @@ function BorderedBanner(props: BannerOptions): React.ReactElement {
           })}
         </Box>
       </Box>
+    </Box>
+  )
+}
+
+function MascotMark({ size = 'compact' }: { readonly size?: MascotSize }): React.ReactElement {
+  const lines = mascotLines(size)
+  const width = mascotWidth(size)
+
+  return (
+    <Box flexDirection="column" width={width}>
+      {lines.map((line, index) => (
+        <Text key={`${index}:${line}`} color={THEME.brand}>
+          {line.padEnd(width)}
+        </Text>
+      ))}
     </Box>
   )
 }

@@ -6,6 +6,10 @@ describe('THEME tokens', () => {
     expect(THEME.brand).toMatch(/^#[0-9a-f]{6}$/i)
   })
 
+  test('dark theme uses the marketing green', () => {
+    expect(THEME.brand).toBe('#10A37F')
+  })
+
   test('spinner frames are non-empty single-char strings', () => {
     expect(THEME.spinner.length).toBeGreaterThan(0)
     for (const f of THEME.spinner) expect(f.length).toBe(1)

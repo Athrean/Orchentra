@@ -27,11 +27,11 @@ const PROVIDER_LABELS: Partial<Record<ProviderKey, string>> = {
   gemini: 'Gemini (Google)',
 }
 
-// Match the THEME.brand hex (#156545) but expressed as a 24-bit ANSI escape
+// Match the THEME.brand hex (#10A37F) but expressed as a 24-bit ANSI escape
 // so the raw-ANSI overlay we render here (before Ink mounts) stays on-brand
 // with the rest of the CLI.
 const C = {
-  brand: '\x1b[38;2;21;101;69m',
+  brand: '\x1b[38;2;16;163;127m',
   dim: '\x1b[2m',
   bold: '\x1b[1m',
   reset: '\x1b[0m',

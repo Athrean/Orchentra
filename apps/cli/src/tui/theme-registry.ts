@@ -52,8 +52,8 @@ const GLYPHS = {
 } as const
 
 const dark: Theme = {
-  brand: '#156545',
-  brandDim: '#23A470',
+  brand: '#10A37F',
+  brandDim: '#5BD3B6',
   fg: 'white',
   muted: 'gray',
   accent: 'cyan',
@@ -66,7 +66,7 @@ const dark: Theme = {
   link: 'blue',
   quote: 'gray',
   codeBorder: 'gray',
-  inlineCode: '#23A470',
+  inlineCode: '#10A37F',
   ...GLYPHS,
   spinner: SPINNER,
 }
@@ -75,8 +75,8 @@ const dark: Theme = {
 // readable on light terminals, headings/links re-pitched to hues that
 // contrast with light backgrounds.
 const light: Theme = {
-  brand: '#0F4A33',
-  brandDim: '#156545',
+  brand: '#0D7F63',
+  brandDim: '#10A37F',
   fg: 'black',
   muted: 'gray',
   accent: 'blue',
@@ -89,7 +89,7 @@ const light: Theme = {
   link: '#0050B0',
   quote: 'gray',
   codeBorder: 'gray',
-  inlineCode: '#0F4A33',
+  inlineCode: '#0D7F63',
   ...GLYPHS,
   spinner: SPINNER,
 }
