@@ -59,6 +59,13 @@ export interface ToolContext {
    * spend counts against the same dollar/step/token caps as the parent.
    */
   budget?: RuntimeBudget
+  /**
+   * Sub-agent nesting depth of this context. The root conversation runs at 0
+   * (or undefined). Each sub-agent the `agent` tool spawns runs its own tool
+   * calls at `depth + 1`, so the tool can enforce a recursion cap and bound
+   * the nesting tree even though budget already bounds total spend.
+   */
+  subagentDepth?: number
 }
 
 export interface ToolResult {

@@ -19,6 +19,11 @@ interface AgentInput {
 
 const MAX_ITERATIONS_PER_SUBAGENT = 10
 const SUBAGENT_MAX_OUTPUT_TOKENS = 4096
+// A sub-agent may itself delegate to `agent`, but only so deep. The root runs
+// at depth 0; its sub-agents at 1; theirs at 2. A context already at this depth
+// refuses to spawn, capping the nesting tree at two levels below the root.
+// Budget inheritance bounds total spend; this bounds fan-out/nesting shape.
+const MAX_SUBAGENT_DEPTH = 2
 
 export const agentTool: ToolDefinition = {
   name: 'agent',
@@ -61,7 +66,18 @@ export const agentTool: ToolDefinition = {
       return { content: 'error: parent budget already exhausted, refusing to spawn sub-agent', isError: true }
     }
 
-    const results = await Promise.all(tasks.map((task) => runSubagent(task, model, ctx)))
+    const depth = ctx.subagentDepth ?? 0
+    if (depth >= MAX_SUBAGENT_DEPTH) {
+      return {
+        content: `error: sub-agent recursion depth cap reached (${MAX_SUBAGENT_DEPTH}); refusing to spawn deeper`,
+        isError: true,
+      }
+    }
+
+    // Children run their own tool calls one level deeper so a nested `agent`
+    // call sees the incremented depth and the cap holds down the tree.
+    const childCtx: ToolContext = { ...ctx, subagentDepth: depth + 1 }
+    const results = await Promise.all(tasks.map((task) => runSubagent(task, model, childCtx)))
 
     if (results.length === 1) {
       return { content: results[0].text, isError: results[0].isError }
