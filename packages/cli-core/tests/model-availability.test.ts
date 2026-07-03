@@ -22,6 +22,11 @@ describe('isKnownModel', () => {
     expect(isKnownModel('qwen-2.5-72b')).toBe(true)
   })
 
+  test('accepts ollama-prefixed local models', () => {
+    expect(isKnownModel('ollama/llama3')).toBe(true)
+    expect(isKnownModel('ollama/qwen2.5-coder:7b')).toBe(true)
+  })
+
   test('rejects bare aliases (those should already have been resolved)', () => {
     expect(isKnownModel('opus')).toBe(false)
     expect(isKnownModel('sonnet')).toBe(false)

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import type { ChatMessage, ProviderRequest, ProviderToolSchema } from '@orchentra/cli-core'
 
-import { OpenAiCompatProvider, OPENAI_CONFIG, XAI_CONFIG } from '../src/openai-compat'
+import { OpenAiCompatProvider, OPENAI_CONFIG, XAI_CONFIG, LOCAL_CONFIG } from '../src/openai-compat'
 import { convertMessage, convertTool } from '../src/openai-compat/client'
 
 function request(overrides?: Partial<ProviderRequest>): ProviderRequest {
@@ -53,6 +53,53 @@ describe('OpenAiCompatProvider effort', () => {
 
     const provider = new OpenAiCompatProvider(OPENAI_CONFIG, 'key', 'https://example.test/v1')
     await drain(provider.stream(request({ model: 'gpt-4o', effort: 'high' })))
+
+    expect(bodies[0]).not.toHaveProperty('reasoning_effort')
+  })
+})
+
+describe('OpenAiCompatProvider local (Ollama) preset', () => {
+  const originalFetch = globalThis.fetch
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  test('LOCAL_CONFIG defaults to the Ollama OpenAI-compatible endpoint', () => {
+    expect(LOCAL_CONFIG.defaultBaseUrl).toBe('http://localhost:11434/v1')
+    expect(LOCAL_CONFIG.baseUrlEnv).toBe('OLLAMA_BASE_URL')
+  })
+
+  test('posts to the local base URL and strips the ollama/ prefix from the wire model', async () => {
+    const bodies: unknown[] = []
+    const urls: string[] = []
+    globalThis.fetch = mockFetch(bodies, urls)
+
+    const provider = new OpenAiCompatProvider(LOCAL_CONFIG)
+    await drain(provider.stream(request({ model: 'ollama/llama3' })))
+
+    expect(urls[0]).toBe('http://localhost:11434/v1/chat/completions')
+    expect(bodies[0]).toMatchObject({ model: 'llama3' })
+  })
+
+  test('honours OLLAMA_BASE_URL override for a self-hosted OpenAI-compatible server', async () => {
+    const bodies: unknown[] = []
+    const urls: string[] = []
+    globalThis.fetch = mockFetch(bodies, urls)
+
+    const provider = new OpenAiCompatProvider(LOCAL_CONFIG, undefined, 'http://192.168.1.9:1234/v1')
+    await drain(provider.stream(request({ model: 'ollama/qwen2.5-coder' })))
+
+    expect(urls[0]).toBe('http://192.168.1.9:1234/v1/chat/completions')
+    expect(bodies[0]).toMatchObject({ model: 'qwen2.5-coder' })
+  })
+
+  test('does not send reasoning_effort to the local provider', async () => {
+    const bodies: unknown[] = []
+    globalThis.fetch = mockFetch(bodies)
+
+    const provider = new OpenAiCompatProvider(LOCAL_CONFIG)
+    await drain(provider.stream(request({ model: 'ollama/qwen2.5-coder', effort: 'high' })))
 
     expect(bodies[0]).not.toHaveProperty('reasoning_effort')
   })
@@ -117,8 +164,9 @@ describe('convertTool', () => {
   })
 })
 
-function mockFetch(bodies: unknown[]): typeof globalThis.fetch {
-  return (async (_url: string | URL | Request, init?: RequestInit) => {
+function mockFetch(bodies: unknown[], urls?: string[]): typeof globalThis.fetch {
+  return (async (url: string | URL | Request, init?: RequestInit) => {
+    if (urls) urls.push(String(url))
     if (typeof init?.body === 'string') bodies.push(JSON.parse(init.body))
     return {
       ok: true,

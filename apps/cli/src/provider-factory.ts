@@ -3,6 +3,7 @@ import {
   AnthropicProvider,
   DASHSCOPE_CONFIG,
   GeminiProvider,
+  LOCAL_CONFIG,
   OpenAiCompatProvider,
   OPENAI_CONFIG,
   XAI_CONFIG,
@@ -40,6 +41,8 @@ export function createProvider(model: string): CreatedProvider {
       return { providerName, provider: new OpenAiCompatProvider(XAI_CONFIG) }
     case 'dashscope':
       return { providerName, provider: new OpenAiCompatProvider(DASHSCOPE_CONFIG) }
+    case 'local':
+      return { providerName, provider: new OpenAiCompatProvider(LOCAL_CONFIG) }
     case 'gemini':
       return { providerName, provider: new GeminiProvider({ model }) }
     case 'anthropic':
@@ -47,8 +50,9 @@ export function createProvider(model: string): CreatedProvider {
   }
 }
 
-export function resolveProviderName(model: string): 'openai' | 'xai' | 'dashscope' | 'gemini' | 'anthropic' {
+export function resolveProviderName(model: string): 'openai' | 'xai' | 'dashscope' | 'gemini' | 'anthropic' | 'local' {
   const lower = model.toLowerCase()
+  if (lower.startsWith('ollama/')) return 'local'
   if (lower.startsWith('gpt') || lower.includes('openai')) return 'openai'
   if (lower.startsWith('grok') || lower.includes('xai')) return 'xai'
   if (lower.includes('qwen') || lower.includes('dashscope')) return 'dashscope'

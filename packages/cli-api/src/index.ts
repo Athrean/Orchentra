@@ -99,6 +99,7 @@ export {
   XAI_CONFIG,
   OPENAI_CONFIG,
   DASHSCOPE_CONFIG,
+  LOCAL_CONFIG,
   type OpenAiCompatConfig,
 } from './openai-compat'
 
