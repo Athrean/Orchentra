@@ -28,7 +28,7 @@ export function ActiveCard(props: ActiveCardProps): React.ReactElement {
   const hasTabs = !!card.tabs && card.tabs.items.length > 0
 
   return (
-    <Box flexDirection="column" paddingX={1}>
+    <Box flexDirection="column" paddingX={1} marginBottom={1}>
       <Text dimColor>{rule(80)}</Text>
       {hasTabs ? <Tabs items={card.tabs!.items} active={card.activeTab} /> : null}
       {hasTabs ? <Box height={1} /> : null}

@@ -37,7 +37,8 @@ export function EffortSlider(props: EffortSliderProps): React.ReactElement {
   )
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={THEME.brand} paddingX={1}>
+    <Box flexDirection="column" paddingX={1}>
+      <Text dimColor>{THEME.rule.repeat(80)}</Text>
       <Text color={THEME.brand} bold>
         Effort
       </Text>
@@ -46,12 +47,23 @@ export function EffortSlider(props: EffortSliderProps): React.ReactElement {
         <Text dimColor>Faster</Text>
         <Text dimColor>Smarter</Text>
       </Box>
-      <Box flexDirection="row" gap={2}>
+      <Box flexDirection="row">
+        {EFFORT_TIERS.map((tier, i) => {
+          const active = i === index
+          return (
+            <React.Fragment key={tier}>
+              <Text color={active ? THEME.brand : THEME.muted}>{active ? '▲' : THEME.rule}</Text>
+              {i < EFFORT_TIERS.length - 1 ? <Text dimColor>{THEME.rule.repeat(9)}</Text> : null}
+            </React.Fragment>
+          )
+        })}
+      </Box>
+      <Box flexDirection="row" gap={3}>
         {EFFORT_TIERS.map((tier, i) => {
           const active = i === index
           return (
             <Text key={tier} color={active ? THEME.brand : undefined} bold={active} dimColor={!active}>
-              {active ? `[${tier}]` : tier}
+              {tier}
             </Text>
           )
         })}
