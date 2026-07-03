@@ -13,6 +13,9 @@ import type {
   SpineBudgetControls,
   PermissionMode,
   Provider,
+  ProviderRequest,
+  ProviderStreamEvent,
+  LlmSummarizer,
   RuntimeEvent,
   SessionControl,
   SessionGoal,
@@ -411,6 +414,30 @@ export class LiveCli implements SessionControl {
     this.session = writer
   }
 
+  // Bounded LLM pass that turns the dropped turns into a faithful digest when
+  // the context window compacts. Best-effort: compaction falls back to the
+  // deterministic summary if this call fails or returns nothing.
+  private buildCompactionSummarizer(): LlmSummarizer {
+    const provider = this.provider
+    const model = this.model
+    return async (digest: string): Promise<string> => {
+      const request: ProviderRequest = {
+        systemStatic:
+          'You compress earlier turns of an AI coding session. Produce a concise, faithful digest that preserves decisions made, facts established, file paths touched, and unresolved threads needed to continue. Terse bullet points, no preamble.',
+        systemDynamic: '',
+        messages: [{ role: 'user', content: digest }],
+        tools: [],
+        model,
+        maxOutputTokens: 512,
+      }
+      let text = ''
+      for await (const ev of provider.stream(request) as AsyncIterable<ProviderStreamEvent>) {
+        if (ev.kind === 'text-delta') text += ev.delta
+      }
+      return text
+    }
+  }
+
   async runTurn(input: string): Promise<void> {
     const sink = this.eventSink
     // Handle forced compaction
@@ -557,6 +584,7 @@ export class LiveCli implements SessionControl {
       signal: this.currentAbort.signal,
       hookRunner: this.hookRunner ?? undefined,
       spinePrompt: spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'sub-agent' }),
+      compactionSummarizer: this.buildCompactionSummarizer(),
     }
 
     this.runtime = new ConversationRuntime(config, deps)

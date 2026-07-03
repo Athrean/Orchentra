@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { ConversationRuntime, type ConversationConfig, type ConversationDeps } from '../src/runtime/conversation'
 import type { HookRunner } from '../src/runtime/hooks'
-import type { Provider, ProviderStreamEvent } from '../src/runtime/provider'
+import type { ChatMessage, Provider, ProviderStreamEvent } from '../src/runtime/provider'
 import type { ToolContext, ToolRegistry, ToolResult } from '../src/runtime/tools'
 import type { RuntimeEvent } from '../src/runtime/events'
 import { buildSystemPrompt } from '../src/runtime/system-prompt'
@@ -79,6 +79,29 @@ describe('ConversationRuntime', () => {
 
     const done = events.find((e) => e.kind === 'done')
     expect(done).toMatchObject({ kind: 'done', reason: 'stop', steps: 1 })
+  })
+
+  test('uses the injected compaction summarizer for dropped turns', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'text-delta', delta: 'ok' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const config = makeConfig({ contextWindowTokens: 100, compactionThreshold: 0.1, keepRecentOnCompact: 2 })
+    const deps: ConversationDeps = { ...makeDeps(provider), compactionSummarizer: async () => 'SUMMARIZER-RAN' }
+    const rt = new ConversationRuntime(config, deps)
+    const prior: ChatMessage[] = Array.from({ length: 6 }, (_, i) => ({
+      role: 'user' as const,
+      content: `old message ${i} ${'x'.repeat(80)}`,
+    }))
+
+    const events: RuntimeEvent[] = []
+    for await (const ev of rt.run({ userMessage: 'new task', priorMessages: prior })) events.push(ev)
+
+    const compacted = events.find((e): e is Extract<RuntimeEvent, { kind: 'compacted' }> => e.kind === 'compacted')
+    expect(compacted).toBeDefined()
+    expect(compacted!.summary).toBe('SUMMARIZER-RAN')
   })
 
   test('budget exhaustion stops the loop', async () => {

@@ -10,7 +10,7 @@ import {
   type ToolResultPayload,
   type UsageTotals,
 } from './events'
-import { compact, shouldCompact, type TokenEstimator } from './compaction'
+import { compact, compactWithSummary, shouldCompact, type LlmSummarizer, type TokenEstimator } from './compaction'
 import { budgetToolOutput } from './tool-output-budget'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
 import type { EffortTier } from './provider'
@@ -65,6 +65,12 @@ export interface ConversationDeps {
   enforcerToolRequirements?: import('../permissions/enforcer').EnforcerContext['toolRequirements']
   permissionMode?: import('./permissions').PermissionMode
   spinePrompt?: string
+  /**
+   * Optional LLM-backed summarizer for compaction. When present, dropped turns
+   * are summarized by the model instead of clipped-and-concatenated. Best-effort
+   * and bounded — compaction falls back to the deterministic summary if it fails.
+   */
+  compactionSummarizer?: LlmSummarizer
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -127,7 +133,7 @@ export class ConversationRuntime {
         return
       }
 
-      const compaction = this.maybeCompact(messages)
+      const compaction = await this.maybeCompact(messages)
       if (compaction) {
         messages.splice(0, messages.length, ...compaction.messages)
         yield* this.emit({
@@ -421,17 +427,20 @@ export class ConversationRuntime {
     }
   }
 
-  private maybeCompact(messages: ChatMessage[]): CompactedOutput | null {
+  private async maybeCompact(messages: ChatMessage[]): Promise<CompactedOutput | null> {
     const { contextWindowTokens, compactionThreshold, keepRecentOnCompact } = this.config
     const needs = shouldCompact(messages, contextWindowTokens, compactionThreshold, this.config.estimator)
     if (!needs) return null
-    const r = compact({
+    const input = {
       messages,
       contextWindowTokens,
       thresholdRatio: compactionThreshold,
       keepRecent: keepRecentOnCompact,
       estimator: this.config.estimator,
-    })
+    }
+    const r = this.deps.compactionSummarizer
+      ? await compactWithSummary(input, this.deps.compactionSummarizer)
+      : compact(input)
     if (!r.compacted) return null
     return r
   }
