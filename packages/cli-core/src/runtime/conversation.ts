@@ -232,7 +232,7 @@ export class ConversationRuntime {
           startedAt: this.now(),
           attributes: { tool: call.name, tool_call_id: call.id },
         })
-        const result = await this.runTool(call)
+        const result = await this.runTool(call, budget)
         // Trim only the provider-bound copy; the full result still goes to the
         // display + session log below, so the budget is transport-only.
         const budgeted = budgetToolOutput(result.content, this.config.toolOutputBudgetChars ?? 0)
@@ -333,7 +333,7 @@ export class ConversationRuntime {
     return { events, text, toolCalls, stopReason, error }
   }
 
-  private async runTool(call: ToolCall): Promise<ToolResultPayload> {
+  private async runTool(call: ToolCall, budget: RuntimeBudget): Promise<ToolResultPayload> {
     const ctx: ToolContext = {
       sessionId: this.config.sessionId,
       cwd: this.config.cwd,
@@ -344,6 +344,7 @@ export class ConversationRuntime {
       tools: this.deps.tools,
       permissionMode: this.deps.permissionMode,
       spinePrompt: this.deps.spinePrompt,
+      budget,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {

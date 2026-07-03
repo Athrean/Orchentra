@@ -1,5 +1,6 @@
 import type { Provider, ProviderToolSchema } from './provider'
 import type { ToolLevel } from './permissions'
+import type { RuntimeBudget } from './budget'
 
 export interface TaskHandle {
   taskId: string
@@ -51,6 +52,13 @@ export interface ToolContext {
   tools?: ToolRegistry
   /** Shared Orchentra spine prompt for nested model calls such as sub-agents. */
   spinePrompt?: string
+  /**
+   * Parent session's live budget. Tools that spawn nested provider calls
+   * (e.g. `agent`) must check `budget.snapshot().exhausted` before starting
+   * work and feed their own usage back via `budget.addUsage()` so nested
+   * spend counts against the same dollar/step/token caps as the parent.
+   */
+  budget?: RuntimeBudget
 }
 
 export interface ToolResult {

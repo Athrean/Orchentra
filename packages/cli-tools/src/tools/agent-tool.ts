@@ -1,37 +1,49 @@
-import type {
-  ToolDefinition,
-  ToolResult,
-  ToolContext,
-  ChatMessage,
-  ProviderRequest,
-  ProviderStreamEvent,
+import {
+  type ToolDefinition,
+  type ToolResult,
+  type ToolContext,
+  type ChatMessage,
+  type ProviderRequest,
+  type ProviderStreamEvent,
+  type UsageTotals,
+  emptyUsage,
+  addUsage,
 } from '@orchentra/cli-core'
 
 interface AgentInput {
-  prompt: string
+  prompt?: string
+  tasks?: string[]
   model?: string
   description?: string
 }
 
+const MAX_ITERATIONS_PER_SUBAGENT = 10
+const SUBAGENT_MAX_OUTPUT_TOKENS = 4096
+
 export const agentTool: ToolDefinition = {
   name: 'agent',
   description:
-    'Spawn a sub-agent to perform a task. The sub-agent runs a nested conversation loop with the same tools.',
+    'Spawn sub-agent(s) to perform a task. Each sub-agent runs a nested conversation loop with the same tools and spine, and its spend counts against the parent budget. Pass "tasks" (an array of independent task prompts) to fan out concurrent sub-agents instead of running one at a time.',
   level: 'admin',
   inputSchema: {
     type: 'object',
     properties: {
-      prompt: { type: 'string', description: 'The task for the sub-agent' },
-      model: { type: 'string', description: 'Optional model override for the sub-agent' },
+      prompt: { type: 'string', description: 'The task for a single sub-agent' },
+      tasks: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Independent task prompts to run as concurrent sub-agents instead of "prompt"',
+      },
+      model: { type: 'string', description: 'Optional model override for the sub-agent(s)' },
       description: { type: 'string', description: 'Short description of what the agent will do' },
     },
-    required: ['prompt'],
     additionalProperties: false,
   },
   async execute(args: unknown, ctx: ToolContext): Promise<ToolResult> {
     const input = args as AgentInput
-    if (!input?.prompt) {
-      return { content: 'error: prompt is required', isError: true }
+    const tasks = resolveTasks(input)
+    if (tasks.length === 0) {
+      return { content: 'error: pass "prompt" or a non-empty "tasks" array', isError: true }
     }
     if (!ctx.provider || !ctx.tools) {
       return { content: 'error: provider and tools not available for sub-agent', isError: true }
@@ -45,64 +57,104 @@ export const agentTool: ToolDefinition = {
       }
     }
 
-    try {
-      const messages: ChatMessage[] = [{ role: 'user', content: input.prompt }]
-      const toolSchemas = ctx.tools.list()
+    if (ctx.budget?.snapshot().exhausted) {
+      return { content: 'error: parent budget already exhausted, refusing to spawn sub-agent', isError: true }
+    }
 
-      const request: ProviderRequest = {
-        systemStatic: [
-          'You are a helpful coding assistant completing a specific sub-task.',
-          ctx.spinePrompt,
-          'Complete the delegated scope only. Do not push or perform destructive git operations.',
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
-        systemDynamic: '',
-        messages,
-        tools: toolSchemas,
-        model,
-        maxOutputTokens: 4096,
-      }
+    const results = await Promise.all(tasks.map((task) => runSubagent(task, model, ctx)))
 
-      let resultText = ''
-      let toolCallsDone = 0
-      const maxIterations = 10
+    if (results.length === 1) {
+      return { content: results[0].text, isError: results[0].isError }
+    }
 
-      for (let i = 0; i < maxIterations; i++) {
-        const stream = ctx.provider.stream(request)
-        let text = ''
-        let hasToolCalls = false
-
-        for await (const ev of stream as AsyncIterable<ProviderStreamEvent>) {
-          if (ev.kind === 'text-delta') {
-            text += ev.delta
-          } else if (ev.kind === 'tool-use') {
-            hasToolCalls = true
-            const toolResult = await ctx.tools.execute(ev.call.name, ev.call.input, ctx)
-            messages.push(
-              { role: 'assistant', content: text, toolCalls: [ev.call] },
-              { role: 'tool', content: toolResult.content, toolCallId: ev.call.id },
-            )
-            text = ''
-            toolCallsDone++
-          }
-        }
-
-        if (text) {
-          resultText = text
-          messages.push({ role: 'assistant', content: text })
-        }
-
-        if (!hasToolCalls) break
-        request.messages = messages
-      }
-
-      return {
-        content: resultText || `Sub-agent completed (${toolCallsDone} tool calls).`,
-        isError: false,
-      }
-    } catch (e) {
-      return { content: `agent error: ${(e as Error).message}`, isError: true }
+    return {
+      content: results.map((r, i) => `[task ${i + 1}] ${r.text}`).join('\n\n'),
+      isError: results.some((r) => r.isError),
     }
   },
+}
+
+function resolveTasks(input: AgentInput): string[] {
+  const fromTasks = Array.isArray(input?.tasks)
+    ? input.tasks.filter((t): t is string => typeof t === 'string' && t.length > 0)
+    : []
+  if (fromTasks.length > 0) return fromTasks
+  return input?.prompt ? [input.prompt] : []
+}
+
+async function runSubagent(
+  prompt: string,
+  model: string,
+  ctx: ToolContext,
+): Promise<{ text: string; isError: boolean }> {
+  try {
+    const messages: ChatMessage[] = [{ role: 'user', content: prompt }]
+    const toolSchemas = ctx.tools!.list()
+
+    const request: ProviderRequest = {
+      systemStatic: [
+        'You are a helpful coding assistant completing a specific sub-task.',
+        ctx.spinePrompt,
+        'Complete the delegated scope only. Do not push or perform destructive git operations.',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+      systemDynamic: '',
+      messages,
+      tools: toolSchemas,
+      model,
+      maxOutputTokens: SUBAGENT_MAX_OUTPUT_TOKENS,
+    }
+
+    let resultText = ''
+    let toolCallsDone = 0
+
+    for (let i = 0; i < MAX_ITERATIONS_PER_SUBAGENT; i++) {
+      if (ctx.budget?.snapshot().exhausted) {
+        return {
+          text: resultText || `Sub-agent stopped: parent budget exhausted after ${toolCallsDone} tool call(s).`,
+          isError: false,
+        }
+      }
+
+      const stream = ctx.provider!.stream(request)
+      let text = ''
+      let hasToolCalls = false
+      let usage: UsageTotals = emptyUsage()
+
+      for await (const ev of stream as AsyncIterable<ProviderStreamEvent>) {
+        if (ev.kind === 'text-delta') {
+          text += ev.delta
+        } else if (ev.kind === 'usage') {
+          usage = addUsage(usage, ev.usage)
+        } else if (ev.kind === 'tool-use') {
+          hasToolCalls = true
+          const toolResult = await ctx.tools!.execute(ev.call.name, ev.call.input, ctx)
+          messages.push(
+            { role: 'assistant', content: text, toolCalls: [ev.call] },
+            { role: 'tool', content: toolResult.content, toolCallId: ev.call.id },
+          )
+          text = ''
+          toolCallsDone++
+        }
+      }
+
+      ctx.budget?.addUsage(usage)
+
+      if (text) {
+        resultText = text
+        messages.push({ role: 'assistant', content: text })
+      }
+
+      if (!hasToolCalls) break
+      request.messages = messages
+    }
+
+    return {
+      text: resultText || `Sub-agent completed (${toolCallsDone} tool call(s)).`,
+      isError: false,
+    }
+  } catch (e) {
+    return { text: `agent error: ${(e as Error).message}`, isError: true }
+  }
 }
