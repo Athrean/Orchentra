@@ -7,6 +7,7 @@ const KNOWN_MODEL_PATTERNS: RegExp[] = [
   /^qwen[\d-]/i,
   /^deepseek/i,
   /^mistral/i,
+  /^ollama\//i,
 ]
 
 export function isKnownModel(model: string): boolean {

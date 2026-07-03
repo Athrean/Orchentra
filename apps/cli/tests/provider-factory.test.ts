@@ -9,6 +9,8 @@ describe('provider factory', () => {
     ['grok-3-mini', 'grok-3-mini', 'xai'],
     ['qwen-max', 'qwen-max', 'dashscope'],
     ['gemini-flash', 'gemini-2.0-flash', 'gemini'],
+    ['ollama/llama3', 'ollama/llama3', 'local'],
+    ['ollama/qwen2.5-coder:7b', 'ollama/qwen2.5-coder:7b', 'local'],
   ])('resolves %s to model %s on %s', (raw, expectedModel, expectedProviderName) => {
     const model = resolveModelAlias(raw)
     const resolved = createProvider(model)

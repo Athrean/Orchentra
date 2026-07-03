@@ -17,6 +17,12 @@ export interface OpenAiCompatConfig {
   baseUrlEnv: string
   defaultBaseUrl: string
   credentialKey?: ProviderKey
+  /**
+   * Routing prefix stripped from the wire model before it hits the server.
+   * Lets `ollama/llama3` route to the local preset while the server sees the
+   * bare `llama3` it actually knows.
+   */
+  modelPrefix?: string
 }
 
 const XAI_CONFIG: OpenAiCompatConfig = {
@@ -43,7 +49,18 @@ const DASHSCOPE_CONFIG: OpenAiCompatConfig = {
   credentialKey: 'dashscope',
 }
 
-export { XAI_CONFIG, OPENAI_CONFIG, DASHSCOPE_CONFIG }
+// Ollama's OpenAI-compatible endpoint (also fits LM Studio / llama.cpp / vLLM
+// via the OLLAMA_BASE_URL override). Local inference needs no API key; the
+// empty Bearer is ignored by these servers.
+const LOCAL_CONFIG: OpenAiCompatConfig = {
+  providerName: 'Local',
+  apiKeyEnv: 'OLLAMA_API_KEY',
+  baseUrlEnv: 'OLLAMA_BASE_URL',
+  defaultBaseUrl: 'http://localhost:11434/v1',
+  modelPrefix: 'ollama/',
+}
+
+export { XAI_CONFIG, OPENAI_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG }
 
 export class OpenAiCompatProvider implements Provider {
   private readonly apiKey: string
@@ -57,9 +74,15 @@ export class OpenAiCompatProvider implements Provider {
     this.baseUrl = (baseUrl ?? process.env[config.baseUrlEnv] ?? config.defaultBaseUrl).replace(/\/$/, '')
   }
 
+  private stripModelPrefix(model: string): string {
+    const prefix = this.config.modelPrefix
+    return prefix && model.startsWith(prefix) ? model.slice(prefix.length) : model
+  }
+
   async *stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
     const url = `${this.baseUrl}/chat/completions`
-    const body = buildRequestBody(request, supportsReasoningEffort(this.config, request.model))
+    const wireModel = this.stripModelPrefix(request.model)
+    const body = buildRequestBody({ ...request, model: wireModel }, supportsReasoningEffort(this.config, wireModel))
 
     const response = await fetch(url, {
       method: 'POST',
