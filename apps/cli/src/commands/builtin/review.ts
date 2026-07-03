@@ -152,10 +152,13 @@ function render(r: ReviewResult): string {
   } else {
     lines.push('Findings (proposed — verify against the checks below):')
     for (const f of r.findings) {
-      const tag = f.corroboratedBy.length > 0 ? ` — corroborated by: ${f.corroboratedBy.join(', ')}` : ' — unverified'
+      const tag = f.corroboration.length > 0 ? ` — corroborated by: ${f.corroboratedBy.join(', ')}` : ' — unverified'
       lines.push(`  [${f.severity}] ${f.file}${f.line !== null ? `:${f.line}` : ''} — ${f.title}${tag}`)
       lines.push(`    ${f.description}`)
       if (f.suggestedFix) lines.push(`    fix: ${f.suggestedFix}`)
+      for (const evidence of f.corroboration) {
+        lines.push(`    evidence (${evidence.strength}, ${evidence.check}): ${evidence.evidence}`)
+      }
     }
   }
   lines.push('')
@@ -172,7 +175,7 @@ function render(r: ReviewResult): string {
     }
     lines.push('')
     const failed = r.checks.filter((c) => !c.passed)
-    const corroborated = r.findings.filter((f) => f.corroboratedBy.length > 0).length
+    const corroborated = r.findings.filter((f) => f.corroboration.length > 0).length
     if (failed.length === 0) {
       lines.push('Verdict: all checks pass — proposed findings are advisory (no gate reproduces them).')
     } else if (corroborated > 0) {

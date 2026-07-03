@@ -1,0 +1,21 @@
+bun test v1.3.14 (0d9b296a)
+
+tests/pricing.test.ts:
+1 | import { expect, test } from 'bun:test'
+2 | import { total } from '../src/pricing'
+3 | 
+4 | test('sums prices', () => {
+5 |   expect(total([1, 2, 3])).toBe(6)
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: 6
+Received: NaN
+
+      at <anonymous> (/private/tmp/claude-501/-Users-rushout-Desktop-Orchentra/cdccaf05-d1e1-47de-a720-2403e3b4a2de/scratchpad/diag-sample/tests/pricing.test.ts:5:28)
+(fail) sums prices [0.38ms]
+
+ 0 pass
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [5.00ms]

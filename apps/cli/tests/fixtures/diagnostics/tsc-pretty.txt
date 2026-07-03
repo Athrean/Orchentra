@@ -1,0 +1,16 @@
+[96msrc/pricing.ts[0m:[93m6[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType 'string' is not assignable to type 'number'.
+
+[7m6[0m   const label: number = 'oops'
+[7m [0m [91m        ~~~~~[0m
+
+[96mtests/pricing.test.ts[0m:[93m1[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module 'bun:test' or its corresponding type declarations.
+
+[7m1[0m import { expect, test } from 'bun:test'
+[7m [0m [91m                             ~~~~~~~~~~[0m
+
+
+Found 2 errors in 2 files.
+
+Errors  Files
+     1  src/pricing.ts[90m:6[0m
+     1  tests/pricing.test.ts[90m:1[0m
