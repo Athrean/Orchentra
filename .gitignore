@@ -28,14 +28,9 @@ secrets/
 .vscode/
 .idea/
 
-# Product docs. Only the curated current/proposal docs are tracked; archived
-# planning dumps, images, and local research notes stay local-only.
-docs/*
-!docs/README.md
-!docs/current/
-!docs/current/**
-!docs/proposals/
-!docs/proposals/**
+# Product docs. All of docs/ is local-only — nothing under it is tracked
+# (canonical.md, roadmap.md, proposals, etc. stay off the public repo).
+docs/
 # Tracked product docs that live alongside the app they document
 !apps/*/docs/
 UBIQUITOUS_LANGUAGE.md
