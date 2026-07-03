@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+import { dirname } from 'node:path'
 import type {
   ChatMessage,
   ConversationConfig,
@@ -12,7 +14,8 @@ import type {
   Provider,
   RuntimeEvent,
   SessionControl,
-  SessionWriter,
+  SessionGoal,
+  SessionTaskSummary,
   SharedToolState,
   SystemPrompt,
   ToolRegistry,
@@ -35,6 +38,7 @@ import {
   createPermissionStore,
   loadPolicy,
   evaluate as evaluatePolicy,
+  SessionWriter,
 } from '@orchentra/cli-core'
 import type {
   AskUser as ToolAskUser,
@@ -79,8 +83,8 @@ export class LiveCli implements SessionControl {
   private provider: Provider
   private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
-  private readonly cwd: string
-  private readonly sessionId: string
+  private cwd: string
+  private sessionId: string
   private readonly tracker: UsageTracker
   private readonly spinner: Spinner
   private readonly sharedState: SharedToolState
@@ -102,6 +106,7 @@ export class LiveCli implements SessionControl {
   private readonly enforcer = createEnforcer()
   private readonly permissionStore: PermissionStore
   private startupNotices: string[] = []
+  private goal: SessionGoal | null = null
 
   constructor(deps: {
     model: string
@@ -244,12 +249,66 @@ export class LiveCli implements SessionControl {
     return this.sessionId
   }
 
+  getCwd(): string {
+    return this.cwd
+  }
+
+  setCwd(cwd: string): string {
+    this.cwd = cwd
+    return this.cwd
+  }
+
   getTurns(): number {
     return this.tracker.turns()
   }
 
   getUsage(): UsageTotals {
     return this.tracker.cumulativeUsage()
+  }
+
+  getContextStats(): {
+    messages: number
+    estimatedTokens: number
+    contextWindowTokens: number
+    compactThresholdRatio: number
+  } {
+    return {
+      messages: this.messages.length,
+      estimatedTokens: estimateMessagesTokens(this.messages, defaultEstimator),
+      contextWindowTokens: 200_000,
+      compactThresholdRatio: 0.75,
+    }
+  }
+
+  getGoal(): SessionGoal | null {
+    return this.goal
+  }
+
+  setGoal(objective: string): SessionGoal {
+    this.goal = { objective, createdAt: new Date().toISOString() }
+    return this.goal
+  }
+
+  clearGoal(): void {
+    this.goal = null
+  }
+
+  listTaskSummaries(): readonly SessionTaskSummary[] {
+    return this.sharedState.taskStore.list().map((task) => ({
+      id: task.taskId,
+      status: task.status,
+      prompt: task.prompt,
+      output: task.output,
+      createdAt: task.createdAt,
+      completedAt: task.completedAt,
+    }))
+  }
+
+  cancelTask(id: string): boolean {
+    const task = this.sharedState.taskStore.get(id)
+    if (!task) return false
+    this.sharedState.taskStore.cancel(id)
+    return true
   }
 
   getTerseBreakdown(): readonly TerseModeUsage[] {
@@ -273,6 +332,26 @@ export class LiveCli implements SessionControl {
 
   clearHistory(): void {
     this.messages = []
+  }
+
+  async startNewSession(): Promise<void> {
+    this.clearHistory()
+    this.runtime = null
+    const current = this.session
+    if (!current) {
+      this.sessionId = randomUUID()
+      return
+    }
+    const rootDir = dirname(current.path)
+    await current.close()
+    const id = randomUUID()
+    const next = await SessionWriter.open({
+      rootDir,
+      id,
+      meta: { cwd: this.cwd, model: this.model },
+    })
+    this.sessionId = id
+    this.session = next
   }
 
   forceCompact(): void {
@@ -337,6 +416,9 @@ export class LiveCli implements SessionControl {
       dynamicParts.push(
         'PLANNING MODE ACTIVE: Do not execute any tools. Only reason and plan. The user will call exit_plan_mode when ready to execute.',
       )
+    }
+    if (this.goal) {
+      dynamicParts.push(`CURRENT SESSION GOAL: ${this.goal.objective}`)
     }
     if (this.memoryConfig?.enabled) {
       try {

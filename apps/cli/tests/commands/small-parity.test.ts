@@ -11,6 +11,7 @@ import { EffortCommand } from '../../src/commands/builtin/effort'
 import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
+import { CdCommand, CopyCommand, GoalCommand, TasksCommand } from '../../src/commands/builtin/terminal-parity'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
 
@@ -60,6 +61,125 @@ describe('small slash parity commands', () => {
 
     expect(registry.resolve('/review --diff')).not.toBeInstanceOf(Error)
     expect(registry.allSpecs().map((spec) => spec.name)).toContain('review')
+  })
+
+  test('priority terminal UX commands are registered', () => {
+    const registry = createBuiltinRegistry()
+    const names = registry.allSpecs().map((spec) => spec.name)
+
+    expect(names).toContain('context')
+    expect(names).toContain('copy')
+    expect(names).toContain('cd')
+    expect(names).toContain('background')
+    expect(names).toContain('tasks')
+    expect(names).toContain('rewind')
+    expect(names).toContain('branch')
+    expect(names).toContain('fork')
+    expect(names).toContain('goal')
+    expect(names).toContain('hooks')
+    expect(names).toContain('terminal-setup')
+    expect(names).toContain('tui')
+    expect(names).toContain('statusline')
+    expect(names).toContain('usage')
+    expect(names).toContain('usage-credits')
+  })
+
+  test('/goal stores, reports, and clears a session goal', async () => {
+    let goal: { objective: string; createdAt: string } | null = null
+    const session: SessionControl = {
+      ...makeSession(),
+      getGoal: () => goal,
+      setGoal: (objective) => {
+        goal = { objective, createdAt: '2026-07-03T00:00:00.000Z' }
+        return goal
+      },
+      clearGoal: () => {
+        goal = null
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+    const cmd = new GoalCommand()
+
+    await cmd.execute(['fix', 'terminal', 'ux'], ctx)
+    await cmd.execute(['status'], ctx)
+    await cmd.execute(['clear'], ctx)
+
+    expect(goal).toBeNull()
+    expect(events[0]).toEqual({ kind: 'note', text: 'Goal set: fix terminal ux', tone: 'info' })
+    expect(events[1]?.kind).toBe('card')
+    expect(events[2]).toEqual({ kind: 'note', text: 'Goal cleared.', tone: 'info' })
+  })
+
+  test('/cd updates the session cwd and TUI cwd hook', async () => {
+    const oldCwd = process.cwd()
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-cd-'))
+    let sessionCwd = '/work'
+    let tuiCwd = '/work'
+    const session: SessionControl = {
+      ...makeSession(),
+      setCwd: (next) => {
+        sessionCwd = next
+        return next
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+    ctx.setCwd = (next) => {
+      tuiCwd = next
+    }
+
+    try {
+      await new CdCommand().execute([cwd], ctx)
+    } finally {
+      process.chdir(oldCwd)
+    }
+
+    expect(sessionCwd).toBe(cwd)
+    expect(tuiCwd).toBe(cwd)
+    expect(events).toEqual([{ kind: 'note', text: `cwd: ${cwd}`, tone: 'info' }])
+  })
+
+  test('/copy reads the transcript snapshot and reports clipboard availability', async () => {
+    const old = process.env.ORCHENTRA_NO_CLIPBOARD
+    process.env.ORCHENTRA_NO_CLIPBOARD = '1'
+    const { ctx, events } = makeCtx('/work')
+    ctx.getTranscriptText = () => 'User: hi\nAssistant: hello'
+
+    try {
+      await new CopyCommand().execute([], ctx)
+    } finally {
+      if (old === undefined) delete process.env.ORCHENTRA_NO_CLIPBOARD
+      else process.env.ORCHENTRA_NO_CLIPBOARD = old
+    }
+
+    expect(events).toEqual([{ kind: 'note', text: 'Clipboard unavailable.', tone: 'warn' }])
+  })
+
+  test('/tasks lists and cancels runtime tasks', async () => {
+    let cancelled = false
+    const session: SessionControl = {
+      ...makeSession(),
+      listTaskSummaries: () => [
+        {
+          id: 'task_1_abcd',
+          status: 'running',
+          prompt: 'review refs',
+          createdAt: '2026-07-03T00:00:00.000Z',
+        },
+      ],
+      cancelTask: (id) => {
+        cancelled = id === 'task_1_abcd'
+        return cancelled
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+    const cmd = new TasksCommand()
+
+    await cmd.execute([], ctx)
+    await cmd.execute(['cancel', 'task_1_abcd'], ctx)
+
+    expect(events[0]?.kind).toBe('card')
+    expect(cancelled).toBe(true)
+    expect(events[1]).toEqual({ kind: 'note', text: 'Cancelled task_1_abcd.', tone: 'info' })
   })
 
   test('/effort with no arg opens the slider picker in TUI mode', async () => {

@@ -13,8 +13,12 @@ export interface CommandContext {
   session: SessionControl
   /** Optional runtime turn hook for commands that need the repo-aware agent path. */
   runTurn?: (input: string) => Promise<void>
+  /** Optional TUI hook used by /cd to refresh footer and suggestion context. */
+  setCwd?: (cwd: string) => void
   /** Optional compact transcript context for commands that can infer omitted args. */
   getRecentTranscriptContext?: () => string | null
+  /** Optional plaintext transcript snapshot for clipboard and diagnostics. */
+  getTranscriptText?: () => string | null
   /**
    * Structured UI sink. Handlers should emit cards/notes/text here when
    * available; the TUI renders them as styled transcript rows. When absent

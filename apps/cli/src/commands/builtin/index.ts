@@ -37,6 +37,23 @@ import { ThinkCommand } from './think'
 import { TerseCommand } from './terse'
 import { MemoryCommand, ForgetCommand } from './memory'
 import { DebugCommand } from './debug'
+import {
+  BackgroundCommand,
+  BranchCommand,
+  CdCommand,
+  ContextCommand,
+  CopyCommand,
+  ForkCommand,
+  GoalCommand,
+  HooksCommand,
+  RewindCommand,
+  StatuslineCommand,
+  TasksCommand,
+  TerminalSetupCommand,
+  TuiCommand,
+  UsageCommand,
+  UsageCreditsCommand,
+} from './terminal-parity'
 
 export function createBuiltinRegistry(): CommandRegistry {
   const registry = new CommandRegistry()
@@ -95,6 +112,23 @@ export function createBuiltinRegistry(): CommandRegistry {
 
   // /debug — diagnose the latest failed run against stored failure memories.
   registry.register(new DebugCommand())
+
+  // Claude-style terminal UX parity surfaces.
+  registry.register(new ContextCommand())
+  registry.register(new CopyCommand())
+  registry.register(new CdCommand())
+  registry.register(new BackgroundCommand())
+  registry.register(new TasksCommand())
+  registry.register(new RewindCommand())
+  registry.register(new BranchCommand())
+  registry.register(new ForkCommand())
+  registry.register(new GoalCommand())
+  registry.register(new HooksCommand())
+  registry.register(new TerminalSetupCommand())
+  registry.register(new TuiCommand())
+  registry.register(new StatuslineCommand())
+  registry.register(new UsageCommand())
+  registry.register(new UsageCreditsCommand())
 
   return registry
 }
