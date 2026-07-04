@@ -129,31 +129,23 @@ export class TasksCommand implements CommandHandler {
   }
 }
 
-export class RewindCommand implements CommandHandler {
+export class UndoCommand implements CommandHandler {
   spec: SlashCommandSpec = {
-    name: 'rewind',
-    aliases: [],
-    summary: 'Inspect rewind safety state',
+    name: 'undo',
+    aliases: ['rewind'],
+    summary: "Revert the previous turn's file edits",
   }
 
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
-    const changed = git(ctx.cwd, ['status', '--short'])
-    if (!changed.ok) {
-      return note(ctx, 'Rewind needs a git workspace. No files changed.', 'warn')
+    const result = await ctx.session.undoLastFileEdits?.()
+    if (!result) return note(ctx, 'This runtime does not support /undo.', 'warn')
+    if (result.kind === 'empty') return note(ctx, 'No file edits to undo.', 'warn')
+    if (result.kind === 'error') {
+      return note(ctx, `Undo failed after ${result.files.length} file(s): ${result.message}`, 'warn')
     }
-    const files = changed.out
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-    return card(ctx, 'Rewind', 'safe mode', [
-      {
-        rows: [
-          { key: 'Checkpoint engine', value: 'not configured' },
-          { key: 'Current changed files', value: String(files.length), bold: true },
-          { key: 'Action', value: 'No files were modified. Use git restore/stash until checkpoints land.' },
-        ],
-      },
-    ])
+    const noun = result.files.length === 1 ? 'file edit' : 'file edits'
+    const files = result.files.map((file) => `${file.path} ${file.action}`).join(', ')
+    return note(ctx, `Undid ${result.files.length} ${noun}: ${files}.`)
   }
 }
 

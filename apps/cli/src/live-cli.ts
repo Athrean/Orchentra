@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { dirname } from 'node:path'
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
 import type {
   ChatMessage,
   ConversationConfig,
@@ -22,7 +23,10 @@ import type {
   SessionTaskSummary,
   SharedToolState,
   SystemPrompt,
+  ToolCall,
   ToolRegistry,
+  UndoFileEditResult,
+  UndoFileEditsResult,
   UsageTotals,
 } from '@orchentra/cli-core'
 import {
@@ -79,6 +83,12 @@ export type NotifyDenyOverride = (info: { toolName: string; inputJson: string; r
 export type NotifyPolicyOverride = (info: { kind: 'allow' | 'deny' | 'ask'; rule: PolicyRule }) => Promise<void>
 export type { ToolPromptChoice }
 
+interface FileUndoSnapshot {
+  readonly path: string
+  readonly existed: boolean
+  readonly content: string
+}
+
 export class LiveCli implements SessionControl {
   private model: string
   private permissionMode: PermissionMode
@@ -115,6 +125,9 @@ export class LiveCli implements SessionControl {
   private readonly permissionStore: PermissionStore
   private startupNotices: string[] = []
   private goal: SessionGoal | null = null
+  private pendingFileUndoSnapshots = new Map<string, FileUndoSnapshot>()
+  private currentTurnFileUndo: FileUndoSnapshot[] | null = null
+  private lastTurnFileUndo: FileUndoSnapshot[] = []
 
   constructor(deps: {
     model: string
@@ -367,6 +380,9 @@ export class LiveCli implements SessionControl {
 
   clearHistory(): void {
     this.messages = []
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = null
+    this.lastTurnFileUndo = []
   }
 
   async startNewSession(): Promise<void> {
@@ -414,6 +430,35 @@ export class LiveCli implements SessionControl {
     this.session = writer
   }
 
+  async undoLastFileEdits(): Promise<UndoFileEditsResult> {
+    const edits = this.lastTurnFileUndo
+    if (edits.length === 0) return { kind: 'empty' }
+
+    const applied: UndoFileEditResult[] = []
+    try {
+      for (const edit of edits.slice().reverse()) {
+        if (edit.existed) {
+          await mkdir(dirname(edit.path), { recursive: true })
+          await writeFile(edit.path, edit.content)
+          applied.push({ path: edit.path, action: 'restored' })
+        } else {
+          await unlink(edit.path).catch((error: NodeJS.ErrnoException) => {
+            if (error.code !== 'ENOENT') throw error
+          })
+          applied.push({ path: edit.path, action: 'deleted' })
+        }
+      }
+      this.lastTurnFileUndo = []
+      return { kind: 'applied', files: applied }
+    } catch (error) {
+      return {
+        kind: 'error',
+        message: error instanceof Error ? error.message : String(error),
+        files: applied,
+      }
+    }
+  }
+
   // Bounded LLM pass that turns the dropped turns into a faithful digest when
   // the context window compacts. Best-effort: compaction falls back to the
   // deterministic summary if this call fails or returns nothing.
@@ -440,6 +485,8 @@ export class LiveCli implements SessionControl {
 
   async runTurn(input: string): Promise<void> {
     const sink = this.eventSink
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = []
     // Handle forced compaction
     if (this.forceCompactFlag) {
       this.forceCompactFlag = false
@@ -639,11 +686,21 @@ export class LiveCli implements SessionControl {
         process.stdout.write(renderErrorLine(message) + '\n')
       }
     } finally {
+      this.lastTurnFileUndo = this.currentTurnFileUndo ?? []
+      this.currentTurnFileUndo = null
+      this.pendingFileUndoSnapshots.clear()
       this.currentAbort = null
     }
   }
 
   private async handleEvent(event: RuntimeEvent): Promise<void> {
+    if (event.kind === 'tool_use') {
+      await this.captureFileUndoSnapshot(event.call)
+    }
+    if (event.kind === 'tool_result') {
+      this.recordFileUndoSnapshot(event.result.id, event.result.isError)
+    }
+
     if (this.eventSink) {
       this.eventSink(event)
     } else {
@@ -677,6 +734,30 @@ export class LiveCli implements SessionControl {
     if (this.session) {
       await this.session.append(event)
     }
+  }
+
+  private async captureFileUndoSnapshot(call: ToolCall): Promise<void> {
+    if (call.name !== 'write_file' && call.name !== 'edit_file') return
+    const path = toolInputPath(call.input)
+    if (!path) return
+    const absolutePath = resolveToolPath(this.cwd, path)
+    if (!isWithinRoot(absolutePath, this.cwd)) return
+
+    try {
+      const content = await readFile(absolutePath, 'utf8')
+      this.pendingFileUndoSnapshots.set(call.id, { path: absolutePath, existed: true, content })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        this.pendingFileUndoSnapshots.set(call.id, { path: absolutePath, existed: false, content: '' })
+      }
+    }
+  }
+
+  private recordFileUndoSnapshot(toolCallId: string, isError: boolean): void {
+    const snapshot = this.pendingFileUndoSnapshots.get(toolCallId)
+    if (!snapshot) return
+    this.pendingFileUndoSnapshots.delete(toolCallId)
+    if (!isError) this.currentTurnFileUndo?.push(snapshot)
   }
 
   // Auto-extract a failure→resolution memory after a successful turn. Gated on
@@ -721,4 +802,21 @@ function formatThrown(err: unknown): string {
   } catch {
     return String(err)
   }
+}
+
+function toolInputPath(input: unknown): string | null {
+  if (!input || typeof input !== 'object') return null
+  const path = (input as { path?: unknown }).path
+  return typeof path === 'string' && path.length > 0 ? path : null
+}
+
+function resolveToolPath(cwd: string, path: string): string {
+  return resolve(cwd, path)
+}
+
+function isWithinRoot(path: string, root: string): boolean {
+  const normalizedRoot = resolve(root)
+  const normalizedPath = resolve(path)
+  const rootWithSlash = normalizedRoot.endsWith('/') ? normalizedRoot : `${normalizedRoot}/`
+  return normalizedPath === normalizedRoot || normalizedPath.startsWith(rootWithSlash)
 }

@@ -12,7 +12,13 @@ import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
 import { ClearCommand } from '../../src/commands/builtin/clear'
-import { CdCommand, CopyCommand, GoalCommand, TasksCommand } from '../../src/commands/builtin/terminal-parity'
+import {
+  CdCommand,
+  CopyCommand,
+  GoalCommand,
+  TasksCommand,
+  UndoCommand,
+} from '../../src/commands/builtin/terminal-parity'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
 
@@ -73,7 +79,8 @@ describe('small slash parity commands', () => {
     expect(names).toContain('cd')
     expect(names).toContain('background')
     expect(names).toContain('tasks')
-    expect(names).toContain('rewind')
+    expect(names).toContain('undo')
+    expect(registry.resolve('/rewind')).not.toBeInstanceOf(Error)
     expect(names).toContain('branch')
     expect(names).toContain('fork')
     expect(names).toContain('goal')
@@ -181,6 +188,21 @@ describe('small slash parity commands', () => {
     expect(events[0]?.kind).toBe('card')
     expect(cancelled).toBe(true)
     expect(events[1]).toEqual({ kind: 'note', text: 'Cancelled task_1_abcd.', tone: 'info' })
+  })
+
+  test('/undo reverts the previous turn file edits through the session', async () => {
+    const session: SessionControl = {
+      ...makeSession(),
+      undoLastFileEdits: async () => ({
+        kind: 'applied',
+        files: [{ path: '/work/file.txt', action: 'restored' }],
+      }),
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new UndoCommand().execute([], ctx)
+
+    expect(events).toEqual([{ kind: 'note', text: 'Undid 1 file edit: /work/file.txt restored.', tone: 'info' }])
   })
 
   test('/effort with no arg opens the slider picker in TUI mode', async () => {

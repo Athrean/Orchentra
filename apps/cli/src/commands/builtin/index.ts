@@ -48,11 +48,11 @@ import {
   ForkCommand,
   GoalCommand,
   HooksCommand,
-  RewindCommand,
   StatuslineCommand,
   TasksCommand,
   TerminalSetupCommand,
   TuiCommand,
+  UndoCommand,
   UsageCommand,
   UsageCreditsCommand,
 } from './terminal-parity'
@@ -123,7 +123,7 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new CdCommand())
   registry.register(new BackgroundCommand())
   registry.register(new TasksCommand())
-  registry.register(new RewindCommand())
+  registry.register(new UndoCommand())
   registry.register(new BranchCommand())
   registry.register(new ForkCommand())
   registry.register(new GoalCommand())

@@ -29,6 +29,16 @@ export interface SessionTaskSummary {
   readonly completedAt?: string
 }
 
+export interface UndoFileEditResult {
+  readonly path: string
+  readonly action: 'restored' | 'deleted'
+}
+
+export type UndoFileEditsResult =
+  | { readonly kind: 'empty' }
+  | { readonly kind: 'applied'; readonly files: readonly UndoFileEditResult[] }
+  | { readonly kind: 'error'; readonly message: string; readonly files: readonly UndoFileEditResult[] }
+
 export interface SessionControl {
   getModel(): string
   /**
@@ -54,6 +64,8 @@ export interface SessionControl {
   /** Background agent task summaries available to /tasks. */
   listTaskSummaries?(): readonly SessionTaskSummary[]
   cancelTask?(id: string): boolean
+  /** Revert successful write/edit_file effects from the most recent agent turn. */
+  undoLastFileEdits?(): Promise<UndoFileEditsResult>
   /** Output tokens + turns spent under each terse mode this session. */
   getTerseBreakdown?(): readonly TerseModeUsage[]
   /** Measured compaction + tool-output-trim savings, when the session tracks them. */

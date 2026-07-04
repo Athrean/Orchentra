@@ -104,7 +104,14 @@ export type {
   ToolRegistry,
 } from './tools'
 
-export type { ContextStats, SessionControl, SessionGoal, SessionTaskSummary } from './session-control'
+export type {
+  ContextStats,
+  SessionControl,
+  SessionGoal,
+  SessionTaskSummary,
+  UndoFileEditResult,
+  UndoFileEditsResult,
+} from './session-control'
 
 export { isKnownModel } from './model-availability'
 
