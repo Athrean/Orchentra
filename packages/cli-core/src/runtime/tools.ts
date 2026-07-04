@@ -37,6 +37,12 @@ export interface ToolContext {
   sessionId: string
   cwd: string
   /**
+   * Read/search workspace roots for this session. `cwd` remains the primary
+   * write root; tools such as read_file/glob_search/grep_search may allow
+   * absolute paths under these additional roots.
+   */
+  workspaceRoots?: readonly string[]
+  /**
    * Current model identifier for the session. Tools that spawn nested provider
    * calls (e.g. `agent`) should default to this when no override is supplied.
    */

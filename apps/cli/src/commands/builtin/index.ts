@@ -41,6 +41,7 @@ import { MemoryCommand, ForgetCommand } from './memory'
 import { DebugCommand } from './debug'
 import {
   BackgroundCommand,
+  AddDirCommand,
   BranchCommand,
   CdCommand,
   ContextCommand,
@@ -121,6 +122,7 @@ export function createBuiltinRegistry(): CommandRegistry {
   registry.register(new ContextCommand())
   registry.register(new CopyCommand())
   registry.register(new CdCommand())
+  registry.register(new AddDirCommand())
   registry.register(new BackgroundCommand())
   registry.register(new TasksCommand())
   registry.register(new UndoCommand())

@@ -53,6 +53,10 @@ export interface SessionControl {
   getSessionId(): string
   getCwd?(): string
   setCwd?(cwd: string): string
+  /** Primary cwd plus any extra read/search roots added for this REPL session. */
+  getWorkspaceRoots?(): readonly string[]
+  /** Add an extra read/search root for tools such as read_file, glob_search, and grep_search. */
+  addWorkspaceRoot?(path: string): readonly string[]
   getTurns(): number
   getUsage(): UsageTotals
   /** Estimated live conversation footprint before provider-side caching. */

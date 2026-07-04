@@ -128,6 +128,7 @@ export class LiveCli implements SessionControl {
   private pendingFileUndoSnapshots = new Map<string, FileUndoSnapshot>()
   private currentTurnFileUndo: FileUndoSnapshot[] | null = null
   private lastTurnFileUndo: FileUndoSnapshot[] = []
+  private readonly extraWorkspaceRoots = new Set<string>()
 
   constructor(deps: {
     model: string
@@ -277,6 +278,17 @@ export class LiveCli implements SessionControl {
   setCwd(cwd: string): string {
     this.cwd = cwd
     return this.cwd
+  }
+
+  getWorkspaceRoots(): readonly string[] {
+    const primary = resolve(this.cwd)
+    return [primary, ...Array.from(this.extraWorkspaceRoots).filter((root) => root !== primary)]
+  }
+
+  addWorkspaceRoot(path: string): readonly string[] {
+    const root = resolve(path)
+    if (root !== resolve(this.cwd)) this.extraWorkspaceRoots.add(root)
+    return this.getWorkspaceRoots()
   }
 
   getTurns(): number {
@@ -527,6 +539,10 @@ export class LiveCli implements SessionControl {
     if (this.goal) {
       dynamicParts.push(`CURRENT SESSION GOAL: ${this.goal.objective}`)
     }
+    const workspaceRoots = this.getWorkspaceRoots()
+    if (workspaceRoots.length > 1) {
+      dynamicParts.push(`READABLE WORKSPACE ROOTS: ${workspaceRoots.join(', ')}`)
+    }
     if (this.memoryConfig?.enabled) {
       try {
         const memCtx = await prepareMemoryContext(
@@ -632,6 +648,7 @@ export class LiveCli implements SessionControl {
       hookRunner: this.hookRunner ?? undefined,
       spinePrompt: spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'sub-agent' }),
       compactionSummarizer: this.buildCompactionSummarizer(),
+      workspaceRoots,
     }
 
     this.runtime = new ConversationRuntime(config, deps)

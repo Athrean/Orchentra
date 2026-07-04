@@ -26,7 +26,7 @@ export const globTool: ToolDefinition = {
     }
 
     try {
-      const result = await globSearchInWorkspace(input.pattern, ctx.cwd, input.path)
+      const result = await globSearchInWorkspace(input.pattern, ctx.workspaceRoots ?? ctx.cwd, input.path)
       return {
         content: `${result.numFiles} files found (${result.durationMs}ms)${result.truncated ? ' [truncated]' : ''}\n${result.filenames.join('\n')}`,
         isError: false,

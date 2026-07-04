@@ -13,6 +13,7 @@ import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
 import { ClearCommand } from '../../src/commands/builtin/clear'
 import {
+  AddDirCommand,
   CdCommand,
   CopyCommand,
   GoalCommand,
@@ -81,6 +82,7 @@ describe('small slash parity commands', () => {
     expect(names).toContain('tasks')
     expect(names).toContain('undo')
     expect(registry.resolve('/rewind')).not.toBeInstanceOf(Error)
+    expect(names).toContain('add-dir')
     expect(names).toContain('branch')
     expect(names).toContain('fork')
     expect(names).toContain('goal')
@@ -203,6 +205,26 @@ describe('small slash parity commands', () => {
     await new UndoCommand().execute([], ctx)
 
     expect(events).toEqual([{ kind: 'note', text: 'Undid 1 file edit: /work/file.txt restored.', tone: 'info' }])
+  })
+
+  test('/add-dir stores an extra readable workspace root', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-add-dir-cwd-'))
+    const extra = mkdtempSync(join(tmpdir(), 'orchentra-add-dir-extra-'))
+    let roots = [cwd]
+    const session: SessionControl = {
+      ...makeSession(),
+      getWorkspaceRoots: () => roots,
+      addWorkspaceRoot: (path) => {
+        roots = Array.from(new Set([...roots, path]))
+        return roots
+      },
+    }
+    const { ctx, events } = makeCtx(cwd, session)
+
+    await new AddDirCommand().execute([extra], ctx)
+
+    expect(roots).toEqual([cwd, extra])
+    expect(events).toEqual([{ kind: 'note', text: `Added read root: ${extra}`, tone: 'info' }])
   })
 
   test('/effort with no arg opens the slider picker in TUI mode', async () => {

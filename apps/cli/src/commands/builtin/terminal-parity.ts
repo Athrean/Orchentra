@@ -77,6 +77,41 @@ export class CdCommand implements CommandHandler {
   }
 }
 
+export class AddDirCommand implements CommandHandler {
+  spec: SlashCommandSpec = {
+    name: 'add-dir',
+    aliases: ['adddir'],
+    summary: 'Add an extra read/search workspace root',
+    argumentHint: '<path>',
+  }
+
+  async execute(args: string[], ctx: CommandContext): Promise<boolean> {
+    const target = args.join(' ').trim()
+    const roots = ctx.session.getWorkspaceRoots?.() ?? [ctx.cwd]
+    if (!target) {
+      return card(ctx, 'Read Roots', `${roots.length} root${roots.length === 1 ? '' : 's'}`, [
+        {
+          rows: roots.map((root, index) => ({ key: index === 0 ? 'cwd' : String(index + 1), value: prettyCwd(root) })),
+        },
+      ])
+    }
+
+    const addRoot = ctx.session.addWorkspaceRoot
+    if (!addRoot) return note(ctx, 'This runtime does not support /add-dir.', 'warn')
+
+    const next = resolvePath(ctx.cwd, target)
+    if (!existsSync(next)) return note(ctx, `Directory not found: ${target}`, 'warn')
+    if (!statSync(next).isDirectory()) return note(ctx, `Not a directory: ${target}`, 'warn')
+
+    const before = new Set(roots.map((root) => resolve(root)))
+    addRoot(next)
+    return note(
+      ctx,
+      before.has(resolve(next)) ? `Read root already added: ${prettyCwd(next)}` : `Added read root: ${prettyCwd(next)}`,
+    )
+  }
+}
+
 export class BackgroundCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'background',
