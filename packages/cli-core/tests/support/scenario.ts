@@ -4,7 +4,7 @@
 // (tokensMax / cacheHitMin) so the suite gates spend, not just behavior — see
 // docs/CLI_UPGRADES.md H1.
 import { ConversationRuntime, type ConversationConfig, type ConversationDeps } from '../../src/runtime/conversation'
-import type { Provider, ProviderStreamEvent } from '../../src/runtime/provider'
+import type { Provider, ProviderRequest, ProviderStreamEvent } from '../../src/runtime/provider'
 import type { ToolRegistry, ToolResult } from '../../src/runtime/tools'
 import { type RuntimeEvent, type DoneReason, type UsageTotals, emptyUsage, totalTokens } from '../../src/runtime/events'
 import { buildSystemPrompt } from '../../src/runtime/system-prompt'
@@ -27,6 +27,10 @@ export interface Scenario {
   turns: ProviderStreamEvent[][]
   tools?: ToolRegistry
   config?: Partial<ConversationConfig>
+  /** Observes each provider request before scripted events are yielded. */
+  onProviderRequest?: (request: ProviderRequest, callIndex: number) => void
+  beforeProviderTurn?: (request: ProviderRequest, callIndex: number) => void | Promise<void>
+  afterProviderTurn?: (request: ProviderRequest, callIndex: number) => void | Promise<void>
   expect: ScenarioExpect
 }
 
@@ -38,13 +42,37 @@ export interface ScenarioResult {
   doneReason: DoneReason
 }
 
-function scriptedProvider(turns: ProviderStreamEvent[][]): Provider {
+function scriptedProvider(
+  turns: ProviderStreamEvent[][],
+  onRequest?: (request: ProviderRequest, callIndex: number) => void,
+  beforeTurn?: (request: ProviderRequest, callIndex: number) => void | Promise<void>,
+  afterTurn?: (request: ProviderRequest, callIndex: number) => void | Promise<void>,
+): Provider {
   let callIndex = 0
   return {
-    async *stream() {
-      const turn = turns[callIndex++] ?? []
-      for (const ev of turn) yield ev
+    async *stream(request) {
+      const currentCall = callIndex++
+      const snapshot = snapshotRequest(request)
+      onRequest?.(snapshot, currentCall)
+      const turn = turns[currentCall] ?? []
+      try {
+        await beforeTurn?.(snapshot, currentCall)
+        for (const ev of turn) yield ev
+      } finally {
+        await afterTurn?.(snapshot, currentCall)
+      }
     },
+  }
+}
+
+function snapshotRequest(request: ProviderRequest): ProviderRequest {
+  return {
+    ...request,
+    messages: request.messages.map((message) => ({
+      ...message,
+      toolCalls: message.toolCalls?.map((call) => ({ ...call })),
+    })),
+    tools: request.tools.map((tool) => ({ ...tool })),
   }
 }
 
@@ -91,7 +119,7 @@ export function assertScenario(s: Scenario, r: ScenarioResult): void {
 
 export async function runScenario(s: Scenario): Promise<ScenarioResult> {
   const deps: ConversationDeps = {
-    provider: scriptedProvider(s.turns),
+    provider: scriptedProvider(s.turns, s.onProviderRequest, s.beforeProviderTurn, s.afterProviderTurn),
     tools: s.tools ?? noopTools(),
     systemPrompt: buildSystemPrompt({ staticParts: ['sys'], dynamicParts: [] }),
   }
