@@ -194,6 +194,47 @@ describe('LiveCli sessions', () => {
     }
   })
 
+  test('forkSession clones the active session file and switches future appends to the clone', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-fork-'))
+    try {
+      const provider = scriptedProvider([[{ kind: 'finish', stopReason: 'end_turn' }]])
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'source-session',
+        sharedState: sharedState(),
+      })
+      const writer = await SessionWriter.open({
+        rootDir: dir,
+        id: 'source-session',
+        meta: { cwd: dir, model: 'test-model' },
+      })
+      await writer.append({ kind: 'user_message', content: 'before fork' })
+      cli.setSession(writer)
+      cli.setEventSink(() => {})
+
+      const result = await cli.forkSession()
+      await cli.runTurn('after fork')
+      await cli.persistSession()
+
+      expect(result.sessionId).not.toBe('source-session')
+      expect(cli.getSessionId()).toBe(result.sessionId)
+      const sourceRaw = readFileSync(join(dir, 'source-session.jsonl'), 'utf8')
+      const forkRaw = readFileSync(result.path, 'utf8')
+      expect(sourceRaw).toContain('"content":"before fork"')
+      expect(sourceRaw).not.toContain('"content":"after fork"')
+      expect(forkRaw).toContain('"content":"before fork"')
+      expect(forkRaw).toContain('"content":"after fork"')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   test('undoLastFileEdits removes files created by the previous agent turn', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-undo-create-'))
     try {

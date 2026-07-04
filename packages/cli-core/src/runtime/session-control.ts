@@ -50,6 +50,13 @@ export interface SessionResumeResult {
   readonly contextComplete: boolean
 }
 
+export interface SessionForkResult {
+  readonly sessionId: string
+  readonly path: string
+  readonly sourceSessionId: string
+  readonly sourcePath: string
+}
+
 export interface SessionControl {
   getModel(): string
   /**
@@ -115,5 +122,7 @@ export interface SessionControl {
    * provider context can be reconstructed from persisted events.
    */
   resumeSession?(path: string): Promise<SessionResumeResult>
+  /** Clone the active session file and switch future writes to the cloned session. */
+  forkSession?(): Promise<SessionForkResult>
   forceCompact(): void
 }

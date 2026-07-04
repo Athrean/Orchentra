@@ -108,6 +108,7 @@ export type {
 export type {
   ContextStats,
   SessionControl,
+  SessionForkResult,
   SessionGoal,
   SessionResumeResult,
   SessionTaskSummary,

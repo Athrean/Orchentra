@@ -1,4 +1,5 @@
 import { existsSync, mkdtempSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
@@ -16,6 +17,7 @@ import {
   AddDirCommand,
   CdCommand,
   CopyCommand,
+  ForkCommand,
   GoalCommand,
   TasksCommand,
   UndoCommand,
@@ -225,6 +227,32 @@ describe('small slash parity commands', () => {
 
     expect(roots).toEqual([cwd, extra])
     expect(events).toEqual([{ kind: 'note', text: `Added read root: ${extra}`, tone: 'info' }])
+  })
+
+  test('/fork creates a git branch and forks the live session', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-fork-cmd-'))
+    git(cwd, ['init', '-b', 'main'])
+    let forked = false
+    const session: SessionControl = {
+      ...makeSession(),
+      forkSession: async () => {
+        forked = true
+        return { sessionId: 'forked-session', path: join(cwd, 'forked-session.jsonl') }
+      },
+    }
+    const { ctx, events } = makeCtx(cwd, session)
+
+    await new ForkCommand().execute(['parallel-work'], ctx)
+
+    expect(git(cwd, ['branch', '--show-current']).stdout.trim()).toBe('parallel-work')
+    expect(forked).toBe(true)
+    expect(events).toEqual([
+      {
+        kind: 'note',
+        text: 'Switched from main to parallel-work. Forked session: forked-session.',
+        tone: 'info',
+      },
+    ])
   })
 
   test('/effort with no arg opens the slider picker in TUI mode', async () => {
@@ -453,3 +481,11 @@ describe('small slash parity commands', () => {
     expect((events[0] as Extract<UiOutput, { kind: 'text' }>).text).toContain('src.ts:1:export const needle = 42')
   })
 })
+
+function git(cwd: string, args: readonly string[]): { stdout: string; stderr: string } {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || `git ${args.join(' ')} failed`)
+  }
+  return { stdout: result.stdout, stderr: result.stderr }
+}

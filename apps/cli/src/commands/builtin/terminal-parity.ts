@@ -193,7 +193,9 @@ export class BranchCommand implements CommandHandler {
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    return createBranch(ctx, args[0], 'work')
+    const result = switchBranch(ctx, args[0], 'work')
+    if (!result.ok) return note(ctx, result.message, 'warn')
+    return note(ctx, `Switched from ${result.from} to ${result.to}.`)
   }
 }
 
@@ -206,7 +208,21 @@ export class ForkCommand implements CommandHandler {
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    return createBranch(ctx, args[0], 'fork')
+    const forkSession = ctx.session.forkSession
+    if (!forkSession) return note(ctx, 'This runtime does not support session forking.', 'warn')
+
+    const branch = switchBranch(ctx, args[0], 'fork')
+    if (!branch.ok) return note(ctx, branch.message, 'warn')
+
+    try {
+      const session = await forkSession()
+      return note(ctx, `Switched from ${branch.from} to ${branch.to}. Forked session: ${session.sessionId}.`)
+    } catch (error) {
+      if (branch.from !== 'detached') {
+        git(ctx.cwd, ['switch', branch.from])
+      }
+      return note(ctx, `Switched to ${branch.to}, but session fork failed: ${formatError(error)}`, 'warn')
+    }
   }
 }
 
@@ -391,14 +407,16 @@ export class UsageCreditsCommand implements CommandHandler {
   }
 }
 
-function createBranch(ctx: CommandContext, rawName: string | undefined, prefix: string): boolean {
+type BranchSwitchResult = { ok: true; from: string; to: string } | { ok: false; message: string }
+
+function switchBranch(ctx: CommandContext, rawName: string | undefined, prefix: string): BranchSwitchResult {
   const name = sanitizeBranchName(rawName ?? `${prefix}/${timestampSlug()}`)
   const current = git(ctx.cwd, ['branch', '--show-current'])
-  if (!current.ok) return note(ctx, 'Not inside a git repository.', 'warn')
+  if (!current.ok) return { ok: false, message: 'Not inside a git repository.' }
 
   const result = git(ctx.cwd, ['switch', '-c', name])
-  if (!result.ok) return note(ctx, result.err || `Could not create branch ${name}.`, 'warn')
-  return note(ctx, `Switched from ${current.out.trim() || 'detached'} to ${name}.`)
+  if (!result.ok) return { ok: false, message: result.err || `Could not create branch ${name}.` }
+  return { ok: true, from: current.out.trim() || 'detached', to: name }
 }
 
 function git(cwd: string, args: readonly string[]): { ok: true; out: string } | { ok: false; err: string } {
@@ -464,6 +482,10 @@ function timestampSlug(): string {
 
 function formatNumber(n: number): string {
   return n.toLocaleString('en-US')
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 function totalTokens(usage: {

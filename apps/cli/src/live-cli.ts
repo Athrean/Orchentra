@@ -19,6 +19,7 @@ import type {
   LlmSummarizer,
   RuntimeEvent,
   SessionControl,
+  SessionForkResult,
   SessionGoal,
   SessionRecord,
   SessionResumeResult,
@@ -463,6 +464,32 @@ export class LiveCli implements SessionControl {
       messages: hydrated.messages.length,
       toolCalls: hydrated.toolCalls,
       contextComplete: hydrated.contextComplete,
+    }
+  }
+
+  async forkSession(): Promise<SessionForkResult> {
+    const current = this.session
+    if (!current) {
+      throw new Error('No active session to fork.')
+    }
+
+    const sourceSessionId = this.sessionId
+    const sourcePath = current.path
+    const next = await current.fork()
+    await current.close()
+
+    this.session = next
+    this.sessionId = next.meta.id
+    this.runtime = null
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = null
+    this.lastTurnFileUndo = []
+
+    return {
+      sessionId: next.meta.id,
+      path: next.path,
+      sourceSessionId,
+      sourcePath,
     }
   }
 
