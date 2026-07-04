@@ -77,6 +77,41 @@ export class CdCommand implements CommandHandler {
   }
 }
 
+export class AddDirCommand implements CommandHandler {
+  spec: SlashCommandSpec = {
+    name: 'add-dir',
+    aliases: ['adddir'],
+    summary: 'Add an extra read/search workspace root',
+    argumentHint: '<path>',
+  }
+
+  async execute(args: string[], ctx: CommandContext): Promise<boolean> {
+    const target = args.join(' ').trim()
+    const roots = ctx.session.getWorkspaceRoots?.() ?? [ctx.cwd]
+    if (!target) {
+      return card(ctx, 'Read Roots', `${roots.length} root${roots.length === 1 ? '' : 's'}`, [
+        {
+          rows: roots.map((root, index) => ({ key: index === 0 ? 'cwd' : String(index + 1), value: prettyCwd(root) })),
+        },
+      ])
+    }
+
+    const addRoot = ctx.session.addWorkspaceRoot
+    if (!addRoot) return note(ctx, 'This runtime does not support /add-dir.', 'warn')
+
+    const next = resolvePath(ctx.cwd, target)
+    if (!existsSync(next)) return note(ctx, `Directory not found: ${target}`, 'warn')
+    if (!statSync(next).isDirectory()) return note(ctx, `Not a directory: ${target}`, 'warn')
+
+    const before = new Set(roots.map((root) => resolve(root)))
+    addRoot(next)
+    return note(
+      ctx,
+      before.has(resolve(next)) ? `Read root already added: ${prettyCwd(next)}` : `Added read root: ${prettyCwd(next)}`,
+    )
+  }
+}
+
 export class BackgroundCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'background',
@@ -129,31 +164,23 @@ export class TasksCommand implements CommandHandler {
   }
 }
 
-export class RewindCommand implements CommandHandler {
+export class UndoCommand implements CommandHandler {
   spec: SlashCommandSpec = {
-    name: 'rewind',
-    aliases: [],
-    summary: 'Inspect rewind safety state',
+    name: 'undo',
+    aliases: ['rewind'],
+    summary: "Revert the previous turn's file edits",
   }
 
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
-    const changed = git(ctx.cwd, ['status', '--short'])
-    if (!changed.ok) {
-      return note(ctx, 'Rewind needs a git workspace. No files changed.', 'warn')
+    const result = await ctx.session.undoLastFileEdits?.()
+    if (!result) return note(ctx, 'This runtime does not support /undo.', 'warn')
+    if (result.kind === 'empty') return note(ctx, 'No file edits to undo.', 'warn')
+    if (result.kind === 'error') {
+      return note(ctx, `Undo failed after ${result.files.length} file(s): ${result.message}`, 'warn')
     }
-    const files = changed.out
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-    return card(ctx, 'Rewind', 'safe mode', [
-      {
-        rows: [
-          { key: 'Checkpoint engine', value: 'not configured' },
-          { key: 'Current changed files', value: String(files.length), bold: true },
-          { key: 'Action', value: 'No files were modified. Use git restore/stash until checkpoints land.' },
-        ],
-      },
-    ])
+    const noun = result.files.length === 1 ? 'file edit' : 'file edits'
+    const files = result.files.map((file) => `${file.path} ${file.action}`).join(', ')
+    return note(ctx, `Undid ${result.files.length} ${noun}: ${files}.`)
   }
 }
 
@@ -166,7 +193,9 @@ export class BranchCommand implements CommandHandler {
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    return createBranch(ctx, args[0], 'work')
+    const result = switchBranch(ctx, args[0], 'work')
+    if (!result.ok) return note(ctx, result.message, 'warn')
+    return note(ctx, `Switched from ${result.from} to ${result.to}.`)
   }
 }
 
@@ -179,7 +208,21 @@ export class ForkCommand implements CommandHandler {
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    return createBranch(ctx, args[0], 'fork')
+    const forkSession = ctx.session.forkSession
+    if (!forkSession) return note(ctx, 'This runtime does not support session forking.', 'warn')
+
+    const branch = switchBranch(ctx, args[0], 'fork')
+    if (!branch.ok) return note(ctx, branch.message, 'warn')
+
+    try {
+      const session = await forkSession()
+      return note(ctx, `Switched from ${branch.from} to ${branch.to}. Forked session: ${session.sessionId}.`)
+    } catch (error) {
+      if (branch.from !== 'detached') {
+        git(ctx.cwd, ['switch', branch.from])
+      }
+      return note(ctx, `Switched to ${branch.to}, but session fork failed: ${formatError(error)}`, 'warn')
+    }
   }
 }
 
@@ -364,14 +407,16 @@ export class UsageCreditsCommand implements CommandHandler {
   }
 }
 
-function createBranch(ctx: CommandContext, rawName: string | undefined, prefix: string): boolean {
+type BranchSwitchResult = { ok: true; from: string; to: string } | { ok: false; message: string }
+
+function switchBranch(ctx: CommandContext, rawName: string | undefined, prefix: string): BranchSwitchResult {
   const name = sanitizeBranchName(rawName ?? `${prefix}/${timestampSlug()}`)
   const current = git(ctx.cwd, ['branch', '--show-current'])
-  if (!current.ok) return note(ctx, 'Not inside a git repository.', 'warn')
+  if (!current.ok) return { ok: false, message: 'Not inside a git repository.' }
 
   const result = git(ctx.cwd, ['switch', '-c', name])
-  if (!result.ok) return note(ctx, result.err || `Could not create branch ${name}.`, 'warn')
-  return note(ctx, `Switched from ${current.out.trim() || 'detached'} to ${name}.`)
+  if (!result.ok) return { ok: false, message: result.err || `Could not create branch ${name}.` }
+  return { ok: true, from: current.out.trim() || 'detached', to: name }
 }
 
 function git(cwd: string, args: readonly string[]): { ok: true; out: string } | { ok: false; err: string } {
@@ -437,6 +482,10 @@ function timestampSlug(): string {
 
 function formatNumber(n: number): string {
   return n.toLocaleString('en-US')
+}
+
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 function totalTokens(usage: {

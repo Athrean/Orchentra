@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { dirname } from 'node:path'
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { basename, dirname, resolve } from 'node:path'
 import type {
   ChatMessage,
   ConversationConfig,
@@ -18,11 +19,17 @@ import type {
   LlmSummarizer,
   RuntimeEvent,
   SessionControl,
+  SessionForkResult,
   SessionGoal,
+  SessionRecord,
+  SessionResumeResult,
   SessionTaskSummary,
   SharedToolState,
   SystemPrompt,
+  ToolCall,
   ToolRegistry,
+  UndoFileEditResult,
+  UndoFileEditsResult,
   UsageTotals,
 } from '@orchentra/cli-core'
 import {
@@ -42,6 +49,7 @@ import {
   createPermissionStore,
   loadPolicy,
   evaluate as evaluatePolicy,
+  replaySession,
   SessionWriter,
 } from '@orchentra/cli-core'
 import type {
@@ -79,6 +87,12 @@ export type NotifyDenyOverride = (info: { toolName: string; inputJson: string; r
 export type NotifyPolicyOverride = (info: { kind: 'allow' | 'deny' | 'ask'; rule: PolicyRule }) => Promise<void>
 export type { ToolPromptChoice }
 
+interface FileUndoSnapshot {
+  readonly path: string
+  readonly existed: boolean
+  readonly content: string
+}
+
 export class LiveCli implements SessionControl {
   private model: string
   private permissionMode: PermissionMode
@@ -90,7 +104,7 @@ export class LiveCli implements SessionControl {
   private readonly tools: ToolRegistry
   private cwd: string
   private sessionId: string
-  private readonly tracker: UsageTracker
+  private tracker: UsageTracker
   private readonly spinner: Spinner
   private readonly sharedState: SharedToolState
   private readonly memoryConfig: MemoryFeatureConfig | null
@@ -115,6 +129,10 @@ export class LiveCli implements SessionControl {
   private readonly permissionStore: PermissionStore
   private startupNotices: string[] = []
   private goal: SessionGoal | null = null
+  private pendingFileUndoSnapshots = new Map<string, FileUndoSnapshot>()
+  private currentTurnFileUndo: FileUndoSnapshot[] | null = null
+  private lastTurnFileUndo: FileUndoSnapshot[] = []
+  private readonly extraWorkspaceRoots = new Set<string>()
 
   constructor(deps: {
     model: string
@@ -266,6 +284,17 @@ export class LiveCli implements SessionControl {
     return this.cwd
   }
 
+  getWorkspaceRoots(): readonly string[] {
+    const primary = resolve(this.cwd)
+    return [primary, ...Array.from(this.extraWorkspaceRoots).filter((root) => root !== primary)]
+  }
+
+  addWorkspaceRoot(path: string): readonly string[] {
+    const root = resolve(path)
+    if (root !== resolve(this.cwd)) this.extraWorkspaceRoots.add(root)
+    return this.getWorkspaceRoots()
+  }
+
   getTurns(): number {
     return this.tracker.turns()
   }
@@ -367,6 +396,9 @@ export class LiveCli implements SessionControl {
 
   clearHistory(): void {
     this.messages = []
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = null
+    this.lastTurnFileUndo = []
   }
 
   async startNewSession(): Promise<void> {
@@ -387,6 +419,78 @@ export class LiveCli implements SessionControl {
     })
     this.sessionId = id
     this.session = next
+  }
+
+  async resumeSession(path: string): Promise<SessionResumeResult> {
+    const targetPath = resolve(path)
+    const current = this.session
+    if (current?.path === targetPath) {
+      await current.close()
+    }
+
+    const records = await replaySession(targetPath)
+    const hydrated = hydrateSessionRecords(records, this.terseMode)
+    const firstMeta = records[0]?.meta
+    const nextCwd = firstMeta?.cwd ?? this.cwd
+    const nextModel = firstMeta?.model ?? this.model
+    const nextId = basename(targetPath, '.jsonl')
+
+    if (current && current.path !== targetPath) {
+      await current.close()
+    }
+
+    this.cwd = nextCwd
+    this.setModel(nextModel)
+    this.sessionId = nextId
+    this.messages = hydrated.messages
+    this.tracker = hydrated.tracker
+    this.runtime = null
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = null
+    this.lastTurnFileUndo = []
+
+    this.session = await SessionWriter.open({
+      rootDir: dirname(targetPath),
+      id: nextId,
+      meta: { cwd: this.cwd, model: this.model },
+    })
+
+    return {
+      sessionId: nextId,
+      path: targetPath,
+      cwd: this.cwd,
+      model: this.model,
+      events: records.length,
+      messages: hydrated.messages.length,
+      toolCalls: hydrated.toolCalls,
+      contextComplete: hydrated.contextComplete,
+    }
+  }
+
+  async forkSession(): Promise<SessionForkResult> {
+    const current = this.session
+    if (!current) {
+      throw new Error('No active session to fork.')
+    }
+
+    const sourceSessionId = this.sessionId
+    const sourcePath = current.path
+    const next = await current.fork()
+    await current.close()
+
+    this.session = next
+    this.sessionId = next.meta.id
+    this.runtime = null
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = null
+    this.lastTurnFileUndo = []
+
+    return {
+      sessionId: next.meta.id,
+      path: next.path,
+      sourceSessionId,
+      sourcePath,
+    }
   }
 
   forceCompact(): void {
@@ -412,6 +516,35 @@ export class LiveCli implements SessionControl {
 
   setSession(writer: SessionWriter): void {
     this.session = writer
+  }
+
+  async undoLastFileEdits(): Promise<UndoFileEditsResult> {
+    const edits = this.lastTurnFileUndo
+    if (edits.length === 0) return { kind: 'empty' }
+
+    const applied: UndoFileEditResult[] = []
+    try {
+      for (const edit of edits.slice().reverse()) {
+        if (edit.existed) {
+          await mkdir(dirname(edit.path), { recursive: true })
+          await writeFile(edit.path, edit.content)
+          applied.push({ path: edit.path, action: 'restored' })
+        } else {
+          await unlink(edit.path).catch((error: NodeJS.ErrnoException) => {
+            if (error.code !== 'ENOENT') throw error
+          })
+          applied.push({ path: edit.path, action: 'deleted' })
+        }
+      }
+      this.lastTurnFileUndo = []
+      return { kind: 'applied', files: applied }
+    } catch (error) {
+      return {
+        kind: 'error',
+        message: error instanceof Error ? error.message : String(error),
+        files: applied,
+      }
+    }
   }
 
   // Bounded LLM pass that turns the dropped turns into a faithful digest when
@@ -440,6 +573,8 @@ export class LiveCli implements SessionControl {
 
   async runTurn(input: string): Promise<void> {
     const sink = this.eventSink
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = []
     // Handle forced compaction
     if (this.forceCompactFlag) {
       this.forceCompactFlag = false
@@ -479,6 +614,10 @@ export class LiveCli implements SessionControl {
     }
     if (this.goal) {
       dynamicParts.push(`CURRENT SESSION GOAL: ${this.goal.objective}`)
+    }
+    const workspaceRoots = this.getWorkspaceRoots()
+    if (workspaceRoots.length > 1) {
+      dynamicParts.push(`READABLE WORKSPACE ROOTS: ${workspaceRoots.join(', ')}`)
     }
     if (this.memoryConfig?.enabled) {
       try {
@@ -560,6 +699,9 @@ export class LiveCli implements SessionControl {
     }
 
     this.currentAbort = new AbortController()
+    if (this.session) {
+      await this.session.append({ kind: 'user_message', content: input })
+    }
     const deps: ConversationDeps = {
       provider: this.provider,
       tools: this.tools,
@@ -585,6 +727,7 @@ export class LiveCli implements SessionControl {
       hookRunner: this.hookRunner ?? undefined,
       spinePrompt: spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'sub-agent' }),
       compactionSummarizer: this.buildCompactionSummarizer(),
+      workspaceRoots,
     }
 
     this.runtime = new ConversationRuntime(config, deps)
@@ -639,11 +782,21 @@ export class LiveCli implements SessionControl {
         process.stdout.write(renderErrorLine(message) + '\n')
       }
     } finally {
+      this.lastTurnFileUndo = this.currentTurnFileUndo ?? []
+      this.currentTurnFileUndo = null
+      this.pendingFileUndoSnapshots.clear()
       this.currentAbort = null
     }
   }
 
   private async handleEvent(event: RuntimeEvent): Promise<void> {
+    if (event.kind === 'tool_use') {
+      await this.captureFileUndoSnapshot(event.call)
+    }
+    if (event.kind === 'tool_result') {
+      this.recordFileUndoSnapshot(event.result.id, event.result.isError)
+    }
+
     if (this.eventSink) {
       this.eventSink(event)
     } else {
@@ -679,6 +832,30 @@ export class LiveCli implements SessionControl {
     }
   }
 
+  private async captureFileUndoSnapshot(call: ToolCall): Promise<void> {
+    if (call.name !== 'write_file' && call.name !== 'edit_file') return
+    const path = toolInputPath(call.input)
+    if (!path) return
+    const absolutePath = resolveToolPath(this.cwd, path)
+    if (!isWithinRoot(absolutePath, this.cwd)) return
+
+    try {
+      const content = await readFile(absolutePath, 'utf8')
+      this.pendingFileUndoSnapshots.set(call.id, { path: absolutePath, existed: true, content })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        this.pendingFileUndoSnapshots.set(call.id, { path: absolutePath, existed: false, content: '' })
+      }
+    }
+  }
+
+  private recordFileUndoSnapshot(toolCallId: string, isError: boolean): void {
+    const snapshot = this.pendingFileUndoSnapshots.get(toolCallId)
+    if (!snapshot) return
+    this.pendingFileUndoSnapshots.delete(toolCallId)
+    if (!isError) this.currentTurnFileUndo?.push(snapshot)
+  }
+
   // Auto-extract a failure→resolution memory after a successful turn. Gated on
   // `memory.enabled`; failure-shaped turns only; deduped by signature. Best
   // effort — embedding may be unavailable, so a throw here never breaks the turn.
@@ -706,6 +883,73 @@ export class LiveCli implements SessionControl {
   }
 }
 
+function hydrateSessionRecords(
+  records: readonly SessionRecord[],
+  terseMode: TerseMode,
+): {
+  messages: ChatMessage[]
+  tracker: UsageTracker
+  toolCalls: number
+  contextComplete: boolean
+} {
+  const messages: ChatMessage[] = []
+  const tracker = new UsageTracker()
+  let assistantText = ''
+  let assistantToolCalls: ToolCall[] = []
+  let toolCalls = 0
+  let userMessages = 0
+
+  const flushAssistant = (): void => {
+    if (assistantText.length === 0 && assistantToolCalls.length === 0) return
+    messages.push({
+      role: 'assistant',
+      content: assistantText,
+      toolCalls: assistantToolCalls.length > 0 ? assistantToolCalls : undefined,
+    })
+    assistantText = ''
+    assistantToolCalls = []
+  }
+
+  for (const record of records) {
+    const event = record.event
+    switch (event.kind) {
+      case 'user_message':
+        flushAssistant()
+        messages.push({ role: 'user', content: event.content })
+        userMessages++
+        break
+      case 'text':
+        assistantText += event.delta
+        break
+      case 'tool_use':
+        assistantToolCalls.push(event.call)
+        toolCalls++
+        break
+      case 'tool_result':
+        flushAssistant()
+        messages.push({ role: 'tool', content: event.result.content, toolCallId: event.result.id })
+        break
+      case 'usage':
+        tracker.record(event.turn, terseMode)
+        break
+      case 'compacted':
+        tracker.recordCompaction(event.tokensSaved)
+        break
+      case 'tool_output_budgeted':
+        tracker.recordToolOutputTrim(event.droppedChars)
+        break
+    }
+  }
+  flushAssistant()
+
+  return {
+    messages,
+    tracker,
+    toolCalls,
+    contextComplete: userMessages > 0,
+  }
+}
+
 // Defensive stringifier for unknown thrown values. Plain `String(err)` on an
 // object literal produces "[object Object]" — useless to the user. Errors with
 // a `.message` field surface that; otherwise we fall back to JSON.
@@ -721,4 +965,21 @@ function formatThrown(err: unknown): string {
   } catch {
     return String(err)
   }
+}
+
+function toolInputPath(input: unknown): string | null {
+  if (!input || typeof input !== 'object') return null
+  const path = (input as { path?: unknown }).path
+  return typeof path === 'string' && path.length > 0 ? path : null
+}
+
+function resolveToolPath(cwd: string, path: string): string {
+  return resolve(cwd, path)
+}
+
+function isWithinRoot(path: string, root: string): boolean {
+  const normalizedRoot = resolve(root)
+  const normalizedPath = resolve(path)
+  const rootWithSlash = normalizedRoot.endsWith('/') ? normalizedRoot : `${normalizedRoot}/`
+  return normalizedPath === normalizedRoot || normalizedPath.startsWith(rootWithSlash)
 }

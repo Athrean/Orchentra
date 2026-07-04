@@ -48,8 +48,49 @@ export class ResumeCommand implements CommandHandler {
 
     candidates.sort((a, b) => b.mtimeMs - a.mtimeMs)
     const target = candidates[0]!
+    const sessionPath = join(target.dir, target.file)
 
-    const raw = await readFile(join(target.dir, target.file), 'utf8')
+    if (ctx.session.resumeSession) {
+      const result = await ctx.session.resumeSession(sessionPath)
+      if (ctx.setCwd && result.cwd !== ctx.cwd) ctx.setCwd(result.cwd)
+      if (ctx.ui) {
+        ctx.ui({
+          kind: 'card',
+          title: 'Resumed Session',
+          subtitle: target.file,
+          sections: [
+            {
+              rows: [
+                { key: 'Session', value: result.sessionId },
+                { key: 'Messages', value: String(result.messages) },
+                { key: 'Events', value: String(result.events) },
+                { key: 'Tool calls', value: String(result.toolCalls) },
+                { key: 'Cwd', value: result.cwd },
+                { key: 'Context', value: result.contextComplete ? 'complete' : 'partial' },
+              ],
+            },
+          ],
+        })
+        if (!result.contextComplete) {
+          ctx.ui({
+            kind: 'note',
+            tone: 'warn',
+            text: 'Historical session lacks persisted user prompts; resumed context is partial.',
+          })
+        }
+      } else {
+        process.stdout.write(`Resumed session: ${target.file}\n`)
+        process.stdout.write(
+          `Messages: ${result.messages}, Events: ${result.events}, Tool calls: ${result.toolCalls}\n`,
+        )
+        if (!result.contextComplete) {
+          process.stdout.write('Historical session lacks persisted user prompts; resumed context is partial.\n')
+        }
+      }
+      return true
+    }
+
+    const raw = await readFile(sessionPath, 'utf8')
     const lines = raw
       .trim()
       .split('\n')

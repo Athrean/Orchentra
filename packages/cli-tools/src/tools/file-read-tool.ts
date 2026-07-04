@@ -28,7 +28,7 @@ export const fileReadTool: ToolDefinition = {
     }
 
     try {
-      const result = await readFileInWorkspace(input.path, ctx.cwd, input.offset, input.limit)
+      const result = await readFileInWorkspace(input.path, ctx.workspaceRoots ?? ctx.cwd, input.offset, input.limit)
       return { content: result.file.content, isError: false }
     } catch (e) {
       return { content: `read error: ${(e as Error).message}`, isError: true }

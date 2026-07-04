@@ -77,6 +77,7 @@ export interface ConversationDeps {
   idGen?: () => string
   sharedState?: SharedToolState
   askUser?: (prompt: string) => Promise<string>
+  workspaceRoots?: readonly string[]
 }
 
 export interface RunInput {
@@ -343,6 +344,7 @@ export class ConversationRuntime {
     const ctx: ToolContext = {
       sessionId: this.config.sessionId,
       cwd: this.config.cwd,
+      workspaceRoots: this.deps.workspaceRoots,
       model: this.config.model,
       sharedState: this.deps.sharedState,
       askUser: this.deps.askUser,

@@ -55,7 +55,7 @@ export const grepTool: ToolDefinition = {
           fileType: input.file_type,
           multiline: input.multiline,
         },
-        ctx.cwd,
+        ctx.workspaceRoots ?? ctx.cwd,
       )
 
       const header = `${result.numFiles} files matched`

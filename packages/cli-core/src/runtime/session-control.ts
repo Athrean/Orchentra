@@ -29,6 +29,34 @@ export interface SessionTaskSummary {
   readonly completedAt?: string
 }
 
+export interface UndoFileEditResult {
+  readonly path: string
+  readonly action: 'restored' | 'deleted'
+}
+
+export type UndoFileEditsResult =
+  | { readonly kind: 'empty' }
+  | { readonly kind: 'applied'; readonly files: readonly UndoFileEditResult[] }
+  | { readonly kind: 'error'; readonly message: string; readonly files: readonly UndoFileEditResult[] }
+
+export interface SessionResumeResult {
+  readonly sessionId: string
+  readonly path: string
+  readonly cwd: string
+  readonly model: string
+  readonly events: number
+  readonly messages: number
+  readonly toolCalls: number
+  readonly contextComplete: boolean
+}
+
+export interface SessionForkResult {
+  readonly sessionId: string
+  readonly path: string
+  readonly sourceSessionId: string
+  readonly sourcePath: string
+}
+
 export interface SessionControl {
   getModel(): string
   /**
@@ -43,6 +71,10 @@ export interface SessionControl {
   getSessionId(): string
   getCwd?(): string
   setCwd?(cwd: string): string
+  /** Primary cwd plus any extra read/search roots added for this REPL session. */
+  getWorkspaceRoots?(): readonly string[]
+  /** Add an extra read/search root for tools such as read_file, glob_search, and grep_search. */
+  addWorkspaceRoot?(path: string): readonly string[]
   getTurns(): number
   getUsage(): UsageTotals
   /** Estimated live conversation footprint before provider-side caching. */
@@ -54,6 +86,8 @@ export interface SessionControl {
   /** Background agent task summaries available to /tasks. */
   listTaskSummaries?(): readonly SessionTaskSummary[]
   cancelTask?(id: string): boolean
+  /** Revert successful write/edit_file effects from the most recent agent turn. */
+  undoLastFileEdits?(): Promise<UndoFileEditsResult>
   /** Output tokens + turns spent under each terse mode this session. */
   getTerseBreakdown?(): readonly TerseModeUsage[]
   /** Measured compaction + tool-output-trim savings, when the session tracks them. */
@@ -83,5 +117,12 @@ export interface SessionControl {
    * and rely on clearHistory().
    */
   startNewSession?(): Promise<void>
+  /**
+   * Switch this REPL to an existing JSONL session file and hydrate whatever
+   * provider context can be reconstructed from persisted events.
+   */
+  resumeSession?(path: string): Promise<SessionResumeResult>
+  /** Clone the active session file and switch future writes to the cloned session. */
+  forkSession?(): Promise<SessionForkResult>
   forceCompact(): void
 }

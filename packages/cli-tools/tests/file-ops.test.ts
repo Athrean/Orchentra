@@ -171,6 +171,24 @@ describe('workspace boundary enforcement', () => {
     expect(readFileInWorkspace(outside, ws)).rejects.toThrow('escapes workspace')
   })
 
+  test('allows read, glob, and grep inside added workspace roots', async () => {
+    const root = tempPath('ws-extra-root')
+    const ws = `${root}/project`
+    const extra = `${root}/reference`
+    mkdirSync(ws, { recursive: true })
+    await Bun.write(`${extra}/notes.txt`, 'shared needle\n')
+    await Bun.write(`${extra}/module.ts`, 'export const needle = 1\n')
+    const roots = [ws, extra]
+
+    const read = await readFileInWorkspace(`${extra}/notes.txt`, roots)
+    const glob = await globSearchInWorkspace('*.ts', roots, extra)
+    const grep = await grepSearchInWorkspace({ pattern: 'needle', path: extra, outputMode: 'content' }, roots)
+
+    expect(read.file.content).toBe('shared needle\n')
+    expect(glob.filenames).toContain(`${extra}/module.ts`)
+    expect(grep.content ?? grep.filenames.join('\n')).toContain('needle')
+  })
+
   test('rejects parent traversal reads after resolution', async () => {
     const root = tempPath('ws-read-traversal')
     const ws = `${root}/project`

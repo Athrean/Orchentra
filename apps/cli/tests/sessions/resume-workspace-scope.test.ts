@@ -42,6 +42,11 @@ function makeCtx(cwd: string): { ctx: CommandContext; events: UiOutput[] } {
   return { events, ctx: { cwd, session: makeSession(), ui: (o) => events.push(o) } }
 }
 
+function makeCtxWithSession(cwd: string, session: SessionControl): { ctx: CommandContext; events: UiOutput[] } {
+  const events: UiOutput[] = []
+  return { events, ctx: { cwd, session, ui: (o) => events.push(o) } }
+}
+
 function writeSession(bucketDir: string, id: string, lines: object[]): void {
   mkdirSync(bucketDir, { recursive: true })
   const body = lines.map((l) => JSON.stringify(l)).join('\n') + '\n'
@@ -125,5 +130,42 @@ describe('ResumeCommand workspace scope', () => {
     const { ctx, events } = makeCtx(wsB)
     await new ResumeCommand().execute(['latest'], ctx)
     expect(notes(events).join(' ')).toMatch(/No sessions found/)
+  })
+
+  test('resumes the matched session through the live session hook when available', async () => {
+    const wsA = '/Users/foo/repo-a'
+    const id = 'dddd3333'
+    writeSession(join(sessionsRoot(), fingerprintWorkspace(wsA)), id, [
+      { event: { kind: 'user_message', content: 'start' } },
+      { event: { kind: 'text', delta: 'done' } },
+    ])
+
+    let resumedPath = ''
+    const session: SessionControl = {
+      ...makeSession(),
+      resumeSession: async (path) => {
+        resumedPath = path
+        return {
+          sessionId: id,
+          path,
+          cwd: wsA,
+          model: 'test-model',
+          events: 2,
+          messages: 2,
+          toolCalls: 0,
+          contextComplete: true,
+        }
+      },
+    }
+    const { ctx, events } = makeCtxWithSession(wsA, session)
+
+    await new ResumeCommand().execute([id], ctx)
+
+    expect(resumedPath).toBe(join(sessionsRoot(), fingerprintWorkspace(wsA), `${id}.jsonl`))
+    const cards = events.filter((e) => e.kind === 'card')
+    expect(cards.length).toBe(1)
+    if (cards[0]!.kind !== 'card') throw new Error('expected card')
+    expect(cards[0]!.title).toBe('Resumed Session')
+    expect(cards[0]!.subtitle).toContain(id)
   })
 })

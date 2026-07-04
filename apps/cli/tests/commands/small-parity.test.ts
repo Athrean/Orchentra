@@ -1,4 +1,5 @@
 import { existsSync, mkdtempSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
@@ -12,7 +13,15 @@ import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
 import { ClearCommand } from '../../src/commands/builtin/clear'
-import { CdCommand, CopyCommand, GoalCommand, TasksCommand } from '../../src/commands/builtin/terminal-parity'
+import {
+  AddDirCommand,
+  CdCommand,
+  CopyCommand,
+  ForkCommand,
+  GoalCommand,
+  TasksCommand,
+  UndoCommand,
+} from '../../src/commands/builtin/terminal-parity'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
 
@@ -73,7 +82,9 @@ describe('small slash parity commands', () => {
     expect(names).toContain('cd')
     expect(names).toContain('background')
     expect(names).toContain('tasks')
-    expect(names).toContain('rewind')
+    expect(names).toContain('undo')
+    expect(registry.resolve('/rewind')).not.toBeInstanceOf(Error)
+    expect(names).toContain('add-dir')
     expect(names).toContain('branch')
     expect(names).toContain('fork')
     expect(names).toContain('goal')
@@ -181,6 +192,67 @@ describe('small slash parity commands', () => {
     expect(events[0]?.kind).toBe('card')
     expect(cancelled).toBe(true)
     expect(events[1]).toEqual({ kind: 'note', text: 'Cancelled task_1_abcd.', tone: 'info' })
+  })
+
+  test('/undo reverts the previous turn file edits through the session', async () => {
+    const session: SessionControl = {
+      ...makeSession(),
+      undoLastFileEdits: async () => ({
+        kind: 'applied',
+        files: [{ path: '/work/file.txt', action: 'restored' }],
+      }),
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new UndoCommand().execute([], ctx)
+
+    expect(events).toEqual([{ kind: 'note', text: 'Undid 1 file edit: /work/file.txt restored.', tone: 'info' }])
+  })
+
+  test('/add-dir stores an extra readable workspace root', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-add-dir-cwd-'))
+    const extra = mkdtempSync(join(tmpdir(), 'orchentra-add-dir-extra-'))
+    let roots = [cwd]
+    const session: SessionControl = {
+      ...makeSession(),
+      getWorkspaceRoots: () => roots,
+      addWorkspaceRoot: (path) => {
+        roots = Array.from(new Set([...roots, path]))
+        return roots
+      },
+    }
+    const { ctx, events } = makeCtx(cwd, session)
+
+    await new AddDirCommand().execute([extra], ctx)
+
+    expect(roots).toEqual([cwd, extra])
+    expect(events).toEqual([{ kind: 'note', text: `Added read root: ${extra}`, tone: 'info' }])
+  })
+
+  test('/fork creates a git branch and forks the live session', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-fork-cmd-'))
+    git(cwd, ['init', '-b', 'main'])
+    let forked = false
+    const session: SessionControl = {
+      ...makeSession(),
+      forkSession: async () => {
+        forked = true
+        return { sessionId: 'forked-session', path: join(cwd, 'forked-session.jsonl') }
+      },
+    }
+    const { ctx, events } = makeCtx(cwd, session)
+
+    await new ForkCommand().execute(['parallel-work'], ctx)
+
+    expect(git(cwd, ['branch', '--show-current']).stdout.trim()).toBe('parallel-work')
+    expect(forked).toBe(true)
+    expect(events).toEqual([
+      {
+        kind: 'note',
+        text: 'Switched from main to parallel-work. Forked session: forked-session.',
+        tone: 'info',
+      },
+    ])
   })
 
   test('/effort with no arg opens the slider picker in TUI mode', async () => {
@@ -409,3 +481,11 @@ describe('small slash parity commands', () => {
     expect((events[0] as Extract<UiOutput, { kind: 'text' }>).text).toContain('src.ts:1:export const needle = 42')
   })
 })
+
+function git(cwd: string, args: readonly string[]): { stdout: string; stderr: string } {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.stdout || `git ${args.join(' ')} failed`)
+  }
+  return { stdout: result.stdout, stderr: result.stderr }
+}

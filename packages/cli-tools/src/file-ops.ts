@@ -4,6 +4,8 @@ import { existsSync, lstatSync, realpathSync } from 'node:fs'
 const MAX_READ_SIZE = 10 * 1024 * 1024
 const MAX_WRITE_SIZE = 10 * 1024 * 1024
 
+type WorkspaceRoots = string | readonly string[]
+
 export interface TextFilePayload {
   filePath: string
   content: string
@@ -105,18 +107,27 @@ function normalizePathAllowMissing(filePath: string): string {
   }
 }
 
-function resolveWorkspacePath(filePath: string, workspaceRoot: string, allowMissing = false): string {
-  const root = resolve(workspaceRoot)
+function workspaceRootList(workspaceRoot: WorkspaceRoots): string[] {
+  const roots = Array.isArray(workspaceRoot) ? workspaceRoot : [workspaceRoot]
+  if (roots.length === 0) throw new Error('at least one workspace root is required')
+  return roots.map((root) => resolve(root))
+}
+
+function resolveWorkspacePath(filePath: string, workspaceRoot: WorkspaceRoots, allowMissing = false): string {
+  const root = workspaceRootList(workspaceRoot)[0]!
   const candidate = filePath.startsWith('/') ? filePath : join(root, filePath)
   return allowMissing ? normalizePathAllowMissing(candidate) : normalizePath(candidate)
 }
 
-function validateWorkspaceBoundary(resolved: string, workspaceRoot: string): void {
-  const normalizedRoot = resolve(workspaceRoot)
+function validateWorkspaceBoundary(resolved: string, workspaceRoot: WorkspaceRoots): void {
+  const roots = workspaceRootList(workspaceRoot)
   const normalizedPath = resolve(resolved)
-  const rootWithSlash = normalizedRoot.endsWith('/') ? normalizedRoot : normalizedRoot + '/'
-  if (!normalizedPath.startsWith(rootWithSlash) && normalizedPath !== normalizedRoot) {
-    throw new Error(`path ${normalizedPath} escapes workspace boundary ${normalizedRoot}`)
+  const inside = roots.some((root) => {
+    const rootWithSlash = root.endsWith('/') ? root : root + '/'
+    return normalizedPath.startsWith(rootWithSlash) || normalizedPath === root
+  })
+  if (!inside) {
+    throw new Error(`path ${normalizedPath} escapes workspace boundary ${roots.join(', ')}`)
   }
 }
 
@@ -144,18 +155,18 @@ function canonicalizeAllowMissing(path: string): string {
   return resolve(realpathOrResolve(parent), relative(parent, path))
 }
 
-function validateFilesystemBoundary(resolved: string, workspaceRoot: string, allowMissing = false): void {
-  const canonicalRoot = canonicalizeAllowMissing(workspaceRoot)
+function validateFilesystemBoundary(resolved: string, workspaceRoot: WorkspaceRoots, allowMissing = false): void {
+  const canonicalRoots = workspaceRootList(workspaceRoot).map((root) => canonicalizeAllowMissing(root))
   if (existsSync(resolved)) {
-    validateWorkspaceBoundary(realpathSync(resolved), canonicalRoot)
+    validateWorkspaceBoundary(realpathSync(resolved), canonicalRoots)
     return
   }
 
   if (!allowMissing) return
-  validateWorkspaceBoundary(canonicalizeAllowMissing(resolved), canonicalRoot)
+  validateWorkspaceBoundary(canonicalizeAllowMissing(resolved), canonicalRoots)
 }
 
-function validateGlobPatternBoundary(pattern: string, basePath: string, workspaceRoot: string): void {
+function validateGlobPatternBoundary(pattern: string, basePath: string, workspaceRoot: WorkspaceRoots): void {
   const staticPrefix = pattern.split(/[*?{[]/, 1)[0] ?? pattern
   const candidate = pattern.startsWith('/') ? staticPrefix || '/' : resolve(basePath, staticPrefix || '.')
   validateWorkspaceBoundary(candidate, workspaceRoot)
@@ -474,7 +485,7 @@ function applyLimit<T>(
 
 export async function readFileInWorkspace(
   filePath: string,
-  workspaceRoot: string,
+  workspaceRoot: WorkspaceRoots,
   offset?: number,
   limit?: number,
 ): Promise<ReadFileOutput> {
@@ -486,18 +497,23 @@ export async function readFileInWorkspace(
 
 export async function globSearchInWorkspace(
   pattern: string,
-  workspaceRoot: string,
+  workspaceRoot: WorkspaceRoots,
   basePath?: string,
 ): Promise<GlobSearchOutput> {
-  const base = basePath ? resolveWorkspacePath(basePath, workspaceRoot) : resolve(workspaceRoot)
+  const root = workspaceRootList(workspaceRoot)[0]!
+  const base = basePath ? resolveWorkspacePath(basePath, workspaceRoot) : root
   validateWorkspaceBoundary(base, workspaceRoot)
   validateFilesystemBoundary(base, workspaceRoot)
   validateGlobPatternBoundary(pattern, base, workspaceRoot)
   return globSearch(pattern, base)
 }
 
-export async function grepSearchInWorkspace(input: GrepSearchInput, workspaceRoot: string): Promise<GrepSearchOutput> {
-  const basePath = input.path ? resolveWorkspacePath(input.path, workspaceRoot) : resolve(workspaceRoot)
+export async function grepSearchInWorkspace(
+  input: GrepSearchInput,
+  workspaceRoot: WorkspaceRoots,
+): Promise<GrepSearchOutput> {
+  const root = workspaceRootList(workspaceRoot)[0]!
+  const basePath = input.path ? resolveWorkspacePath(input.path, workspaceRoot) : root
   validateWorkspaceBoundary(basePath, workspaceRoot)
   validateFilesystemBoundary(basePath, workspaceRoot)
   return grepSearch({ ...input, path: basePath })
