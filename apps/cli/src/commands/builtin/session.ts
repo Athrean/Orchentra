@@ -4,13 +4,14 @@ import type { CommandHandler, CommandContext, SlashCommandSpec } from '../regist
 import { THEME } from '../../tui/theme'
 import type { UiKVRow } from '../ui-output'
 import { getSessionsDirForWorkspace } from '../../session-config'
+import { ResumeCommand } from './resume'
 
 export class SessionCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'session',
     aliases: [],
-    summary: 'List, show, or delete sessions',
-    argumentHint: '[list | show <id> | delete <id>]',
+    summary: 'List, show, resume, or delete sessions',
+    argumentHint: '[list | show <id> | resume <id> | delete <id>]',
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
@@ -25,6 +26,9 @@ export class SessionCommand implements CommandHandler {
       const id = args[1]
       if (!id) return note(ctx, 'session ID required', 'warn')
       return this.handleShow(ctx, id)
+    }
+    if (sub === 'resume') {
+      return new ResumeCommand().execute(args.slice(1), ctx)
     }
     return this.handleList(ctx)
   }
@@ -64,7 +68,7 @@ export class SessionCommand implements CommandHandler {
       ctx.ui({
         kind: 'card',
         title: 'Sessions',
-        subtitle: `${jsonlFiles.length} total · showing ${rows.length}`,
+        subtitle: `${jsonlFiles.length} total · showing ${rows.length} · /session resume <id>`,
         sections: [{ rows }],
       })
       return true

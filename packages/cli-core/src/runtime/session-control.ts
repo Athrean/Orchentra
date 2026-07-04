@@ -39,6 +39,17 @@ export type UndoFileEditsResult =
   | { readonly kind: 'applied'; readonly files: readonly UndoFileEditResult[] }
   | { readonly kind: 'error'; readonly message: string; readonly files: readonly UndoFileEditResult[] }
 
+export interface SessionResumeResult {
+  readonly sessionId: string
+  readonly path: string
+  readonly cwd: string
+  readonly model: string
+  readonly events: number
+  readonly messages: number
+  readonly toolCalls: number
+  readonly contextComplete: boolean
+}
+
 export interface SessionControl {
   getModel(): string
   /**
@@ -99,5 +110,10 @@ export interface SessionControl {
    * and rely on clearHistory().
    */
   startNewSession?(): Promise<void>
+  /**
+   * Switch this REPL to an existing JSONL session file and hydrate whatever
+   * provider context can be reconstructed from persisted events.
+   */
+  resumeSession?(path: string): Promise<SessionResumeResult>
   forceCompact(): void
 }

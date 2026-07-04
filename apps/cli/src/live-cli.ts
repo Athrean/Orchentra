@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import type {
   ChatMessage,
   ConversationConfig,
@@ -20,6 +20,8 @@ import type {
   RuntimeEvent,
   SessionControl,
   SessionGoal,
+  SessionRecord,
+  SessionResumeResult,
   SessionTaskSummary,
   SharedToolState,
   SystemPrompt,
@@ -46,6 +48,7 @@ import {
   createPermissionStore,
   loadPolicy,
   evaluate as evaluatePolicy,
+  replaySession,
   SessionWriter,
 } from '@orchentra/cli-core'
 import type {
@@ -100,7 +103,7 @@ export class LiveCli implements SessionControl {
   private readonly tools: ToolRegistry
   private cwd: string
   private sessionId: string
-  private readonly tracker: UsageTracker
+  private tracker: UsageTracker
   private readonly spinner: Spinner
   private readonly sharedState: SharedToolState
   private readonly memoryConfig: MemoryFeatureConfig | null
@@ -417,6 +420,52 @@ export class LiveCli implements SessionControl {
     this.session = next
   }
 
+  async resumeSession(path: string): Promise<SessionResumeResult> {
+    const targetPath = resolve(path)
+    const current = this.session
+    if (current?.path === targetPath) {
+      await current.close()
+    }
+
+    const records = await replaySession(targetPath)
+    const hydrated = hydrateSessionRecords(records, this.terseMode)
+    const firstMeta = records[0]?.meta
+    const nextCwd = firstMeta?.cwd ?? this.cwd
+    const nextModel = firstMeta?.model ?? this.model
+    const nextId = basename(targetPath, '.jsonl')
+
+    if (current && current.path !== targetPath) {
+      await current.close()
+    }
+
+    this.cwd = nextCwd
+    this.setModel(nextModel)
+    this.sessionId = nextId
+    this.messages = hydrated.messages
+    this.tracker = hydrated.tracker
+    this.runtime = null
+    this.pendingFileUndoSnapshots.clear()
+    this.currentTurnFileUndo = null
+    this.lastTurnFileUndo = []
+
+    this.session = await SessionWriter.open({
+      rootDir: dirname(targetPath),
+      id: nextId,
+      meta: { cwd: this.cwd, model: this.model },
+    })
+
+    return {
+      sessionId: nextId,
+      path: targetPath,
+      cwd: this.cwd,
+      model: this.model,
+      events: records.length,
+      messages: hydrated.messages.length,
+      toolCalls: hydrated.toolCalls,
+      contextComplete: hydrated.contextComplete,
+    }
+  }
+
   forceCompact(): void {
     this.forceCompactFlag = true
   }
@@ -623,6 +672,9 @@ export class LiveCli implements SessionControl {
     }
 
     this.currentAbort = new AbortController()
+    if (this.session) {
+      await this.session.append({ kind: 'user_message', content: input })
+    }
     const deps: ConversationDeps = {
       provider: this.provider,
       tools: this.tools,
@@ -801,6 +853,73 @@ export class LiveCli implements SessionControl {
     if (this.session) {
       await this.session.close()
     }
+  }
+}
+
+function hydrateSessionRecords(
+  records: readonly SessionRecord[],
+  terseMode: TerseMode,
+): {
+  messages: ChatMessage[]
+  tracker: UsageTracker
+  toolCalls: number
+  contextComplete: boolean
+} {
+  const messages: ChatMessage[] = []
+  const tracker = new UsageTracker()
+  let assistantText = ''
+  let assistantToolCalls: ToolCall[] = []
+  let toolCalls = 0
+  let userMessages = 0
+
+  const flushAssistant = (): void => {
+    if (assistantText.length === 0 && assistantToolCalls.length === 0) return
+    messages.push({
+      role: 'assistant',
+      content: assistantText,
+      toolCalls: assistantToolCalls.length > 0 ? assistantToolCalls : undefined,
+    })
+    assistantText = ''
+    assistantToolCalls = []
+  }
+
+  for (const record of records) {
+    const event = record.event
+    switch (event.kind) {
+      case 'user_message':
+        flushAssistant()
+        messages.push({ role: 'user', content: event.content })
+        userMessages++
+        break
+      case 'text':
+        assistantText += event.delta
+        break
+      case 'tool_use':
+        assistantToolCalls.push(event.call)
+        toolCalls++
+        break
+      case 'tool_result':
+        flushAssistant()
+        messages.push({ role: 'tool', content: event.result.content, toolCallId: event.result.id })
+        break
+      case 'usage':
+        tracker.record(event.turn, terseMode)
+        break
+      case 'compacted':
+        tracker.recordCompaction(event.tokensSaved)
+        break
+      case 'tool_output_budgeted':
+        tracker.recordToolOutputTrim(event.droppedChars)
+        break
+    }
+  }
+  flushAssistant()
+
+  return {
+    messages,
+    tracker,
+    toolCalls,
+    contextComplete: userMessages > 0,
   }
 }
 
