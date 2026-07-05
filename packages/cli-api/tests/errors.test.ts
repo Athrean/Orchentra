@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { classifyError, isRetryableStatus, enrichAuthError, missingCredentialsError } from '../src/errors'
+import {
+  AnthropicApiError,
+  classifyError,
+  isRateLimitError,
+  isRetryableStatus,
+  enrichAuthError,
+  missingCredentialsError,
+} from '../src/errors'
 
 describe('errors', () => {
   test('classifies 401 as auth error', () => {
@@ -57,5 +64,43 @@ describe('errors', () => {
     expect(err.failureClass).toBe('provider_auth')
     expect(err.retryable).toBe(false)
     expect(err.message).toContain('ANTHROPIC_API_KEY')
+  })
+})
+
+describe('isRateLimitError', () => {
+  test('true for a classified 429, false for a classified auth error', () => {
+    expect(isRateLimitError(classifyError(429, '{"error":{"message":"slow down"}}'))).toBe(true)
+    expect(isRateLimitError(classifyError(401, '{"error":{"message":"bad key"}}'))).toBe(false)
+  })
+
+  test('recognizes retry-exhausted wrappers by their preserved 429 status', () => {
+    const exhausted429 = new AnthropicApiError({
+      status: 429,
+      message: 'Retries exhausted after 8 attempts: slow down',
+      retryable: false,
+      failureClass: 'provider_retry_exhausted',
+    })
+    const exhausted500 = new AnthropicApiError({
+      status: 500,
+      message: 'Retries exhausted after 8 attempts: internal error',
+      retryable: false,
+      failureClass: 'provider_retry_exhausted',
+    })
+    expect(isRateLimitError(exhausted429)).toBe(true)
+    expect(isRateLimitError(exhausted500)).toBe(false)
+  })
+
+  test('recognizes plain Errors from the Gemini and OpenAI-compat clients', () => {
+    expect(isRateLimitError(new Error('Gemini API error 429: {"error":{"status":"RESOURCE_EXHAUSTED"}}'))).toBe(true)
+    expect(isRateLimitError(new Error('ollama API error: 429 too many requests'))).toBe(true)
+    expect(isRateLimitError(new Error('deepseek API error: 429 rate limit exceeded'))).toBe(true)
+  })
+
+  test('false for non-rate-limit plain Errors and non-Error values', () => {
+    expect(isRateLimitError(new Error('Gemini API error 500: internal'))).toBe(false)
+    expect(isRateLimitError(new Error('ollama API error: 401 unauthorized'))).toBe(false)
+    expect(isRateLimitError(new Error('fetch failed'))).toBe(false)
+    expect(isRateLimitError('429')).toBe(false)
+    expect(isRateLimitError(undefined)).toBe(false)
   })
 })

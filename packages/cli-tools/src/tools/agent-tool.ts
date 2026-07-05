@@ -9,6 +9,8 @@ import {
   emptyUsage,
   addUsage,
 } from '@orchentra/cli-core'
+import { isRateLimitError } from '@orchentra/cli-api'
+import { runSubagentPool } from './subagent-pool'
 
 interface AgentInput {
   prompt?: string
@@ -94,8 +96,17 @@ export const agentTool: ToolDefinition = {
     // Children run their own tool calls one level deeper so a nested `agent`
     // call sees the incremented depth and the cap holds down the tree.
     const childCtx: ToolContext = { ...ctx, subagentDepth: depth + 1 }
-    const results = await runWithConcurrencyLimit(tasks, MAX_CONCURRENT_SUBAGENTS, (task) =>
-      runSubagent(task, model, childCtx),
+    const pooled = await runSubagentPool(tasks, {
+      limit: MAX_CONCURRENT_SUBAGENTS,
+      run: (task) => runSubagent(task, model, childCtx),
+      // Requeue only rate-limited tasks, and never once the parent budget is
+      // spent — a retry re-runs the task from scratch and costs real dollars.
+      shouldRequeue: (r) => r.rateLimited === true && !ctx.budget?.snapshot().exhausted,
+    })
+    const results = pooled.map(({ value, requeues }) =>
+      value.rateLimited && requeues > 0
+        ? { ...value, text: `${value.text} [rate-limited; gave up after ${requeues} requeue(s)]` }
+        : value,
     )
 
     if (results.length === 1) {
@@ -107,26 +118,6 @@ export const agentTool: ToolDefinition = {
       isError: results.some((r) => r.isError),
     }
   },
-}
-
-// Runs at most `limit` items concurrently, preserving result order by index
-// (each worker owns its slot and writes back to it, regardless of when other
-// workers finish) so callers don't need to re-sort.
-async function runWithConcurrencyLimit<T>(
-  items: string[],
-  limit: number,
-  fn: (item: string) => Promise<T>,
-): Promise<T[]> {
-  const results = new Array<T>(items.length)
-  let next = 0
-  async function worker(): Promise<void> {
-    while (next < items.length) {
-      const i = next++
-      results[i] = await fn(items[i]!)
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-  return results
 }
 
 function resolveTasks(input: AgentInput): string[] {
@@ -141,7 +132,7 @@ async function runSubagent(
   prompt: string,
   model: string,
   ctx: ToolContext,
-): Promise<{ text: string; isError: boolean }> {
+): Promise<{ text: string; isError: boolean; rateLimited?: boolean }> {
   try {
     const messages: ChatMessage[] = [{ role: 'user', content: prompt }]
     const toolSchemas = ctx.tools!.list()
@@ -210,6 +201,6 @@ async function runSubagent(
       isError: false,
     }
   } catch (e) {
-    return { text: `agent error: ${(e as Error).message}`, isError: true }
+    return { text: `agent error: ${(e as Error).message}`, isError: true, rateLimited: isRateLimitError(e) }
   }
 }

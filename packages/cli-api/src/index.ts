@@ -86,6 +86,7 @@ export {
   enrichAuthError,
   missingCredentialsError,
   isProviderAuthError,
+  isRateLimitError,
   friendlyAuthErrorMessage,
   AnthropicApiError,
   type FailureClass,
