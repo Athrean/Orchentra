@@ -266,6 +266,125 @@ describe('agentTool rate-limit requeue', () => {
   })
 })
 
+function capturingProvider(captured: ProviderRequest[]): Provider {
+  return {
+    async *stream(req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+      captured.push(req)
+      yield { kind: 'text-delta', delta: 'done' }
+      yield {
+        kind: 'usage',
+        usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      }
+      yield { kind: 'finish', stopReason: 'end_turn' }
+    },
+  }
+}
+
+function leveledRegistry(): ToolRegistry {
+  const entries: Record<string, 'read-only' | 'workspace-write' | 'danger-full-access'> = {
+    read_file: 'read-only',
+    grep_search: 'read-only',
+    write_file: 'workspace-write',
+    bash: 'danger-full-access',
+  }
+  return {
+    list: () =>
+      Object.keys(entries).map((name) => ({ name, description: name, inputSchema: { type: 'object' as const } })),
+    requirements: () => entries,
+    has: (name) => name in entries,
+    execute: async (name) => ({ content: `ran:${name}`, isError: false }),
+    register: () => {},
+  }
+}
+
+describe('agentTool named types', () => {
+  test('explorer advertises only read-level tools and swaps in the explorer focus', async () => {
+    const captured: ProviderRequest[] = []
+    const result = await agentTool.execute(
+      { prompt: 'map the codebase', agentType: 'explorer' },
+      baseCtx({ provider: capturingProvider(captured), tools: leveledRegistry() }),
+    )
+    expect(result.isError).toBe(false)
+    expect(captured[0]!.tools.map((t) => t.name).sort()).toEqual(['grep_search', 'read_file'])
+    expect(captured[0]!.systemStatic).toContain('explorer sub-agent')
+    expect(captured[0]!.systemStatic).not.toContain('completing a specific sub-task')
+  })
+
+  test('unknown agentType errors without spawning', async () => {
+    const captured: ProviderRequest[] = []
+    const result = await agentTool.execute(
+      { prompt: 'x', agentType: 'ninja' },
+      baseCtx({ provider: capturingProvider(captured) }),
+    )
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('ninja')
+    expect(result.content).toContain('explorer')
+    expect(captured.length).toBe(0)
+  })
+
+  test('an explorer that calls a write tool is refused before the tool runs', async () => {
+    const executed: string[] = []
+    const registry = leveledRegistry()
+    const recording: ToolRegistry = {
+      ...registry,
+      execute: async (name, args, c) => {
+        executed.push(name)
+        return registry.execute(name, args, c)
+      },
+    }
+    const turns: ProviderStreamEvent[][] = [
+      [
+        { kind: 'tool-use', call: { id: 'w1', name: 'write_file', input: { path: 'x', content: 'y' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'refused-and-reported' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ]
+    const result = await agentTool.execute(
+      { prompt: 'x', agentType: 'explorer' },
+      baseCtx({ provider: scriptedProvider(turns), tools: recording }),
+    )
+    expect(result.isError).toBe(false)
+    expect(result.content).toBe('refused-and-reported')
+    expect(executed).toEqual([])
+  })
+
+  test('reviewer advertises bash but no write tools; default keeps the generic line and full toolset', async () => {
+    const captured: ProviderRequest[] = []
+    await agentTool.execute(
+      { prompt: 'verify it', agentType: 'reviewer' },
+      baseCtx({ provider: capturingProvider(captured), tools: leveledRegistry() }),
+    )
+    const reviewerTools = captured[0]!.tools.map((t) => t.name)
+    expect(reviewerTools).toContain('bash')
+    expect(reviewerTools).not.toContain('write_file')
+
+    captured.length = 0
+    await agentTool.execute(
+      { prompt: 'anything' },
+      baseCtx({ provider: capturingProvider(captured), tools: leveledRegistry() }),
+    )
+    expect(captured[0]!.tools.map((t) => t.name).sort()).toEqual(['bash', 'grep_search', 'read_file', 'write_file'])
+    expect(captured[0]!.systemStatic).toContain('completing a specific sub-task')
+  })
+
+  test('a tasks batch applies the chosen role to every task', async () => {
+    const captured: ProviderRequest[] = []
+    const result = await agentTool.execute(
+      { tasks: ['sweep a', 'sweep b'], agentType: 'explorer' },
+      baseCtx({ provider: capturingProvider(captured), tools: leveledRegistry() }),
+    )
+    expect(result.isError).toBe(false)
+    expect(captured.length).toBe(2)
+    for (const req of captured) {
+      expect(req.tools.map((t) => t.name).sort()).toEqual(['grep_search', 'read_file'])
+      expect(req.systemStatic).toContain('explorer sub-agent')
+    }
+  })
+})
+
 describe('agentTool recursion cap', () => {
   test('refuses to spawn when already at the recursion depth cap', async () => {
     const result = await agentTool.execute({ prompt: 'x' }, baseCtx({ subagentDepth: 2 }))
