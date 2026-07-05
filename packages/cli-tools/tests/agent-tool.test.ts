@@ -117,6 +117,66 @@ function recursiveRegistry(depthLog: number[]): ToolRegistry {
   }
 }
 
+function concurrencyTrackingProvider(state: { current: number; max: number }): Provider {
+  return {
+    async *stream(_req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+      state.current++
+      state.max = Math.max(state.max, state.current)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      state.current--
+      yield { kind: 'text-delta', delta: 'done' }
+      yield {
+        kind: 'usage',
+        usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      }
+      yield { kind: 'finish', stopReason: 'end_turn' }
+    },
+  }
+}
+
+describe('agentTool fan-out concurrency cap', () => {
+  test('never runs more than the concurrency cap of sub-agents at once', async () => {
+    const state = { current: 0, max: 0 }
+    const tasks = Array.from({ length: 8 }, (_, i) => `task ${i + 1}`)
+    const result = await agentTool.execute(
+      { tasks, justification: 'need all 8 checked in parallel' },
+      baseCtx({ provider: concurrencyTrackingProvider(state) }),
+    )
+    expect(result.isError).toBe(false)
+    expect(state.max).toBeLessThanOrEqual(4)
+  })
+
+  test('preserves task order in the result regardless of completion timing', async () => {
+    const result = await agentTool.execute({ tasks: ['a', 'b', 'c'] }, baseCtx({ provider: fakeProvider('finished') }))
+    expect(result.content.indexOf('[task 1]')).toBeLessThan(result.content.indexOf('[task 2]'))
+    expect(result.content.indexOf('[task 2]')).toBeLessThan(result.content.indexOf('[task 3]'))
+  })
+})
+
+describe('agentTool spawn-justification gate', () => {
+  test('rejects fan-out beyond the threshold without a justification', async () => {
+    const tasks = ['t1', 't2', 't3', 't4', 't5']
+    const result = await agentTool.execute({ tasks }, baseCtx({ provider: fakeProvider('ok') }))
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('justification')
+  })
+
+  test('allows fan-out beyond the threshold when justification is provided', async () => {
+    const tasks = ['t1', 't2', 't3', 't4', 't5']
+    const result = await agentTool.execute(
+      { tasks, justification: 'checking 5 independent modules, cannot combine' },
+      baseCtx({ provider: fakeProvider('ok') }),
+    )
+    expect(result.isError).toBe(false)
+  })
+
+  test('does not require justification at or under the threshold', async () => {
+    const tasks = ['t1', 't2', 't3', 't4']
+    const result = await agentTool.execute({ tasks }, baseCtx({ provider: fakeProvider('ok') }))
+    expect(result.isError).toBe(false)
+  })
+})
+
 describe('agentTool recursion cap', () => {
   test('refuses to spawn when already at the recursion depth cap', async () => {
     const result = await agentTool.execute({ prompt: 'x' }, baseCtx({ subagentDepth: 2 }))

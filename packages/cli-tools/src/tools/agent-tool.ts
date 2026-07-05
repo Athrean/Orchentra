@@ -15,6 +15,7 @@ interface AgentInput {
   tasks?: string[]
   model?: string
   description?: string
+  justification?: string
 }
 
 const MAX_ITERATIONS_PER_SUBAGENT = 10
@@ -24,11 +25,17 @@ const SUBAGENT_MAX_OUTPUT_TOKENS = 4096
 // refuses to spawn, capping the nesting tree at two levels below the root.
 // Budget inheritance bounds total spend; this bounds fan-out/nesting shape.
 const MAX_SUBAGENT_DEPTH = 2
+// Caps simultaneous provider streams from one `tasks` fan-out so a large
+// batch can't fire dozens of concurrent requests at once (rate-limit/cost
+// blast radius). Independent of the recursion depth cap above.
+const MAX_CONCURRENT_SUBAGENTS = 4
+// Beyond this many tasks, the caller must say why fan-out is warranted —
+// makes cost accountable instead of letting a model silently spray N tasks.
+const SPAWN_JUSTIFICATION_THRESHOLD = 4
 
 export const agentTool: ToolDefinition = {
   name: 'agent',
-  description:
-    'Spawn sub-agent(s) to perform a task. Each sub-agent runs a nested conversation loop with the same tools and spine, and its spend counts against the parent budget. Pass "tasks" (an array of independent task prompts) to fan out concurrent sub-agents instead of running one at a time.',
+  description: `Spawn sub-agent(s) to perform a task. Each sub-agent runs a nested conversation loop with the same tools and spine, and its spend counts against the parent budget. Pass "tasks" (an array of independent task prompts) to fan out concurrent sub-agents instead of running one at a time, capped at ${MAX_CONCURRENT_SUBAGENTS} running at once. Beyond ${SPAWN_JUSTIFICATION_THRESHOLD} tasks, pass "justification" explaining why parallel fan-out is warranted.`,
   level: 'admin',
   inputSchema: {
     type: 'object',
@@ -41,6 +48,10 @@ export const agentTool: ToolDefinition = {
       },
       model: { type: 'string', description: 'Optional model override for the sub-agent(s)' },
       description: { type: 'string', description: 'Short description of what the agent will do' },
+      justification: {
+        type: 'string',
+        description: `Required when "tasks" has more than ${SPAWN_JUSTIFICATION_THRESHOLD} entries: why parallel fan-out is warranted here`,
+      },
     },
     additionalProperties: false,
   },
@@ -49,6 +60,12 @@ export const agentTool: ToolDefinition = {
     const tasks = resolveTasks(input)
     if (tasks.length === 0) {
       return { content: 'error: pass "prompt" or a non-empty "tasks" array', isError: true }
+    }
+    if (tasks.length > SPAWN_JUSTIFICATION_THRESHOLD && !input.justification?.trim()) {
+      return {
+        content: `error: fanning out ${tasks.length} tasks needs a one-line "justification" (why parallel, why not fewer) once over ${SPAWN_JUSTIFICATION_THRESHOLD}`,
+        isError: true,
+      }
     }
     if (!ctx.provider || !ctx.tools) {
       return { content: 'error: provider and tools not available for sub-agent', isError: true }
@@ -77,7 +94,9 @@ export const agentTool: ToolDefinition = {
     // Children run their own tool calls one level deeper so a nested `agent`
     // call sees the incremented depth and the cap holds down the tree.
     const childCtx: ToolContext = { ...ctx, subagentDepth: depth + 1 }
-    const results = await Promise.all(tasks.map((task) => runSubagent(task, model, childCtx)))
+    const results = await runWithConcurrencyLimit(tasks, MAX_CONCURRENT_SUBAGENTS, (task) =>
+      runSubagent(task, model, childCtx),
+    )
 
     if (results.length === 1) {
       return { content: results[0].text, isError: results[0].isError }
@@ -88,6 +107,26 @@ export const agentTool: ToolDefinition = {
       isError: results.some((r) => r.isError),
     }
   },
+}
+
+// Runs at most `limit` items concurrently, preserving result order by index
+// (each worker owns its slot and writes back to it, regardless of when other
+// workers finish) so callers don't need to re-sort.
+async function runWithConcurrencyLimit<T>(
+  items: string[],
+  limit: number,
+  fn: (item: string) => Promise<T>,
+): Promise<T[]> {
+  const results = new Array<T>(items.length)
+  let next = 0
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i]!)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
 }
 
 function resolveTasks(input: AgentInput): string[] {
