@@ -12,6 +12,7 @@ import {
 } from './events'
 import { compact, compactWithSummary, shouldCompact, type LlmSummarizer, type TokenEstimator } from './compaction'
 import { budgetToolOutput } from './tool-output-budget'
+import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
@@ -71,6 +72,12 @@ export interface ConversationDeps {
    * and bounded — compaction falls back to the deterministic summary if it fails.
    */
   compactionSummarizer?: LlmSummarizer
+  /**
+   * Persists the untrimmed tool output so it can be read back later. Defaults
+   * to writing under `<cwd>/.orchentra/sessions/<sessionId>/tool-results/`.
+   * Injectable so tests/hosts can avoid real disk I/O or redirect storage.
+   */
+  persistToolOutput?: (path: string, content: string) => Promise<void>
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -241,14 +248,19 @@ export class ConversationRuntime {
         })
         const result = await this.runTool(call, budget)
         // Trim only the provider-bound copy; the full result still goes to the
-        // display + session log below, so the budget is transport-only.
-        const budgeted = budgetToolOutput(result.content, this.config.toolOutputBudgetChars ?? 0)
+        // display + session log below, so the budget is transport-only. The
+        // recovery path is computed up front (cheap, deterministic) but only
+        // written to disk if the content actually ends up trimmed.
+        const recoveryPath = toolResultPath(this.config.cwd, this.config.sessionId, call.id)
+        const budgeted = budgetToolOutput(result.content, this.config.toolOutputBudgetChars ?? 0, recoveryPath)
         messages.push({
           role: 'tool',
           content: budgeted.content,
           toolCallId: call.id,
         })
         if (budgeted.trimmed) {
+          const persist = this.deps.persistToolOutput ?? persistOriginalToolOutput
+          await persist(recoveryPath, result.content)
           yield* this.emit({
             kind: 'tool_output_budgeted',
             toolCallId: call.id,

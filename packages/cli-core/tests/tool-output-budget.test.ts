@@ -32,4 +32,19 @@ describe('budgetToolOutput', () => {
     const r = budgetToolOutput('a'.repeat(1000), 200)
     expect(r.originalChars - r.keptChars).toBe(800)
   })
+
+  test('points at the recovery path in the marker when one is supplied', () => {
+    const content = 'H'.repeat(50) + 'M'.repeat(900) + 'T'.repeat(50)
+    const r = budgetToolOutput(content, 100, '/tmp/.orchentra/sessions/s1/tool-results/call-1.txt')
+    expect(r.trimmed).toBe(true)
+    expect(r.content).toContain('/tmp/.orchentra/sessions/s1/tool-results/call-1.txt')
+    expect(r.content).toContain('read')
+  })
+
+  test('falls back to the generic marker when no recovery path is supplied', () => {
+    const content = 'H'.repeat(50) + 'M'.repeat(900) + 'T'.repeat(50)
+    const r = budgetToolOutput(content, 100)
+    expect(r.trimmed).toBe(true)
+    expect(r.content).toContain('session log')
+  })
 })

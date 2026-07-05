@@ -47,6 +47,8 @@ function makeDeps(provider: Provider, tools?: ToolRegistry): ConversationDeps {
     provider,
     tools: tools ?? noopTools(),
     systemPrompt: buildSystemPrompt({ staticParts: ['sys'], dynamicParts: [] }),
+    // No-op by default so budgeting tests don't hit the real filesystem.
+    persistToolOutput: async () => {},
   }
 }
 
@@ -376,6 +378,41 @@ describe('ConversationRuntime', () => {
     const toolMsg = rt.getFinalMessages().find((m) => m.role === 'tool')
     expect(toolMsg?.content.length).toBeLessThan(5000)
     expect(toolMsg?.content).toContain('trimmed')
+  })
+
+  test('persists the untrimmed original when tool output is budgeted', async () => {
+    const big = 'B'.repeat(5000)
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: {} } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read', description: 'read', inputSchema: {} }],
+      has: (n) => n === 'read',
+      execute: async () => ({ content: big, isError: false }),
+    }
+    const persisted: Array<{ path: string; content: string }> = []
+    const deps = {
+      ...makeDeps(provider, tools),
+      persistToolOutput: async (path: string, content: string) => {
+        persisted.push({ path, content })
+      },
+    }
+    const rt = new ConversationRuntime(makeConfig({ toolOutputBudgetChars: 1000, cwd: '/repo' }), deps)
+    await collect(rt, 'read')
+
+    expect(persisted).toHaveLength(1)
+    expect(persisted[0]!.content).toBe(big)
+    expect(persisted[0]!.path).toBe('/repo/.orchentra/sessions/test-session/tool-results/tc1.txt')
+    // Provider-bound message points back at the same path it was persisted to.
+    const toolMsg = rt.getFinalMessages().find((m) => m.role === 'tool')
+    expect(toolMsg?.content).toContain(persisted[0]!.path)
   })
 
   test('does not emit a budget event when output is within budget', async () => {

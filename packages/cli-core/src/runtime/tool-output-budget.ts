@@ -13,7 +13,7 @@ export interface ToolOutputBudgetResult {
 //
 // Char budget is a ~chars/4 token proxy — swap in a real tokenizer only if
 // attribution accuracy ever matters more than the zero-dep simplicity.
-export function budgetToolOutput(content: string, maxChars: number): ToolOutputBudgetResult {
+export function budgetToolOutput(content: string, maxChars: number, recoveryPath?: string): ToolOutputBudgetResult {
   const originalChars = content.length
   if (maxChars <= 0 || originalChars <= maxChars) {
     return { content, trimmed: false, originalChars, keptChars: originalChars }
@@ -21,7 +21,9 @@ export function budgetToolOutput(content: string, maxChars: number): ToolOutputB
   const dropped = originalChars - maxChars
   const headChars = Math.ceil(maxChars / 2)
   const tailChars = maxChars - headChars
-  const marker = `\n… [${dropped} chars trimmed by tool-output budget — full result in session log] …\n`
+  const marker = recoveryPath
+    ? `\n… [${dropped} chars trimmed by tool-output budget — next_step: read ${recoveryPath} for the full result] …\n`
+    : `\n… [${dropped} chars trimmed by tool-output budget — full result in session log] …\n`
   return {
     content: content.slice(0, headChars) + marker + content.slice(originalChars - tailChars),
     trimmed: true,
