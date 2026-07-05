@@ -177,6 +177,95 @@ describe('agentTool spawn-justification gate', () => {
   })
 })
 
+// Throws a 429-shaped error the first `failures` times a prompt is streamed,
+// then behaves like fakeProvider. Mirrors a provider whose client-level
+// retries exhausted under fan-out concurrency pressure.
+function rateLimitedOnceProvider(rateLimitedPrompt: string, err: Error): Provider {
+  const seen = new Map<string, number>()
+  return {
+    async *stream(req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+      const prompt = typeof req.messages[0]?.content === 'string' ? req.messages[0].content : ''
+      const count = (seen.get(prompt) ?? 0) + 1
+      seen.set(prompt, count)
+      if (prompt === rateLimitedPrompt && count === 1) throw err
+      yield { kind: 'text-delta', delta: `ok:${prompt}` }
+      yield {
+        kind: 'usage',
+        usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      }
+      yield { kind: 'finish', stopReason: 'end_turn' }
+    },
+  }
+}
+
+describe('agentTool rate-limit requeue', () => {
+  test('requeues only the rate-limited task and the batch still succeeds', async () => {
+    const err = new Error('deepseek API error: 429 too many requests')
+    const result = await agentTool.execute(
+      { tasks: ['task a', 'task b'] },
+      baseCtx({ provider: rateLimitedOnceProvider('task b', err) }),
+    )
+    expect(result.isError).toBe(false)
+    expect(result.content).toContain('[task 1] ok:task a')
+    expect(result.content).toContain('[task 2] ok:task b')
+  })
+
+  test('does not retry non-rate-limit errors', async () => {
+    let calls = 0
+    const provider: Provider = {
+      stream(): AsyncIterable<ProviderStreamEvent> {
+        calls++
+        throw new Error('boom')
+      },
+    }
+    const result = await agentTool.execute({ tasks: ['task a'] }, baseCtx({ provider }))
+    expect(result.isError).toBe(true)
+    expect(result.content).toBe('agent error: boom')
+    expect(calls).toBe(1)
+  })
+
+  test('a task that stays rate-limited reports the failure class and requeue count', async () => {
+    let calls = 0
+    const provider: Provider = {
+      stream(): AsyncIterable<ProviderStreamEvent> {
+        calls++
+        throw new Error('Gemini API error 429: RESOURCE_EXHAUSTED')
+      },
+    }
+    const result = await agentTool.execute({ tasks: ['task a'] }, baseCtx({ provider }))
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('429')
+    expect(result.content).toContain('gave up after 2 requeue(s)')
+    expect(calls).toBe(3)
+  }, 10_000)
+
+  test('does not requeue once the parent budget is exhausted', async () => {
+    const budget = new RuntimeBudget({ maxSteps: 10, maxTokens: 20 })
+    let bCalls = 0
+    const provider: Provider = {
+      async *stream(req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+        const prompt = typeof req.messages[0]?.content === 'string' ? req.messages[0].content : ''
+        if (prompt === 'task b') {
+          bCalls++
+          // Let task a's exhausting usage land before this failure surfaces.
+          await new Promise((resolve) => setTimeout(resolve, 20))
+          throw new Error('ollama API error: 429 too many requests')
+        }
+        yield { kind: 'text-delta', delta: 'ok:a' }
+        yield {
+          kind: 'usage',
+          usage: { inputTokens: 30, outputTokens: 10, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        }
+        yield { kind: 'finish', stopReason: 'end_turn' }
+      },
+    }
+    const result = await agentTool.execute({ tasks: ['task a', 'task b'] }, baseCtx({ provider, budget }))
+    expect(budget.snapshot().exhausted).toBe(true)
+    expect(result.isError).toBe(true)
+    expect(bCalls).toBe(1)
+  })
+})
+
 describe('agentTool recursion cap', () => {
   test('refuses to spawn when already at the recursion depth cap', async () => {
     const result = await agentTool.execute({ prompt: 'x' }, baseCtx({ subagentDepth: 2 }))
