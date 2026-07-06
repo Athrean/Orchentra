@@ -16,7 +16,7 @@ import { persistOriginalToolOutput, toolResultPath } from './tool-output-recover
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
-import type { SharedToolState, ToolContext, ToolRegistry } from './tools'
+import type { AskUserHandler, SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
 import type { PermissionEnforcer } from './permission-enforcer'
 import type { Enforcer } from '../permissions/enforcer'
@@ -83,7 +83,7 @@ export interface ConversationDeps {
   clock?: () => string
   idGen?: () => string
   sharedState?: SharedToolState
-  askUser?: (prompt: string) => Promise<string>
+  askUser?: AskUserHandler
   workspaceRoots?: readonly string[]
 }
 

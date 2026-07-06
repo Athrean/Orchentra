@@ -1,4 +1,4 @@
-import type { EffortTier, PermissionMode, PlanLevel, TerseMode, UsageTotals } from '@orchentra/cli-core'
+import type { AskUserRequest, EffortTier, PermissionMode, PlanLevel, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import type { UiCardSection, UiTabs } from '../commands/ui-output'
 
 export interface CardRow {
@@ -152,6 +152,12 @@ export type ActiveFlowState =
       readonly kind: 'confirmation-prompt'
       readonly request: import('./components/ConfirmationPrompt').PromptRequest
       readonly resolve: (choice: import('./components/ConfirmationPrompt').PromptChoice) => void
+    }
+  | {
+      readonly kind: 'ask-user-prompt'
+      readonly request: AskUserRequest
+      readonly rawText: boolean
+      readonly resolve: (response: string) => void
     }
 
 export type TuiAction =

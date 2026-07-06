@@ -5,6 +5,8 @@ import type {
   ChatMessage,
   ConversationConfig,
   ConversationDeps,
+  AskUserHandler,
+  AskUserRequest,
   HookRunner,
   EffortTier,
   TerseMode,
@@ -81,7 +83,7 @@ import { thinkingTokenBudgetForEffort } from './provider-factory'
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
 
 export type RuntimeEventSink = (event: RuntimeEvent) => void
-export type AskUserOverride = (prompt: string) => Promise<string>
+export type AskUserOverride = AskUserHandler
 export type AskToolUserOverride = ToolAskUser
 export type NotifyDenyOverride = (info: { toolName: string; inputJson: string; reason: string }) => Promise<void>
 export type NotifyPolicyOverride = (info: { kind: 'allow' | 'deny' | 'ask'; rule: PolicyRule }) => Promise<void>
@@ -671,13 +673,14 @@ export class LiveCli implements SessionControl {
       dynamicParts,
     })
 
-    const askUser = async (prompt: string): Promise<string> => {
-      if (this.askUserOverride) return this.askUserOverride(prompt)
+    const askUser: AskUserHandler = async (request) => {
+      if (this.askUserOverride) return this.askUserOverride(request)
       this.spinner.stop()
-      process.stdout.write(`\n${prompt}\n`)
-      const outcome = await readLine('> ')
-      if (!sink) this.spinner.start('Thinking...')
-      return outcome.type === 'submit' ? outcome.text : ''
+      try {
+        return await askUserHeadless(request)
+      } finally {
+        if (!sink) this.spinner.start('Thinking...')
+      }
     }
 
     const headlessAsk = createHeadlessAskToolUser({
@@ -948,6 +951,87 @@ function hydrateSessionRecords(
     toolCalls,
     contextComplete: userMessages > 0,
   }
+}
+
+async function askUserHeadless(request: string | AskUserRequest): Promise<string> {
+  if (typeof request === 'string') {
+    process.stdout.write(`\n${request}\n`)
+    const outcome = await readLine('> ')
+    return outcome.type === 'submit' ? outcome.text : ''
+  }
+
+  process.stdout.write(`\n${request.question}\n`)
+  const options = request.options ?? []
+  if (options.length === 0) {
+    const outcome = await readLine('> ')
+    return outcome.type === 'submit' ? outcome.text : ''
+  }
+
+  const allowOther = request.allowOther !== false
+  options.forEach((option, index) => {
+    process.stdout.write(`${index + 1}. ${option.label}\n`)
+    if (option.description) process.stdout.write(`   ${option.description}\n`)
+  })
+  if (allowOther) process.stdout.write(`${options.length + 1}. Other\n`)
+
+  const outcome = await readLine('> ')
+  if (outcome.type !== 'submit') return cancelledAskUserResponse(request)
+  const text = outcome.text.trim()
+  if (text.length === 0) return cancelledAskUserResponse(request)
+
+  if (request.multiSelect === true) {
+    const indexes: number[] = []
+    let other: string | undefined
+    const otherTokens: string[] = []
+    for (const token of text.split(/[\s,]+/).filter(Boolean)) {
+      const numeric = Number(token)
+      if (Number.isInteger(numeric) && numeric >= 1 && numeric <= options.length) {
+        indexes.push(numeric - 1)
+      } else if (allowOther && numeric === options.length + 1) {
+        other = await readOtherLine()
+      } else if (allowOther) {
+        otherTokens.push(token)
+      }
+    }
+    if (!other && otherTokens.length > 0) other = otherTokens.join(' ')
+    return askUserResponse(request, uniqueIndexes(indexes), other)
+  }
+
+  const numeric = Number(text)
+  if (Number.isInteger(numeric) && numeric >= 1 && numeric <= options.length) {
+    return askUserResponse(request, [numeric - 1])
+  }
+  if (allowOther && numeric === options.length + 1) {
+    return askUserResponse(request, [], await readOtherLine())
+  }
+  if (allowOther) return askUserResponse(request, [], text)
+  return cancelledAskUserResponse(request)
+}
+
+async function readOtherLine(): Promise<string> {
+  const outcome = await readLine('Other> ')
+  return outcome.type === 'submit' ? outcome.text.trim() : ''
+}
+
+function askUserResponse(request: AskUserRequest, indexes: readonly number[], other?: string): string {
+  const options = request.options ?? []
+  return JSON.stringify({
+    question: request.question,
+    multiSelect: request.multiSelect === true,
+    selectedOptions: indexes.map((index) => {
+      const option = options[index]!
+      return option.id ? { index, id: option.id, label: option.label } : { index, label: option.label }
+    }),
+    ...(other && other.length > 0 ? { other } : {}),
+  })
+}
+
+function cancelledAskUserResponse(request: AskUserRequest): string {
+  return JSON.stringify({ question: request.question, cancelled: true })
+}
+
+function uniqueIndexes(indexes: readonly number[]): readonly number[] {
+  return Array.from(new Set(indexes)).sort((a, b) => a - b)
 }
 
 // Defensive stringifier for unknown thrown values. Plain `String(err)` on an

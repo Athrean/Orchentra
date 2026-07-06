@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Box, useApp, useInput, useStdin, useStdout } from 'ink'
 import { randomUUID } from 'node:crypto'
-import type { PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
+import type { AskUserRequest, PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
 import type { LiveCli } from '../live-cli'
 import { costWarningText, memorySavedText, toolOutputBudgetedText } from '../renderer'
 import type { CommandRegistry } from '../commands/builtin'
@@ -22,6 +22,7 @@ import { Footer } from './components/Footer'
 import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
 import { AnthropicLoginCard } from './components/AnthropicLoginCard'
+import { AskUserPrompt } from './components/AskUserPrompt'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
 import { ModelPickerCard } from './components/ModelPickerCard'
 import { EffortSlider } from './components/EffortSlider'
@@ -107,7 +108,20 @@ export function Tui(props: TuiProps): React.ReactElement {
         row: { kind: 'system', id: randomUUID(), text: notice, tone: 'warn' },
       })
     }
-    cli.setAskUser(async () => '')
+    cli.setAskUser(
+      (request) =>
+        new Promise((resolve) => {
+          dispatch({
+            type: 'flow/start',
+            flow: {
+              kind: 'ask-user-prompt',
+              request: normalizeAskUserRequest(request),
+              rawText: typeof request === 'string',
+              resolve,
+            },
+          })
+        }),
+    )
     cli.setAskToolUser(
       (request) =>
         new Promise((resolve) => {
@@ -738,6 +752,17 @@ export function Tui(props: TuiProps): React.ReactElement {
             }}
           />
         ) : null}
+        {state.activeFlow?.kind === 'ask-user-prompt' ? (
+          <AskUserPrompt
+            request={state.activeFlow.request}
+            rawText={state.activeFlow.rawText}
+            onSubmit={(response) => {
+              const flow = state.activeFlow
+              dispatch({ type: 'flow/end' })
+              if (flow?.kind === 'ask-user-prompt') flow.resolve(response)
+            }}
+          />
+        ) : null}
         {state.activeFlow?.kind === 'model-picker' ? (
           <ModelPickerCard
             current={state.activeFlow.current}
@@ -913,6 +938,11 @@ const SHORTCUT_SECTIONS = [
 ] as const
 
 // ---- handlers / helpers ----
+
+function normalizeAskUserRequest(request: string | AskUserRequest): AskUserRequest {
+  if (typeof request === 'string') return { question: request }
+  return request
+}
 
 function handleRuntimeEvent(
   event: RuntimeEvent,
