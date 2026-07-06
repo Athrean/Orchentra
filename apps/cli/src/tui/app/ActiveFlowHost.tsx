@@ -14,6 +14,7 @@ import { PlanLevelSlider } from '../components/PlanLevelSlider'
 import { RepoPickerCard } from '../components/RepoPickerCard'
 import { ThemePicker } from '../components/ThemePicker'
 import { loadActiveTheme, saveActiveTheme } from '../theme-registry'
+import { setActiveTheme } from '../theme'
 import type { ActiveFlowState, TuiAction, TuiState } from '../types'
 
 export interface ActiveFlowHostProps {
@@ -156,6 +157,7 @@ export function ActiveFlowHost(props: ActiveFlowHostProps): React.ReactElement |
           current={loadActiveTheme()}
           onPick={(name) => {
             saveActiveTheme(name)
+            setActiveTheme(name)
             dispatch({ type: 'flow/end' })
             dispatch({
               type: 'transcript/push',
