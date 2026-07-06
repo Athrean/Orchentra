@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Dispatch } from 'react'
 import type { Key } from 'ink'
 import type { LiveCli } from '../../live-cli'
-import { SHORTCUT_SECTIONS } from '../help/shortcut-sections'
+import { buildShortcutSections } from '../help/shortcut-sections'
 import { evaluatePaste } from '../paste'
 import type { TuiAction, TuiState } from '../types'
 import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from '../word-boundary'
@@ -149,7 +149,7 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
         title: 'Keyboard shortcuts',
         subtitle: 'Press down or Esc to dismiss',
         activeTab: 0,
-        sectionsByTab: [SHORTCUT_SECTIONS],
+        sectionsByTab: [buildShortcutSections(args.keybindings)],
       },
     })
     return
