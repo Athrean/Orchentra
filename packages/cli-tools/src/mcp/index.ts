@@ -1,6 +1,8 @@
 export { McpClient } from './client'
 export { McpManager, type McpConnectionState, type McpConnectionStatus } from './manager'
 export { buildMcpToolDefinition } from './bridge'
+export { buildMcpToolSearchTool, MCP_TOOL_SEARCH_NAME } from './tool-search-tool'
+export { searchCatalog, totalSchemaTokens, DEFAULT_MCP_DEFER_TOKENS } from './tool-catalog'
 export { mcpToolName, mcpToolPrefix, normalizeNameForMcp, isMcpToolName } from './naming'
 export { parseMcpConfig, substituteEnv } from './config'
 export type { McpServerConfig, McpStdioConfig, McpHttpConfig, McpTransport, McpConfigParseResult } from './config'
