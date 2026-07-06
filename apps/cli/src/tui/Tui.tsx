@@ -18,6 +18,7 @@ import { handleMainInput } from './input/key-handler'
 import { InputBox } from './components/InputBox'
 import { InputModal } from './components/InputModal'
 import { HistorySearchPrompt } from './components/HistorySearchPrompt'
+import { QueuedMessages } from './components/QueuedMessages'
 import { countWrappedLines } from './use-line-count'
 import { Suggestions } from './components/Suggestions'
 import { Footer } from './status/Footer'
@@ -259,6 +260,22 @@ export function Tui(props: TuiProps): React.ReactElement {
     [cli, cwd, registry, exit, clearScreen],
   )
 
+  // Drain the type-ahead queue: once the runtime goes idle, submit the oldest
+  // queued message. `submitTurn` starts the next turn (or resolves quickly for
+  // slash/empty input), and the effect re-fires on the resulting idle to drain
+  // the rest, one at a time, in order. The ref guards against a second submit
+  // slipping in before `turn/start` lands.
+  const drainingRef = useRef(false)
+  useEffect(() => {
+    if (state.turn.state !== 'idle' || state.queued.length === 0 || drainingRef.current) return
+    drainingRef.current = true
+    const next = state.queued[0]
+    dispatch({ type: 'queue/shift' })
+    void submitTurn(next).finally(() => {
+      drainingRef.current = false
+    })
+  }, [state.turn.state, state.queued, submitTurn])
+
   // Ctrl+x ctrl+e — open the current buffer in $EDITOR. The chord state
   // lives outside `useInput` because the action half spawns a blocking
   // subprocess and we need access to Ink's setRawMode + the latest buffer.
@@ -317,7 +334,9 @@ export function Tui(props: TuiProps): React.ReactElement {
   )
 
   const showSuggestions = state.suggestions.open && state.turn.state === 'idle' && state.historySearch === null
-  const inputDisabled = state.turn.state !== 'idle'
+  // Input stays live while a turn runs so the user can type ahead; queued
+  // messages drain in order once idle (see the drain effect above).
+  const inputDisabled = false
   const suggestionsWidth = useMemo(() => Math.max(40, Math.min(cols - 2, 100)), [cols])
 
   return (
@@ -337,6 +356,7 @@ export function Tui(props: TuiProps): React.ReactElement {
           getState={() => stateRef.current}
         />
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
+        <QueuedMessages queued={state.queued} />
         {state.historySearch ? (
           <HistorySearchPrompt search={state.historySearch} history={state.history} />
         ) : isMultilineModal ? (
