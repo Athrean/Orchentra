@@ -23,6 +23,7 @@ import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
 import { AnthropicLoginCard } from './components/AnthropicLoginCard'
 import { ConfirmationPrompt } from './components/ConfirmationPrompt'
+import { buildToolDiffPreview } from './components/tool-diff-preview'
 import { ModelPickerCard } from './components/ModelPickerCard'
 import { EffortSlider } from './components/EffortSlider'
 import { PlanLevelSlider } from './components/PlanLevelSlider'
@@ -118,6 +119,7 @@ export function Tui(props: TuiProps): React.ReactElement {
               request: {
                 toolLabel: `${request.toolName} call`,
                 commandLine: request.inputJson,
+                diff: buildToolDiffPreview(request.toolName, request.inputJson) ?? undefined,
                 allowPattern: request.suggestedPattern,
               },
               resolve,
