@@ -404,6 +404,17 @@ export class LiveCli implements SessionControl {
   async startNewSession(): Promise<void> {
     this.clearHistory()
     this.runtime = null
+    // A fresh session drops conversation-scoped state so the footer's cost /
+    // context readouts and the injected goal start from zero — mirroring the
+    // tracker reset that resumeSession already performs. User preferences
+    // (model, permission mode, effort, terse mode) intentionally survive.
+    this.tracker = new UsageTracker()
+    this.goal = null
+    // Per-conversation scratch state resets too. Background tasks (taskStore)
+    // and the user-toggled plan mode deliberately survive, matching how
+    // preferences and running work outlive /clear in Claude Code.
+    this.sharedState.todos = []
+    this.sharedState.agentCounter = 0
     const current = this.session
     if (!current) {
       this.sessionId = randomUUID()

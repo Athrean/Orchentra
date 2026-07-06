@@ -78,6 +78,94 @@ describe('LiveCli sessions', () => {
     }
   })
 
+  test('startNewSession resets cost tracking and the session goal but keeps preferences', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-reset-'))
+    try {
+      const provider = scriptedProvider([
+        [
+          { kind: 'usage', usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+          { kind: 'finish', stopReason: 'end_turn' },
+        ],
+      ])
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'reset-session',
+        sharedState: sharedState(),
+      })
+      const writer = await SessionWriter.open({
+        rootDir: dir,
+        id: 'reset-session',
+        meta: { cwd: dir, model: 'test-model' },
+      })
+      cli.setSession(writer)
+      cli.setEventSink(() => {})
+      cli.setGoal('ship the fix')
+
+      await cli.runTurn('do work')
+      expect(cli.getTurns()).toBe(1)
+      expect(cli.getUsage().outputTokens).toBe(5)
+      expect(cli.getGoal()).not.toBeNull()
+
+      await cli.startNewSession()
+      await cli.persistSession()
+
+      expect(cli.getTurns()).toBe(0)
+      expect(cli.getUsage()).toEqual({
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      })
+      expect(cli.getGoal()).toBeNull()
+      // User preferences (model, permission mode) survive a fresh session.
+      expect(cli.getModel()).toBe('test-model')
+      expect(cli.getPermissionMode()).toBe('workspace-write')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('startNewSession resets conversation-scoped scratch state but keeps tasks and plan mode', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-scratch-'))
+    try {
+      const provider = fakeProvider()
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const state = sharedState()
+      const originalTaskStore = state.taskStore
+      state.todos = [{ id: 't1', content: 'do a thing', status: 'pending' }]
+      state.agentCounter = 3
+      state.planMode = true
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'scratch-session',
+        sharedState: state,
+      })
+
+      await cli.startNewSession()
+
+      // Per-conversation scratch resets on a fresh session.
+      expect(state.todos).toEqual([])
+      expect(state.agentCounter).toBe(0)
+      // Background tasks and the user-toggled plan mode survive /clear.
+      expect(state.taskStore).toBe(originalTaskStore)
+      expect(state.planMode).toBe(true)
+      expect(cli.getPlanMode()).toBe(true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   test('runTurn records user messages in the session log for future resume', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-user-log-'))
     try {

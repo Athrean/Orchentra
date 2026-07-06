@@ -305,6 +305,53 @@ describe('small slash parity commands', () => {
     expect(events).toEqual([{ kind: 'clear-session', text: 'Conversation cleared.' }])
   })
 
+  test('/clear accepts --confirm for reference CLI compatibility', async () => {
+    let started = false
+    const session: SessionControl = {
+      ...makeSession(),
+      startNewSession: async () => {
+        started = true
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ClearCommand().execute(['--confirm'], ctx)
+
+    expect(started).toBe(true)
+    expect(events).toEqual([{ kind: 'clear-session', text: 'Conversation cleared.' }])
+  })
+
+  test('/clear rejects unsupported args without clearing', async () => {
+    let started = false
+    let cleared = false
+    const session: SessionControl = {
+      ...makeSession(),
+      clearHistory: () => {
+        cleared = true
+      },
+      startNewSession: async () => {
+        started = true
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ClearCommand().execute(['now'], ctx)
+
+    expect(started).toBe(false)
+    expect(cleared).toBe(false)
+    expect(events).toEqual([
+      { kind: 'note', text: "Unsupported /clear argument 'now'. Use /clear or /clear --confirm.", tone: 'warn' },
+    ])
+  })
+
+  test('/clear aliases match Claude-style fresh-session verbs', () => {
+    const registry = createBuiltinRegistry()
+
+    expect(registry.resolve('/reset')).not.toBeInstanceOf(Error)
+    expect(registry.resolve('/new')).not.toBeInstanceOf(Error)
+    expect(registry.resolve('/cls')).not.toBeInstanceOf(Error)
+  })
+
   test('/planmode enters and exits runtime plan mode', async () => {
     const session = makeSession()
     const { ctx, events } = makeCtx('/work', session)
