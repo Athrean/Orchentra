@@ -241,6 +241,13 @@ function handleRunningTurnKey(
   dispatch: Dispatch<TuiAction>,
   cli: LiveCli,
 ): void {
+  // Ctrl+C clears an in-progress type-ahead buffer first (mirrors idle mode) so
+  // it doesn't kill the turn mid-compose; only an empty buffer cancels. Esc
+  // always interrupts — the documented "esc to interrupt" affordance stays.
+  if (key.ctrl && input === 'c' && cur.buffer.length > 0) {
+    dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
+    return
+  }
   if ((key.ctrl && input === 'c') || key.escape) {
     if (cur.turn.state === 'running') {
       dispatch({ type: 'turn/cancelling' })
@@ -254,6 +261,11 @@ function handleRunningTurnKey(
       dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
     }
     return
+  }
+  // Up recalls the newest queued message into the buffer to edit or drop it —
+  // only when the buffer is empty, so an in-progress compose isn't clobbered.
+  if (key.upArrow && cur.buffer.length === 0 && cur.queued.length > 0) {
+    return dispatch({ type: 'queue/recall-last' })
   }
   if (key.leftArrow) {
     return dispatch({ type: 'buffer/set', buffer: cur.buffer, cursor: Math.max(0, cur.cursor - 1) })

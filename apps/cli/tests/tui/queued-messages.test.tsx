@@ -17,6 +17,13 @@ describe('QueuedMessages', () => {
     expect(out).toContain('then deploy')
   })
 
+  test('shows the queue count and the recall hint', () => {
+    const { lastFrame } = render(<QueuedMessages queued={['a', 'b', 'c']} />)
+    const out = lastFrame() ?? ''
+    expect(out).toContain('3 queued')
+    expect(out).toContain('↑ to edit')
+  })
+
   test('collapses newlines and truncates long messages', () => {
     const { lastFrame } = render(<QueuedMessages queued={['line one\nline two']} />)
     const out = lastFrame() ?? ''

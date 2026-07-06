@@ -174,6 +174,7 @@ export type TuiAction =
   | { type: 'history/append'; text: string }
   | { type: 'queue/enqueue'; text: string }
   | { type: 'queue/shift' }
+  | { type: 'queue/recall-last' }
   | { type: 'history-search/open' }
   | { type: 'history-search/set-query'; query: string }
   | { type: 'history-search/cycle'; direction: 'older' | 'newer' }

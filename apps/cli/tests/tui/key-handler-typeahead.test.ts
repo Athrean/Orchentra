@@ -64,10 +64,40 @@ describe('type-ahead while a turn is running', () => {
     expect(press(state, 'c', {})).toEqual([{ type: 'buffer/set', buffer: 'abc', cursor: 3 }])
   })
 
-  test('ctrl+c still cancels the running turn', () => {
+  test('ctrl+c on an empty buffer still cancels the running turn', () => {
     let aborted = false
     const actions = press(runningState(), 'c', { ctrl: true }, { abort: () => (aborted = true) })
     expect(actions).toEqual([{ type: 'turn/cancelling' }])
     expect(aborted).toBe(true)
+  })
+
+  test('ctrl+c with a non-empty buffer clears it instead of cancelling the turn', () => {
+    let aborted = false
+    const state = runningState({ buffer: 'half typed', cursor: 10 })
+    const actions = press(state, 'c', { ctrl: true }, { abort: () => (aborted = true) })
+    expect(actions).toEqual([{ type: 'buffer/set', buffer: '', cursor: 0 }])
+    expect(aborted).toBe(false)
+  })
+
+  test('escape always interrupts the turn even with a buffer', () => {
+    let aborted = false
+    const state = runningState({ buffer: 'half typed', cursor: 10 })
+    const actions = press(state, '', { escape: true }, { abort: () => (aborted = true) })
+    expect(actions).toEqual([{ type: 'turn/cancelling' }])
+    expect(aborted).toBe(true)
+  })
+
+  test('Up recalls the newest queued message into the buffer to edit', () => {
+    const state = runningState({ buffer: '', queued: ['first', 'second'] })
+    expect(press(state, '', { upArrow: true })).toEqual([{ type: 'queue/recall-last' }])
+  })
+
+  test('Up does nothing when the buffer already has content (no clobber)', () => {
+    const state = runningState({ buffer: 'typing', cursor: 6, queued: ['first'] })
+    expect(press(state, '', { upArrow: true })).toEqual([])
+  })
+
+  test('Up does nothing when the queue is empty', () => {
+    expect(press(runningState({ buffer: '', queued: [] }), '', { upArrow: true })).toEqual([])
   })
 })

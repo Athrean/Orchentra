@@ -118,6 +118,12 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, queued: state.queued.slice(1) }
     }
 
+    case 'queue/recall-last': {
+      if (state.queued.length === 0) return state
+      const last = state.queued[state.queued.length - 1]
+      return { ...state, queued: state.queued.slice(0, -1), buffer: last, cursor: last.length }
+    }
+
     case 'suggestions/set':
       return { ...state, suggestions: action.state }
 
