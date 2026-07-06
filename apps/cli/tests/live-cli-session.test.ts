@@ -410,4 +410,50 @@ describe('LiveCli sessions', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  test('rewindTurns drops the last turn from context and reverts its file edits', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-rewind-'))
+    try {
+      const target = join(dir, 'created.txt')
+      const provider = scriptedProvider([
+        [
+          {
+            kind: 'tool-use',
+            call: { id: 'w1', name: 'write_file', input: { path: 'created.txt', content: 'x' } },
+          },
+          { kind: 'finish', stopReason: 'tool_use' },
+        ],
+        [{ kind: 'finish', stopReason: 'end_turn' }],
+      ])
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'rewind-session',
+        sharedState: sharedState(),
+      })
+      cli.setEventSink(() => {})
+      cli.setAskToolUser(async () => 'allow-once')
+
+      await cli.runTurn('make a file')
+      expect(readFileSync(target, 'utf8')).toBe('x')
+      expect(cli.getContextStats().messages).toBeGreaterThan(0)
+
+      const result = await cli.rewindTurns(1)
+
+      expect(result.kind).toBe('applied')
+      if (result.kind === 'applied') {
+        expect(result.turnsDropped).toBe(1)
+        expect(result.filesReverted).toBe(1)
+      }
+      expect(existsSync(target)).toBe(false)
+      expect(cli.getContextStats().messages).toBe(0)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })

@@ -24,6 +24,7 @@ import type {
   SessionRecord,
   SessionResumeResult,
   SessionTaskSummary,
+  RewindResult,
   SharedToolState,
   SystemPrompt,
   ToolCall,
@@ -40,6 +41,8 @@ import {
   ConversationRuntime,
   estimateMessagesTokens,
   defaultEstimator,
+  rewindBoundary,
+  countUserTurns,
   prepareMemoryContext,
   captureMemoryFromTurn,
   spinePrompt,
@@ -556,6 +559,24 @@ export class LiveCli implements SessionControl {
         files: applied,
       }
     }
+  }
+
+  async rewindTurns(turns: number): Promise<RewindResult> {
+    const boundary = rewindBoundary(this.messages, turns)
+    const messagesDropped = this.messages.length - boundary
+    if (messagesDropped === 0) return { kind: 'empty' }
+
+    const turnsDropped = countUserTurns(this.messages.slice(boundary))
+    // Revert the most recent turn's file effects (the newest turn we're
+    // dropping) before truncating context. Older turns aren't snapshotted, so
+    // only the last turn's files can be restored — reported honestly.
+    const undo = await this.undoLastFileEdits()
+    const filesReverted = undo.kind === 'applied' ? undo.files.length : 0
+    const fileError = undo.kind === 'error' ? undo.message : undefined
+
+    this.messages = this.messages.slice(0, boundary)
+    this.runtime = null
+    return { kind: 'applied', turnsDropped, messagesDropped, filesReverted, fileError }
   }
 
   // Bounded LLM pass that turns the dropped turns into a faithful digest when

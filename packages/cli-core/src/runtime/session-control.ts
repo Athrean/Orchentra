@@ -39,6 +39,20 @@ export type UndoFileEditsResult =
   | { readonly kind: 'applied'; readonly files: readonly UndoFileEditResult[] }
   | { readonly kind: 'error'; readonly message: string; readonly files: readonly UndoFileEditResult[] }
 
+export type RewindResult =
+  | { readonly kind: 'empty' }
+  | {
+      readonly kind: 'applied'
+      /** User-turns removed from the model context. */
+      readonly turnsDropped: number
+      /** Messages removed from the model context. */
+      readonly messagesDropped: number
+      /** File edits reverted from the most recent rewound turn (best-effort). */
+      readonly filesReverted: number
+      /** Present when reverting the last turn's files failed. */
+      readonly fileError?: string
+    }
+
 export interface SessionResumeResult {
   readonly sessionId: string
   readonly path: string
@@ -88,6 +102,10 @@ export interface SessionControl {
   cancelTask?(id: string): boolean
   /** Revert successful write/edit_file effects from the most recent agent turn. */
   undoLastFileEdits?(): Promise<UndoFileEditsResult>
+  /** Roll the model context back `turns` user-turns and revert the most recent
+   * turn's file edits (best-effort). Distinct from undoLastFileEdits, which
+   * only touches files. */
+  rewindTurns?(turns: number): Promise<RewindResult>
   /** Output tokens + turns spent under each terse mode this session. */
   getTerseBreakdown?(): readonly TerseModeUsage[]
   /** Measured compaction + tool-output-trim savings, when the session tracks them. */

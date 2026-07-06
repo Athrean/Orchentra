@@ -114,7 +114,10 @@ export type {
   SessionTaskSummary,
   UndoFileEditResult,
   UndoFileEditsResult,
+  RewindResult,
 } from './session-control'
+
+export { rewindBoundary, countUserTurns } from './rewind'
 
 export { isKnownModel } from './model-availability'
 
