@@ -3,6 +3,7 @@ import {
   ConfigLoader,
   InMemoryTaskStore,
   SessionWriter,
+  defaultEstimator,
   isKnownModel,
   type PermissionMode,
   type Provider,
@@ -10,7 +11,7 @@ import {
   type ToolRegistry,
 } from '@orchentra/cli-core'
 import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config'
-import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
+import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager, DEFAULT_MCP_DEFER_TOKENS } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
 import { builtinModelAliases, createProvider, resolveModelAlias } from './provider-factory'
@@ -65,7 +66,12 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     },
   })
   await mcpManager.connectAll()
-  mcpManager.registerInto(tools)
+  // Once configured MCP servers export more schema than the budget, defer them
+  // behind a single mcp_tool_search surface instead of loading every schema.
+  mcpManager.registerInto(tools, {
+    deferOverTokens: DEFAULT_MCP_DEFER_TOKENS,
+    estimateTokens: defaultEstimator,
+  })
   const sessionId = randomUUID()
 
   const sharedState: SharedToolState = {
