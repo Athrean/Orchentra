@@ -30,7 +30,8 @@ import { RepoPickerCard } from './components/RepoPickerCard'
 import { LoginPickerCard } from './components/LoginPickerCard'
 import { ThemePicker } from './components/ThemePicker'
 import { CommandPalette } from './components/CommandPalette'
-import { setActiveRepo, setDefaultModel } from '../session-config'
+import { TrustDialog } from './components/TrustDialog'
+import { isWorkspaceTrusted, setActiveRepo, setDefaultModel, trustWorkspace } from '../session-config'
 import { loadActiveTheme, saveActiveTheme } from './theme-registry'
 import { planNeedFromTranscript } from './transcript-context'
 import type { BannerOptions } from '../render/banner'
@@ -154,6 +155,15 @@ export function Tui(props: TuiProps): React.ReactElement {
       process.stdout.write('[?25h')
     }
   }, [wireEvents, cli])
+
+  // First entry into an untrusted directory: gate all input behind a one-time
+  // trust prompt before any prompt can be submitted (and thus any tool run).
+  useEffect(() => {
+    if (!isWorkspaceTrusted(props.cwd)) {
+      dispatch({ type: 'flow/start', flow: { kind: 'trust-gate', cwd: props.cwd } })
+    }
+    // Runs once on mount; the gate only applies to the directory the CLI opened in.
+  }, [])
 
   // Spinner & elapsed timer ticker.
   const [spinnerFrame, setSpinnerFrame] = useState(0)
@@ -693,6 +703,19 @@ export function Tui(props: TuiProps): React.ReactElement {
         banner={props.banner}
       />
       <Box flexDirection="column">
+        {state.activeFlow?.kind === 'trust-gate' ? (
+          <TrustDialog
+            cwd={state.activeFlow.cwd}
+            onChoose={(choice) => {
+              if (choice === 'trust') {
+                trustWorkspace(props.cwd)
+                dispatch({ type: 'flow/end' })
+                return
+              }
+              exit()
+            }}
+          />
+        ) : null}
         {state.activeFlow?.kind === 'anthropic-login' ? (
           <AnthropicLoginCard
             onComplete={(result) => {

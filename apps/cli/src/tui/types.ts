@@ -136,6 +136,7 @@ export interface TuiState {
 }
 
 export type ActiveFlowState =
+  | { readonly kind: 'trust-gate'; readonly cwd: string }
   | { readonly kind: 'anthropic-login' }
   | { readonly kind: 'login-picker' }
   | { readonly kind: 'model-picker'; readonly current: string }
