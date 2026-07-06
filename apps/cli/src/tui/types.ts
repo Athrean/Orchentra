@@ -164,6 +164,7 @@ export type TuiAction =
   | { type: 'suggestions/close' }
   | { type: 'suggestions/move'; delta: number }
   | { type: 'transcript/push'; row: TranscriptRow }
+  | { type: 'transcript/system-update'; id: string; text: string; tone?: 'info' | 'warn' }
   | { type: 'transcript/clear' }
   | { type: 'session/clear-visible'; note?: string; noteId: string }
   | { type: 'transcript/stream-begin'; rowId: string }

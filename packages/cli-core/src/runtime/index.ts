@@ -12,6 +12,7 @@ export type {
   ToolResultEvent,
   UsageEvent,
   CompactedEvent,
+  HookProgressRuntimeEvent,
   ErrorEvent,
   DoneEvent,
   SpanAttributeValue,

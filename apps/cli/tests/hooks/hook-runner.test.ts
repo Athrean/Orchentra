@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync, chmodSync } from 'node:f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHookRunner } from '../../src/hooks/hook-runner'
+import type { HookProgressUpdate } from '../../src/hooks/types'
 
 let tempDir: string
 
@@ -91,6 +92,37 @@ describe('createHookRunner — pre_tool_use', () => {
     const result = await runner.firePreToolUse('Bash', { command: 'ls' })
     expect(result.blocked).toBe(true)
     expect(result.blockedReason).toContain('blocked-by-second')
+  })
+})
+
+describe('createHookRunner — progress', () => {
+  test('emits running then done(ok=true) around a passing pre-hook, sharing an id', async () => {
+    const ok = writeScript('ok.sh', '#!/bin/sh\nexit 0\n')
+    writeHookConfig([{ event: 'pre_tool_use', tools: ['Bash'], command: ok }])
+    const updates: HookProgressUpdate[] = []
+    const runner = createHookRunner({ cwd: tempDir, onProgress: (u) => updates.push(u) })
+    await runner.firePreToolUse('Bash', { command: 'ls' })
+    expect(updates.map((u) => u.phase)).toEqual(['running', 'done'])
+    expect(updates[0].id).toBe(updates[1].id)
+    expect(updates[1].ok).toBe(true)
+    expect(updates[0].command).toBe(ok)
+  })
+
+  test('emits done(ok=false) when a pre-hook blocks', async () => {
+    const fail = writeScript('fail.sh', '#!/bin/sh\nexit 1\n')
+    writeHookConfig([{ event: 'pre_tool_use', tools: ['Bash'], command: fail }])
+    const updates: HookProgressUpdate[] = []
+    const runner = createHookRunner({ cwd: tempDir, onProgress: (u) => updates.push(u) })
+    await runner.firePreToolUse('Bash', { command: 'rm -rf /' })
+    expect(updates[updates.length - 1]).toMatchObject({ phase: 'done', ok: false })
+  })
+
+  test('does not emit progress when no hook matches', async () => {
+    writeHookConfig([{ event: 'pre_tool_use', tools: ['OtherTool'], command: writeScript('x.sh', '#!/bin/sh\n') }])
+    const updates: HookProgressUpdate[] = []
+    const runner = createHookRunner({ cwd: tempDir, onProgress: (u) => updates.push(u) })
+    await runner.firePreToolUse('Bash', { command: 'ls' })
+    expect(updates).toHaveLength(0)
   })
 })
 
