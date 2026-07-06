@@ -167,7 +167,7 @@ export class TasksCommand implements CommandHandler {
 export class UndoCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'undo',
-    aliases: ['rewind'],
+    aliases: [],
     summary: "Revert the previous turn's file edits",
   }
 
@@ -182,6 +182,39 @@ export class UndoCommand implements CommandHandler {
     const files = result.files.map((file) => `${file.path} ${file.action}`).join(', ')
     return note(ctx, `Undid ${result.files.length} ${noun}: ${files}.`)
   }
+}
+
+export class RewindCommand implements CommandHandler {
+  spec: SlashCommandSpec = {
+    name: 'rewind',
+    aliases: [],
+    summary: 'Roll the conversation back N turns (context + last turn files)',
+    argumentHint: '[n]',
+  }
+
+  async execute(args: string[], ctx: CommandContext): Promise<boolean> {
+    const turns = parseTurns(args[0])
+    if (turns === null) return note(ctx, 'Usage: /rewind [n] — n must be a positive integer.', 'warn')
+
+    const rewind = ctx.session.rewindTurns
+    if (!rewind) return note(ctx, 'This runtime does not support /rewind.', 'warn')
+
+    const result = await rewind(turns)
+    if (result.kind === 'empty') return note(ctx, 'Nothing to rewind.', 'warn')
+
+    const parts = [`Rewound ${result.turnsDropped} turn${result.turnsDropped === 1 ? '' : 's'} from context`]
+    if (result.filesReverted > 0) {
+      parts.push(`reverted ${result.filesReverted} file edit${result.filesReverted === 1 ? '' : 's'}`)
+    }
+    if (result.fileError) parts.push(`file revert failed: ${result.fileError}`)
+    return note(ctx, `${parts.join(' · ')}.`, result.fileError ? 'warn' : 'info')
+  }
+}
+
+function parseTurns(arg: string | undefined): number | null {
+  if (arg === undefined) return 1
+  const n = Number(arg)
+  return Number.isInteger(n) && n >= 1 ? n : null
 }
 
 export class BranchCommand implements CommandHandler {
