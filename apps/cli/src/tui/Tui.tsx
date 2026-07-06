@@ -572,13 +572,18 @@ export function Tui(props: TuiProps): React.ReactElement {
       }
 
       if (key.ctrl && input === 'u') {
-        const next = cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
+        const killed = cur.buffer.slice(0, cur.cursor)
+        return dispatch({ type: 'buffer/kill', buffer: cur.buffer.slice(cur.cursor), cursor: 0, killed })
       }
 
       if (key.ctrl && input === 'w') {
         const trimmed = deleteWordBack(cur.buffer, cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
+        const killed = cur.buffer.slice(trimmed.cursor, cur.cursor)
+        return dispatch({ type: 'buffer/kill', buffer: trimmed.buffer, cursor: trimmed.cursor, killed })
+      }
+
+      if (key.ctrl && input === 'y') {
+        return dispatch({ type: 'buffer/yank' })
       }
 
       if (key.leftArrow && (key.meta || key.ctrl)) {
@@ -881,8 +886,9 @@ const SHORTCUT_SECTIONS = [
     rows: [
       { key: 'enter', value: 'submit' },
       { key: 'shift+enter / alt+enter', value: 'newline (alt is a fallback for terminals that swallow shift+enter)' },
-      { key: 'ctrl+u', value: 'delete to start of line' },
-      { key: 'ctrl+w', value: 'delete previous word' },
+      { key: 'ctrl+u', value: 'kill to start of line' },
+      { key: 'ctrl+w', value: 'kill previous word' },
+      { key: 'ctrl+y', value: 'yank (paste last killed text)' },
       { key: 'alt+← / →', value: 'jump cursor to previous / next word' },
       { key: '↑ / ↓', value: 'history (or move cursor in multi-line)' },
     ],

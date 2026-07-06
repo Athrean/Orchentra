@@ -10,6 +10,31 @@ describe('tui reducer', () => {
     expect(s.cursor).toBe(5)
   })
 
+  test('buffer/kill stashes the removed text and buffer/yank brings it back at the cursor', () => {
+    // ctrl+u from the middle of "hello world": kill "hello ", keep "world".
+    let s = reducer(base(), { type: 'buffer/set', buffer: 'hello world', cursor: 6 })
+    s = reducer(s, { type: 'buffer/kill', buffer: 'world', cursor: 0, killed: 'hello ' })
+    expect(s.buffer).toBe('world')
+    expect(s.cursor).toBe(0)
+    expect(s.killRing).toBe('hello ')
+    // ctrl+y re-inserts the killed text at the cursor.
+    s = reducer(s, { type: 'buffer/yank' })
+    expect(s.buffer).toBe('hello world')
+    expect(s.cursor).toBe(6)
+  })
+
+  test('buffer/kill with an empty kill keeps the previous kill-ring', () => {
+    let s = reducer(base(), { type: 'buffer/kill', buffer: 'x', cursor: 1, killed: 'prior' })
+    s = reducer(s, { type: 'buffer/kill', buffer: 'x', cursor: 0, killed: '' })
+    expect(s.killRing).toBe('prior')
+  })
+
+  test('buffer/yank is a no-op when nothing has been killed', () => {
+    const s = reducer(base(), { type: 'buffer/yank' })
+    expect(s.buffer).toBe('')
+    expect(s.cursor).toBe(0)
+  })
+
   test('history prev/next round-trips through draft', () => {
     let s = reducer(base(), { type: 'history/load', entries: ['first', 'second', 'third'] })
     s = reducer(s, { type: 'buffer/set', buffer: 'draft', cursor: 5 })

@@ -102,6 +102,8 @@ export interface ActiveCardState {
 export interface TuiState {
   readonly buffer: string
   readonly cursor: number
+  /** Last text removed by ctrl+u / ctrl+w, recallable with ctrl+y (yank). */
+  readonly killRing: string
   /** Draft saved while scrolling history; restored at index -1. */
   readonly draft: string
   /** -1 = live draft, 0 = most recent submission, increasing = older. */
@@ -156,6 +158,8 @@ export type ActiveFlowState =
 
 export type TuiAction =
   | { type: 'buffer/set'; buffer: string; cursor: number }
+  | { type: 'buffer/kill'; buffer: string; cursor: number; killed: string }
+  | { type: 'buffer/yank' }
   | { type: 'history/load'; entries: readonly string[] }
   | { type: 'history/prev' }
   | { type: 'history/next' }
