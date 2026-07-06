@@ -23,6 +23,8 @@ export interface FooterProps {
   readonly turn: TurnStatus
   readonly spinnerFrame: number
   readonly exitHintActive: boolean
+  /** Which exit key armed the hint, so the message names the right key. */
+  readonly exitHintKey?: 'ctrl+c' | 'ctrl+d'
   readonly contextStats?: FooterContextStats
   readonly tasks?: readonly SessionTaskSummary[]
 }
@@ -70,7 +72,9 @@ export function Footer(props: FooterProps): React.ReactElement {
         {terseSegment ? <Text color={THEME.accent}>{terseSegment}</Text> : null}
         {costSegment ? <Text dimColor>{costSegment}</Text> : null}
       </Box>
-      {props.exitHintActive ? <Text color={THEME.warn}>press Ctrl+C again to exit</Text> : null}
+      {props.exitHintActive ? (
+        <Text color={THEME.warn}>{`press ${props.exitHintKey === 'ctrl+d' ? 'Ctrl+D' : 'Ctrl+C'} again to exit`}</Text>
+      ) : null}
     </Box>
   )
 }

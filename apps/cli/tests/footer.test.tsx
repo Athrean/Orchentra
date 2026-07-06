@@ -137,6 +137,36 @@ describe('Footer — idle', () => {
     expect(out).toContain('allow ⚠ skip permissions')
   })
 
+  test('names the exit key in the double-press hint', () => {
+    const ctrlD = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive
+        exitHintKey="ctrl+d"
+      />,
+    )
+    expect(strip(ctrlD.lastFrame() ?? '')).toContain('press Ctrl+D again to exit')
+
+    const ctrlC = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive
+        exitHintKey="ctrl+c"
+      />,
+    )
+    expect(strip(ctrlC.lastFrame() ?? '')).toContain('press Ctrl+C again to exit')
+  })
+
   test('shows terse mode when enabled', () => {
     const { lastFrame } = render(
       <Footer

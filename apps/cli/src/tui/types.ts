@@ -55,6 +55,9 @@ export type TranscriptRow =
 
 export type SuggestionTrigger = '/' | '@' | '!'
 
+/** Exit keys that arm the double-press-to-exit hint. */
+export type ExitHintKey = 'ctrl+c' | 'ctrl+d'
+
 export interface SuggestionItem {
   /** Text inserted into the buffer when this item is accepted. */
   readonly value: string
@@ -121,8 +124,11 @@ export interface TuiState {
   readonly terseMode: TerseMode
   readonly model: string
   readonly pastes: Readonly<Record<string, PasteChip>>
-  /** Timestamp (ms) until which the "press Ctrl+C again to exit" hint is shown. */
+  /** Timestamp (ms) until which the "press <key> again to exit" hint is shown. */
   readonly exitHintUntil: number | null
+  /** Which exit key armed the hint, so the double-press gate and the footer
+   * message stay per-key (ctrl+c and ctrl+d don't cross-trigger). */
+  readonly exitHintKey: ExitHintKey | null
   /** Id of the assistant row currently being streamed into, if any. */
   readonly streamingRowId: string | null
   /** Bumps when `/clear` resets the screen so Ink replays Static output from a fresh identity. */
@@ -217,7 +223,7 @@ export type TuiAction =
   | { type: 'terse/set'; mode: TerseMode }
   | { type: 'model/set'; model: string }
   | { type: 'paste/add'; chip: PasteChip }
-  | { type: 'exit-hint/show'; until: number }
+  | { type: 'exit-hint/show'; until: number; key: ExitHintKey }
   | { type: 'exit-hint/clear' }
   | { type: 'card/open'; card: ActiveCardState }
   | { type: 'card/set-tab'; index: number }

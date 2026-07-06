@@ -366,6 +366,7 @@ export function Tui(props: TuiProps): React.ReactElement {
           turn={state.turn}
           spinnerFrame={spinnerFrame}
           exitHintActive={state.exitHintUntil !== null}
+          exitHintKey={state.exitHintKey ?? undefined}
           contextStats={cli.getContextStats?.()}
           tasks={cli.listTaskSummaries?.()}
         />
