@@ -456,4 +456,52 @@ describe('LiveCli sessions', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  test('previewRewindTurns reports the file revert without mutating anything', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-rewind-preview-'))
+    try {
+      const target = join(dir, 'created.txt')
+      const provider = scriptedProvider([
+        [
+          {
+            kind: 'tool-use',
+            call: { id: 'w1', name: 'write_file', input: { path: 'created.txt', content: 'x' } },
+          },
+          { kind: 'finish', stopReason: 'tool_use' },
+        ],
+        [{ kind: 'finish', stopReason: 'end_turn' }],
+      ])
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'rewind-preview-session',
+        sharedState: sharedState(),
+      })
+      cli.setEventSink(() => {})
+      cli.setAskToolUser(async () => 'allow-once')
+
+      await cli.runTurn('make a file')
+      const messagesBefore = cli.getContextStats().messages
+
+      const preview = await cli.previewRewindTurns(1)
+
+      expect(preview.kind).toBe('preview')
+      if (preview.kind === 'preview') {
+        expect(preview.turnsToDrop).toBe(1)
+        expect(preview.files).toHaveLength(1)
+        expect(preview.files[0].action).toBe('delete')
+        expect(preview.files[0].linesRemoved).toBeGreaterThan(0)
+      }
+      // Preview is a dry run: file still present, context untouched.
+      expect(readFileSync(target, 'utf8')).toBe('x')
+      expect(cli.getContextStats().messages).toBe(messagesBefore)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })

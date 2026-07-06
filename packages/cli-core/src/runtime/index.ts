@@ -115,9 +115,11 @@ export type {
   UndoFileEditResult,
   UndoFileEditsResult,
   RewindResult,
+  RewindFilePreview,
+  RewindPreview,
 } from './session-control'
 
-export { rewindBoundary, countUserTurns } from './rewind'
+export { rewindBoundary, countUserTurns, lineDiffStats } from './rewind'
 
 export { isKnownModel } from './model-availability'
 

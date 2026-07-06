@@ -3,6 +3,7 @@ import { existsSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { resolve } from 'node:path'
 import { estimateCost, formatUsd, pricingForModel } from '@orchentra/cli-core'
+import type { RewindPreview } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import type { UiCardSection } from '../ui-output'
 import { writeClipboard } from '../../ui/clipboard'
@@ -189,12 +190,24 @@ export class RewindCommand implements CommandHandler {
     name: 'rewind',
     aliases: [],
     summary: 'Roll the conversation back N turns (context + last turn files)',
-    argumentHint: '[n]',
+    argumentHint: '[n] [--yes]',
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    const turns = parseTurns(args[0])
-    if (turns === null) return note(ctx, 'Usage: /rewind [n] — n must be a positive integer.', 'warn')
+    const confirmed = args.some((a) => a === '--yes' || a === '-y')
+    const positional = args.filter((a) => a !== '--yes' && a !== '-y')
+    const turns = parseTurns(positional[0])
+    if (turns === null) return note(ctx, 'Usage: /rewind [n] [--yes] — n must be a positive integer.', 'warn')
+
+    // Rewind reverts files on disk — a destructive step. Default to a dry-run
+    // preview so the user sees what changes before it happens; --yes applies it.
+    if (!confirmed) {
+      const preview = ctx.session.previewRewindTurns
+      if (!preview) return note(ctx, 'This runtime does not support /rewind.', 'warn')
+      const result = await preview(turns)
+      if (result.kind === 'empty') return note(ctx, 'Nothing to rewind.', 'warn')
+      return renderRewindPreview(ctx, turns, result)
+    }
 
     const rewind = ctx.session.rewindTurns
     if (!rewind) return note(ctx, 'This runtime does not support /rewind.', 'warn')
@@ -209,6 +222,29 @@ export class RewindCommand implements CommandHandler {
     if (result.fileError) parts.push(`file revert failed: ${result.fileError}`)
     return note(ctx, `${parts.join(' · ')}.`, result.fileError ? 'warn' : 'info')
   }
+}
+
+function renderRewindPreview(
+  ctx: CommandContext,
+  turns: number,
+  preview: Extract<RewindPreview, { kind: 'preview' }>,
+): boolean {
+  const contextRows = [
+    { key: 'Turns to drop', value: String(preview.turnsToDrop), bold: true },
+    { key: 'Messages to drop', value: String(preview.messagesToDrop) },
+  ]
+  const fileRows =
+    preview.files.length === 0
+      ? [{ key: 'Files', value: 'none — context only, nothing on disk changes' }]
+      : preview.files.map((file) => ({
+          key: prettyCwd(file.path),
+          value: `${file.action} · +${file.linesAdded}/-${file.linesRemoved}`,
+        }))
+  return card(ctx, 'Rewind preview', `${turns} turn${turns === 1 ? '' : 's'} · not applied yet`, [
+    { title: 'Context', rows: contextRows },
+    { title: 'Files to revert', rows: fileRows },
+    { title: 'Apply', rows: [{ key: 'Confirm', value: `/rewind ${turns} --yes` }] },
+  ])
 }
 
 function parseTurns(arg: string | undefined): number | null {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { countUserTurns, rewindBoundary } from '../src/runtime/rewind'
+import { countUserTurns, lineDiffStats, rewindBoundary } from '../src/runtime/rewind'
 import type { ChatMessage } from '../src/runtime/provider'
 
 // Three turns: user/assistant, user/assistant+tool, user/assistant.
@@ -41,5 +41,29 @@ describe('countUserTurns', () => {
     expect(countUserTurns(convo)).toBe(3)
     expect(countUserTurns(convo.slice(5))).toBe(1)
     expect(countUserTurns([])).toBe(0)
+  })
+})
+
+describe('lineDiffStats', () => {
+  test('empty to content is all added, none removed', () => {
+    expect(lineDiffStats('', 'a\nb')).toEqual({ added: 2, removed: 0 })
+  })
+
+  test('content to empty is all removed, none added', () => {
+    expect(lineDiffStats('a\nb\nc', '')).toEqual({ added: 0, removed: 3 })
+  })
+
+  test('identical content changes nothing', () => {
+    expect(lineDiffStats('a\nb\nc', 'a\nb\nc')).toEqual({ added: 0, removed: 0 })
+  })
+
+  test('counts only the lines that differ, ignoring order', () => {
+    // shared: a, c. removed: b. added: x, y.
+    expect(lineDiffStats('a\nb\nc', 'c\na\nx\ny')).toEqual({ added: 2, removed: 1 })
+  })
+
+  test('accounts for duplicate lines by multiplicity', () => {
+    expect(lineDiffStats('x\nx\nx', 'x')).toEqual({ added: 0, removed: 2 })
+    expect(lineDiffStats('x', 'x\nx\nx')).toEqual({ added: 2, removed: 0 })
   })
 })

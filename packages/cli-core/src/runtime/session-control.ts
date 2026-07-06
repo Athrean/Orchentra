@@ -53,6 +53,28 @@ export type RewindResult =
       readonly fileError?: string
     }
 
+export interface RewindFilePreview {
+  readonly path: string
+  /** `restore` rewrites the pre-turn content; `delete` removes a file the turn created. */
+  readonly action: 'restore' | 'delete'
+  /** Lines the revert would add back (vs the current on-disk content). */
+  readonly linesAdded: number
+  /** Lines the revert would strip from the current on-disk content. */
+  readonly linesRemoved: number
+}
+
+export type RewindPreview =
+  | { readonly kind: 'empty' }
+  | {
+      readonly kind: 'preview'
+      /** User-turns a subsequent rewind would drop. */
+      readonly turnsToDrop: number
+      /** Messages a subsequent rewind would drop. */
+      readonly messagesToDrop: number
+      /** File edits the revert would touch, with per-file line churn. */
+      readonly files: readonly RewindFilePreview[]
+    }
+
 export interface SessionResumeResult {
   readonly sessionId: string
   readonly path: string
@@ -106,6 +128,10 @@ export interface SessionControl {
    * turn's file edits (best-effort). Distinct from undoLastFileEdits, which
    * only touches files. */
   rewindTurns?(turns: number): Promise<RewindResult>
+  /** Dry-run a rewind: report the turns/messages and file edits a subsequent
+   * rewindTurns(turns) would touch, without mutating anything. Powers the
+   * look-before-you-leap preview gate in /rewind. */
+  previewRewindTurns?(turns: number): Promise<RewindPreview>
   /** Output tokens + turns spent under each terse mode this session. */
   getTerseBreakdown?(): readonly TerseModeUsage[]
   /** Measured compaction + tool-output-trim savings, when the session tracks them. */

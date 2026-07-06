@@ -25,6 +25,8 @@ import type {
   SessionResumeResult,
   SessionTaskSummary,
   RewindResult,
+  RewindPreview,
+  RewindFilePreview,
   SharedToolState,
   SystemPrompt,
   ToolCall,
@@ -43,6 +45,7 @@ import {
   defaultEstimator,
   rewindBoundary,
   countUserTurns,
+  lineDiffStats,
   prepareMemoryContext,
   captureMemoryFromTurn,
   spinePrompt,
@@ -559,6 +562,29 @@ export class LiveCli implements SessionControl {
         files: applied,
       }
     }
+  }
+
+  async previewRewindTurns(turns: number): Promise<RewindPreview> {
+    const boundary = rewindBoundary(this.messages, turns)
+    const messagesToDrop = this.messages.length - boundary
+    if (messagesToDrop === 0) return { kind: 'empty' }
+
+    const turnsToDrop = countUserTurns(this.messages.slice(boundary))
+    // Only the most recent turn's edits are snapshotted, so the preview reports
+    // exactly what rewindTurns would revert — no more, no less.
+    const files: RewindFilePreview[] = []
+    for (const edit of this.lastTurnFileUndo) {
+      const current = await readFile(edit.path, 'utf8').catch(() => '')
+      const target = edit.existed ? edit.content : ''
+      const { added, removed } = lineDiffStats(current, target)
+      files.push({
+        path: edit.path,
+        action: edit.existed ? 'restore' : 'delete',
+        linesAdded: added,
+        linesRemoved: removed,
+      })
+    }
+    return { kind: 'preview', turnsToDrop, messagesToDrop, files }
   }
 
   async rewindTurns(turns: number): Promise<RewindResult> {
