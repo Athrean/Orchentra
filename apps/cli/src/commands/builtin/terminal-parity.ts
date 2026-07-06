@@ -7,30 +7,26 @@ import type { CommandHandler, CommandContext, SlashCommandSpec } from '../regist
 import type { UiCardSection } from '../ui-output'
 import { writeClipboard } from '../../ui/clipboard'
 import { loadHooks } from '../../hooks/load-hooks'
+import { buildContextSections } from './context-report'
 
 export class ContextCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'context',
     aliases: ['ctx'],
-    summary: 'Show live conversation context usage',
+    summary: 'Show context-window usage and distance to compaction',
   }
 
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
     const stats = ctx.session.getContextStats?.()
-    const transcript = ctx.getTranscriptText?.()
-    const rows = [
-      { key: 'Model', value: ctx.session.getModel() },
-      { key: 'Turns', value: String(ctx.session.getTurns()) },
-      { key: 'Messages', value: stats ? formatNumber(stats.messages) : 'unavailable' },
-      { key: 'Estimated tokens', value: stats ? formatNumber(stats.estimatedTokens) : 'unavailable', bold: true },
-      {
-        key: 'Context window',
-        value: stats?.contextWindowTokens ? formatNumber(stats.contextWindowTokens) : 'provider default',
-      },
-      { key: 'Visible transcript', value: transcript ? `${formatNumber(transcript.length)} chars` : 'empty' },
-    ]
+    if (!stats) return note(ctx, 'Context stats are unavailable in this session.', 'warn')
 
-    return card(ctx, 'Context', prettyCwd(ctx.cwd), [{ rows }])
+    const sections = buildContextSections({
+      stats,
+      usage: ctx.session.getUsage(),
+      turns: ctx.session.getTurns(),
+      savings: ctx.session.getSavings?.(),
+    })
+    return card(ctx, 'Context', ctx.session.getModel(), sections)
   }
 }
 
