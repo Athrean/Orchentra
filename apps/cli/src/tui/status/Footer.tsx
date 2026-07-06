@@ -4,6 +4,7 @@ import { Box, Text } from 'ink'
 import type { PermissionMode, SessionTaskSummary, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import { formatUsd, pricingForModel } from '@orchentra/cli-core'
 import { THEME, modeAccent } from '../theme'
+import { FIGURES } from '../figures'
 import type { TurnStatus } from '../types'
 import { ShimmerText } from '../components/ShimmerText'
 
@@ -48,7 +49,7 @@ export function Footer(props: FooterProps): React.ReactElement {
   const cwdSegment = ` ${THEME.separator} ${formatCwd(props.cwd)}`
   const branchSegment = props.branch ? ` ${THEME.separator} git:(${props.branch})` : ''
   const tasksSegment =
-    activeTasks > 0 ? ` ${THEME.separator} ⚙ ${activeTasks} ${activeTasks === 1 ? 'task' : 'tasks'}` : ''
+    activeTasks > 0 ? ` ${THEME.separator} ${FIGURES.gear} ${activeTasks} ${activeTasks === 1 ? 'task' : 'tasks'}` : ''
   const costSegment = cost ? ` ${THEME.separator} ${cost}` : ''
   const modeSegment = props.mode === 'workspace-write' ? '' : ` ${THEME.separator} ${formatMode(props.mode)}`
   const terseSegment = props.terseMode === 'off' ? '' : ` ${THEME.separator} terse:${props.terseMode}`

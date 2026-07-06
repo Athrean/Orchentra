@@ -7,6 +7,10 @@ import { evaluatePaste } from '../paste'
 import type { TuiAction, TuiState } from '../types'
 import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from '../word-boundary'
 import { endsWithBackslashLine, hasUnclosedFence, moveLine } from './motion'
+import { doublePressDecision } from './double-press'
+
+/** Window for the ctrl+c-twice-to-exit double press. */
+const EXIT_DOUBLE_PRESS_MS = 1500
 
 export type TuiInputKey = Key
 
@@ -94,11 +98,12 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
       dispatch({ type: 'exit-hint/clear' })
       return
     }
-    if (cur.exitHintUntil !== null) {
+    const { result, armedUntil } = doublePressDecision(cur.exitHintUntil, Date.now(), EXIT_DOUBLE_PRESS_MS)
+    if (result === 'again') {
       exit()
       return
     }
-    dispatch({ type: 'exit-hint/show', until: Date.now() + 1500 })
+    dispatch({ type: 'exit-hint/show', until: armedUntil ?? Date.now() + EXIT_DOUBLE_PRESS_MS })
     return
   }
 
