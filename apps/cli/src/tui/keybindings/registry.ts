@@ -1,5 +1,12 @@
 import { chordMatchesKey, comboToString, parseCombo, type KeyChord, type MatchKey } from './parse'
-import { DEFAULT_BINDINGS, KEY_ACTION_IDS, RESERVED_COMBOS, isKeyActionId, type KeyActionId } from './bindings'
+import {
+  DEFAULT_BINDINGS,
+  FALLBACK_COMBOS,
+  KEY_ACTION_IDS,
+  RESERVED_COMBOS,
+  isKeyActionId,
+  type KeyActionId,
+} from './bindings'
 
 export interface Keybindings {
   /** Resolve an Ink key event to the action it triggers, or null. */
@@ -56,6 +63,21 @@ export function buildKeybindings(userOverrides?: Readonly<Record<string, string>
       )
       continue
     }
+    claimed.set(canonical, action)
+    parsed.push({ action, chord })
+  }
+
+  // Terminal fallbacks: an action may also answer to a secondary chord for
+  // terminals that swallow its default (e.g. shift+tab). Added after primaries
+  // so they take precedence, and only when the action is still on its default
+  // and the fallback combo is free — never shadowing a rebind or another key.
+  for (const action of KEY_ACTION_IDS) {
+    const fallback = FALLBACK_COMBOS[action]
+    if (fallback === undefined || combos[action] !== DEFAULT_BINDINGS[action]) continue
+    const chord = parseCombo(fallback)
+    if (chord === null) continue
+    const canonical = comboToString(chord)
+    if (RESERVED.has(canonical) || claimed.has(canonical)) continue
     claimed.set(canonical, action)
     parsed.push({ action, chord })
   }

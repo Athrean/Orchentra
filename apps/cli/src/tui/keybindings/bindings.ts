@@ -26,6 +26,18 @@ export const DEFAULT_BINDINGS: Readonly<Record<KeyActionId, string>> = {
   'cycle-permission-mode': 'shift+tab',
 }
 
+/**
+ * Best-effort alternate combos for keys a terminal may swallow. Some terminals
+ * (notably older Windows Terminal) never deliver shift+tab, so the action also
+ * answers to a fallback chord. Applied by the registry only while the action
+ * still uses its default combo and the fallback is otherwise free, so it never
+ * shadows a user rebind or another binding. Kept deliberately tiny — one entry
+ * per genuinely-problematic combo, not a per-terminal capability matrix.
+ */
+export const FALLBACK_COMBOS: Readonly<Partial<Record<KeyActionId, string>>> = {
+  'cycle-permission-mode': 'alt+m',
+}
+
 export const KEY_ACTION_IDS = Object.keys(DEFAULT_BINDINGS) as KeyActionId[]
 
 export function isKeyActionId(value: string): value is KeyActionId {

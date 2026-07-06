@@ -55,3 +55,24 @@ describe('buildKeybindings — user overrides', () => {
     expect(kb.warnings.some((w) => w.includes('conflict'))).toBe(true)
   })
 })
+
+describe('buildKeybindings — terminal fallbacks', () => {
+  test('cycle-permission-mode also answers to alt+m for terminals that eat shift+tab', () => {
+    const kb = buildKeybindings()
+    expect(kb.resolve('', { shift: true, tab: true })).toBe('cycle-permission-mode') // primary still works
+    expect(kb.resolve('m', { meta: true })).toBe('cycle-permission-mode') // fallback
+    expect(kb.warnings).toEqual([])
+  })
+
+  test('the fallback is dropped once the user rebinds the action', () => {
+    const kb = buildKeybindings({ 'cycle-permission-mode': 'ctrl+t' })
+    expect(kb.resolve('t', { ctrl: true })).toBe('cycle-permission-mode')
+    expect(kb.resolve('m', { meta: true })).toBeNull() // no stale fallback
+  })
+
+  test('a user binding on the fallback combo wins over the fallback', () => {
+    const kb = buildKeybindings({ 'history-search': 'alt+m' })
+    expect(kb.resolve('m', { meta: true })).toBe('history-search')
+    expect(kb.warnings).toEqual([])
+  })
+})
