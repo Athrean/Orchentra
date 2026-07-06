@@ -8,6 +8,7 @@ export const SHORTCUT_SECTIONS = [
       { key: 'ctrl+w', value: 'delete previous word' },
       { key: 'alt+left / right', value: 'jump cursor to previous / next word' },
       { key: 'up / down', value: 'history (or move cursor in multi-line)' },
+      { key: 'ctrl+f', value: 'search history (incremental reverse-search)' },
     ],
   },
   {

@@ -17,6 +17,7 @@ import { openInEditor } from './external-editor'
 import { handleMainInput } from './input/key-handler'
 import { InputBox } from './components/InputBox'
 import { InputModal } from './components/InputModal'
+import { HistorySearchPrompt } from './components/HistorySearchPrompt'
 import { countWrappedLines } from './use-line-count'
 import { Suggestions } from './components/Suggestions'
 import { Footer } from './status/Footer'
@@ -315,7 +316,7 @@ export function Tui(props: TuiProps): React.ReactElement {
     { isActive: state.activeFlow === null },
   )
 
-  const showSuggestions = state.suggestions.open && state.turn.state === 'idle'
+  const showSuggestions = state.suggestions.open && state.turn.state === 'idle' && state.historySearch === null
   const inputDisabled = state.turn.state !== 'idle'
   const suggestionsWidth = useMemo(() => Math.max(40, Math.min(cols - 2, 100)), [cols])
 
@@ -336,7 +337,9 @@ export function Tui(props: TuiProps): React.ReactElement {
           getState={() => stateRef.current}
         />
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
-        {isMultilineModal ? (
+        {state.historySearch ? (
+          <HistorySearchPrompt search={state.historySearch} history={state.history} />
+        ) : isMultilineModal ? (
           <InputModal
             buffer={state.buffer}
             cursor={state.cursor}

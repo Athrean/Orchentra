@@ -49,6 +49,12 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
     return
   }
 
+  // Incremental history reverse-search owns every key while active.
+  if (cur.historySearch) {
+    handleHistorySearchKey(cur, input, key, dispatch)
+    return
+  }
+
   if (key.shift && key.tab) {
     dispatch({ type: 'mode/cycle' })
     return
@@ -111,6 +117,7 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
   if (key.ctrl && input === 'l') return dispatch({ type: 'transcript/clear' })
   if (key.ctrl && input === 'r') return dispatch({ type: 'reasoning/toggle-last' })
   if (key.ctrl && input === 'o') return dispatch({ type: 'collapsible/toggle-last' })
+  if (key.ctrl && input === 'f' && cur.history.length > 0) return dispatch({ type: 'history-search/open' })
 
   if (key.ctrl && input === 'k') {
     dispatch({ type: 'flow/start', flow: { kind: 'command-palette' } })
@@ -228,5 +235,29 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
     }
     const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
     return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
+  }
+}
+
+/**
+ * Key routing while incremental reverse-search is active: printable keys edit
+ * the query, ↑/ctrl+f step to older matches, ↓ to newer, Enter accepts the
+ * match into the buffer, Esc/ctrl+c/ctrl+g cancel without touching it.
+ */
+function handleHistorySearchKey(cur: TuiState, input: string, key: TuiInputKey, dispatch: Dispatch<TuiAction>): void {
+  const search = cur.historySearch
+  if (!search) return
+  if (key.return) return dispatch({ type: 'history-search/accept' })
+  if (key.escape || (key.ctrl && (input === 'c' || input === 'g'))) {
+    return dispatch({ type: 'history-search/cancel' })
+  }
+  if (key.upArrow || (key.ctrl && input === 'f')) {
+    return dispatch({ type: 'history-search/cycle', direction: 'older' })
+  }
+  if (key.downArrow) return dispatch({ type: 'history-search/cycle', direction: 'newer' })
+  if (key.backspace || key.delete) {
+    return dispatch({ type: 'history-search/set-query', query: search.query.slice(0, -1) })
+  }
+  if (input && input.length > 0 && !key.ctrl && !key.meta) {
+    return dispatch({ type: 'history-search/set-query', query: search.query + input })
   }
 }
