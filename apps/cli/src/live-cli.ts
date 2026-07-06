@@ -40,6 +40,8 @@ import {
   ConversationRuntime,
   estimateMessagesTokens,
   defaultEstimator,
+  groupToolSources,
+  findDuplicateReads,
   prepareMemoryContext,
   captureMemoryFromTurn,
   spinePrompt,
@@ -54,6 +56,7 @@ import {
 } from '@orchentra/cli-core'
 import type {
   AskUser as ToolAskUser,
+  ContextBreakdown,
   PermissionStore,
   PolicyHandle,
   PolicyRule,
@@ -62,6 +65,7 @@ import type {
   StoredPermissionRule,
   TerseModeUsage,
 } from '@orchentra/cli-core'
+import { isMcpToolName } from '@orchentra/cli-tools'
 import {
   Spinner,
   renderToolCall,
@@ -314,6 +318,14 @@ export class LiveCli implements SessionControl {
       estimatedTokens: estimateMessagesTokens(this.messages, defaultEstimator),
       contextWindowTokens: 200_000,
       compactThresholdRatio: this.compactionThreshold,
+    }
+  }
+
+  getContextBreakdown(): ContextBreakdown {
+    const serverOf = (name: string): string => (isMcpToolName(name) ? name.split('__')[1] : 'built-in')
+    return {
+      toolSources: groupToolSources(this.tools.list(), serverOf, defaultEstimator),
+      duplicateReads: findDuplicateReads(this.messages),
     }
   }
 

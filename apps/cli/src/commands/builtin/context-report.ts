@@ -1,4 +1,4 @@
-import type { ContextStats, SpineSavings, UsageTotals } from '@orchentra/cli-core'
+import type { ContextBreakdown, ContextStats, SpineSavings, UsageTotals } from '@orchentra/cli-core'
 import type { UiCardSection } from '../ui-output'
 
 export interface ContextReport {
@@ -6,6 +6,8 @@ export interface ContextReport {
   readonly usage: UsageTotals
   readonly turns: number
   readonly savings?: SpineSavings
+  /** Per-source detail: which tool schemas and re-read files fill the window. */
+  readonly breakdown?: ContextBreakdown
 }
 
 const DEFAULT_WINDOW = 200_000
@@ -65,9 +67,39 @@ export function buildContextSections(report: ContextReport): UiCardSection[] {
     },
   ]
 
+  const tools = toolSourcesSection(report.breakdown)
+  if (tools) sections.push(tools)
+  const dups = duplicateReadsSection(report.breakdown)
+  if (dups) sections.push(dups)
+
   const savings = savingsSection(report.savings)
   if (savings) sections.push(savings)
   return sections
+}
+
+/** Tool schemas re-sent on every request, grouped by source (biggest first) so
+ * an MCP server bloating the window is obvious. Hidden when no tools load. */
+function toolSourcesSection(breakdown?: ContextBreakdown): UiCardSection | undefined {
+  const sources = breakdown?.toolSources ?? []
+  if (sources.length === 0) return undefined
+  return {
+    title: 'Tool schemas',
+    rows: sources.map((s) => ({
+      key: s.server,
+      value: `${fmt(s.tools)} tool${s.tools === 1 ? '' : 's'} · ~${fmt(s.estimatedTokens)} tokens`,
+    })),
+  }
+}
+
+/** Files read more than once — each repeat reloads content already in context.
+ * Hidden unless at least one file was re-read. */
+function duplicateReadsSection(breakdown?: ContextBreakdown): UiCardSection | undefined {
+  const dups = breakdown?.duplicateReads ?? []
+  if (dups.length === 0) return undefined
+  return {
+    title: 'Re-read files',
+    rows: dups.map((d) => ({ key: d.path, value: `read ${fmt(d.reads)}×` })),
+  }
 }
 
 function savingsSection(savings?: SpineSavings): UiCardSection | undefined {

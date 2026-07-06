@@ -55,6 +55,36 @@ describe('buildContextSections', () => {
     expect(text).toContain('over threshold')
   })
 
+  test('breaks tool schemas down by source and flags re-read files, biggest first', () => {
+    const text = JSON.stringify(
+      buildContextSections(
+        report({
+          breakdown: {
+            toolSources: [
+              { server: 'github', tools: 4, estimatedTokens: 3200 },
+              { server: 'built-in', tools: 1, estimatedTokens: 300 },
+            ],
+            duplicateReads: [{ path: 'src/big.ts', reads: 3 }],
+          },
+        }),
+      ),
+    )
+    expect(text).toContain('Tool schemas')
+    expect(text).toContain('github')
+    expect(text).toContain('4 tools · ~3,200 tokens')
+    expect(text).toContain('built-in')
+    expect(text).toContain('1 tool · ~300 tokens') // singular noun
+    expect(text).toContain('Re-read files')
+    expect(text).toContain('src/big.ts')
+    expect(text).toContain('read 3×')
+  })
+
+  test('omits the breakdown sections when no tools load and nothing is re-read', () => {
+    const text = JSON.stringify(buildContextSections(report({ breakdown: { toolSources: [], duplicateReads: [] } })))
+    expect(text).not.toContain('Tool schemas')
+    expect(text).not.toContain('Re-read files')
+  })
+
   test('hides spine savings when nothing was saved, shows it when non-zero', () => {
     const zero: SpineSavings = {
       compactions: 0,
