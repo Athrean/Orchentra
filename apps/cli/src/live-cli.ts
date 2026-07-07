@@ -24,6 +24,9 @@ import type {
   SessionRecord,
   SessionResumeResult,
   SessionTaskSummary,
+  RewindResult,
+  RewindPreview,
+  RewindFilePreview,
   SharedToolState,
   SystemPrompt,
   ToolCall,
@@ -40,6 +43,9 @@ import {
   ConversationRuntime,
   estimateMessagesTokens,
   defaultEstimator,
+  rewindBoundary,
+  countUserTurns,
+  lineDiffStats,
   groupToolSources,
   findDuplicateReads,
   prepareMemoryContext,
@@ -568,6 +574,47 @@ export class LiveCli implements SessionControl {
         files: applied,
       }
     }
+  }
+
+  async previewRewindTurns(turns: number): Promise<RewindPreview> {
+    const boundary = rewindBoundary(this.messages, turns)
+    const messagesToDrop = this.messages.length - boundary
+    if (messagesToDrop === 0) return { kind: 'empty' }
+
+    const turnsToDrop = countUserTurns(this.messages.slice(boundary))
+    // Only the most recent turn's edits are snapshotted, so the preview reports
+    // exactly what rewindTurns would revert — no more, no less.
+    const files: RewindFilePreview[] = []
+    for (const edit of this.lastTurnFileUndo) {
+      const current = await readFile(edit.path, 'utf8').catch(() => '')
+      const target = edit.existed ? edit.content : ''
+      const { added, removed } = lineDiffStats(current, target)
+      files.push({
+        path: edit.path,
+        action: edit.existed ? 'restore' : 'delete',
+        linesAdded: added,
+        linesRemoved: removed,
+      })
+    }
+    return { kind: 'preview', turnsToDrop, messagesToDrop, files }
+  }
+
+  async rewindTurns(turns: number): Promise<RewindResult> {
+    const boundary = rewindBoundary(this.messages, turns)
+    const messagesDropped = this.messages.length - boundary
+    if (messagesDropped === 0) return { kind: 'empty' }
+
+    const turnsDropped = countUserTurns(this.messages.slice(boundary))
+    // Revert the most recent turn's file effects (the newest turn we're
+    // dropping) before truncating context. Older turns aren't snapshotted, so
+    // only the last turn's files can be restored — reported honestly.
+    const undo = await this.undoLastFileEdits()
+    const filesReverted = undo.kind === 'applied' ? undo.files.length : 0
+    const fileError = undo.kind === 'error' ? undo.message : undefined
+
+    this.messages = this.messages.slice(0, boundary)
+    this.runtime = null
+    return { kind: 'applied', turnsDropped, messagesDropped, filesReverted, fileError }
   }
 
   // Bounded LLM pass that turns the dropped turns into a faithful digest when
