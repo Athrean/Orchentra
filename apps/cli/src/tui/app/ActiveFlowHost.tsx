@@ -5,6 +5,7 @@ import type { LiveCli } from '../../live-cli'
 import type { CommandRegistry } from '../../commands/builtin'
 import { setActiveRepo, setDefaultModel, trustWorkspace } from '../../session-config'
 import { AnthropicLoginCard } from '../components/AnthropicLoginCard'
+import { AskUserPrompt } from '../components/AskUserPrompt'
 import { CommandPalette } from '../components/CommandPalette'
 import { ConfirmationPrompt } from '../components/ConfirmationPrompt'
 import { EffortSlider } from '../components/EffortSlider'
@@ -93,6 +94,17 @@ export function ActiveFlowHost(props: ActiveFlowHostProps): React.ReactElement |
             dispatch({ type: 'flow/end' })
             flow.resolve('cancel')
             dispatch({ type: 'buffer/set', buffer: explainPrompt, cursor: explainPrompt.length })
+          }}
+        />
+      )
+    case 'ask-user-prompt':
+      return (
+        <AskUserPrompt
+          request={flow.request}
+          rawText={flow.rawText}
+          onSubmit={(response) => {
+            dispatch({ type: 'flow/end' })
+            flow.resolve(response)
           }}
         />
       )

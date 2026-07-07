@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Box, useApp, useInput, useStdin, useStdout } from 'ink'
 import { randomUUID } from 'node:crypto'
-import type { PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
+import type { AskUserRequest, PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
 import type { LiveCli } from '../live-cli'
 import type { CommandRegistry } from '../commands/builtin'
 import { initialState, reducer } from './reducer'
@@ -113,7 +113,20 @@ export function Tui(props: TuiProps): React.ReactElement {
         row: { kind: 'system', id: randomUUID(), text: `keybindings: ${warning}`, tone: 'warn' },
       })
     }
-    cli.setAskUser(async () => '')
+    cli.setAskUser(
+      (request) =>
+        new Promise((resolve) => {
+          dispatch({
+            type: 'flow/start',
+            flow: {
+              kind: 'ask-user-prompt',
+              request: normalizeAskUserRequest(request),
+              rawText: typeof request === 'string',
+              resolve,
+            },
+          })
+        }),
+    )
     cli.setAskToolUser(
       (request) =>
         new Promise((resolve) => {
@@ -421,4 +434,9 @@ export function Tui(props: TuiProps): React.ReactElement {
       </Box>
     </Box>
   )
+}
+
+function normalizeAskUserRequest(request: string | AskUserRequest): AskUserRequest {
+  if (typeof request === 'string') return { question: request }
+  return request
 }

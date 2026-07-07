@@ -33,6 +33,21 @@ export interface SharedToolState {
   planMode: boolean
 }
 
+export interface AskUserOption {
+  readonly id?: string
+  readonly label: string
+  readonly description?: string
+}
+
+export interface AskUserRequest {
+  readonly question: string
+  readonly options?: readonly AskUserOption[]
+  readonly multiSelect?: boolean
+  readonly allowOther?: boolean
+}
+
+export type AskUserHandler = (request: string | AskUserRequest) => Promise<string>
+
 export interface ToolContext {
   sessionId: string
   cwd: string
@@ -53,7 +68,7 @@ export interface ToolContext {
    */
   permissionMode?: import('./permissions').PermissionMode
   sharedState?: SharedToolState
-  askUser?: (prompt: string) => Promise<string>
+  askUser?: AskUserHandler
   provider?: Provider
   tools?: ToolRegistry
   /** Shared Orchentra spine prompt for nested model calls such as sub-agents. */
