@@ -19,6 +19,8 @@ interface SessionConfigFile {
   activeRepo?: string
   activeTerseMode?: TerseMode
   defaultModel?: string
+  /** Fingerprints of workspaces the user has answered the trust gate for. */
+  trustedWorkspaces?: string[]
   [extra: string]: unknown
 }
 
@@ -88,6 +90,9 @@ function load(): SessionConfigFile {
       activeRepo: typeof parsed.activeRepo === 'string' ? parsed.activeRepo : undefined,
       activeTerseMode: isTerseMode(parsed.activeTerseMode) ? parsed.activeTerseMode : undefined,
       defaultModel: typeof parsed.defaultModel === 'string' ? parsed.defaultModel : undefined,
+      trustedWorkspaces: Array.isArray(parsed.trustedWorkspaces)
+        ? parsed.trustedWorkspaces.filter((fp): fp is string => typeof fp === 'string')
+        : undefined,
     }
   } catch {
     return { version: 1 }
@@ -150,5 +155,25 @@ export function getDefaultModel(): string | null {
 export function setDefaultModel(model: string): void {
   const file = load()
   file.defaultModel = model
+  persist(file)
+}
+
+/**
+ * Whether the user has already answered the trust gate for this workspace.
+ * Keyed by the same per-cwd fingerprint the session buckets use, so the
+ * decision is remembered across sessions without re-prompting.
+ */
+export function isWorkspaceTrusted(workspaceRoot: string): boolean {
+  const fingerprint = fingerprintWorkspace(workspaceRoot)
+  return (load().trustedWorkspaces ?? []).includes(fingerprint)
+}
+
+/** Record that the user trusts this workspace. Idempotent. */
+export function trustWorkspace(workspaceRoot: string): void {
+  const fingerprint = fingerprintWorkspace(workspaceRoot)
+  const file = load()
+  const trusted = file.trustedWorkspaces ?? []
+  if (trusted.includes(fingerprint)) return
+  file.trustedWorkspaces = [...trusted, fingerprint]
   persist(file)
 }

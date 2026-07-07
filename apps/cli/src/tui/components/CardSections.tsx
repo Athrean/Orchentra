@@ -1,7 +1,7 @@
 import React from 'react'
 import { Box, Text } from 'ink'
 import { THEME } from '../theme'
-import { KVList } from './KVList'
+import { KVList } from '../design/primitives/KVList'
 import type { UiCardSection } from '../../commands/ui-output'
 
 export interface CardSectionsProps {

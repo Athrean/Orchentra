@@ -49,3 +49,29 @@ export function verbForId(id: string): string {
 }
 
 export const LOADING_VERBS = VERBS
+
+// Past-tense verbs shown on the completed-turn ("done") row, so a finished turn
+// reads as an accomplishment rather than a bare "done" every time.
+const COMPLETION_VERBS = [
+  'done',
+  'finished',
+  'wrapped up',
+  'sorted',
+  'shipped',
+  'sealed',
+  'buttoned up',
+  'squared away',
+] as const
+
+/** Deterministic completion verb for a row id — stable across re-renders. */
+export function completionVerbForId(id: string): string {
+  let h = 2166136261
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  const index = (h >>> 0) % COMPLETION_VERBS.length
+  return COMPLETION_VERBS[index] ?? COMPLETION_VERBS[0]!
+}
+
+export const COMPLETION_VERBS_LIST = COMPLETION_VERBS

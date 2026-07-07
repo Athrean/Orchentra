@@ -10,6 +10,8 @@ import {
   setActiveTerseMode,
   getDefaultModel,
   setDefaultModel,
+  isWorkspaceTrusted,
+  trustWorkspace,
   sessionConfigPath,
 } from '../src/session-config'
 
@@ -91,6 +93,32 @@ describe('session-config: activeRepo', () => {
     }
     expect(raw.activeRepo).toBe('acme/api')
     expect(raw.activeTerseMode).toBe('full')
+  })
+
+  test('a workspace is untrusted until it is explicitly trusted', () => {
+    expect(isWorkspaceTrusted(tempDir)).toBe(false)
+    trustWorkspace(tempDir)
+    expect(isWorkspaceTrusted(tempDir)).toBe(true)
+  })
+
+  test('trust is scoped per workspace and does not leak to siblings', () => {
+    const other = mkdtempSync(join(tmpdir(), 'orchentra-other-ws-'))
+    try {
+      trustWorkspace(tempDir)
+      expect(isWorkspaceTrusted(tempDir)).toBe(true)
+      expect(isWorkspaceTrusted(other)).toBe(false)
+    } finally {
+      rmSync(other, { recursive: true, force: true })
+    }
+  })
+
+  test('trusting is idempotent and preserves other session keys', () => {
+    setActiveRepo('acme/api')
+    trustWorkspace(tempDir)
+    trustWorkspace(tempDir)
+    expect(getActiveRepo()).toBe('acme/api')
+    const raw = JSON.parse(readFileSync(sessionConfigPath(), 'utf8')) as { trustedWorkspaces?: string[] }
+    expect(raw.trustedWorkspaces).toHaveLength(1)
   })
 
   test('round-trips default model and preserves existing session keys', () => {
