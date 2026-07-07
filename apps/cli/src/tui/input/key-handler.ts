@@ -85,13 +85,20 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
       case 'history-search':
         if (cur.history.length > 0) return dispatch({ type: 'history-search/open' })
         return
-      case 'delete-to-line-start':
-        return dispatch({ type: 'buffer/set', buffer: cur.buffer.slice(cur.cursor), cursor: 0 })
+      case 'delete-to-line-start': {
+        const killed = cur.buffer.slice(0, cur.cursor)
+        return dispatch({ type: 'buffer/kill', buffer: cur.buffer.slice(cur.cursor), cursor: 0, killed })
+      }
       case 'delete-word-back': {
         const trimmed = deleteWordBack(cur.buffer, cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
+        const killed = cur.buffer.slice(trimmed.cursor, cur.cursor)
+        return dispatch({ type: 'buffer/kill', buffer: trimmed.buffer, cursor: trimmed.cursor, killed })
       }
     }
+  }
+
+  if (key.ctrl && input === 'y') {
+    return dispatch({ type: 'buffer/yank' })
   }
 
   if (cur.activeCard) {

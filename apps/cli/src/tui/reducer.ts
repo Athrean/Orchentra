@@ -15,6 +15,7 @@ export function initialState(args: {
   return {
     buffer: '',
     cursor: 0,
+    killRing: '',
     draft: '',
     historyIndex: -1,
     history: args.history ?? [],
@@ -44,6 +45,22 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
   switch (action.type) {
     case 'buffer/set':
       return { ...state, buffer: action.buffer, cursor: clampCursor(action.cursor, action.buffer) }
+
+    case 'buffer/kill':
+      // Stash the removed text so ctrl+y can bring it back; an empty kill (e.g.
+      // ctrl+w at column 0) leaves the existing kill-ring untouched.
+      return {
+        ...state,
+        buffer: action.buffer,
+        cursor: clampCursor(action.cursor, action.buffer),
+        killRing: action.killed.length > 0 ? action.killed : state.killRing,
+      }
+
+    case 'buffer/yank': {
+      if (state.killRing.length === 0) return state
+      const buffer = state.buffer.slice(0, state.cursor) + state.killRing + state.buffer.slice(state.cursor)
+      return { ...state, buffer, cursor: state.cursor + state.killRing.length }
+    }
 
     case 'history/load':
       return { ...state, history: action.entries.slice(-HISTORY_CAP) }

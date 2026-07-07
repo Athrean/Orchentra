@@ -22,8 +22,9 @@ export function buildShortcutSections(kb: Keybindings): readonly ShortcutSection
       rows: [
         { key: 'enter', value: 'submit' },
         { key: 'shift+enter / alt+enter', value: 'newline (alt is a fallback for terminals that swallow shift+enter)' },
-        { key: kb.combo('delete-to-line-start'), value: 'delete to start of line' },
-        { key: kb.combo('delete-word-back'), value: 'delete previous word' },
+        { key: kb.combo('delete-to-line-start'), value: 'kill to start of line' },
+        { key: kb.combo('delete-word-back'), value: 'kill previous word' },
+        { key: 'ctrl+y', value: 'yank (paste last killed text)' },
         { key: 'alt+left / right', value: 'jump cursor to previous / next word' },
         { key: 'up / down', value: 'history (or move cursor in multi-line)' },
         { key: kb.combo('history-search'), value: 'search history (incremental reverse-search)' },
