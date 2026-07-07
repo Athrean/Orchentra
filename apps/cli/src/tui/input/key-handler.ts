@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto'
 import type { Dispatch } from 'react'
 import type { Key } from 'ink'
 import type { LiveCli } from '../../live-cli'
-import { SHORTCUT_SECTIONS } from '../help/shortcut-sections'
+import { buildShortcutSections } from '../help/shortcut-sections'
 import { evaluatePaste } from '../paste'
 import type { TuiAction, TuiState } from '../types'
 import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from '../word-boundary'
 import { endsWithBackslashLine, hasUnclosedFence, moveLine } from './motion'
+import type { Keybindings } from '../keybindings/registry'
 
 export type TuiInputKey = Key
 
@@ -21,6 +22,7 @@ export interface MainInputHandlerArgs {
   readonly submitTurn: (input: string) => Promise<void>
   readonly isMultilineModal: boolean
   readonly collapseMultilineModal: () => void
+  readonly keybindings: Keybindings
 }
 
 export function handleMainInput(args: MainInputHandlerArgs): void {
@@ -55,9 +57,34 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
     return
   }
 
-  if (key.shift && key.tab) {
-    dispatch({ type: 'mode/cycle' })
-    return
+  // Declarative global chords (ctrl+l/r/o/f/k/u/w, shift+tab). Resolved from
+  // the registry so users can rebind them via keybindings.json; ctrl+c/ctrl+d,
+  // submit, and all context-sensitive keys stay in the imperative branches
+  // below. Runs before the card/suggestion blocks — those only claim plain
+  // arrows/tab/return/esc, which never resolve to a chord action.
+  const action = args.keybindings.resolve(input, key)
+  if (action !== null) {
+    switch (action) {
+      case 'cycle-permission-mode':
+        return dispatch({ type: 'mode/cycle' })
+      case 'clear-transcript':
+        return dispatch({ type: 'transcript/clear' })
+      case 'toggle-reasoning':
+        return dispatch({ type: 'reasoning/toggle-last' })
+      case 'toggle-collapsible':
+        return dispatch({ type: 'collapsible/toggle-last' })
+      case 'command-palette':
+        return dispatch({ type: 'flow/start', flow: { kind: 'command-palette' } })
+      case 'history-search':
+        if (cur.history.length > 0) return dispatch({ type: 'history-search/open' })
+        return
+      case 'delete-to-line-start':
+        return dispatch({ type: 'buffer/set', buffer: cur.buffer.slice(cur.cursor), cursor: 0 })
+      case 'delete-word-back': {
+        const trimmed = deleteWordBack(cur.buffer, cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
+      }
+    }
   }
 
   if (cur.activeCard) {
@@ -114,16 +141,6 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
     return
   }
 
-  if (key.ctrl && input === 'l') return dispatch({ type: 'transcript/clear' })
-  if (key.ctrl && input === 'r') return dispatch({ type: 'reasoning/toggle-last' })
-  if (key.ctrl && input === 'o') return dispatch({ type: 'collapsible/toggle-last' })
-  if (key.ctrl && input === 'f' && cur.history.length > 0) return dispatch({ type: 'history-search/open' })
-
-  if (key.ctrl && input === 'k') {
-    dispatch({ type: 'flow/start', flow: { kind: 'command-palette' } })
-    return
-  }
-
   if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
     dispatch({
       type: 'card/open',
@@ -132,20 +149,10 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
         title: 'Keyboard shortcuts',
         subtitle: 'Press down or Esc to dismiss',
         activeTab: 0,
-        sectionsByTab: [SHORTCUT_SECTIONS],
+        sectionsByTab: [buildShortcutSections(args.keybindings)],
       },
     })
     return
-  }
-
-  if (key.ctrl && input === 'u') {
-    const next = cur.buffer.slice(cur.cursor)
-    return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
-  }
-
-  if (key.ctrl && input === 'w') {
-    const trimmed = deleteWordBack(cur.buffer, cur.cursor)
-    return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
   }
 
   if (key.leftArrow && (key.meta || key.ctrl)) {

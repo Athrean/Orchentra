@@ -15,6 +15,8 @@ import { appendHistory, loadHistory } from './hooks/useHistory'
 import { useChord } from './hooks/use-chord'
 import { openInEditor } from './external-editor'
 import { handleMainInput } from './input/key-handler'
+import { buildKeybindings } from './keybindings/registry'
+import { loadUserBindings } from './keybindings/load-user-bindings'
 import { InputBox } from './components/InputBox'
 import { InputModal } from './components/InputModal'
 import { HistorySearchPrompt } from './components/HistorySearchPrompt'
@@ -59,6 +61,12 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   const shellHistoryRef = useRef<string[]>([])
 
+  // Build the keybinding registry once from defaults + the user's
+  // keybindings.json. Warnings (bad combos, reserved conflicts) surface as
+  // system notices on mount so a broken config is visible, not silent.
+  const userBindings = useMemo(() => loadUserBindings(), [])
+  const keybindings = useMemo(() => buildKeybindings(userBindings.overrides), [userBindings])
+
   // Buffer ≥ 5 wrapped rows swaps the inline input for a modal overlay.
   // Esc collapses the modal back to inline while preserving the buffer;
   // the flag resets whenever the buffer shrinks under the threshold so a
@@ -94,6 +102,12 @@ export function Tui(props: TuiProps): React.ReactElement {
       dispatch({
         type: 'transcript/push',
         row: { kind: 'system', id: randomUUID(), text: notice, tone: 'warn' },
+      })
+    }
+    for (const warning of [...userBindings.warnings, ...keybindings.warnings]) {
+      dispatch({
+        type: 'transcript/push',
+        row: { kind: 'system', id: randomUUID(), text: `keybindings: ${warning}`, tone: 'warn' },
       })
     }
     cli.setAskUser(async () => '')
@@ -311,6 +325,7 @@ export function Tui(props: TuiProps): React.ReactElement {
         submitTurn,
         isMultilineModal,
         collapseMultilineModal: () => setModalCollapsed(true),
+        keybindings,
       })
     },
     { isActive: state.activeFlow === null },
