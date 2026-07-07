@@ -26,6 +26,7 @@ import { Suggestions } from './components/Suggestions'
 import { Footer } from './status/Footer'
 import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
+import { buildToolDiffPreview } from './components/tool-diff-preview'
 import { isWorkspaceTrusted } from '../session-config'
 import type { BannerOptions } from '../render/banner'
 
@@ -123,6 +124,7 @@ export function Tui(props: TuiProps): React.ReactElement {
               request: {
                 toolLabel: `${request.toolName} call`,
                 commandLine: request.inputJson,
+                diff: buildToolDiffPreview(request.toolName, request.inputJson) ?? undefined,
                 allowPattern: request.suggestedPattern,
               },
               resolve,

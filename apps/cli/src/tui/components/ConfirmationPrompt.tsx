@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
 import { THEME } from '../theme'
+import { DiffView } from './DiffView'
 
 export type PromptChoice = 'allow-once' | 'allow-pattern' | 'deny' | 'cancel'
 
@@ -9,6 +10,12 @@ export interface PromptRequest {
   readonly toolLabel: string
   /** Proposed command rendered with the `$ ` prefix. */
   readonly commandLine: string
+  /**
+   * Pre-rendered unified diff for file-editing tools. When present it is shown
+   * in place of `commandLine` so the user approves an actual change, not a raw
+   * JSON blob.
+   */
+  readonly diff?: string
   /** Optional one-line context shown below the command. */
   readonly context?: string
   /** Glob pattern offered for option 2 ("Yes, and allow this pattern"). */
@@ -77,7 +84,7 @@ export function ConfirmationPrompt(props: ConfirmationPromptProps): React.ReactE
       <Text color={THEME.brand} bold>
         {props.request.toolLabel}
       </Text>
-      <Text>{props.request.commandLine}</Text>
+      {props.request.diff ? <DiffView text={props.request.diff} /> : <Text>{props.request.commandLine}</Text>}
       {props.request.context ? <Text dimColor>{props.request.context}</Text> : null}
       <Box height={1} />
       <Text>Do you want to proceed?</Text>
