@@ -1,3 +1,4 @@
+import type { ContextBreakdown } from './context-breakdown'
 import type { UsageTotals } from './events'
 import type { PermissionMode } from './permissions'
 import type { EffortTier } from './provider'
@@ -39,6 +40,42 @@ export type UndoFileEditsResult =
   | { readonly kind: 'applied'; readonly files: readonly UndoFileEditResult[] }
   | { readonly kind: 'error'; readonly message: string; readonly files: readonly UndoFileEditResult[] }
 
+export type RewindResult =
+  | { readonly kind: 'empty' }
+  | {
+      readonly kind: 'applied'
+      /** User-turns removed from the model context. */
+      readonly turnsDropped: number
+      /** Messages removed from the model context. */
+      readonly messagesDropped: number
+      /** File edits reverted from the most recent rewound turn (best-effort). */
+      readonly filesReverted: number
+      /** Present when reverting the last turn's files failed. */
+      readonly fileError?: string
+    }
+
+export interface RewindFilePreview {
+  readonly path: string
+  /** `restore` rewrites the pre-turn content; `delete` removes a file the turn created. */
+  readonly action: 'restore' | 'delete'
+  /** Lines the revert would add back (vs the current on-disk content). */
+  readonly linesAdded: number
+  /** Lines the revert would strip from the current on-disk content. */
+  readonly linesRemoved: number
+}
+
+export type RewindPreview =
+  | { readonly kind: 'empty' }
+  | {
+      readonly kind: 'preview'
+      /** User-turns a subsequent rewind would drop. */
+      readonly turnsToDrop: number
+      /** Messages a subsequent rewind would drop. */
+      readonly messagesToDrop: number
+      /** File edits the revert would touch, with per-file line churn. */
+      readonly files: readonly RewindFilePreview[]
+    }
+
 export interface SessionResumeResult {
   readonly sessionId: string
   readonly path: string
@@ -79,6 +116,11 @@ export interface SessionControl {
   getUsage(): UsageTotals
   /** Estimated live conversation footprint before provider-side caching. */
   getContextStats?(): ContextStats
+  /**
+   * Per-source accounting for `/context`: which tool schemas and repeated file
+   * reads are eating the window, beyond the aggregate `getContextStats` total.
+   */
+  getContextBreakdown?(): ContextBreakdown
   /** Current session goal, when one has been set with /goal. */
   getGoal?(): SessionGoal | null
   setGoal?(objective: string): SessionGoal
@@ -88,6 +130,14 @@ export interface SessionControl {
   cancelTask?(id: string): boolean
   /** Revert successful write/edit_file effects from the most recent agent turn. */
   undoLastFileEdits?(): Promise<UndoFileEditsResult>
+  /** Roll the model context back `turns` user-turns and revert the most recent
+   * turn's file edits (best-effort). Distinct from undoLastFileEdits, which
+   * only touches files. */
+  rewindTurns?(turns: number): Promise<RewindResult>
+  /** Dry-run a rewind: report the turns/messages and file edits a subsequent
+   * rewindTurns(turns) would touch, without mutating anything. Powers the
+   * look-before-you-leap preview gate in /rewind. */
+  previewRewindTurns?(turns: number): Promise<RewindPreview>
   /** Output tokens + turns spent under each terse mode this session. */
   getTerseBreakdown?(): readonly TerseModeUsage[]
   /** Measured compaction + tool-output-trim savings, when the session tracks them. */

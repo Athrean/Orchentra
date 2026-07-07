@@ -3,38 +3,32 @@ import { Box, useApp, useInput, useStdin, useStdout } from 'ink'
 import { randomUUID } from 'node:crypto'
 import type { PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
 import type { LiveCli } from '../live-cli'
-import { costWarningText, memorySavedText, toolOutputBudgetedText } from '../renderer'
 import type { CommandRegistry } from '../commands/builtin'
-import type { CommandContext } from '../commands/builtin'
 import { initialState, reducer } from './reducer'
+import { handleRuntimeEvent } from './app/runtime-events'
+import { executeSlashCommand } from './app/slash-command-executor'
+import { ActiveFlowHost } from './app/ActiveFlowHost'
 import { pickVerb } from './components/loading-verbs'
 import { computeSuggestions } from './suggestions'
-import { evaluatePaste, expandPastes } from './paste'
-import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from './word-boundary'
+import { expandPastes } from './paste'
 import { appendHistory, loadHistory } from './hooks/useHistory'
 import { useChord } from './hooks/use-chord'
 import { openInEditor } from './external-editor'
+import { handleMainInput } from './input/key-handler'
+import { buildKeybindings } from './keybindings/registry'
+import { loadUserBindings } from './keybindings/load-user-bindings'
 import { InputBox } from './components/InputBox'
 import { InputModal } from './components/InputModal'
+import { HistorySearchPrompt } from './components/HistorySearchPrompt'
+import { QueuedMessages } from './components/QueuedMessages'
 import { countWrappedLines } from './use-line-count'
 import { Suggestions } from './components/Suggestions'
-import { Footer } from './components/Footer'
+import { Footer } from './status/Footer'
 import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
-import { AnthropicLoginCard } from './components/AnthropicLoginCard'
-import { ConfirmationPrompt } from './components/ConfirmationPrompt'
-import { ModelPickerCard } from './components/ModelPickerCard'
-import { EffortSlider } from './components/EffortSlider'
-import { PlanLevelSlider } from './components/PlanLevelSlider'
-import { RepoPickerCard } from './components/RepoPickerCard'
-import { LoginPickerCard } from './components/LoginPickerCard'
-import { ThemePicker } from './components/ThemePicker'
-import { CommandPalette } from './components/CommandPalette'
-import { setActiveRepo, setDefaultModel } from '../session-config'
-import { loadActiveTheme, saveActiveTheme } from './theme-registry'
-import { planNeedFromTranscript } from './transcript-context'
+import { buildToolDiffPreview } from './components/tool-diff-preview'
+import { isWorkspaceTrusted } from '../session-config'
 import type { BannerOptions } from '../render/banner'
-import type { TranscriptRow, TuiAction, TuiState } from './types'
 
 export interface TuiProps {
   readonly cli: LiveCli
@@ -70,6 +64,12 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   const shellHistoryRef = useRef<string[]>([])
 
+  // Build the keybinding registry once from defaults + the user's
+  // keybindings.json. Warnings (bad combos, reserved conflicts) surface as
+  // system notices on mount so a broken config is visible, not silent.
+  const userBindings = useMemo(() => loadUserBindings(), [])
+  const keybindings = useMemo(() => buildKeybindings(userBindings.overrides), [userBindings])
+
   // Buffer ≥ 5 wrapped rows swaps the inline input for a modal overlay.
   // Esc collapses the modal back to inline while preserving the buffer;
   // the flag resets whenever the buffer shrinks under the threshold so a
@@ -84,7 +84,7 @@ export function Tui(props: TuiProps): React.ReactElement {
 
   const wireEvents = useCallback(() => {
     const sink = (event: RuntimeEvent): void => {
-      handleRuntimeEvent(event, dispatch, streamingIdRef, reasoningIdRef, toolCallNamesRef)
+      handleRuntimeEvent(event, dispatch, { streamingIdRef, reasoningIdRef, toolCallNamesRef })
     }
     cli.setEventSink(sink)
     return () => cli.setEventSink(null)
@@ -107,6 +107,12 @@ export function Tui(props: TuiProps): React.ReactElement {
         row: { kind: 'system', id: randomUUID(), text: notice, tone: 'warn' },
       })
     }
+    for (const warning of [...userBindings.warnings, ...keybindings.warnings]) {
+      dispatch({
+        type: 'transcript/push',
+        row: { kind: 'system', id: randomUUID(), text: `keybindings: ${warning}`, tone: 'warn' },
+      })
+    }
     cli.setAskUser(async () => '')
     cli.setAskToolUser(
       (request) =>
@@ -118,6 +124,7 @@ export function Tui(props: TuiProps): React.ReactElement {
               request: {
                 toolLabel: `${request.toolName} call`,
                 commandLine: request.inputJson,
+                diff: buildToolDiffPreview(request.toolName, request.inputJson) ?? undefined,
                 allowPattern: request.suggestedPattern,
               },
               resolve,
@@ -154,6 +161,15 @@ export function Tui(props: TuiProps): React.ReactElement {
       process.stdout.write('[?25h')
     }
   }, [wireEvents, cli])
+
+  // First entry into an untrusted directory: gate all input behind a one-time
+  // trust prompt before any prompt can be submitted (and thus any tool run).
+  useEffect(() => {
+    if (!isWorkspaceTrusted(props.cwd)) {
+      dispatch({ type: 'flow/start', flow: { kind: 'trust-gate', cwd: props.cwd } })
+    }
+    // Runs once on mount; the gate only applies to the directory the CLI opened in.
+  }, [])
 
   // Spinner & elapsed timer ticker.
   const [spinnerFrame, setSpinnerFrame] = useState(0)
@@ -229,162 +245,19 @@ export function Tui(props: TuiProps): React.ReactElement {
       // rather than the LLM runtime.
       const trimmed = text.trim()
       if (trimmed.startsWith('/')) {
-        const resolved = registry.resolve(trimmed)
-        if (resolved instanceof Error) {
-          dispatch({
-            type: 'transcript/push',
-            row: { kind: 'error', id: randomUUID(), message: resolved.message },
-          })
-          return
-        }
-        if (resolved !== null) {
-          let usedUiSink = false
-          let activeStreamId: string | null = null
-          const ui = (output: import('../commands/ui-output').UiOutput): void => {
-            usedUiSink = true
-            switch (output.kind) {
-              case 'text':
-                dispatch({
-                  type: 'transcript/push',
-                  row: { kind: 'system', id: randomUUID(), text: output.text, tone: 'info' },
-                })
-                return
-              case 'note':
-                dispatch({
-                  type: 'transcript/push',
-                  row: { kind: 'system', id: randomUUID(), text: output.text, tone: output.tone ?? 'info' },
-                })
-                return
-              case 'clear-session':
-                clearScreen?.()
-                dispatch({ type: 'session/clear-visible', note: output.text, noteId: randomUUID() })
-                return
-              case 'card':
-                if (output.sectionsByTab && output.tabs) {
-                  dispatch({
-                    type: 'card/open',
-                    card: {
-                      id: randomUUID(),
-                      title: output.title,
-                      subtitle: output.subtitle,
-                      tabs: output.tabs,
-                      activeTab: output.tabs.active,
-                      sectionsByTab: output.sectionsByTab,
-                    },
-                  })
-                } else {
-                  dispatch({
-                    type: 'transcript/push',
-                    row: {
-                      kind: 'card',
-                      id: randomUUID(),
-                      title: output.title,
-                      subtitle: output.subtitle,
-                      tabs: output.tabs,
-                      sections: output.sections,
-                    },
-                  })
-                }
-                return
-              case 'stream':
-                if (activeStreamId === null) {
-                  activeStreamId = randomUUID()
-                  dispatch({
-                    type: 'transcript/system-stream-begin',
-                    rowId: activeStreamId,
-                    label: output.label,
-                  })
-                }
-                dispatch({
-                  type: 'transcript/system-stream-append',
-                  rowId: activeStreamId,
-                  delta: output.delta,
-                })
-                return
-              case 'login-flow':
-                if (output.provider === 'anthropic') {
-                  dispatch({ type: 'flow/start', flow: { kind: 'anthropic-login' } })
-                }
-                return
-              case 'login-picker':
-                dispatch({ type: 'flow/start', flow: { kind: 'login-picker' } })
-                return
-              case 'model-picker':
-                dispatch({ type: 'flow/start', flow: { kind: 'model-picker', current: output.current } })
-                return
-              case 'effort-picker':
-                dispatch({ type: 'flow/start', flow: { kind: 'effort-picker', current: output.current } })
-                return
-              case 'plan-level-picker':
-                dispatch({ type: 'flow/start', flow: { kind: 'plan-level-picker', current: output.current } })
-                return
-              case 'repo-picker':
-                dispatch({
-                  type: 'flow/start',
-                  flow: { kind: 'repo-picker', repos: output.repos, current: output.current },
-                })
-                return
-              case 'theme-picker':
-                dispatch({ type: 'flow/start', flow: { kind: 'theme-picker' } })
-                return
-            }
-          }
-          const ctx: CommandContext = {
-            cwd,
-            session: cli,
-            ui,
-            setCwd: (next) => {
-              setCwd(next)
-              cli.setCwd?.(next)
-            },
-            getRecentTranscriptContext: () => planNeedFromTranscript(stateRef.current.transcript),
-            getTranscriptText: () => transcriptText(stateRef.current.transcript),
-            runTurn: async (input) => {
-              streamingIdRef.current = null
-              dispatch({ type: 'turn/start' })
-              try {
-                await cli.runTurn(input)
-              } finally {
-                streamingIdRef.current = null
-                dispatch({ type: 'transcript/stream-end' })
-                dispatch({ type: 'turn/end' })
-              }
-            },
-          }
-          const captured = captureStdio()
-          try {
-            const shouldContinue = await resolved.handler.execute(resolved.args, ctx)
-            const output = captured.stop().trimEnd()
-            if (output.length > 0 && !usedUiSink) {
-              dispatch({
-                type: 'transcript/push',
-                row: { kind: 'system', id: randomUUID(), text: output, tone: 'info' },
-              })
-            }
-            if (activeStreamId !== null) dispatch({ type: 'transcript/system-stream-end' })
-            dispatch({ type: 'mode/set', mode: cli.getPermissionMode() })
-            dispatch({ type: 'terse/set', mode: cli.getTerseMode() })
-            if (!shouldContinue) exit()
-          } catch (err) {
-            const output = captured.stop().trimEnd()
-            if (output.length > 0 && !usedUiSink) {
-              dispatch({
-                type: 'transcript/push',
-                row: { kind: 'system', id: randomUUID(), text: output, tone: 'info' },
-              })
-            }
-            if (activeStreamId !== null) dispatch({ type: 'transcript/system-stream-end' })
-            dispatch({
-              type: 'transcript/push',
-              row: {
-                kind: 'error',
-                id: randomUUID(),
-                message: err instanceof Error ? err.message : String(err),
-              },
-            })
-          }
-          return
-        }
+        const handled = await executeSlashCommand({
+          input: trimmed,
+          registry,
+          cli,
+          cwd,
+          dispatch,
+          getState: () => stateRef.current,
+          setCwd,
+          clearScreen,
+          exit,
+          streamingIdRef,
+        })
+        if (handled) return
       }
 
       // Shell shortcut.
@@ -412,6 +285,22 @@ export function Tui(props: TuiProps): React.ReactElement {
     },
     [cli, cwd, registry, exit, clearScreen],
   )
+
+  // Drain the type-ahead queue: once the runtime goes idle, submit the oldest
+  // queued message. `submitTurn` starts the next turn (or resolves quickly for
+  // slash/empty input), and the effect re-fires on the resulting idle to drain
+  // the rest, one at a time, in order. The ref guards against a second submit
+  // slipping in before `turn/start` lands.
+  const drainingRef = useRef(false)
+  useEffect(() => {
+    if (state.turn.state !== 'idle' || state.queued.length === 0 || drainingRef.current) return
+    drainingRef.current = true
+    const next = state.queued[0]
+    dispatch({ type: 'queue/shift' })
+    void submitTurn(next).finally(() => {
+      drainingRef.current = false
+    })
+  }, [state.turn.state, state.queued, submitTurn])
 
   // Ctrl+x ctrl+e — open the current buffer in $EDITOR. The chord state
   // lives outside `useInput` because the action half spawns a blocking
@@ -454,234 +343,27 @@ export function Tui(props: TuiProps): React.ReactElement {
   // interactive flow (e.g. Anthropic login overlay) owns input.
   useInput(
     (input, key) => {
-      const cur = stateRef.current
-
-      // Chord interception (ctrl+x ctrl+e → open in $EDITOR). Runs only while
-      // a turn is idle — mid-turn the buffer is not the active surface.
-      if (cur.turn.state === 'idle' && chordEditor(input, key)) return
-
-      // While a turn is running, only Esc/Ctrl+C can do anything useful.
-      if (cur.turn.state !== 'idle') {
-        if (key.ctrl && input === 'c') {
-          if (cur.turn.state === 'running') {
-            dispatch({ type: 'turn/cancelling' })
-            cli.abort()
-          }
-          return
-        }
-        if (key.escape) {
-          if (cur.turn.state === 'running') {
-            dispatch({ type: 'turn/cancelling' })
-            cli.abort()
-          }
-          return
-        }
-        return
-      }
-
-      if (key.shift && key.tab) {
-        dispatch({ type: 'mode/cycle' })
-        return
-      }
-
-      // Active card hijacks navigation keys while focused.
-      if (cur.activeCard) {
-        const tabsLen = cur.activeCard.tabs?.items.length ?? 0
-        if (tabsLen > 0 && key.leftArrow) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab - 1 })
-        if (tabsLen > 0 && key.rightArrow)
-          return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
-        if (tabsLen > 0 && key.tab) return dispatch({ type: 'card/set-tab', index: cur.activeCard.activeTab + 1 })
-        if (key.downArrow || key.escape) return dispatch({ type: 'card/dismiss' })
-        // Anything else falls through to normal handling.
-      }
-
-      if (cur.suggestions.open) {
-        if (key.upArrow) return dispatch({ type: 'suggestions/move', delta: -1 })
-        if (key.downArrow) return dispatch({ type: 'suggestions/move', delta: 1 })
-        if (key.escape) return dispatch({ type: 'suggestions/close' })
-        if (key.tab || key.return) {
-          const item = cur.suggestions.items[cur.suggestions.selected]
-          if (item) {
-            const before = cur.buffer.slice(0, cur.suggestions.anchorStart)
-            const after = cur.buffer.slice(cur.cursor)
-            const insert = `${item.value} `
-            const next = `${before}${insert}${after}`
-            dispatch({ type: 'buffer/set', buffer: next, cursor: before.length + insert.length })
-            dispatch({ type: 'suggestions/close' })
-          }
-          return
-        }
-      }
-
-      if (key.ctrl && input === 'c') {
-        if (cur.buffer.length > 0) {
-          dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
-          dispatch({ type: 'exit-hint/clear' })
-          return
-        }
-        if (cur.exitHintUntil !== null) {
-          exit()
-          return
-        }
-        dispatch({ type: 'exit-hint/show', until: Date.now() + 1500 })
-        return
-      }
-
-      if (key.ctrl && input === 'd') {
-        if (cur.buffer.length === 0) {
-          exit()
-          return
-        }
-        // forward-delete
-        if (cur.cursor < cur.buffer.length) {
-          const next = cur.buffer.slice(0, cur.cursor) + cur.buffer.slice(cur.cursor + 1)
-          dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
-        }
-        return
-      }
-
-      if (key.ctrl && input === 'l') {
-        return dispatch({ type: 'transcript/clear' })
-      }
-
-      if (key.ctrl && input === 'r') {
-        return dispatch({ type: 'reasoning/toggle-last' })
-      }
-
-      if (key.ctrl && input === 'o') {
-        return dispatch({ type: 'collapsible/toggle-last' })
-      }
-
-      if (key.ctrl && input === 'k') {
-        dispatch({ type: 'flow/start', flow: { kind: 'command-palette' } })
-        return
-      }
-
-      if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
-        dispatch({
-          type: 'card/open',
-          card: {
-            id: randomUUID(),
-            title: 'Keyboard shortcuts',
-            subtitle: 'Press ↓ or Esc to dismiss',
-            activeTab: 0,
-            sectionsByTab: [SHORTCUT_SECTIONS],
-          },
-        })
-        return
-      }
-
-      if (key.ctrl && input === 'u') {
-        const next = cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
-      }
-
-      if (key.ctrl && input === 'w') {
-        const trimmed = deleteWordBack(cur.buffer, cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
-      }
-
-      if (key.leftArrow && (key.meta || key.ctrl)) {
-        return dispatch({
-          type: 'buffer/set',
-          buffer: cur.buffer,
-          cursor: wordBoundaryLeft(cur.buffer, cur.cursor),
-        })
-      }
-      if (key.rightArrow && (key.meta || key.ctrl)) {
-        return dispatch({
-          type: 'buffer/set',
-          buffer: cur.buffer,
-          cursor: wordBoundaryRight(cur.buffer, cur.cursor),
-        })
-      }
-
-      if (key.upArrow) {
-        const onFirstLine = cur.buffer.indexOf('\n') === -1 || cur.cursor <= cur.buffer.indexOf('\n')
-        if (onFirstLine) return dispatch({ type: 'history/prev' })
-        return moveLine(cur, -1, dispatch)
-      }
-      if (key.downArrow) {
-        const lastNl = cur.buffer.lastIndexOf('\n')
-        const onLastLine = lastNl === -1 || cur.cursor > lastNl
-        if (onLastLine) return dispatch({ type: 'history/next' })
-        return moveLine(cur, 1, dispatch)
-      }
-      if (key.leftArrow) {
-        return dispatch({ type: 'buffer/set', buffer: cur.buffer, cursor: Math.max(0, cur.cursor - 1) })
-      }
-      if (key.rightArrow) {
-        return dispatch({
-          type: 'buffer/set',
-          buffer: cur.buffer,
-          cursor: Math.min(cur.buffer.length, cur.cursor + 1),
-        })
-      }
-
-      if (key.return) {
-        if (key.shift || key.meta || endsWithBackslashLine(cur.buffer, cur.cursor)) {
-          // Insert newline; if backslash-EOL, replace the backslash with newline.
-          if (endsWithBackslashLine(cur.buffer, cur.cursor)) {
-            const next = cur.buffer.slice(0, cur.cursor - 1) + '\n' + cur.buffer.slice(cur.cursor)
-            return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor })
-          }
-          const next = cur.buffer.slice(0, cur.cursor) + '\n' + cur.buffer.slice(cur.cursor)
-          return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 1 })
-        }
-        if (hasUnclosedFence(cur.buffer)) {
-          const next = cur.buffer.slice(0, cur.cursor) + '\n' + cur.buffer.slice(cur.cursor)
-          return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 1 })
-        }
-        void submitTurn(cur.buffer)
-        return
-      }
-
-      if (key.tab) {
-        const next = cur.buffer.slice(0, cur.cursor) + '  ' + cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + 2 })
-      }
-
-      if (key.backspace || key.delete) {
-        if (cur.cursor === 0) return
-        const next = cur.buffer.slice(0, cur.cursor - 1) + cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor - 1 })
-      }
-
-      if (key.escape) {
-        // When the modal overlay is up, esc collapses it (preserving the
-        // buffer) instead of clearing — gives the user a way to dismiss
-        // the chrome without losing what they typed.
-        if (isMultilineModal) {
-          setModalCollapsed(true)
-          return
-        }
-        if (cur.buffer.length > 0) {
-          return dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
-        }
-        return
-      }
-
-      if (input && input.length > 0 && !key.ctrl && !key.meta) {
-        // Paste detection: large multi-line input arriving in one keystroke.
-        const paste = evaluatePaste(input)
-        if (paste) {
-          dispatch({
-            type: 'paste/add',
-            chip: { id: paste.chipId, content: paste.content, lines: paste.lines },
-          })
-          const insert = paste.chipMarker
-          const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
-          return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
-        }
-        const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
-        return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
-      }
+      handleMainInput({
+        input,
+        key,
+        state: stateRef.current,
+        dispatch,
+        cli,
+        exit,
+        chordEditor,
+        submitTurn,
+        isMultilineModal,
+        collapseMultilineModal: () => setModalCollapsed(true),
+        keybindings,
+      })
     },
     { isActive: state.activeFlow === null },
   )
 
-  const showSuggestions = state.suggestions.open && state.turn.state === 'idle'
-  const inputDisabled = state.turn.state !== 'idle'
+  const showSuggestions = state.suggestions.open && state.turn.state === 'idle' && state.historySearch === null
+  // Input stays live while a turn runs so the user can type ahead; queued
+  // messages drain in order once idle (see the drain effect above).
+  const inputDisabled = false
   const suggestionsWidth = useMemo(() => Math.max(40, Math.min(cols - 2, 100)), [cols])
 
   return (
@@ -693,156 +375,19 @@ export function Tui(props: TuiProps): React.ReactElement {
         banner={props.banner}
       />
       <Box flexDirection="column">
-        {state.activeFlow?.kind === 'anthropic-login' ? (
-          <AnthropicLoginCard
-            onComplete={(result) => {
-              dispatch({ type: 'flow/end' })
-              dispatch({
-                type: 'transcript/push',
-                row: result.ok
-                  ? { kind: 'system', id: randomUUID(), text: `✓ ${result.message}`, tone: 'info' }
-                  : { kind: 'error', id: randomUUID(), message: `Anthropic login: ${result.message}` },
-              })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'login-picker' ? (
-          <LoginPickerCard
-            onComplete={(result) => {
-              dispatch({ type: 'flow/end' })
-              if (result.message === 'cancelled') return
-              dispatch({
-                type: 'transcript/push',
-                row: result.ok
-                  ? { kind: 'system', id: randomUUID(), text: `✓ ${result.message}`, tone: 'info' }
-                  : { kind: 'system', id: randomUUID(), text: result.message, tone: 'info' },
-              })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'confirmation-prompt' ? (
-          <ConfirmationPrompt
-            request={state.activeFlow.request}
-            onChoose={(choice) => {
-              const flow = state.activeFlow
-              dispatch({ type: 'flow/end' })
-              if (flow?.kind === 'confirmation-prompt') flow.resolve(choice)
-            }}
-            onExplain={() => {
-              const flow = state.activeFlow
-              if (flow?.kind !== 'confirmation-prompt') return
-              const explainPrompt = `Explain this command before I run it: ${flow.request.commandLine}`
-              dispatch({ type: 'flow/end' })
-              flow.resolve('cancel')
-              dispatch({ type: 'buffer/set', buffer: explainPrompt, cursor: explainPrompt.length })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'model-picker' ? (
-          <ModelPickerCard
-            current={state.activeFlow.current}
-            onPick={(modelId, scope) => {
-              const resolved = cli.setModel(modelId)
-              if (scope === 'default') setDefaultModel(resolved)
-              dispatch({ type: 'model/set', model: resolved })
-              dispatch({ type: 'flow/end' })
-              dispatch({
-                type: 'transcript/push',
-                row: {
-                  kind: 'system',
-                  id: randomUUID(),
-                  text: scope === 'default' ? `✓ default model → ${resolved}` : `✓ model → ${resolved} (session)`,
-                  tone: 'info',
-                },
-              })
-            }}
-            onCancel={() => {
-              dispatch({ type: 'flow/end' })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'effort-picker' ? (
-          <EffortSlider
-            current={state.activeFlow.current}
-            onPick={(effort) => {
-              const set = cli.setEffort?.(effort) ?? effort
-              dispatch({ type: 'flow/end' })
-              dispatch({
-                type: 'transcript/push',
-                row: { kind: 'system', id: randomUUID(), text: `✓ effort → ${set}`, tone: 'info' },
-              })
-            }}
-            onCancel={() => {
-              dispatch({ type: 'flow/end' })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'plan-level-picker' ? (
-          <PlanLevelSlider
-            current={state.activeFlow.current}
-            onPick={(level) => {
-              const set = cli.setPlanLevel?.(level) ?? level
-              dispatch({ type: 'flow/end' })
-              dispatch({
-                type: 'transcript/push',
-                row: { kind: 'system', id: randomUUID(), text: `✓ plan depth → ${set}`, tone: 'info' },
-              })
-            }}
-            onCancel={() => {
-              dispatch({ type: 'flow/end' })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'repo-picker' ? (
-          <RepoPickerCard
-            repos={state.activeFlow.repos}
-            current={state.activeFlow.current}
-            onPick={(fullName) => {
-              setActiveRepo(fullName)
-              dispatch({ type: 'flow/end' })
-              dispatch({
-                type: 'transcript/push',
-                row: { kind: 'system', id: randomUUID(), text: `✓ active repo → ${fullName}`, tone: 'info' },
-              })
-            }}
-            onCancel={() => {
-              dispatch({ type: 'flow/end' })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'theme-picker' ? (
-          <ThemePicker
-            current={loadActiveTheme()}
-            onPick={(name) => {
-              saveActiveTheme(name)
-              dispatch({ type: 'flow/end' })
-              dispatch({
-                type: 'transcript/push',
-                row: { kind: 'system', id: randomUUID(), text: `✓ theme → ${name}`, tone: 'info' },
-              })
-            }}
-            onCancel={() => {
-              dispatch({ type: 'flow/end' })
-            }}
-          />
-        ) : null}
-        {state.activeFlow?.kind === 'command-palette' ? (
-          <CommandPalette
-            registry={registry}
-            onPick={(command) => {
-              const cur = stateRef.current
-              const insert = `${command} `
-              const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
-              dispatch({ type: 'flow/end' })
-              dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
-            }}
-            onCancel={() => {
-              dispatch({ type: 'flow/end' })
-            }}
-          />
-        ) : null}
+        <ActiveFlowHost
+          flow={state.activeFlow}
+          cli={cli}
+          registry={registry}
+          dispatch={dispatch}
+          getState={() => stateRef.current}
+          exit={exit}
+        />
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
-        {isMultilineModal ? (
+        <QueuedMessages queued={state.queued} />
+        {state.historySearch ? (
+          <HistorySearchPrompt search={state.historySearch} history={state.history} />
+        ) : isMultilineModal ? (
           <InputModal
             buffer={state.buffer}
             cursor={state.cursor}
@@ -869,316 +414,11 @@ export function Tui(props: TuiProps): React.ReactElement {
           turn={state.turn}
           spinnerFrame={spinnerFrame}
           exitHintActive={state.exitHintUntil !== null}
+          exitHintKey={state.exitHintKey ?? undefined}
+          contextStats={cli.getContextStats?.()}
+          tasks={cli.listTaskSummaries?.()}
         />
       </Box>
     </Box>
   )
-}
-
-const SHORTCUT_SECTIONS = [
-  {
-    title: 'Editing',
-    rows: [
-      { key: 'enter', value: 'submit' },
-      { key: 'shift+enter / alt+enter', value: 'newline (alt is a fallback for terminals that swallow shift+enter)' },
-      { key: 'ctrl+u', value: 'delete to start of line' },
-      { key: 'ctrl+w', value: 'delete previous word' },
-      { key: 'alt+← / →', value: 'jump cursor to previous / next word' },
-      { key: '↑ / ↓', value: 'history (or move cursor in multi-line)' },
-    ],
-  },
-  {
-    title: 'Session',
-    rows: [
-      { key: 'ctrl+l', value: 'clear transcript' },
-      { key: 'ctrl+r', value: 'expand / collapse last reasoning block' },
-      { key: 'ctrl+o', value: 'expand / collapse last tool result' },
-      { key: 'ctrl+e', value: 'explain pending command (in confirmation overlay)' },
-      { key: 'shift+tab', value: 'cycle permission mode' },
-      { key: 'esc', value: 'cancel running turn / clear buffer' },
-      { key: 'ctrl+c', value: 'cancel turn / quit' },
-      { key: 'ctrl+d', value: 'forward delete / quit on empty line' },
-    ],
-  },
-  {
-    title: 'Discovery',
-    rows: [
-      { key: '/', value: 'slash command picker' },
-      { key: 'ctrl+k', value: 'command palette' },
-      { key: '@', value: 'file path picker' },
-      { key: '!', value: 'shell shortcut' },
-      { key: '?', value: 'this help (when buffer is empty)' },
-    ],
-  },
-] as const
-
-// ---- handlers / helpers ----
-
-function handleRuntimeEvent(
-  event: RuntimeEvent,
-  dispatch: React.Dispatch<TuiAction>,
-  streamingIdRef: React.MutableRefObject<string | null>,
-  reasoningIdRef: React.MutableRefObject<string | null>,
-  toolCallNamesRef: React.MutableRefObject<Map<string, string>>,
-): void {
-  switch (event.kind) {
-    case 'text': {
-      if (reasoningIdRef.current !== null) {
-        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
-        reasoningIdRef.current = null
-      }
-      let id = streamingIdRef.current
-      if (id === null) {
-        id = randomUUID()
-        streamingIdRef.current = id
-        dispatch({ type: 'transcript/stream-begin', rowId: id })
-      }
-      dispatch({ type: 'transcript/stream-append', rowId: id, delta: event.delta })
-      break
-    }
-    case 'reasoning': {
-      let id = reasoningIdRef.current
-      if (id === null) {
-        id = randomUUID()
-        reasoningIdRef.current = id
-        dispatch({ type: 'transcript/reasoning-begin', rowId: id, startedAt: Date.now() })
-      }
-      dispatch({ type: 'transcript/reasoning-append', rowId: id, delta: event.delta })
-      break
-    }
-    case 'tool_args_delta': {
-      if (reasoningIdRef.current !== null) {
-        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
-        reasoningIdRef.current = null
-      }
-      if (streamingIdRef.current !== null) {
-        streamingIdRef.current = null
-        dispatch({ type: 'transcript/stream-end' })
-      }
-      dispatch({
-        type: 'transcript/tool-args-append',
-        toolUseId: event.toolUseId,
-        toolName: event.toolName,
-        delta: event.partialJson,
-      })
-      break
-    }
-    case 'tool_use':
-      if (reasoningIdRef.current !== null) {
-        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
-        reasoningIdRef.current = null
-      }
-      streamingIdRef.current = null
-      dispatch({ type: 'transcript/stream-end' })
-      toolCallNamesRef.current.set(event.call.id, event.call.name)
-      dispatch({
-        type: 'transcript/tool-args-finalize',
-        toolUseId: event.call.id,
-        toolName: event.call.name,
-        input: typeof event.call.input === 'string' ? event.call.input : JSON.stringify(event.call.input),
-      })
-      break
-    case 'tool_result': {
-      const name = toolCallNamesRef.current.get(event.result.id)
-      toolCallNamesRef.current.delete(event.result.id)
-      dispatch({
-        type: 'transcript/push',
-        row: {
-          kind: 'tool_result',
-          id: randomUUID(),
-          name,
-          preview: event.result.content,
-          isError: event.result.isError,
-          expanded: false,
-        },
-      })
-      break
-    }
-    case 'compacted':
-      dispatch({
-        type: 'transcript/push',
-        row: { kind: 'compacted', id: randomUUID(), dropped: event.droppedMessageCount, saved: event.tokensSaved },
-      })
-      break
-    case 'cost_warning':
-      dispatch({
-        type: 'transcript/push',
-        row: {
-          kind: 'system',
-          id: randomUUID(),
-          tone: 'warn',
-          text: costWarningText(event.costUsd, event.thresholdUsd, event.limitUsd),
-        },
-      })
-      break
-    case 'tool_output_budgeted':
-      dispatch({
-        type: 'transcript/push',
-        row: {
-          kind: 'system',
-          id: randomUUID(),
-          tone: 'info',
-          text: toolOutputBudgetedText(event.droppedChars, event.keptChars),
-        },
-      })
-      break
-    case 'memory_saved':
-      dispatch({
-        type: 'transcript/push',
-        row: { kind: 'system', id: randomUUID(), tone: 'info', text: memorySavedText(event.id) },
-      })
-      break
-    case 'hook_progress': {
-      const phaseLabel = event.hookEvent === 'pre_tool_use' ? 'pre' : 'post'
-      if (event.phase === 'running') {
-        dispatch({
-          type: 'transcript/push',
-          row: { kind: 'system', id: event.id, tone: 'info', text: `⚙ hook ${phaseLabel} · ${event.command} …` },
-        })
-      } else {
-        dispatch({
-          type: 'transcript/system-update',
-          id: event.id,
-          text: `${event.ok ? '✓' : '✗'} hook ${phaseLabel} · ${event.command}${event.ok ? '' : ' (failed)'}`,
-          tone: event.ok ? 'info' : 'warn',
-        })
-      }
-      break
-    }
-    case 'usage':
-      dispatch({ type: 'tokens/set', usage: event.cumulative })
-      break
-    case 'error':
-      if (!event.retryable) {
-        dispatch({ type: 'transcript/push', row: { kind: 'error', id: randomUUID(), message: event.message } })
-      }
-      break
-    case 'done':
-      if (reasoningIdRef.current !== null) {
-        dispatch({ type: 'transcript/reasoning-end', rowId: reasoningIdRef.current, endedAt: Date.now() })
-        reasoningIdRef.current = null
-      }
-      streamingIdRef.current = null
-      dispatch({ type: 'transcript/stream-end' })
-      break
-  }
-}
-
-function transcriptText(rows: readonly TranscriptRow[]): string | null {
-  const lines: string[] = []
-  for (const row of rows) {
-    switch (row.kind) {
-      case 'user':
-        lines.push(`User: ${row.text}`)
-        break
-      case 'assistant':
-        lines.push(`Assistant: ${row.text}`)
-        break
-      case 'system':
-        lines.push(`System: ${row.text}`)
-        break
-      case 'error':
-        lines.push(`Error: ${row.message}`)
-        break
-      case 'tool_call':
-        lines.push(`Tool ${row.name}: ${row.input}`)
-        break
-      case 'tool_result':
-        lines.push(`Tool result${row.name ? ` ${row.name}` : ''}: ${row.preview}`)
-        break
-      case 'stream':
-        lines.push(`${row.label ?? 'Stream'}: ${row.text}`)
-        break
-      case 'reasoning':
-        if (row.text.trim()) lines.push(`Reasoning: ${row.text}`)
-        break
-      case 'done':
-        lines.push(`Done: ${row.steps} steps, ${row.usage.inputTokens + row.usage.outputTokens} tokens`)
-        break
-      case 'compacted':
-        lines.push(`Compacted: dropped ${row.dropped}, saved ${row.saved}`)
-        break
-      case 'card':
-        lines.push([row.title, row.subtitle].filter(Boolean).join(' - '))
-        for (const section of row.sections) {
-          if (section.title) lines.push(section.title)
-          for (const r of section.rows) lines.push(`${r.key}: ${r.value}`)
-        }
-        break
-    }
-  }
-  const out = lines.join('\n').trim()
-  return out.length === 0 ? null : out
-}
-
-function moveLine(state: TuiState, delta: -1 | 1, dispatch: React.Dispatch<TuiAction>): void {
-  const lines = state.buffer.split('\n')
-  let lineIdx = 0
-  let consumed = 0
-  let column = state.cursor
-  for (let i = 0; i < lines.length; i++) {
-    const len = lines[i].length
-    if (state.cursor <= consumed + len) {
-      lineIdx = i
-      column = state.cursor - consumed
-      break
-    }
-    consumed += len + 1
-  }
-  const target = lineIdx + delta
-  if (target < 0 || target >= lines.length) return
-  const targetCol = Math.min(column, lines[target].length)
-  let pos = 0
-  for (let i = 0; i < target; i++) pos += lines[i].length + 1
-  pos += targetCol
-  dispatch({ type: 'buffer/set', buffer: state.buffer, cursor: pos })
-}
-
-function endsWithBackslashLine(buffer: string, cursor: number): boolean {
-  if (cursor === 0) return false
-  return buffer[cursor - 1] === '\\'
-}
-
-interface StdioCapture {
-  stop: () => string
-}
-
-/**
- * Temporarily replace `process.stdout.write` and `process.stderr.write` with
- * collectors. Slash commands write to stdout directly; without this, those
- * writes get clobbered by Ink's bottom-panel renderer. Returns a handle whose
- * `stop()` restores the originals and returns the captured text.
- *
- * Note: this is a process-wide patch for the duration of the command. We do
- * not run multiple commands concurrently in the TUI, so that's fine — but
- * don't call this from anywhere that might overlap.
- */
-function captureStdio(): StdioCapture {
-  const buf: string[] = []
-  const origOut = process.stdout.write.bind(process.stdout)
-  const origErr = process.stderr.write.bind(process.stderr)
-  const collector = ((chunk: string | Uint8Array): boolean => {
-    buf.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'))
-    return true
-  }) as typeof process.stdout.write
-  process.stdout.write = collector
-  process.stderr.write = collector
-  return {
-    stop: () => {
-      process.stdout.write = origOut
-      process.stderr.write = origErr
-      return buf.join('')
-    },
-  }
-}
-
-function hasUnclosedFence(buffer: string): boolean {
-  let count = 0
-  for (let i = 0; i < buffer.length - 2; i++) {
-    if (buffer[i] === '`' && buffer[i + 1] === '`' && buffer[i + 2] === '`') {
-      count += 1
-      i += 2
-    }
-  }
-  return count % 2 === 1
 }

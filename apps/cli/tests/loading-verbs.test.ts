@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { LOADING_VERBS, pickVerb } from '../src/tui/components/loading-verbs'
+import {
+  COMPLETION_VERBS_LIST,
+  LOADING_VERBS,
+  completionVerbForId,
+  pickVerb,
+} from '../src/tui/components/loading-verbs'
 
 describe('pickVerb', () => {
   test('returns a verb from the configured pool', () => {
@@ -17,5 +22,16 @@ describe('pickVerb', () => {
       expect(v.length).toBeGreaterThanOrEqual(4)
       expect(v.endsWith('ing')).toBe(true)
     }
+  })
+})
+
+describe('completionVerbForId', () => {
+  test('returns a verb from the completion pool', () => {
+    const verb = completionVerbForId('row-1')
+    expect(COMPLETION_VERBS_LIST.includes(verb as (typeof COMPLETION_VERBS_LIST)[number])).toBe(true)
+  })
+
+  test('is deterministic for a given id (no flicker across re-renders)', () => {
+    expect(completionVerbForId('abc')).toBe(completionVerbForId('abc'))
   })
 })

@@ -115,7 +115,14 @@ export type {
   SessionTaskSummary,
   UndoFileEditResult,
   UndoFileEditsResult,
+  RewindResult,
+  RewindFilePreview,
+  RewindPreview,
 } from './session-control'
+
+export { rewindBoundary, countUserTurns, lineDiffStats } from './rewind'
+export { groupToolSources, findDuplicateReads } from './context-breakdown'
+export type { ContextBreakdown, ContextToolSource, DuplicateFileRead } from './context-breakdown'
 
 export { isKnownModel } from './model-availability'
 
@@ -145,6 +152,8 @@ export { buildSystemPrompt } from './system-prompt'
 
 export type { SessionMeta, SessionRecord, SessionWriterOptions } from './session'
 export { SessionWriter, replaySession, resolveSessionPath, defaultSessionDir } from './session'
+export type { RetrievedToolOutput } from './session-retrieval'
+export { SessionRetrieval, SessionRetrievalError } from './session-retrieval'
 
 export type { CompactionInput, CompactionResult, TokenEstimator, LlmSummarizer } from './compaction'
 export { shouldCompact, compact, compactWithSummary, estimateMessagesTokens, defaultEstimator } from './compaction'
