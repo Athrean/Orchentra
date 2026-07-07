@@ -64,3 +64,17 @@ export interface HookFireResult {
   readonly blockedReason?: string
   readonly annotations?: readonly string[]
 }
+
+/**
+ * Live progress for a single hook invocation. `running` fires before the hook
+ * spawns; `done` fires once it exits, with `ok` reflecting a zero exit code.
+ * The shared `id` lets the UI update the same row in place.
+ */
+export interface HookProgressUpdate {
+  readonly id: string
+  readonly phase: 'running' | 'done'
+  readonly ok?: boolean
+  readonly event: HookEvent
+  readonly tool: string
+  readonly command: string
+}

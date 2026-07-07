@@ -78,6 +78,122 @@ describe('LiveCli sessions', () => {
     }
   })
 
+  test('startNewSession resets cost tracking and the session goal but keeps preferences', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-reset-'))
+    try {
+      const provider = scriptedProvider([
+        [
+          { kind: 'usage', usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+          { kind: 'finish', stopReason: 'end_turn' },
+        ],
+      ])
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'reset-session',
+        sharedState: sharedState(),
+      })
+      const writer = await SessionWriter.open({
+        rootDir: dir,
+        id: 'reset-session',
+        meta: { cwd: dir, model: 'test-model' },
+      })
+      cli.setSession(writer)
+      cli.setEventSink(() => {})
+      cli.setGoal('ship the fix')
+
+      await cli.runTurn('do work')
+      expect(cli.getTurns()).toBe(1)
+      expect(cli.getUsage().outputTokens).toBe(5)
+      expect(cli.getGoal()).not.toBeNull()
+
+      await cli.startNewSession()
+      await cli.persistSession()
+
+      expect(cli.getTurns()).toBe(0)
+      expect(cli.getUsage()).toEqual({
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+      })
+      expect(cli.getGoal()).toBeNull()
+      // User preferences (model, permission mode) survive a fresh session.
+      expect(cli.getModel()).toBe('test-model')
+      expect(cli.getPermissionMode()).toBe('workspace-write')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('startNewSession resets conversation-scoped scratch state but keeps tasks and plan mode', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-scratch-'))
+    try {
+      const provider = fakeProvider()
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const state = sharedState()
+      const originalTaskStore = state.taskStore
+      state.todos = [{ id: 't1', content: 'do a thing', status: 'pending' }]
+      state.agentCounter = 3
+      state.planMode = true
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'scratch-session',
+        sharedState: state,
+      })
+
+      await cli.startNewSession()
+
+      // Per-conversation scratch resets on a fresh session.
+      expect(state.todos).toEqual([])
+      expect(state.agentCounter).toBe(0)
+      // Background tasks and the user-toggled plan mode survive /clear.
+      expect(state.taskStore).toBe(originalTaskStore)
+      expect(state.planMode).toBe(true)
+      expect(cli.getPlanMode()).toBe(true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('getContextBreakdown reports the built-in tool schemas and no duplicate reads', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-breakdown-'))
+    try {
+      const provider = fakeProvider()
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'breakdown-session',
+        sharedState: sharedState(),
+      })
+
+      const breakdown = cli.getContextBreakdown()
+      // No MCP servers are configured, so every tool is grouped under built-in.
+      expect(breakdown.toolSources.map((s) => s.server)).toEqual(['built-in'])
+      expect(breakdown.toolSources[0].tools).toBeGreaterThan(0)
+      expect(breakdown.toolSources[0].estimatedTokens).toBeGreaterThan(0)
+      // A fresh session has read nothing, so there is nothing to flag.
+      expect(breakdown.duplicateReads).toEqual([])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   test('runTurn records user messages in the session log for future resume', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-user-log-'))
     try {
@@ -318,6 +434,100 @@ describe('LiveCli sessions', () => {
 
       expect(result.kind).toBe('applied')
       expect(readFileSync(target, 'utf8')).toBe('before\n')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('rewindTurns drops the last turn from context and reverts its file edits', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-rewind-'))
+    try {
+      const target = join(dir, 'created.txt')
+      const provider = scriptedProvider([
+        [
+          {
+            kind: 'tool-use',
+            call: { id: 'w1', name: 'write_file', input: { path: 'created.txt', content: 'x' } },
+          },
+          { kind: 'finish', stopReason: 'tool_use' },
+        ],
+        [{ kind: 'finish', stopReason: 'end_turn' }],
+      ])
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'rewind-session',
+        sharedState: sharedState(),
+      })
+      cli.setEventSink(() => {})
+      cli.setAskToolUser(async () => 'allow-once')
+
+      await cli.runTurn('make a file')
+      expect(readFileSync(target, 'utf8')).toBe('x')
+      expect(cli.getContextStats().messages).toBeGreaterThan(0)
+
+      const result = await cli.rewindTurns(1)
+
+      expect(result.kind).toBe('applied')
+      if (result.kind === 'applied') {
+        expect(result.turnsDropped).toBe(1)
+        expect(result.filesReverted).toBe(1)
+      }
+      expect(existsSync(target)).toBe(false)
+      expect(cli.getContextStats().messages).toBe(0)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('previewRewindTurns reports the file revert without mutating anything', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-rewind-preview-'))
+    try {
+      const target = join(dir, 'created.txt')
+      const provider = scriptedProvider([
+        [
+          {
+            kind: 'tool-use',
+            call: { id: 'w1', name: 'write_file', input: { path: 'created.txt', content: 'x' } },
+          },
+          { kind: 'finish', stopReason: 'tool_use' },
+        ],
+        [{ kind: 'finish', stopReason: 'end_turn' }],
+      ])
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'rewind-preview-session',
+        sharedState: sharedState(),
+      })
+      cli.setEventSink(() => {})
+      cli.setAskToolUser(async () => 'allow-once')
+
+      await cli.runTurn('make a file')
+      const messagesBefore = cli.getContextStats().messages
+
+      const preview = await cli.previewRewindTurns(1)
+
+      expect(preview.kind).toBe('preview')
+      if (preview.kind === 'preview') {
+        expect(preview.turnsToDrop).toBe(1)
+        expect(preview.files).toHaveLength(1)
+        expect(preview.files[0].action).toBe('delete')
+        expect(preview.files[0].linesRemoved).toBeGreaterThan(0)
+      }
+      // Preview is a dry run: file still present, context untouched.
+      expect(readFileSync(target, 'utf8')).toBe('x')
+      expect(cli.getContextStats().messages).toBe(messagesBefore)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

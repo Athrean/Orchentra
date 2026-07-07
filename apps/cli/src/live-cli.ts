@@ -24,6 +24,9 @@ import type {
   SessionRecord,
   SessionResumeResult,
   SessionTaskSummary,
+  RewindResult,
+  RewindPreview,
+  RewindFilePreview,
   SharedToolState,
   SystemPrompt,
   ToolCall,
@@ -40,6 +43,11 @@ import {
   ConversationRuntime,
   estimateMessagesTokens,
   defaultEstimator,
+  rewindBoundary,
+  countUserTurns,
+  lineDiffStats,
+  groupToolSources,
+  findDuplicateReads,
   prepareMemoryContext,
   captureMemoryFromTurn,
   spinePrompt,
@@ -54,6 +62,7 @@ import {
 } from '@orchentra/cli-core'
 import type {
   AskUser as ToolAskUser,
+  ContextBreakdown,
   PermissionStore,
   PolicyHandle,
   PolicyRule,
@@ -62,6 +71,7 @@ import type {
   StoredPermissionRule,
   TerseModeUsage,
 } from '@orchentra/cli-core'
+import { isMcpToolName } from '@orchentra/cli-tools'
 import {
   Spinner,
   renderToolCall,
@@ -235,6 +245,30 @@ export class LiveCli implements SessionControl {
     this.eventSink = sink
   }
 
+  /**
+   * Surface a repo-local hook's live progress to the UI. Emitted straight to
+   * the event sink (not persisted) so a "running hook…" row can appear and
+   * then resolve to pass/fail while the hook executes.
+   */
+  emitHookProgress(update: {
+    id: string
+    phase: 'running' | 'done'
+    ok?: boolean
+    event: 'pre_tool_use' | 'post_tool_use'
+    tool: string
+    command: string
+  }): void {
+    this.eventSink?.({
+      kind: 'hook_progress',
+      id: update.id,
+      phase: update.phase,
+      ok: update.ok,
+      hookEvent: update.event,
+      tool: update.tool,
+      command: update.command,
+    })
+  }
+
   setAskUser(askUser: AskUserOverride | null): void {
     this.askUserOverride = askUser
   }
@@ -314,6 +348,14 @@ export class LiveCli implements SessionControl {
       estimatedTokens: estimateMessagesTokens(this.messages, defaultEstimator),
       contextWindowTokens: 200_000,
       compactThresholdRatio: this.compactionThreshold,
+    }
+  }
+
+  getContextBreakdown(): ContextBreakdown {
+    const serverOf = (name: string): string => (isMcpToolName(name) ? name.split('__')[1] : 'built-in')
+    return {
+      toolSources: groupToolSources(this.tools.list(), serverOf, defaultEstimator),
+      duplicateReads: findDuplicateReads(this.messages),
     }
   }
 
@@ -404,6 +446,17 @@ export class LiveCli implements SessionControl {
   async startNewSession(): Promise<void> {
     this.clearHistory()
     this.runtime = null
+    // A fresh session drops conversation-scoped state so the footer's cost /
+    // context readouts and the injected goal start from zero — mirroring the
+    // tracker reset that resumeSession already performs. User preferences
+    // (model, permission mode, effort, terse mode) intentionally survive.
+    this.tracker = new UsageTracker()
+    this.goal = null
+    // Per-conversation scratch state resets too. Background tasks (taskStore)
+    // and the user-toggled plan mode deliberately survive, matching how
+    // preferences and running work outlive /clear in Claude Code.
+    this.sharedState.todos = []
+    this.sharedState.agentCounter = 0
     const current = this.session
     if (!current) {
       this.sessionId = randomUUID()
@@ -545,6 +598,47 @@ export class LiveCli implements SessionControl {
         files: applied,
       }
     }
+  }
+
+  async previewRewindTurns(turns: number): Promise<RewindPreview> {
+    const boundary = rewindBoundary(this.messages, turns)
+    const messagesToDrop = this.messages.length - boundary
+    if (messagesToDrop === 0) return { kind: 'empty' }
+
+    const turnsToDrop = countUserTurns(this.messages.slice(boundary))
+    // Only the most recent turn's edits are snapshotted, so the preview reports
+    // exactly what rewindTurns would revert — no more, no less.
+    const files: RewindFilePreview[] = []
+    for (const edit of this.lastTurnFileUndo) {
+      const current = await readFile(edit.path, 'utf8').catch(() => '')
+      const target = edit.existed ? edit.content : ''
+      const { added, removed } = lineDiffStats(current, target)
+      files.push({
+        path: edit.path,
+        action: edit.existed ? 'restore' : 'delete',
+        linesAdded: added,
+        linesRemoved: removed,
+      })
+    }
+    return { kind: 'preview', turnsToDrop, messagesToDrop, files }
+  }
+
+  async rewindTurns(turns: number): Promise<RewindResult> {
+    const boundary = rewindBoundary(this.messages, turns)
+    const messagesDropped = this.messages.length - boundary
+    if (messagesDropped === 0) return { kind: 'empty' }
+
+    const turnsDropped = countUserTurns(this.messages.slice(boundary))
+    // Revert the most recent turn's file effects (the newest turn we're
+    // dropping) before truncating context. Older turns aren't snapshotted, so
+    // only the last turn's files can be restored — reported honestly.
+    const undo = await this.undoLastFileEdits()
+    const filesReverted = undo.kind === 'applied' ? undo.files.length : 0
+    const fileError = undo.kind === 'error' ? undo.message : undefined
+
+    this.messages = this.messages.slice(0, boundary)
+    this.runtime = null
+    return { kind: 'applied', turnsDropped, messagesDropped, filesReverted, fileError }
   }
 
   // Bounded LLM pass that turns the dropped turns into a faithful digest when

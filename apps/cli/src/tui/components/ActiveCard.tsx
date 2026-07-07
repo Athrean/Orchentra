@@ -1,7 +1,7 @@
 import React from 'react'
 import { Box, Text } from 'ink'
 import { THEME } from '../theme'
-import { Tabs } from './Tabs'
+import { Tabs } from '../design/primitives/Tabs'
 import { CardSections } from './CardSections'
 import type { ActiveCardState } from '../types'
 

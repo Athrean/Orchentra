@@ -13,6 +13,7 @@ import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config
 import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
+import type { HookProgressUpdate } from './hooks/types'
 import { builtinModelAliases, createProvider, resolveModelAlias } from './provider-factory'
 
 export interface ResolvedModel {
@@ -75,7 +76,10 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     planMode: false,
   }
 
-  const hookRunner = new CliCoreHookAdapter(options.cwd)
+  // The hook adapter is built before the LiveCli it reports into, so route its
+  // progress through a mutable holder that we point at the cli once it exists.
+  const hookProgress = { emit: (_u: HookProgressUpdate) => {} }
+  const hookRunner = new CliCoreHookAdapter(options.cwd, (u) => hookProgress.emit(u))
 
   const cli = new LiveCli({
     model: initial.model,
@@ -92,6 +96,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     budgetConfig: config.featureConfig.budget,
     hookRunner,
   })
+  hookProgress.emit = (u) => cli.emitHookProgress(u)
 
   const session = await SessionWriter.open({
     rootDir: getSessionsDirForWorkspace(options.cwd),
