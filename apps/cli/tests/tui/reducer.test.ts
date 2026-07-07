@@ -32,6 +32,47 @@ describe('tui reducer', () => {
     expect(s.history).toEqual(['hello', 'world'])
   })
 
+  describe('type-ahead queue', () => {
+    test('enqueue appends trimmed messages in FIFO order and skips blanks', () => {
+      let s = reducer(base(), { type: 'queue/enqueue', text: '  first  ' })
+      s = reducer(s, { type: 'queue/enqueue', text: 'second' })
+      s = reducer(s, { type: 'queue/enqueue', text: '   ' })
+      expect(s.queued).toEqual(['first', 'second'])
+    })
+
+    test('shift drains from the front', () => {
+      let s = reducer(base(), { type: 'queue/enqueue', text: 'a' })
+      s = reducer(s, { type: 'queue/enqueue', text: 'b' })
+      s = reducer(s, { type: 'queue/shift' })
+      expect(s.queued).toEqual(['b'])
+      s = reducer(s, { type: 'queue/shift' })
+      expect(s.queued).toEqual([])
+      // shifting an empty queue is a no-op
+      expect(reducer(s, { type: 'queue/shift' }).queued).toEqual([])
+    })
+
+    test('clearing the session empties the queue', () => {
+      let s = reducer(base(), { type: 'queue/enqueue', text: 'pending' })
+      s = reducer(s, { type: 'session/clear-visible', noteId: 'n1' })
+      expect(s.queued).toEqual([])
+    })
+
+    test('recall-last pulls the newest queued message into the buffer to edit', () => {
+      let s = reducer(base(), { type: 'queue/enqueue', text: 'first' })
+      s = reducer(s, { type: 'queue/enqueue', text: 'second' })
+      s = reducer(s, { type: 'queue/recall-last' })
+      expect(s.queued).toEqual(['first'])
+      expect(s.buffer).toBe('second')
+      expect(s.cursor).toBe('second'.length)
+    })
+
+    test('recall-last on an empty queue is a no-op', () => {
+      const s = reducer(base(), { type: 'queue/recall-last' })
+      expect(s.queued).toEqual([])
+      expect(s.buffer).toBe('')
+    })
+  })
+
   describe('history reverse-search', () => {
     const seeded = (): ReturnType<typeof initialState> =>
       reducer(base(), { type: 'history/load', entries: ['git status', 'npm test', 'git push'] })
