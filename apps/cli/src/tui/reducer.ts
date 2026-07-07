@@ -1,6 +1,7 @@
 import type { PermissionMode, TerseMode } from '@orchentra/cli-core'
 import { emptyUsage } from '@orchentra/cli-core'
 import { pickVerb } from './components/loading-verbs'
+import { findAdjacentMatch, findLatestMatch } from './input/history-search'
 import { PERMISSION_MODE_CYCLE, type SuggestionState, type TranscriptRow, type TuiAction, type TuiState } from './types'
 
 export const HISTORY_CAP = 5000
@@ -14,9 +15,12 @@ export function initialState(args: {
   return {
     buffer: '',
     cursor: 0,
+    killRing: '',
     draft: '',
     historyIndex: -1,
     history: args.history ?? [],
+    historySearch: null,
+    queued: [],
     suggestions: emptySuggestions(),
     transcript: [],
     turn: { state: 'idle', startedAt: null, elapsedMs: 0, tokens: emptyUsage(), verb: null },
@@ -25,6 +29,7 @@ export function initialState(args: {
     model: args.model,
     pastes: {},
     exitHintUntil: null,
+    exitHintKey: null,
     streamingRowId: null,
     screenGeneration: 0,
     activeCard: null,
@@ -40,6 +45,22 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
   switch (action.type) {
     case 'buffer/set':
       return { ...state, buffer: action.buffer, cursor: clampCursor(action.cursor, action.buffer) }
+
+    case 'buffer/kill':
+      // Stash the removed text so ctrl+y can bring it back; an empty kill (e.g.
+      // ctrl+w at column 0) leaves the existing kill-ring untouched.
+      return {
+        ...state,
+        buffer: action.buffer,
+        cursor: clampCursor(action.cursor, action.buffer),
+        killRing: action.killed.length > 0 ? action.killed : state.killRing,
+      }
+
+    case 'buffer/yank': {
+      if (state.killRing.length === 0) return state
+      const buffer = state.buffer.slice(0, state.cursor) + state.killRing + state.buffer.slice(state.cursor)
+      return { ...state, buffer, cursor: state.cursor + state.killRing.length }
+    }
 
     case 'history/load':
       return { ...state, history: action.entries.slice(-HISTORY_CAP) }
@@ -73,6 +94,54 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, history: trimmedHistory }
     }
 
+    case 'history-search/open':
+      // Opening closes any open suggestion popup so the search prompt owns the
+      // input row alone.
+      return { ...state, historySearch: { query: '', matchIndex: null }, suggestions: emptySuggestions() }
+
+    case 'history-search/set-query': {
+      const matchIndex = findLatestMatch(state.history, action.query)
+      return { ...state, historySearch: { query: action.query, matchIndex } }
+    }
+
+    case 'history-search/cycle': {
+      const search = state.historySearch
+      if (!search || search.matchIndex === null) return state
+      const next = findAdjacentMatch(state.history, search.query, search.matchIndex, action.direction)
+      if (next === search.matchIndex) return state
+      return { ...state, historySearch: { ...search, matchIndex: next } }
+    }
+
+    case 'history-search/accept': {
+      const search = state.historySearch
+      if (!search || search.matchIndex === null) {
+        // No match to accept — just dismiss, leaving the buffer as it was.
+        return { ...state, historySearch: null }
+      }
+      const chosen = state.history[search.matchIndex] ?? ''
+      return { ...state, historySearch: null, historyIndex: -1, buffer: chosen, cursor: chosen.length }
+    }
+
+    case 'history-search/cancel':
+      return { ...state, historySearch: null }
+
+    case 'queue/enqueue': {
+      const trimmed = action.text.trim()
+      if (trimmed.length === 0) return state
+      return { ...state, queued: [...state.queued, trimmed] }
+    }
+
+    case 'queue/shift': {
+      if (state.queued.length === 0) return state
+      return { ...state, queued: state.queued.slice(1) }
+    }
+
+    case 'queue/recall-last': {
+      if (state.queued.length === 0) return state
+      const last = state.queued[state.queued.length - 1]
+      return { ...state, queued: state.queued.slice(0, -1), buffer: last, cursor: last.length }
+    }
+
     case 'suggestions/set':
       return { ...state, suggestions: action.state }
 
@@ -89,6 +158,14 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
     case 'transcript/push':
       return { ...state, transcript: [...state.transcript, action.row] }
 
+    case 'transcript/system-update': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.id || row.kind !== 'system') return row
+        return { ...row, text: action.text, tone: action.tone ?? row.tone }
+      })
+      return { ...state, transcript: next }
+    }
+
     case 'transcript/clear':
       return { ...state, transcript: [] }
 
@@ -102,10 +179,13 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
         cursor: 0,
         draft: '',
         historyIndex: -1,
+        historySearch: null,
+        queued: [],
         suggestions: emptySuggestions(),
         transcript,
         pastes: {},
         exitHintUntil: null,
+        exitHintKey: null,
         streamingRowId: null,
         screenGeneration: state.screenGeneration + 1,
         activeCard: null,
@@ -339,10 +419,10 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, pastes: { ...state.pastes, [action.chip.id]: action.chip } }
 
     case 'exit-hint/show':
-      return { ...state, exitHintUntil: action.until }
+      return { ...state, exitHintUntil: action.until, exitHintKey: action.key }
 
     case 'exit-hint/clear':
-      return { ...state, exitHintUntil: null }
+      return { ...state, exitHintUntil: null, exitHintKey: null }
 
     case 'card/open':
       return { ...state, activeCard: action.card }

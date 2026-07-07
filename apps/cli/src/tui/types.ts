@@ -1,5 +1,6 @@
 import type { EffortTier, PermissionMode, PlanLevel, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import type { UiCardSection, UiTabs } from '../commands/ui-output'
+import type { HistorySearchState } from './input/history-search'
 
 export interface CardRow {
   readonly kind: 'card'
@@ -54,6 +55,9 @@ export type TranscriptRow =
 
 export type SuggestionTrigger = '/' | '@' | '!'
 
+/** Exit keys that arm the double-press-to-exit hint. */
+export type ExitHintKey = 'ctrl+c' | 'ctrl+d'
+
 export interface SuggestionItem {
   /** Text inserted into the buffer when this item is accepted. */
   readonly value: string
@@ -102,11 +106,24 @@ export interface ActiveCardState {
 export interface TuiState {
   readonly buffer: string
   readonly cursor: number
+  /** Last text removed by ctrl+u / ctrl+w, recallable with ctrl+y (yank). */
+  readonly killRing: string
   /** Draft saved while scrolling history; restored at index -1. */
   readonly draft: string
   /** -1 = live draft, 0 = most recent submission, increasing = older. */
   readonly historyIndex: number
   readonly history: readonly string[]
+  /**
+   * Active incremental history reverse-search (ctrl+f), or null when idle.
+   * While set, the input line is replaced by the search prompt and all keys
+   * route to the search instead of buffer editing.
+   */
+  readonly historySearch: HistorySearchState | null
+  /**
+   * Messages the user submitted while a turn was still running, in FIFO order.
+   * Drained one at a time once the runtime goes idle (type-ahead queue).
+   */
+  readonly queued: readonly string[]
   readonly suggestions: SuggestionState
   readonly transcript: readonly TranscriptRow[]
   readonly turn: TurnStatus
@@ -114,8 +131,11 @@ export interface TuiState {
   readonly terseMode: TerseMode
   readonly model: string
   readonly pastes: Readonly<Record<string, PasteChip>>
-  /** Timestamp (ms) until which the "press Ctrl+C again to exit" hint is shown. */
+  /** Timestamp (ms) until which the "press <key> again to exit" hint is shown. */
   readonly exitHintUntil: number | null
+  /** Which exit key armed the hint, so the double-press gate and the footer
+   * message stay per-key (ctrl+c and ctrl+d don't cross-trigger). */
+  readonly exitHintKey: ExitHintKey | null
   /** Id of the assistant row currently being streamed into, if any. */
   readonly streamingRowId: string | null
   /** Bumps when `/clear` resets the screen so Ink replays Static output from a fresh identity. */
@@ -136,6 +156,7 @@ export interface TuiState {
 }
 
 export type ActiveFlowState =
+  | { readonly kind: 'trust-gate'; readonly cwd: string }
   | { readonly kind: 'anthropic-login' }
   | { readonly kind: 'login-picker' }
   | { readonly kind: 'model-picker'; readonly current: string }
@@ -156,14 +177,25 @@ export type ActiveFlowState =
 
 export type TuiAction =
   | { type: 'buffer/set'; buffer: string; cursor: number }
+  | { type: 'buffer/kill'; buffer: string; cursor: number; killed: string }
+  | { type: 'buffer/yank' }
   | { type: 'history/load'; entries: readonly string[] }
   | { type: 'history/prev' }
   | { type: 'history/next' }
   | { type: 'history/append'; text: string }
+  | { type: 'queue/enqueue'; text: string }
+  | { type: 'queue/shift' }
+  | { type: 'queue/recall-last' }
+  | { type: 'history-search/open' }
+  | { type: 'history-search/set-query'; query: string }
+  | { type: 'history-search/cycle'; direction: 'older' | 'newer' }
+  | { type: 'history-search/accept' }
+  | { type: 'history-search/cancel' }
   | { type: 'suggestions/set'; state: SuggestionState }
   | { type: 'suggestions/close' }
   | { type: 'suggestions/move'; delta: number }
   | { type: 'transcript/push'; row: TranscriptRow }
+  | { type: 'transcript/system-update'; id: string; text: string; tone?: 'info' | 'warn' }
   | { type: 'transcript/clear' }
   | { type: 'session/clear-visible'; note?: string; noteId: string }
   | { type: 'transcript/stream-begin'; rowId: string }
@@ -205,7 +237,7 @@ export type TuiAction =
   | { type: 'terse/set'; mode: TerseMode }
   | { type: 'model/set'; model: string }
   | { type: 'paste/add'; chip: PasteChip }
-  | { type: 'exit-hint/show'; until: number }
+  | { type: 'exit-hint/show'; until: number; key: ExitHintKey }
   | { type: 'exit-hint/clear' }
   | { type: 'card/open'; card: ActiveCardState }
   | { type: 'card/set-tab'; index: number }

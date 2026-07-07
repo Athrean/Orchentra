@@ -1,23 +1,17 @@
 import { promises as fs } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { fuzzyScore } from './fuzzy'
+import { makeIgnoreMatcher, parseGitignore } from './gitignore'
 import type { SuggestionItem } from '../types'
 
 const MAX_ENTRIES = 5000
 const MAX_DEPTH = 6
-const SKIP_DIRS = new Set([
-  'node_modules',
-  '.git',
-  '.next',
-  '.turbo',
-  'dist',
-  'build',
-  '.cache',
-  '.parcel-cache',
-  'coverage',
-  '.nuxt',
-  '.svelte-kit',
-])
+// A performance/safety floor skipped regardless of .gitignore — these are
+// catastrophic to walk and effectively always ignored. Everything else is
+// driven by the repo's actual .gitignore.
+const ALWAYS_SKIP = new Set(['.git', 'node_modules'])
+
+type IgnoreMatcher = (relPath: string, isDir: boolean) => boolean
 
 export interface FileIndex {
   readonly cwd: string
@@ -38,15 +32,26 @@ export async function loadFileIndex(cwd: string): Promise<FileIndex> {
   if (cachedIndex && cachedIndex.cwd === cwd && now - cachedAt < CACHE_TTL_MS) {
     return cachedIndex
   }
+  const ignored = await loadIgnoreMatcher(cwd)
   const entries: string[] = []
-  await walk(cwd, cwd, 0, entries)
+  await walk(cwd, cwd, 0, entries, ignored)
   entries.sort()
   cachedIndex = { cwd, entries }
   cachedAt = now
   return cachedIndex
 }
 
-async function walk(root: string, dir: string, depth: number, out: string[]): Promise<void> {
+/** Read the workspace-root `.gitignore` and compile it; absent → ignores nothing. */
+async function loadIgnoreMatcher(cwd: string): Promise<IgnoreMatcher> {
+  try {
+    const text = await fs.readFile(join(cwd, '.gitignore'), 'utf8')
+    return makeIgnoreMatcher(parseGitignore(text))
+  } catch {
+    return () => false
+  }
+}
+
+async function walk(root: string, dir: string, depth: number, out: string[], ignored: IgnoreMatcher): Promise<void> {
   if (depth > MAX_DEPTH || out.length >= MAX_ENTRIES) return
   let dirents
   try {
@@ -59,11 +64,13 @@ async function walk(root: string, dir: string, depth: number, out: string[]): Pr
     const name = dirent.name
     if (name.startsWith('.') && name !== '.env' && name !== '.gitignore') continue
     const full = join(dir, name)
+    const rel = toPosix(relative(root, full))
     if (dirent.isDirectory()) {
-      if (SKIP_DIRS.has(name)) continue
-      await walk(root, full, depth + 1, out)
+      if (ALWAYS_SKIP.has(name) || ignored(rel, true)) continue
+      await walk(root, full, depth + 1, out, ignored)
     } else if (dirent.isFile()) {
-      out.push(toPosix(relative(root, full)))
+      if (ignored(rel, false)) continue
+      out.push(rel)
     }
   }
 }
