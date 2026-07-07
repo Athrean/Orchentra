@@ -26,6 +26,7 @@ import { Suggestions } from './components/Suggestions'
 import { Footer } from './status/Footer'
 import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
+import { isWorkspaceTrusted } from '../session-config'
 import type { BannerOptions } from '../render/banner'
 
 export interface TuiProps {
@@ -158,6 +159,15 @@ export function Tui(props: TuiProps): React.ReactElement {
       process.stdout.write('[?25h')
     }
   }, [wireEvents, cli])
+
+  // First entry into an untrusted directory: gate all input behind a one-time
+  // trust prompt before any prompt can be submitted (and thus any tool run).
+  useEffect(() => {
+    if (!isWorkspaceTrusted(props.cwd)) {
+      dispatch({ type: 'flow/start', flow: { kind: 'trust-gate', cwd: props.cwd } })
+    }
+    // Runs once on mount; the gate only applies to the directory the CLI opened in.
+  }, [])
 
   // Spinner & elapsed timer ticker.
   const [spinnerFrame, setSpinnerFrame] = useState(0)
@@ -369,6 +379,7 @@ export function Tui(props: TuiProps): React.ReactElement {
           registry={registry}
           dispatch={dispatch}
           getState={() => stateRef.current}
+          exit={exit}
         />
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
         <QueuedMessages queued={state.queued} />

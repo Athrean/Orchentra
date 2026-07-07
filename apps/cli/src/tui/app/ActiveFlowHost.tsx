@@ -3,7 +3,7 @@ import React from 'react'
 import type { Dispatch } from 'react'
 import type { LiveCli } from '../../live-cli'
 import type { CommandRegistry } from '../../commands/builtin'
-import { setActiveRepo, setDefaultModel } from '../../session-config'
+import { setActiveRepo, setDefaultModel, trustWorkspace } from '../../session-config'
 import { AnthropicLoginCard } from '../components/AnthropicLoginCard'
 import { CommandPalette } from '../components/CommandPalette'
 import { ConfirmationPrompt } from '../components/ConfirmationPrompt'
@@ -13,6 +13,7 @@ import { ModelPickerCard } from '../components/ModelPickerCard'
 import { PlanLevelSlider } from '../components/PlanLevelSlider'
 import { RepoPickerCard } from '../components/RepoPickerCard'
 import { ThemePicker } from '../components/ThemePicker'
+import { TrustDialog } from '../components/TrustDialog'
 import { loadActiveTheme, saveActiveTheme } from '../theme-registry'
 import { setActiveTheme } from '../theme'
 import type { ActiveFlowState, TuiAction, TuiState } from '../types'
@@ -23,6 +24,7 @@ export interface ActiveFlowHostProps {
   readonly registry: CommandRegistry
   readonly dispatch: Dispatch<TuiAction>
   readonly getState: () => TuiState
+  readonly exit: () => void
 }
 
 /**
@@ -31,10 +33,24 @@ export interface ActiveFlowHostProps {
  * prompt, footer; this host renders whichever modal-like flow is active.
  */
 export function ActiveFlowHost(props: ActiveFlowHostProps): React.ReactElement | null {
-  const { flow, cli, dispatch } = props
+  const { flow, cli, dispatch, exit } = props
   if (flow === null) return null
 
   switch (flow.kind) {
+    case 'trust-gate':
+      return (
+        <TrustDialog
+          cwd={flow.cwd}
+          onChoose={(choice) => {
+            if (choice === 'trust') {
+              trustWorkspace(flow.cwd)
+              dispatch({ type: 'flow/end' })
+              return
+            }
+            exit()
+          }}
+        />
+      )
     case 'anthropic-login':
       return (
         <AnthropicLoginCard
