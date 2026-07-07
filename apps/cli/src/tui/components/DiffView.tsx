@@ -1,5 +1,6 @@
 import React from 'react'
 import { Box, Text } from 'ink'
+import { THEME } from '../theme'
 
 export interface DiffViewProps {
   readonly text: string
@@ -65,14 +66,14 @@ export function DiffView(props: DiffViewProps): React.ReactElement {
 function DiffRow({ line }: { readonly line: DiffLine }): React.ReactElement {
   switch (line.kind) {
     case 'file':
-      return <Text color="magenta">{`file ${formatGitFileHeader(line.text)}`}</Text>
+      return <Text color={THEME.diffFile}>{`file ${formatGitFileHeader(line.text)}`}</Text>
     case 'add':
-      return <Text color="green">{`add  ${line.text}`}</Text>
+      return <Text color={THEME.diffAdd}>{`add  ${line.text}`}</Text>
     case 'del':
-      return <Text color="red">{`del  ${line.text}`}</Text>
+      return <Text color={THEME.diffDel}>{`del  ${line.text}`}</Text>
     case 'hunk':
       return (
-        <Text color="cyan" dimColor>
+        <Text color={THEME.diffHunk} dimColor>
           {`hunk ${line.text}`}
         </Text>
       )

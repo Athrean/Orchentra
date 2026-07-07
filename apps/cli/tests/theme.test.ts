@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'bun:test'
-import { THEME, modeAccent, statusGlyph } from '../src/tui/theme'
+import { afterEach, describe, expect, test } from 'bun:test'
+import { THEME, modeAccent, setActiveTheme, statusGlyph } from '../src/tui/theme'
+import { THEMES } from '../src/tui/theme-registry'
 
 describe('THEME tokens', () => {
   test('exposes a single brand-green hex used everywhere', () => {
@@ -28,6 +29,25 @@ describe('modeAccent', () => {
     expect(modeAccent('allow')).toBe(THEME.warn)
     expect(modeAccent('danger-full-access')).toBe(THEME.danger)
     expect(modeAccent('prompt')).toBeDefined()
+  })
+})
+
+describe('setActiveTheme', () => {
+  // Always restore the default so the module-global THEME does not leak a
+  // non-dark palette into the other suites that assert on dark tokens.
+  afterEach(() => setActiveTheme('dark'))
+
+  test('swaps the live THEME binding so every consumer restyles', () => {
+    expect(THEME.brand).toBe(THEMES.dark.brand)
+    setActiveTheme('high-contrast')
+    expect(THEME.brand).toBe(THEMES['high-contrast'].brand)
+    expect(THEME.danger).toBe(THEMES['high-contrast'].danger)
+  })
+
+  test('restores cleanly to dark', () => {
+    setActiveTheme('solarized-dark')
+    setActiveTheme('dark')
+    expect(THEME.brand).toBe(THEMES.dark.brand)
   })
 })
 
