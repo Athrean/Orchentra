@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { Key } from 'ink'
 import { handleMainInput, type MainInputHandlerArgs } from '../../src/tui/input/key-handler'
+import { buildKeybindings } from '../../src/tui/keybindings/registry'
 import { initialState } from '../../src/tui/reducer'
 import type { LiveCli } from '../../src/live-cli'
 import type { TuiAction, TuiState } from '../../src/tui/types'
@@ -42,6 +43,7 @@ function press(s: TuiState, input: string, k: Partial<Key>): { actions: TuiActio
     submitTurn: async () => {},
     isMultilineModal: false,
     collapseMultilineModal: () => {},
+    keybindings: buildKeybindings(),
   } as MainInputHandlerArgs)
   return { actions, exited }
 }

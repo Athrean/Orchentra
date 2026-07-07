@@ -19,6 +19,7 @@ export function initialState(args: {
     historyIndex: -1,
     history: args.history ?? [],
     historySearch: null,
+    queued: [],
     suggestions: emptySuggestions(),
     transcript: [],
     turn: { state: 'idle', startedAt: null, elapsedMs: 0, tokens: emptyUsage(), verb: null },
@@ -107,6 +108,23 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
     case 'history-search/cancel':
       return { ...state, historySearch: null }
 
+    case 'queue/enqueue': {
+      const trimmed = action.text.trim()
+      if (trimmed.length === 0) return state
+      return { ...state, queued: [...state.queued, trimmed] }
+    }
+
+    case 'queue/shift': {
+      if (state.queued.length === 0) return state
+      return { ...state, queued: state.queued.slice(1) }
+    }
+
+    case 'queue/recall-last': {
+      if (state.queued.length === 0) return state
+      const last = state.queued[state.queued.length - 1]
+      return { ...state, queued: state.queued.slice(0, -1), buffer: last, cursor: last.length }
+    }
+
     case 'suggestions/set':
       return { ...state, suggestions: action.state }
 
@@ -137,6 +155,7 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
         draft: '',
         historyIndex: -1,
         historySearch: null,
+        queued: [],
         suggestions: emptySuggestions(),
         transcript,
         pastes: {},

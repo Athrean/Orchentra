@@ -117,6 +117,11 @@ export interface TuiState {
    * route to the search instead of buffer editing.
    */
   readonly historySearch: HistorySearchState | null
+  /**
+   * Messages the user submitted while a turn was still running, in FIFO order.
+   * Drained one at a time once the runtime goes idle (type-ahead queue).
+   */
+  readonly queued: readonly string[]
   readonly suggestions: SuggestionState
   readonly transcript: readonly TranscriptRow[]
   readonly turn: TurnStatus
@@ -173,6 +178,9 @@ export type TuiAction =
   | { type: 'history/prev' }
   | { type: 'history/next' }
   | { type: 'history/append'; text: string }
+  | { type: 'queue/enqueue'; text: string }
+  | { type: 'queue/shift' }
+  | { type: 'queue/recall-last' }
   | { type: 'history-search/open' }
   | { type: 'history-search/set-query'; query: string }
   | { type: 'history-search/cycle'; direction: 'older' | 'newer' }
