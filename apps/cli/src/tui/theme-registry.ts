@@ -25,6 +25,10 @@ export interface Theme {
   readonly quote: string
   readonly codeBorder: string
   readonly inlineCode: string
+  readonly diffAdd: string
+  readonly diffDel: string
+  readonly diffHunk: string
+  readonly diffFile: string
   readonly prompt: string
   readonly bullet: string
   readonly arrowRight: string
@@ -56,17 +60,21 @@ const dark: Theme = {
   brandDim: '#5BD3B6',
   fg: 'white',
   muted: 'gray',
-  accent: 'cyan',
+  accent: '#5BD3B6',
   warn: 'yellow',
   danger: 'red',
-  heading: 'cyan',
-  headingAlt: 'white',
-  emphasis: 'magenta',
-  strong: 'yellow',
-  link: 'blue',
-  quote: 'gray',
-  codeBorder: 'gray',
+  heading: '#10A37F',
+  headingAlt: '#D9FFF5',
+  emphasis: '#5BD3B6',
+  strong: '#D9FFF5',
+  link: '#5BD3B6',
+  quote: '#7FA99B',
+  codeBorder: '#1F6F5A',
   inlineCode: '#10A37F',
+  diffAdd: 'green',
+  diffDel: 'red',
+  diffHunk: 'cyan',
+  diffFile: 'magenta',
   ...GLYPHS,
   spinner: SPINNER,
 }
@@ -90,6 +98,10 @@ const light: Theme = {
   quote: 'gray',
   codeBorder: 'gray',
   inlineCode: '#0D7F63',
+  diffAdd: '#0D7F63',
+  diffDel: '#B11616',
+  diffHunk: '#0050B0',
+  diffFile: '#7A2E7A',
   ...GLYPHS,
   spinner: SPINNER,
 }
@@ -101,17 +113,21 @@ const darkAnsi: Theme = {
   brandDim: 'green',
   fg: 'white',
   muted: 'gray',
-  accent: 'cyan',
+  accent: 'green',
   warn: 'yellow',
   danger: 'red',
-  heading: 'cyan',
+  heading: 'green',
   headingAlt: 'white',
-  emphasis: 'magenta',
-  strong: 'yellow',
-  link: 'blue',
+  emphasis: 'green',
+  strong: 'white',
+  link: 'green',
   quote: 'gray',
-  codeBorder: 'gray',
+  codeBorder: 'green',
   inlineCode: 'green',
+  diffAdd: 'green',
+  diffDel: 'red',
+  diffHunk: 'cyan',
+  diffFile: 'magenta',
   ...GLYPHS,
   spinner: SPINNER,
 }
@@ -135,6 +151,10 @@ const solarizedDark: Theme = {
   quote: '#586e75',
   codeBorder: '#586e75',
   inlineCode: '#859900',
+  diffAdd: '#859900',
+  diffDel: '#dc322f',
+  diffHunk: '#2aa198',
+  diffFile: '#d33682',
   ...GLYPHS,
   spinner: SPINNER,
 }
@@ -158,6 +178,10 @@ const solarizedLight: Theme = {
   quote: '#93a1a1',
   codeBorder: '#93a1a1',
   inlineCode: '#859900',
+  diffAdd: '#859900',
+  diffDel: '#dc322f',
+  diffHunk: '#2aa198',
+  diffFile: '#d33682',
   ...GLYPHS,
   spinner: SPINNER,
 }
@@ -181,6 +205,10 @@ const highContrast: Theme = {
   quote: '#ffffff',
   codeBorder: '#ffffff',
   inlineCode: '#00ff00',
+  diffAdd: '#00ff00',
+  diffDel: '#ff0000',
+  diffHunk: '#00ffff',
+  diffFile: '#ff00ff',
   ...GLYPHS,
   spinner: SPINNER,
 }

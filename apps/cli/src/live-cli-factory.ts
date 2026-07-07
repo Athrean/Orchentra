@@ -3,6 +3,7 @@ import {
   ConfigLoader,
   InMemoryTaskStore,
   SessionWriter,
+  defaultEstimator,
   isKnownModel,
   type PermissionMode,
   type Provider,
@@ -10,9 +11,10 @@ import {
   type ToolRegistry,
 } from '@orchentra/cli-core'
 import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config'
-import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager } from '@orchentra/cli-tools'
+import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager, DEFAULT_MCP_DEFER_TOKENS } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
+import type { HookProgressUpdate } from './hooks/types'
 import { builtinModelAliases, createProvider, resolveModelAlias } from './provider-factory'
 
 export interface ResolvedModel {
@@ -65,7 +67,12 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     },
   })
   await mcpManager.connectAll()
-  mcpManager.registerInto(tools)
+  // Once configured MCP servers export more schema than the budget, defer them
+  // behind a single mcp_tool_search surface instead of loading every schema.
+  mcpManager.registerInto(tools, {
+    deferOverTokens: DEFAULT_MCP_DEFER_TOKENS,
+    estimateTokens: defaultEstimator,
+  })
   const sessionId = randomUUID()
 
   const sharedState: SharedToolState = {
@@ -75,7 +82,10 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     planMode: false,
   }
 
-  const hookRunner = new CliCoreHookAdapter(options.cwd)
+  // The hook adapter is built before the LiveCli it reports into, so route its
+  // progress through a mutable holder that we point at the cli once it exists.
+  const hookProgress = { emit: (_u: HookProgressUpdate) => {} }
+  const hookRunner = new CliCoreHookAdapter(options.cwd, (u) => hookProgress.emit(u))
 
   const cli = new LiveCli({
     model: initial.model,
@@ -92,6 +102,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     budgetConfig: config.featureConfig.budget,
     hookRunner,
   })
+  hookProgress.emit = (u) => cli.emitHookProgress(u)
 
   const session = await SessionWriter.open({
     rootDir: getSessionsDirForWorkspace(options.cwd),

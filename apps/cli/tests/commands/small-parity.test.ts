@@ -16,6 +16,7 @@ import { ClearCommand } from '../../src/commands/builtin/clear'
 import {
   AddDirCommand,
   CdCommand,
+  ContextCommand,
   CopyCommand,
   ForkCommand,
   GoalCommand,
@@ -120,6 +121,44 @@ describe('small slash parity commands', () => {
     expect(events[0]).toEqual({ kind: 'note', text: 'Goal set: fix terminal ux', tone: 'info' })
     expect(events[1]?.kind).toBe('card')
     expect(events[2]).toEqual({ kind: 'note', text: 'Goal cleared.', tone: 'info' })
+  })
+
+  test('/context lists the files read into context', async () => {
+    const session: SessionControl = {
+      ...makeSession(),
+      getContextStats: () => ({ messages: 4, estimatedTokens: 1200, contextWindowTokens: 200_000 }),
+      listContextFiles: () => [
+        { path: 'src/a.ts', reads: 2 },
+        { path: 'src/b.ts', reads: 1 },
+      ],
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ContextCommand().execute([], ctx)
+
+    const card = events.find((e) => e.kind === 'card')
+    expect(card?.kind).toBe('card')
+    if (card?.kind !== 'card') throw new Error('expected card')
+    const summary = card.sections[0]!.rows
+    expect(summary.find((r) => r.key === 'Files in context')?.value).toBe('2')
+    const fileSection = card.sections.find((s) => s.title === 'Files read into context')
+    expect(fileSection?.rows.map((r) => r.key)).toEqual(['src/a.ts', 'src/b.ts'])
+    expect(fileSection?.rows.find((r) => r.key === 'src/a.ts')?.value).toBe('2×')
+  })
+
+  test('/context omits the files section when nothing has been read', async () => {
+    const session: SessionControl = {
+      ...makeSession(),
+      getContextStats: () => ({ messages: 4, estimatedTokens: 1200, contextWindowTokens: 200_000 }),
+      listContextFiles: () => [],
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ContextCommand().execute([], ctx)
+
+    const card = events.find((e) => e.kind === 'card')
+    if (card?.kind !== 'card') throw new Error('expected card')
+    expect(card.sections.some((s) => s.title === 'Files read into context')).toBe(false)
   })
 
   test('/cd updates the session cwd and TUI cwd hook', async () => {
@@ -303,6 +342,53 @@ describe('small slash parity commands', () => {
     expect(started).toBe(true)
     expect(cleared).toBe(false)
     expect(events).toEqual([{ kind: 'clear-session', text: 'Conversation cleared.' }])
+  })
+
+  test('/clear accepts --confirm for reference CLI compatibility', async () => {
+    let started = false
+    const session: SessionControl = {
+      ...makeSession(),
+      startNewSession: async () => {
+        started = true
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ClearCommand().execute(['--confirm'], ctx)
+
+    expect(started).toBe(true)
+    expect(events).toEqual([{ kind: 'clear-session', text: 'Conversation cleared.' }])
+  })
+
+  test('/clear rejects unsupported args without clearing', async () => {
+    let started = false
+    let cleared = false
+    const session: SessionControl = {
+      ...makeSession(),
+      clearHistory: () => {
+        cleared = true
+      },
+      startNewSession: async () => {
+        started = true
+      },
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ClearCommand().execute(['now'], ctx)
+
+    expect(started).toBe(false)
+    expect(cleared).toBe(false)
+    expect(events).toEqual([
+      { kind: 'note', text: "Unsupported /clear argument 'now'. Use /clear or /clear --confirm.", tone: 'warn' },
+    ])
+  })
+
+  test('/clear aliases match Claude-style fresh-session verbs', () => {
+    const registry = createBuiltinRegistry()
+
+    expect(registry.resolve('/reset')).not.toBeInstanceOf(Error)
+    expect(registry.resolve('/new')).not.toBeInstanceOf(Error)
+    expect(registry.resolve('/cls')).not.toBeInstanceOf(Error)
   })
 
   test('/planmode enters and exits runtime plan mode', async () => {

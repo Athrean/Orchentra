@@ -38,6 +38,26 @@ describe('ConfirmationPrompt — render', () => {
     expect(frame).toContain('Esc to cancel')
   })
 
+  test('renders a diff in place of the raw command line when a diff is supplied', () => {
+    const { lastFrame } = render(
+      <ConfirmationPrompt
+        request={{
+          ...baseReq,
+          toolLabel: 'edit_file call',
+          commandLine: '{"path":"src/app.ts","old_string":"a","new_string":"b"}',
+          diff: 'diff --git a/src/app.ts b/src/app.ts\n-a\n+b',
+        }}
+        onChoose={() => {}}
+      />,
+    )
+    const frame = lastFrame() ?? ''
+    // The colourised diff is shown; the raw JSON blob is not.
+    expect(frame).toContain('src/app.ts')
+    expect(frame).toMatch(/add\s+\+b/)
+    expect(frame).toMatch(/del\s+-a/)
+    expect(frame).not.toContain('{"path"')
+  })
+
   test('omits the context line when not provided', () => {
     const { lastFrame } = render(
       <ConfirmationPrompt request={{ ...baseReq, context: undefined }} onChoose={() => {}} />,

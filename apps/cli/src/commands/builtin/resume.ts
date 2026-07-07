@@ -2,6 +2,7 @@ import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { getSessionsDirForWorkspace, getSessionsRootDir } from '../../session-config'
+import { sessionTag } from '../../sessions/session-tag'
 
 const CROSS_PREFIX = 'cross:'
 
@@ -20,7 +21,12 @@ export class ResumeCommand implements CommandHandler {
 
     const buckets: string[] = crossWorkspace ? await listBucketDirs() : [getSessionsDirForWorkspace(ctx.cwd)]
 
-    const candidates: Array<{ dir: string; file: string; mtimeMs: number }> = []
+    // `latest` picks by recency; any other arg is a search matched against the
+    // session id prefix OR its content tag (the first-user-prompt slug).
+    const searching = idArg !== 'latest'
+    const needle = idArg.toLowerCase()
+
+    const candidates: Array<{ dir: string; file: string; mtimeMs: number; tag: string | null }> = []
     for (const dir of buckets) {
       let files: string[]
       try {
@@ -30,14 +36,20 @@ export class ResumeCommand implements CommandHandler {
       }
       for (const f of files) {
         if (!f.endsWith('.jsonl')) continue
-        if (idArg !== 'latest' && !f.startsWith(idArg)) continue
+        const full = join(dir, f)
+        let s
         try {
-          const s = await stat(join(dir, f))
+          s = await stat(full)
           if (!s.isFile()) continue
-          candidates.push({ dir, file: f, mtimeMs: s.mtimeMs })
         } catch {
-          /* skip */
+          continue
         }
+        let tag: string | null = null
+        if (searching) {
+          tag = await readSessionTag(full)
+          if (!f.startsWith(idArg) && !(tag !== null && tag.includes(needle))) continue
+        }
+        candidates.push({ dir, file: f, mtimeMs: s.mtimeMs, tag })
       }
     }
 
@@ -49,6 +61,7 @@ export class ResumeCommand implements CommandHandler {
     candidates.sort((a, b) => b.mtimeMs - a.mtimeMs)
     const target = candidates[0]!
     const sessionPath = join(target.dir, target.file)
+    const tag = target.tag ?? (await readSessionTag(sessionPath))
 
     if (ctx.session.resumeSession) {
       const result = await ctx.session.resumeSession(sessionPath)
@@ -57,11 +70,12 @@ export class ResumeCommand implements CommandHandler {
         ctx.ui({
           kind: 'card',
           title: 'Resumed Session',
-          subtitle: target.file,
+          subtitle: tag ? `${target.file} · ${tag}` : target.file,
           sections: [
             {
               rows: [
                 { key: 'Session', value: result.sessionId },
+                { key: 'Tag', value: tag ?? '—' },
                 { key: 'Messages', value: String(result.messages) },
                 { key: 'Events', value: String(result.events) },
                 { key: 'Tool calls', value: String(result.toolCalls) },
@@ -79,7 +93,7 @@ export class ResumeCommand implements CommandHandler {
           })
         }
       } else {
-        process.stdout.write(`Resumed session: ${target.file}\n`)
+        process.stdout.write(`Resumed session: ${target.file}${tag ? ` (${tag})` : ''}\n`)
         process.stdout.write(
           `Messages: ${result.messages}, Events: ${result.events}, Tool calls: ${result.toolCalls}\n`,
         )
@@ -116,10 +130,11 @@ export class ResumeCommand implements CommandHandler {
       ctx.ui({
         kind: 'card',
         title: 'Resume',
-        subtitle: target.file,
+        subtitle: tag ? `${target.file} · ${tag}` : target.file,
         sections: [
           {
             rows: [
+              { key: 'Tag', value: tag ?? '—' },
               { key: 'Events', value: String(lines.length) },
               { key: 'Tool calls', value: String(toolCallCount) },
             ],
@@ -128,10 +143,18 @@ export class ResumeCommand implements CommandHandler {
       })
       if (preview.trim().length > 0) ctx.ui({ kind: 'text', text: preview })
     } else {
-      process.stdout.write(`Session: ${target.file}\n`)
+      process.stdout.write(`Session: ${target.file}${tag ? ` (${tag})` : ''}\n`)
       process.stdout.write(`Events: ${lines.length}, Tool calls: ${toolCallCount}\n---\n${preview}\n`)
     }
     return true
+  }
+}
+
+async function readSessionTag(path: string): Promise<string | null> {
+  try {
+    return sessionTag(await readFile(path, 'utf8'))
+  } catch {
+    return null
   }
 }
 

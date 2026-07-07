@@ -130,6 +130,19 @@ export function missingCredentialsError(): AnthropicApiError {
   })
 }
 
+// The Gemini and OpenAI-compat clients throw plain Errors whose messages embed
+// the HTTP status ("Gemini API error 429: ...", "<provider> API error: 429 ...").
+const PLAIN_RATE_LIMIT_MESSAGE = /\bAPI error:? 429\b/i
+
+export function isRateLimitError(err: unknown): boolean {
+  if (err instanceof AnthropicApiError) {
+    // A retry-exhausted wrapper keeps the underlying status, so 429 still
+    // identifies the failure as rate-limiting after client retries gave up.
+    return err.failureClass === 'provider_rate_limit' || err.status === 429
+  }
+  return err instanceof Error && PLAIN_RATE_LIMIT_MESSAGE.test(err.message)
+}
+
 export function isProviderAuthError(err: unknown): err is AnthropicApiError {
   return err instanceof AnthropicApiError && err.failureClass === 'provider_auth'
 }

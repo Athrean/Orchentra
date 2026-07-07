@@ -132,6 +132,41 @@ describe('ResumeCommand workspace scope', () => {
     expect(notes(events).join(' ')).toMatch(/No sessions found/)
   })
 
+  test('a non-id search argument matches a session by its content tag', async () => {
+    const wsA = '/Users/foo/repo-a'
+    writeSession(join(sessionsRoot(), fingerprintWorkspace(wsA)), 'zzzz9999', [
+      { event: { kind: 'user_message', content: 'Refactor the theme picker overlay' } },
+    ])
+    writeSession(join(sessionsRoot(), fingerprintWorkspace(wsA)), 'yyyy8888', [
+      { event: { kind: 'user_message', content: 'Add gitignore support' } },
+    ])
+
+    // "theme" is not an id prefix but is in the first session's tag.
+    const { ctx, events } = makeCtx(wsA)
+    await new ResumeCommand().execute(['theme'], ctx)
+
+    const cards = events.filter((e) => e.kind === 'card')
+    expect(cards.length).toBe(1)
+    if (cards[0]!.kind !== 'card') throw new Error('expected card')
+    expect(cards[0]!.subtitle).toContain('zzzz9999')
+    expect(cards[0]!.subtitle).toContain('refactor-the-theme-picker')
+  })
+
+  test('the resume card surfaces the session tag', async () => {
+    const wsA = '/Users/foo/repo-a'
+    writeSession(join(sessionsRoot(), fingerprintWorkspace(wsA)), 'aaaa1111', [
+      { event: { kind: 'user_message', content: 'Wire up the doctor checks' } },
+    ])
+
+    const { ctx, events } = makeCtx(wsA)
+    await new ResumeCommand().execute(['latest'], ctx)
+
+    const cards = events.filter((e) => e.kind === 'card')
+    if (cards[0]!.kind !== 'card') throw new Error('expected card')
+    const tagRow = cards[0]!.sections[0]!.rows.find((r) => r.key === 'Tag')
+    expect(tagRow?.value).toBe('wire-up-the-doctor-checks')
+  })
+
   test('resumes the matched session through the live session hook when available', async () => {
     const wsA = '/Users/foo/repo-a'
     const id = 'dddd3333'

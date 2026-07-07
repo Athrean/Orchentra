@@ -1,16 +1,25 @@
 import type { PermissionMode } from '@orchentra/cli-core'
-import { THEMES, type Theme } from './theme-registry'
+import { THEMES, type Theme, type ThemeName } from './theme-registry'
 
 /**
  * Single source of truth for TUI styling. Every component should import
  * tokens from here rather than hard-coding colours, glyphs, or separators.
  *
- * `THEME` is a stable re-export of the `dark` theme from the registry so
- * the 20+ existing consumers compile unchanged. Code that needs runtime
- * switching (e.g. live preview in the picker) should call `useTheme()`
- * instead.
+ * `THEME` is a live binding: consumers read `THEME.*` at render time, so
+ * `setActiveTheme` restyles the whole tree on the next render without any
+ * per-call-site change. It defaults to `dark` and is pointed at the
+ * persisted theme at launch (see `runTui`) and on each `/theme` apply.
  */
-export const THEME: Theme = THEMES.dark
+export let THEME: Theme = THEMES.dark
+
+/**
+ * Swap the active theme for every `THEME.*` consumer. Idempotent; safe to
+ * call before the first render (launch) or mid-session (theme picker) — the
+ * caller triggers the re-render that repaints the live zone.
+ */
+export function setActiveTheme(name: ThemeName): void {
+  THEME = THEMES[name]
+}
 
 export type ThemeColor = string
 

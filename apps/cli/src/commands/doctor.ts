@@ -1,6 +1,10 @@
 import { resolveToken, validateApiKey, type ResolvedToken } from '@orchentra/cli-api'
 import { statfs } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
 import { homedir } from 'node:os'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
 
 export type DoctorStatus = 'pass' | 'fail' | 'warn'
 
@@ -11,17 +15,29 @@ export interface DoctorCheck {
   durationMs: number
 }
 
+/** Working-tree facts the `git-repo` check reports on. */
+export interface DoctorGitStatus {
+  readonly isRepo: boolean
+  readonly clean: boolean
+  readonly hasRemote: boolean
+}
+
 export interface DoctorOptions {
   resolveToken?: () => ResolvedToken | null
   validateApiKey?: () => { valid: boolean; error?: string }
   diskAvailable?: () => number | Promise<number>
   fetchProvider?: (url: string, signal: AbortSignal) => Promise<Response>
+  gitRepo?: () => DoctorGitStatus | Promise<DoctorGitStatus>
+  env?: () => Record<string, string | undefined>
   reporter?: (check: DoctorCheck) => void
 }
 
 const DISK_WARN_BYTES = 50 * 1024 * 1024
 const PROVIDER_TIMEOUT_MS = 5000
 const PROVIDER_URL = 'https://api.anthropic.com/v1/models'
+
+/** Env vars any one of which supplies provider auth (canonical §6). */
+const AUTH_ENV_VARS = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'] as const
 
 export async function runDoctor(options: DoctorOptions = {}): Promise<number> {
   const tokenFn = options.resolveToken ?? (() => resolveToken())
@@ -30,6 +46,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<number> {
   const fetchFn =
     options.fetchProvider ??
     (async (url: string, signal: AbortSignal) => fetch(url, { method: 'GET', signal } as RequestInit))
+  const gitFn = options.gitRepo ?? (async () => defaultGitStatus())
+  const envFn = options.env ?? (() => process.env)
   const report = options.reporter ?? defaultReporter()
 
   const checks: DoctorCheck[] = []
@@ -38,6 +56,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<number> {
   checks.push(await checkApiKey(apiKeyFn))
   checks.push(await checkProvider(fetchFn))
   checks.push(await checkDisk(diskFn))
+  checks.push(await checkGitRepo(gitFn))
+  checks.push(checkEnvVars(envFn))
 
   for (const check of checks) report(check)
 
@@ -104,6 +124,51 @@ async function checkDisk(fn: () => number | Promise<number>): Promise<DoctorChec
     }
   }
   return { name: 'disk', status: 'pass', message: `${Math.round(available / 1024 / 1024)}MB available`, durationMs }
+}
+
+async function checkGitRepo(fn: () => DoctorGitStatus | Promise<DoctorGitStatus>): Promise<DoctorCheck> {
+  const start = performance.now()
+  const status = await fn()
+  const durationMs = Math.round(performance.now() - start)
+  if (!status.isRepo) {
+    return { name: 'git-repo', status: 'warn', message: 'not a git repository', durationMs }
+  }
+  const parts = [status.clean ? 'clean' : 'uncommitted changes', status.hasRemote ? 'remote configured' : 'no remote']
+  return { name: 'git-repo', status: 'pass', message: parts.join(' · '), durationMs }
+}
+
+function checkEnvVars(env: () => Record<string, string | undefined>): DoctorCheck {
+  const start = performance.now()
+  const values = env()
+  const present = AUTH_ENV_VARS.filter((name) => (values[name] ?? '').length > 0)
+  const durationMs = Math.round(performance.now() - start)
+  if (present.length > 0) {
+    return { name: 'env-vars', status: 'pass', message: `set: ${present.join(', ')}`, durationMs }
+  }
+  return {
+    name: 'env-vars',
+    status: 'warn',
+    message: `none set (${AUTH_ENV_VARS.join(', ')}); relying on stored credentials`,
+    durationMs,
+  }
+}
+
+async function defaultGitStatus(): Promise<DoctorGitStatus> {
+  try {
+    const inside = await execFileAsync('git', ['rev-parse', '--is-inside-work-tree'])
+    if (inside.stdout.trim() !== 'true') return { isRepo: false, clean: false, hasRemote: false }
+    const [porcelain, remotes] = await Promise.all([
+      execFileAsync('git', ['status', '--porcelain']),
+      execFileAsync('git', ['remote']),
+    ])
+    return {
+      isRepo: true,
+      clean: porcelain.stdout.trim().length === 0,
+      hasRemote: remotes.stdout.trim().length > 0,
+    }
+  } catch {
+    return { isRepo: false, clean: false, hasRemote: false }
+  }
 }
 
 async function defaultDiskAvailable(): Promise<number> {

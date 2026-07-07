@@ -3,6 +3,8 @@ import { McpClient } from './client'
 import type { McpHttpConfig, McpServerConfig } from './config'
 import { parseMcpConfig, resolveHeaders } from './config'
 import { buildMcpToolDefinition } from './bridge'
+import { buildMcpToolSearchTool, MCP_TOOL_SEARCH_NAME } from './tool-search-tool'
+import { totalSchemaTokens } from './tool-catalog'
 import { HttpTransport } from './transport-http'
 import { StdioTransport } from './transport-stdio'
 import type { Transport } from './transport'
@@ -32,6 +34,13 @@ export interface McpManagerOptions {
   readonly warnings: string[]
   readonly connectTimeoutMs?: number
   readonly onLog?: (level: 'info' | 'warn' | 'error', message: string) => void
+}
+
+export interface McpRegisterOptions {
+  /** Defer tools behind a search surface once their schema cost exceeds this. */
+  readonly deferOverTokens?: number
+  /** Token estimator used to weigh the combined schema cost. */
+  readonly estimateTokens?: (text: string) => number
 }
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000
@@ -113,7 +122,28 @@ export class McpManager {
     return this.statusOf(entry)
   }
 
-  registerInto(registry: ToolRegistry): number {
+  /**
+   * Register every connected MCP tool into the registry. When `deferOverTokens`
+   * is set and the tools' combined schema cost exceeds it, register a single
+   * `mcp_tool_search` surface instead — the model searches it and the matches
+   * load on demand, keeping dozens of unused schemas out of every request.
+   * Returns the number of registrations made (the search tool counts as one).
+   */
+  registerInto(registry: ToolRegistry, opts?: McpRegisterOptions): number {
+    const connectedTools = this.entries.filter((entry) => entry.state === 'connected').flatMap((entry) => entry.tools)
+
+    if (opts?.deferOverTokens !== undefined && opts.estimateTokens) {
+      const tokens = totalSchemaTokens(connectedTools, opts.estimateTokens)
+      if (tokens > opts.deferOverTokens && !registry.has(MCP_TOOL_SEARCH_NAME)) {
+        registry.register(buildMcpToolSearchTool({ catalog: connectedTools, registry }))
+        this.log(
+          'info',
+          `mcp: deferred ${connectedTools.length} tools behind ${MCP_TOOL_SEARCH_NAME} (~${tokens} tokens)`,
+        )
+        return 1
+      }
+    }
+
     let count = 0
     for (const entry of this.entries) {
       if (entry.state !== 'connected') continue

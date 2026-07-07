@@ -9,6 +9,9 @@ import {
   emptyUsage,
   addUsage,
 } from '@orchentra/cli-core'
+import { isRateLimitError } from '@orchentra/cli-api'
+import { runSubagentPool } from './subagent-pool'
+import { resolveSubagentRole, restrictRegistry, type SubagentRole } from './subagent-roles'
 
 interface AgentInput {
   prompt?: string
@@ -16,6 +19,7 @@ interface AgentInput {
   model?: string
   description?: string
   justification?: string
+  agentType?: string
 }
 
 const MAX_ITERATIONS_PER_SUBAGENT = 10
@@ -52,6 +56,12 @@ export const agentTool: ToolDefinition = {
         type: 'string',
         description: `Required when "tasks" has more than ${SPAWN_JUSTIFICATION_THRESHOLD} entries: why parallel fan-out is warranted here`,
       },
+      agentType: {
+        type: 'string',
+        enum: ['explorer', 'reviewer', 'builder'],
+        description:
+          'Optional specialist role for the sub-agent(s): "explorer" searches/reads only (no writes), "reviewer" verifies by running checks (read + command execution, no edits), "builder" implements with the full toolset. Omit for a generic sub-agent. Applies to every task in a "tasks" batch.',
+      },
     },
     additionalProperties: false,
   },
@@ -69,6 +79,11 @@ export const agentTool: ToolDefinition = {
     }
     if (!ctx.provider || !ctx.tools) {
       return { content: 'error: provider and tools not available for sub-agent', isError: true }
+    }
+
+    const { role, error: roleError } = resolveSubagentRole(input.agentType)
+    if (!role) {
+      return { content: `error: ${roleError}`, isError: true }
     }
 
     const model = input.model ?? ctx.model
@@ -92,10 +107,21 @@ export const agentTool: ToolDefinition = {
     }
 
     // Children run their own tool calls one level deeper so a nested `agent`
-    // call sees the incremented depth and the cap holds down the tree.
-    const childCtx: ToolContext = { ...ctx, subagentDepth: depth + 1 }
-    const results = await runWithConcurrencyLimit(tasks, MAX_CONCURRENT_SUBAGENTS, (task) =>
-      runSubagent(task, model, childCtx),
+    // call sees the incremented depth and the cap holds down the tree. A
+    // role-capped child gets a narrowed registry on both the advertised and
+    // execute surfaces.
+    const childCtx: ToolContext = { ...ctx, subagentDepth: depth + 1, tools: restrictRegistry(ctx.tools, role) }
+    const pooled = await runSubagentPool(tasks, {
+      limit: MAX_CONCURRENT_SUBAGENTS,
+      run: (task) => runSubagent(task, model, childCtx, role),
+      // Requeue only rate-limited tasks, and never once the parent budget is
+      // spent — a retry re-runs the task from scratch and costs real dollars.
+      shouldRequeue: (r) => r.rateLimited === true && !ctx.budget?.snapshot().exhausted,
+    })
+    const results = pooled.map(({ value, requeues }) =>
+      value.rateLimited && requeues > 0
+        ? { ...value, text: `${value.text} [rate-limited; gave up after ${requeues} requeue(s)]` }
+        : value,
     )
 
     if (results.length === 1) {
@@ -107,26 +133,6 @@ export const agentTool: ToolDefinition = {
       isError: results.some((r) => r.isError),
     }
   },
-}
-
-// Runs at most `limit` items concurrently, preserving result order by index
-// (each worker owns its slot and writes back to it, regardless of when other
-// workers finish) so callers don't need to re-sort.
-async function runWithConcurrencyLimit<T>(
-  items: string[],
-  limit: number,
-  fn: (item: string) => Promise<T>,
-): Promise<T[]> {
-  const results = new Array<T>(items.length)
-  let next = 0
-  async function worker(): Promise<void> {
-    while (next < items.length) {
-      const i = next++
-      results[i] = await fn(items[i]!)
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-  return results
 }
 
 function resolveTasks(input: AgentInput): string[] {
@@ -141,14 +147,15 @@ async function runSubagent(
   prompt: string,
   model: string,
   ctx: ToolContext,
-): Promise<{ text: string; isError: boolean }> {
+  role: SubagentRole,
+): Promise<{ text: string; isError: boolean; rateLimited?: boolean }> {
   try {
     const messages: ChatMessage[] = [{ role: 'user', content: prompt }]
     const toolSchemas = ctx.tools!.list()
 
     const request: ProviderRequest = {
       systemStatic: [
-        'You are a helpful coding assistant completing a specific sub-task.',
+        role.focus,
         ctx.spinePrompt,
         'Complete the delegated scope only. Do not push or perform destructive git operations.',
       ]
@@ -210,6 +217,6 @@ async function runSubagent(
       isError: false,
     }
   } catch (e) {
-    return { text: `agent error: ${(e as Error).message}`, isError: true }
+    return { text: `agent error: ${(e as Error).message}`, isError: true, rateLimited: isRateLimitError(e) }
   }
 }
