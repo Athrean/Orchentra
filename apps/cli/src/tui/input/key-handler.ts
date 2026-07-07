@@ -4,10 +4,28 @@ import type { Key } from 'ink'
 import type { LiveCli } from '../../live-cli'
 import { buildShortcutSections } from '../help/shortcut-sections'
 import { evaluatePaste } from '../paste'
-import type { TuiAction, TuiState } from '../types'
+import type { ExitHintKey, TuiAction, TuiState } from '../types'
 import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from '../word-boundary'
 import { endsWithBackslashLine, hasUnclosedFence, moveLine } from './motion'
+import { doublePressDecision } from './double-press'
 import type { Keybindings } from '../keybindings/registry'
+
+/** Window for the double-press-to-exit gate shared by ctrl+c and ctrl+d. */
+const EXIT_DOUBLE_PRESS_MS = 1500
+
+/**
+ * One tick of the exit double-press for `key`. Returns true when this is the
+ * confirming second press (caller should exit); otherwise arms/re-arms the hint
+ * for that key and returns false. The armed window is per-key — pressing ctrl+c
+ * then ctrl+d re-arms rather than exiting — so the two keys never cross-trigger.
+ */
+function armExitHint(cur: TuiState, key: ExitHintKey, dispatch: Dispatch<TuiAction>): boolean {
+  const armed = cur.exitHintKey === key ? cur.exitHintUntil : null
+  const { result, armedUntil } = doublePressDecision(armed, Date.now(), EXIT_DOUBLE_PRESS_MS)
+  if (result === 'again') return true
+  dispatch({ type: 'exit-hint/show', until: armedUntil ?? Date.now() + EXIT_DOUBLE_PRESS_MS, key })
+  return false
+}
 
 export type TuiInputKey = Key
 
@@ -110,17 +128,16 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
       dispatch({ type: 'exit-hint/clear' })
       return
     }
-    if (cur.exitHintUntil !== null) {
-      exit()
-      return
-    }
-    dispatch({ type: 'exit-hint/show', until: Date.now() + 1500 })
+    if (armExitHint(cur, 'ctrl+c', dispatch)) exit()
     return
   }
 
   if (key.ctrl && input === 'd') {
+    // ctrl+d on an empty buffer exits — gated behind the same double-press as
+    // ctrl+c so an accidental tap can't drop the session. With text present it
+    // forward-deletes a character as usual.
     if (cur.buffer.length === 0) {
-      exit()
+      if (armExitHint(cur, 'ctrl+d', dispatch)) exit()
       return
     }
     if (cur.cursor < cur.buffer.length) {

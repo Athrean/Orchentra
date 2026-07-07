@@ -28,6 +28,7 @@ export function initialState(args: {
     model: args.model,
     pastes: {},
     exitHintUntil: null,
+    exitHintKey: null,
     streamingRowId: null,
     screenGeneration: 0,
     activeCard: null,
@@ -159,6 +160,7 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
         transcript,
         pastes: {},
         exitHintUntil: null,
+        exitHintKey: null,
         streamingRowId: null,
         screenGeneration: state.screenGeneration + 1,
         activeCard: null,
@@ -392,10 +394,10 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
       return { ...state, pastes: { ...state.pastes, [action.chip.id]: action.chip } }
 
     case 'exit-hint/show':
-      return { ...state, exitHintUntil: action.until }
+      return { ...state, exitHintUntil: action.until, exitHintKey: action.key }
 
     case 'exit-hint/clear':
-      return { ...state, exitHintUntil: null }
+      return { ...state, exitHintUntil: null, exitHintKey: null }
 
     case 'card/open':
       return { ...state, activeCard: action.card }
