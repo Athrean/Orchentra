@@ -6,6 +6,8 @@ import type { CommandRegistry } from '../commands/builtin'
 import { isIdeTerminal, type BannerOptions } from '../render/banner'
 import { Tui } from './Tui'
 import { TuiErrorBoundary } from './components/TuiErrorBoundary'
+import { setActiveTheme } from './theme'
+import { loadActiveTheme } from './theme-registry'
 
 export interface RunTuiOptions {
   readonly cli: LiveCli
@@ -91,6 +93,11 @@ interface InkInstanceHandle {
 }
 
 export async function runTui(opts: RunTuiOptions): Promise<void> {
+  // Apply the persisted theme before the first render so a non-dark choice
+  // (e.g. high-contrast, solarized) actually styles the session — not just
+  // the picker preview.
+  setActiveTheme(loadActiveTheme())
+
   const ide = isIdeTerminal()
 
   let inst: InkInstanceInternals | null = null

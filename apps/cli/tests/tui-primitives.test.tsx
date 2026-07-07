@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import { render } from 'ink-testing-library'
-import { Card } from '../src/tui/components/Card'
-import { KVList } from '../src/tui/components/KVList'
-import { Tabs } from '../src/tui/components/Tabs'
+import { Card } from '../src/tui/design/primitives/Card'
+import { KVList } from '../src/tui/design/primitives/KVList'
+import { Tabs } from '../src/tui/design/primitives/Tabs'
 
 describe('Card', () => {
   test('renders title, subtitle and children', () => {

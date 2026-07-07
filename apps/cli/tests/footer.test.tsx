@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import { render } from 'ink-testing-library'
-import { Footer } from '../src/tui/components/Footer'
+import type { SessionTaskSummary } from '@orchentra/cli-core'
+import { Footer } from '../src/tui/status/Footer'
 import type { TurnStatus } from '../src/tui/types'
+
+function makeTask(status: SessionTaskSummary['status']): SessionTaskSummary {
+  return { id: status, status, createdAt: '2026-07-06T00:00:00.000Z' }
+}
 
 const IDLE: TurnStatus = {
   state: 'idle',
@@ -82,6 +87,24 @@ describe('Footer — idle', () => {
     expect(out).toContain('git:(main)')
   })
 
+  test('shows workspace leaf and context percentage when stats are available', () => {
+    const { lastFrame } = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/Users/rushout/Desktop/Orchentra"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+        contextStats={{ estimatedTokens: 50_000, contextWindowTokens: 200_000, compactThresholdRatio: 0.8 }}
+      />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).toContain('Orchentra')
+    expect(out).toContain('ctx 25%')
+  })
+
   test('shows an explicit danger warning for danger-full-access mode', () => {
     const { lastFrame } = render(
       <Footer
@@ -128,5 +151,89 @@ describe('Footer — idle', () => {
     )
     const out = strip(lastFrame() ?? '')
     expect(out).toContain('terse:full')
+  })
+})
+
+describe('Footer — background tasks', () => {
+  test('shows a pluralized indicator counting only running/pending tasks', () => {
+    const { lastFrame } = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+        tasks={[makeTask('running'), makeTask('pending'), makeTask('completed')]}
+      />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).toContain('⚙ 2 tasks')
+  })
+
+  test('uses the singular noun for exactly one active task', () => {
+    const { lastFrame } = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+        tasks={[makeTask('running')]}
+      />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).toContain('⚙ 1 task')
+    expect(out).not.toContain('tasks')
+  })
+
+  test('renders nothing when every task is terminal', () => {
+    const { lastFrame } = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+        tasks={[makeTask('completed'), makeTask('failed'), makeTask('cancelled')]}
+      />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).not.toContain('⚙')
+    expect(out).not.toContain('task')
+  })
+
+  test('renders nothing when the task list is empty or undefined', () => {
+    const empty = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+        tasks={[]}
+      />,
+    )
+    expect(strip(empty.lastFrame() ?? '')).not.toContain('⚙')
+
+    const absent = render(
+      <Footer
+        model="claude-opus-4-7"
+        mode="workspace-write"
+        terseMode="off"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+      />,
+    )
+    expect(strip(absent.lastFrame() ?? '')).not.toContain('⚙')
   })
 })

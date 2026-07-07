@@ -1,5 +1,6 @@
 import type { EffortTier, PermissionMode, PlanLevel, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import type { UiCardSection, UiTabs } from '../commands/ui-output'
+import type { HistorySearchState } from './input/history-search'
 
 export interface CardRow {
   readonly kind: 'card'
@@ -107,6 +108,12 @@ export interface TuiState {
   /** -1 = live draft, 0 = most recent submission, increasing = older. */
   readonly historyIndex: number
   readonly history: readonly string[]
+  /**
+   * Active incremental history reverse-search (ctrl+f), or null when idle.
+   * While set, the input line is replaced by the search prompt and all keys
+   * route to the search instead of buffer editing.
+   */
+  readonly historySearch: HistorySearchState | null
   readonly suggestions: SuggestionState
   readonly transcript: readonly TranscriptRow[]
   readonly turn: TurnStatus
@@ -160,6 +167,11 @@ export type TuiAction =
   | { type: 'history/prev' }
   | { type: 'history/next' }
   | { type: 'history/append'; text: string }
+  | { type: 'history-search/open' }
+  | { type: 'history-search/set-query'; query: string }
+  | { type: 'history-search/cycle'; direction: 'older' | 'newer' }
+  | { type: 'history-search/accept' }
+  | { type: 'history-search/cancel' }
   | { type: 'suggestions/set'; state: SuggestionState }
   | { type: 'suggestions/close' }
   | { type: 'suggestions/move'; delta: number }
