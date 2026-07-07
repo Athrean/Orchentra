@@ -166,6 +166,34 @@ describe('LiveCli sessions', () => {
     }
   })
 
+  test('getContextBreakdown reports the built-in tool schemas and no duplicate reads', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-breakdown-'))
+    try {
+      const provider = fakeProvider()
+      const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
+      const cli = new LiveCli({
+        model: 'test-model',
+        permissionMode: 'workspace-write',
+        provider,
+        resolveModel,
+        tools: new DefaultToolRegistry(),
+        cwd: dir,
+        sessionId: 'breakdown-session',
+        sharedState: sharedState(),
+      })
+
+      const breakdown = cli.getContextBreakdown()
+      // No MCP servers are configured, so every tool is grouped under built-in.
+      expect(breakdown.toolSources.map((s) => s.server)).toEqual(['built-in'])
+      expect(breakdown.toolSources[0].tools).toBeGreaterThan(0)
+      expect(breakdown.toolSources[0].estimatedTokens).toBeGreaterThan(0)
+      // A fresh session has read nothing, so there is nothing to flag.
+      expect(breakdown.duplicateReads).toEqual([])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   test('runTurn records user messages in the session log for future resume', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orchentra-live-user-log-'))
     try {

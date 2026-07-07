@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto'
 import type { Dispatch } from 'react'
 import type { Key } from 'ink'
 import type { LiveCli } from '../../live-cli'
-import { SHORTCUT_SECTIONS } from '../help/shortcut-sections'
+import { buildShortcutSections } from '../help/shortcut-sections'
 import { evaluatePaste } from '../paste'
 import type { TuiAction, TuiState } from '../types'
 import { deleteWordBack, wordBoundaryLeft, wordBoundaryRight } from '../word-boundary'
 import { endsWithBackslashLine, hasUnclosedFence, moveLine } from './motion'
+import type { Keybindings } from '../keybindings/registry'
 
 export type TuiInputKey = Key
 
@@ -21,6 +22,7 @@ export interface MainInputHandlerArgs {
   readonly submitTurn: (input: string) => Promise<void>
   readonly isMultilineModal: boolean
   readonly collapseMultilineModal: () => void
+  readonly keybindings: Keybindings
 }
 
 export function handleMainInput(args: MainInputHandlerArgs): void {
@@ -30,22 +32,11 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
   // is idle; mid-turn the buffer is not the active surface.
   if (cur.turn.state === 'idle' && args.chordEditor(input, key)) return
 
-  // While a turn is running, only Esc/Ctrl+C can do anything useful.
+  // While a turn is running the buffer becomes a type-ahead surface: the user
+  // can compose and Enter-queue messages that submit in order once idle.
+  // Esc/Ctrl+C still cancel the turn.
   if (cur.turn.state !== 'idle') {
-    if (key.ctrl && input === 'c') {
-      if (cur.turn.state === 'running') {
-        dispatch({ type: 'turn/cancelling' })
-        cli.abort()
-      }
-      return
-    }
-    if (key.escape) {
-      if (cur.turn.state === 'running') {
-        dispatch({ type: 'turn/cancelling' })
-        cli.abort()
-      }
-      return
-    }
+    handleRunningTurnKey(cur, input, key, dispatch, cli)
     return
   }
 
@@ -55,9 +46,34 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
     return
   }
 
-  if (key.shift && key.tab) {
-    dispatch({ type: 'mode/cycle' })
-    return
+  // Declarative global chords (ctrl+l/r/o/f/k/u/w, shift+tab). Resolved from
+  // the registry so users can rebind them via keybindings.json; ctrl+c/ctrl+d,
+  // submit, and all context-sensitive keys stay in the imperative branches
+  // below. Runs before the card/suggestion blocks — those only claim plain
+  // arrows/tab/return/esc, which never resolve to a chord action.
+  const action = args.keybindings.resolve(input, key)
+  if (action !== null) {
+    switch (action) {
+      case 'cycle-permission-mode':
+        return dispatch({ type: 'mode/cycle' })
+      case 'clear-transcript':
+        return dispatch({ type: 'transcript/clear' })
+      case 'toggle-reasoning':
+        return dispatch({ type: 'reasoning/toggle-last' })
+      case 'toggle-collapsible':
+        return dispatch({ type: 'collapsible/toggle-last' })
+      case 'command-palette':
+        return dispatch({ type: 'flow/start', flow: { kind: 'command-palette' } })
+      case 'history-search':
+        if (cur.history.length > 0) return dispatch({ type: 'history-search/open' })
+        return
+      case 'delete-to-line-start':
+        return dispatch({ type: 'buffer/set', buffer: cur.buffer.slice(cur.cursor), cursor: 0 })
+      case 'delete-word-back': {
+        const trimmed = deleteWordBack(cur.buffer, cur.cursor)
+        return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
+      }
+    }
   }
 
   if (cur.activeCard) {
@@ -114,16 +130,6 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
     return
   }
 
-  if (key.ctrl && input === 'l') return dispatch({ type: 'transcript/clear' })
-  if (key.ctrl && input === 'r') return dispatch({ type: 'reasoning/toggle-last' })
-  if (key.ctrl && input === 'o') return dispatch({ type: 'collapsible/toggle-last' })
-  if (key.ctrl && input === 'f' && cur.history.length > 0) return dispatch({ type: 'history-search/open' })
-
-  if (key.ctrl && input === 'k') {
-    dispatch({ type: 'flow/start', flow: { kind: 'command-palette' } })
-    return
-  }
-
   if (input === '?' && cur.buffer.length === 0 && !cur.suggestions.open && !cur.activeCard) {
     dispatch({
       type: 'card/open',
@@ -132,20 +138,10 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
         title: 'Keyboard shortcuts',
         subtitle: 'Press down or Esc to dismiss',
         activeTab: 0,
-        sectionsByTab: [SHORTCUT_SECTIONS],
+        sectionsByTab: [buildShortcutSections(args.keybindings)],
       },
     })
     return
-  }
-
-  if (key.ctrl && input === 'u') {
-    const next = cur.buffer.slice(cur.cursor)
-    return dispatch({ type: 'buffer/set', buffer: next, cursor: 0 })
-  }
-
-  if (key.ctrl && input === 'w') {
-    const trimmed = deleteWordBack(cur.buffer, cur.cursor)
-    return dispatch({ type: 'buffer/set', buffer: trimmed.buffer, cursor: trimmed.cursor })
   }
 
   if (key.leftArrow && (key.meta || key.ctrl)) {
@@ -233,6 +229,63 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
       const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
       return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
     }
+    const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
+    return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
+  }
+}
+
+/**
+ * Key routing while a turn is running: the buffer is a type-ahead composer.
+ * Enter queues the current buffer for submission once the runtime goes idle;
+ * printable keys, backspace, and left/right edit it; Esc/Ctrl+C cancel the
+ * turn. Slash/history/paste affordances stay idle-only for simplicity — the
+ * queued text is expanded and routed normally when it finally submits.
+ */
+function handleRunningTurnKey(
+  cur: TuiState,
+  input: string,
+  key: TuiInputKey,
+  dispatch: Dispatch<TuiAction>,
+  cli: LiveCli,
+): void {
+  // Ctrl+C clears an in-progress type-ahead buffer first (mirrors idle mode) so
+  // it doesn't kill the turn mid-compose; only an empty buffer cancels. Esc
+  // always interrupts — the documented "esc to interrupt" affordance stays.
+  if (key.ctrl && input === 'c' && cur.buffer.length > 0) {
+    dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
+    return
+  }
+  if ((key.ctrl && input === 'c') || key.escape) {
+    if (cur.turn.state === 'running') {
+      dispatch({ type: 'turn/cancelling' })
+      cli.abort()
+    }
+    return
+  }
+  if (key.return && !key.shift && !key.meta) {
+    if (cur.buffer.trim().length > 0) {
+      dispatch({ type: 'queue/enqueue', text: cur.buffer })
+      dispatch({ type: 'buffer/set', buffer: '', cursor: 0 })
+    }
+    return
+  }
+  // Up recalls the newest queued message into the buffer to edit or drop it —
+  // only when the buffer is empty, so an in-progress compose isn't clobbered.
+  if (key.upArrow && cur.buffer.length === 0 && cur.queued.length > 0) {
+    return dispatch({ type: 'queue/recall-last' })
+  }
+  if (key.leftArrow) {
+    return dispatch({ type: 'buffer/set', buffer: cur.buffer, cursor: Math.max(0, cur.cursor - 1) })
+  }
+  if (key.rightArrow) {
+    return dispatch({ type: 'buffer/set', buffer: cur.buffer, cursor: Math.min(cur.buffer.length, cur.cursor + 1) })
+  }
+  if (key.backspace || key.delete) {
+    if (cur.cursor === 0) return
+    const next = cur.buffer.slice(0, cur.cursor - 1) + cur.buffer.slice(cur.cursor)
+    return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor - 1 })
+  }
+  if (input && input.length > 0 && !key.ctrl && !key.meta) {
     const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
     return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
   }

@@ -120,6 +120,8 @@ export type {
 } from './session-control'
 
 export { rewindBoundary, countUserTurns, lineDiffStats } from './rewind'
+export { groupToolSources, findDuplicateReads } from './context-breakdown'
+export type { ContextBreakdown, ContextToolSource, DuplicateFileRead } from './context-breakdown'
 
 export { isKnownModel } from './model-availability'
 

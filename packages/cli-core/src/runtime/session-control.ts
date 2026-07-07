@@ -1,3 +1,4 @@
+import type { ContextBreakdown } from './context-breakdown'
 import type { UsageTotals } from './events'
 import type { PermissionMode } from './permissions'
 import type { EffortTier } from './provider'
@@ -115,6 +116,11 @@ export interface SessionControl {
   getUsage(): UsageTotals
   /** Estimated live conversation footprint before provider-side caching. */
   getContextStats?(): ContextStats
+  /**
+   * Per-source accounting for `/context`: which tool schemas and repeated file
+   * reads are eating the window, beyond the aggregate `getContextStats` total.
+   */
+  getContextBreakdown?(): ContextBreakdown
   /** Current session goal, when one has been set with /goal. */
   getGoal?(): SessionGoal | null
   setGoal?(objective: string): SessionGoal
