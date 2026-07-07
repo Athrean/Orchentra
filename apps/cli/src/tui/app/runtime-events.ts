@@ -107,6 +107,23 @@ export function handleRuntimeEvent(event: RuntimeEvent, dispatch: Dispatch<TuiAc
         row: { kind: 'system', id: randomUUID(), tone: 'info', text: memorySavedText(event.id) },
       })
       break
+    case 'hook_progress': {
+      const phaseLabel = event.hookEvent === 'pre_tool_use' ? 'pre' : 'post'
+      if (event.phase === 'running') {
+        dispatch({
+          type: 'transcript/push',
+          row: { kind: 'system', id: event.id, tone: 'info', text: `⚙ hook ${phaseLabel} · ${event.command} …` },
+        })
+      } else {
+        dispatch({
+          type: 'transcript/system-update',
+          id: event.id,
+          text: `${event.ok ? '✓' : '✗'} hook ${phaseLabel} · ${event.command}${event.ok ? '' : ' (failed)'}`,
+          tone: event.ok ? 'info' : 'warn',
+        })
+      }
+      break
+    }
     case 'usage':
       dispatch({ type: 'tokens/set', usage: event.cumulative })
       break

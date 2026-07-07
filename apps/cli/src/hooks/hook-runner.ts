@@ -1,7 +1,8 @@
+import { randomUUID } from 'node:crypto'
 import { loadHooks } from './load-hooks'
 import { matchHooks } from './match'
 import { runHook } from './run-hook'
-import type { HookConfig, HookExecutionContext, HookFireResult } from './types'
+import type { HookConfig, HookExecutionContext, HookFireResult, HookProgressUpdate } from './types'
 
 export interface HookRunnerOptions {
   /**
@@ -17,6 +18,13 @@ export interface HookRunnerOptions {
    * pass `cwd` and let `loadHooks` parse the file.
    */
   readonly config?: HookConfig
+
+  /**
+   * Live progress callback fired around each hook that actually runs, so the
+   * UI can show a "running hook…" row that resolves to pass/fail. Only invoked
+   * when a hook matches — silent when nothing runs.
+   */
+  readonly onProgress?: (update: HookProgressUpdate) => void
 }
 
 export interface HookRunner {
@@ -34,6 +42,14 @@ const NOOP_RESULT: HookFireResult = { blocked: false }
  */
 export function createHookRunner(options: HookRunnerOptions): HookRunner {
   const config = options.config ?? loadHooks(options.cwd)
+  const onProgress = options.onProgress
+
+  function report(event: 'pre_tool_use' | 'post_tool_use', tool: string, command: string): (ok: boolean) => void {
+    if (!onProgress) return () => {}
+    const id = randomUUID()
+    onProgress({ id, phase: 'running', event, tool, command })
+    return (ok) => onProgress({ id, phase: 'done', ok, event, tool, command })
+  }
 
   return {
     async firePreToolUse(toolName, args): Promise<HookFireResult> {
@@ -43,7 +59,9 @@ export function createHookRunner(options: HookRunnerOptions): HookRunner {
       const annotations: string[] = []
       for (const hook of hooks) {
         const ctx: HookExecutionContext = { event: 'pre_tool_use', tool: toolName, args }
+        const done = report('pre_tool_use', toolName, hook.command)
         const result = await runHook(hook, ctx)
+        done(result.exitCode === 0)
         if (result.exitCode !== 0) {
           const reason = result.stderr.trim() || `${hook.command} exited with code ${result.exitCode}`
           return { blocked: true, blockedReason: reason, annotations: annotations.length > 0 ? annotations : undefined }
@@ -68,7 +86,9 @@ export function createHookRunner(options: HookRunnerOptions): HookRunner {
 
       const annotations: string[] = []
       for (const hook of hooks) {
+        const done = report('post_tool_use', toolName, hook.command)
         const result = await runHook(hook, ctx)
+        done(result.exitCode === 0)
         const stdout = result.stdout.trim()
         if (stdout.length > 0) annotations.push(stdout)
       }

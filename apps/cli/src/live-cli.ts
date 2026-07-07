@@ -245,6 +245,30 @@ export class LiveCli implements SessionControl {
     this.eventSink = sink
   }
 
+  /**
+   * Surface a repo-local hook's live progress to the UI. Emitted straight to
+   * the event sink (not persisted) so a "running hook…" row can appear and
+   * then resolve to pass/fail while the hook executes.
+   */
+  emitHookProgress(update: {
+    id: string
+    phase: 'running' | 'done'
+    ok?: boolean
+    event: 'pre_tool_use' | 'post_tool_use'
+    tool: string
+    command: string
+  }): void {
+    this.eventSink?.({
+      kind: 'hook_progress',
+      id: update.id,
+      phase: update.phase,
+      ok: update.ok,
+      hookEvent: update.event,
+      tool: update.tool,
+      command: update.command,
+    })
+  }
+
   setAskUser(askUser: AskUserOverride | null): void {
     this.askUserOverride = askUser
   }

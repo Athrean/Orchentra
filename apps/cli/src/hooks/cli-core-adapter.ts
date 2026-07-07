@@ -1,5 +1,6 @@
 import { HookRunner as CoreHookRunner, type HookRunResult, type PermissionOverride } from '@orchentra/cli-core'
 import { createHookRunner, type HookRunner } from './hook-runner'
+import type { HookProgressUpdate } from './types'
 
 interface ParsedAnnotationOutput {
   messages: string[]
@@ -92,9 +93,9 @@ function parseAnnotations(annotations: readonly string[] | undefined): ParsedAnn
 export class CliCoreHookAdapter extends CoreHookRunner {
   private readonly inner: HookRunner
 
-  constructor(cwd: string) {
+  constructor(cwd: string, onProgress?: (update: HookProgressUpdate) => void) {
     super()
-    this.inner = createHookRunner({ cwd })
+    this.inner = createHookRunner({ cwd, onProgress })
   }
 
   override async runPreToolUse(toolName: string, toolInput: string): Promise<HookRunResult> {

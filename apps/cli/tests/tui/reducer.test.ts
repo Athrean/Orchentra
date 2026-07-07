@@ -10,6 +10,24 @@ describe('tui reducer', () => {
     expect(s.cursor).toBe(5)
   })
 
+  test('transcript/system-update replaces a system row text and tone by id in place', () => {
+    let s = reducer(base(), {
+      type: 'transcript/push',
+      row: { kind: 'system', id: 'hook-1', text: '⚙ hook pre · lint …', tone: 'info' },
+    })
+    s = reducer(s, { type: 'transcript/system-update', id: 'hook-1', text: '✗ hook pre · lint (failed)', tone: 'warn' })
+    const row = s.transcript.find((r) => r.id === 'hook-1')
+    expect(row).toMatchObject({ kind: 'system', text: '✗ hook pre · lint (failed)', tone: 'warn' })
+    // No new row was appended — it updated in place.
+    expect(s.transcript).toHaveLength(1)
+  })
+
+  test('transcript/system-update leaves non-matching and non-system rows untouched', () => {
+    let s = reducer(base(), { type: 'transcript/push', row: { kind: 'user', id: 'u1', text: 'hi' } })
+    s = reducer(s, { type: 'transcript/system-update', id: 'u1', text: 'nope' })
+    expect(s.transcript.find((r) => r.id === 'u1')).toMatchObject({ kind: 'user', text: 'hi' })
+  })
+
   test('history prev/next round-trips through draft', () => {
     let s = reducer(base(), { type: 'history/load', entries: ['first', 'second', 'third'] })
     s = reducer(s, { type: 'buffer/set', buffer: 'draft', cursor: 5 })

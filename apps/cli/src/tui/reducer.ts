@@ -141,6 +141,14 @@ export function reducer(state: TuiState, action: TuiAction): TuiState {
     case 'transcript/push':
       return { ...state, transcript: [...state.transcript, action.row] }
 
+    case 'transcript/system-update': {
+      const next = state.transcript.map((row) => {
+        if (row.id !== action.id || row.kind !== 'system') return row
+        return { ...row, text: action.text, tone: action.tone ?? row.tone }
+      })
+      return { ...state, transcript: next }
+    }
+
     case 'transcript/clear':
       return { ...state, transcript: [] }
 

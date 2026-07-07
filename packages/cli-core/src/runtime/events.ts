@@ -94,6 +94,23 @@ export interface MemorySavedEvent {
   signatureHash: string
 }
 
+/**
+ * Emitted around a repo-local hook while it runs so the UI can show a live
+ * "running hook…" row that resolves to pass/fail, instead of only surfacing
+ * the hook's output after the fact.
+ */
+export interface HookProgressRuntimeEvent {
+  kind: 'hook_progress'
+  /** Stable per-invocation id so the `running` row can be updated in place. */
+  id: string
+  phase: 'running' | 'done'
+  /** Set on `done`: whether the hook exited zero. */
+  ok?: boolean
+  hookEvent: 'pre_tool_use' | 'post_tool_use'
+  tool: string
+  command: string
+}
+
 export interface ErrorEvent {
   kind: 'error'
   message: string
@@ -139,6 +156,7 @@ export type RuntimeEvent =
   | CostWarningEvent
   | ToolOutputBudgetedEvent
   | MemorySavedEvent
+  | HookProgressRuntimeEvent
   | ErrorEvent
   | DoneEvent
   | SpanStartEvent
