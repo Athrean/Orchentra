@@ -8,11 +8,12 @@ import {
   OPENAI_CONFIG,
   XAI_CONFIG,
 } from '@orchentra/cli-api'
+import { DEFAULT_MODEL_ID, DEFAULT_OPUS_MODEL_ID, DEFAULT_HAIKU_MODEL_ID } from './model-catalog'
 
 const BUILTIN_MODEL_ALIASES: Record<string, string> = {
-  opus: 'claude-opus-4-20250514',
-  sonnet: 'claude-sonnet-4-20250514',
-  haiku: 'claude-haiku-4-20250514',
+  opus: DEFAULT_OPUS_MODEL_ID,
+  sonnet: DEFAULT_MODEL_ID,
+  haiku: DEFAULT_HAIKU_MODEL_ID,
   grok: 'grok-3',
   'grok-mini': 'grok-3-mini',
   gemini: 'gemini-2.0-flash',

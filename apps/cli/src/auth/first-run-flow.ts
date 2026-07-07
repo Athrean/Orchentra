@@ -15,6 +15,7 @@ import { runInstallBootstrap } from './install-bootstrap'
 import { startLoopback } from './loopback-server'
 import { inferGitHubOwner } from '../util/git-owner'
 import { CLI_NAME, CLI_VERSION } from '../version'
+import { DEFAULT_MODEL_ID } from '../model-catalog'
 
 export const LLM_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope', 'gemini']
 
@@ -209,7 +210,7 @@ async function renderFirstRunBanner(): Promise<void> {
   const frame = await renderBannerFrame({
     cliName: CLI_NAME,
     cliVersion: CLI_VERSION,
-    model: 'claude-sonnet-4-20250514',
+    model: DEFAULT_MODEL_ID,
     permissionMode: 'workspace-write',
     cwd: process.cwd(),
     providerName: '—',

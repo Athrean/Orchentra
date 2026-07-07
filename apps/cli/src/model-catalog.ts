@@ -21,6 +21,14 @@ export const MODEL_CATALOG: readonly ModelOption[] = [
   { id: 'grok-4', label: 'Grok 4', provider: 'xAI' },
 ]
 
+// Single source of truth for "no model chosen yet" fallbacks (fresh
+// install, first prompt before /model or a settings.json override).
+// Keep in sync with MODEL_CATALOG above — these were previously duplicated
+// as stale, retired dated snapshots in several files independently.
+export const DEFAULT_MODEL_ID = 'claude-sonnet-4-6'
+export const DEFAULT_OPUS_MODEL_ID = 'claude-opus-4-7'
+export const DEFAULT_HAIKU_MODEL_ID = 'claude-haiku-4-5-20251001'
+
 const LABELS_BY_ID = new Map(MODEL_CATALOG.map((m) => [m.id, m.label]))
 
 // A few well-known dated aliases that some callers still pass through.
