@@ -16,6 +16,7 @@ import { ClearCommand } from '../../src/commands/builtin/clear'
 import {
   AddDirCommand,
   CdCommand,
+  ContextCommand,
   CopyCommand,
   ForkCommand,
   GoalCommand,
@@ -120,6 +121,43 @@ describe('small slash parity commands', () => {
     expect(events[0]).toEqual({ kind: 'note', text: 'Goal set: fix terminal ux', tone: 'info' })
     expect(events[1]?.kind).toBe('card')
     expect(events[2]).toEqual({ kind: 'note', text: 'Goal cleared.', tone: 'info' })
+  })
+
+  test('/context lists the files read into context', async () => {
+    const session: SessionControl = {
+      ...makeSession(),
+      getContextStats: () => ({ messages: 4, estimatedTokens: 1200, contextWindowTokens: 200_000 }),
+      listContextFiles: () => [
+        { path: 'src/a.ts', reads: 2 },
+        { path: 'src/b.ts', reads: 1 },
+      ],
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ContextCommand().execute([], ctx)
+
+    const card = events.find((e) => e.kind === 'card')
+    expect(card?.kind).toBe('card')
+    if (card?.kind !== 'card') throw new Error('expected card')
+    const summary = card.sections[0]!.rows
+    expect(summary.find((r) => r.key === 'Files in context')?.value).toBe('2')
+    const fileSection = card.sections.find((s) => s.title === 'Files read into context')
+    expect(fileSection?.rows.map((r) => r.key)).toEqual(['src/a.ts', 'src/b.ts'])
+    expect(fileSection?.rows.find((r) => r.key === 'src/a.ts')?.value).toBe('2×')
+  })
+
+  test('/context omits the files section when nothing has been read', async () => {
+    const session: SessionControl = {
+      ...makeSession(),
+      listContextFiles: () => [],
+    }
+    const { ctx, events } = makeCtx('/work', session)
+
+    await new ContextCommand().execute([], ctx)
+
+    const card = events.find((e) => e.kind === 'card')
+    if (card?.kind !== 'card') throw new Error('expected card')
+    expect(card.sections.some((s) => s.title === 'Files read into context')).toBe(false)
   })
 
   test('/cd updates the session cwd and TUI cwd hook', async () => {

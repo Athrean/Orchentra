@@ -18,6 +18,7 @@ export class ContextCommand implements CommandHandler {
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
     const stats = ctx.session.getContextStats?.()
     const transcript = ctx.getTranscriptText?.()
+    const files = ctx.session.listContextFiles?.() ?? []
     const rows = [
       { key: 'Model', value: ctx.session.getModel() },
       { key: 'Turns', value: String(ctx.session.getTurns()) },
@@ -28,9 +29,21 @@ export class ContextCommand implements CommandHandler {
         value: stats?.contextWindowTokens ? formatNumber(stats.contextWindowTokens) : 'provider default',
       },
       { key: 'Visible transcript', value: transcript ? `${formatNumber(transcript.length)} chars` : 'empty' },
+      { key: 'Files in context', value: String(files.length) },
     ]
 
-    return card(ctx, 'Context', prettyCwd(ctx.cwd), [{ rows }])
+    const sections: UiCardSection[] = [{ rows }]
+    if (files.length > 0) {
+      const CAP = 20
+      const shown = files.slice(0, CAP)
+      const fileRows = shown.map((f) => ({ key: f.path, value: f.reads > 1 ? `${f.reads}×` : '' }))
+      if (files.length > CAP) {
+        fileRows.push({ key: `…and ${files.length - CAP} more`, value: '' })
+      }
+      sections.push({ title: 'Files read into context', rows: fileRows })
+    }
+
+    return card(ctx, 'Context', prettyCwd(ctx.cwd), sections)
   }
 }
 

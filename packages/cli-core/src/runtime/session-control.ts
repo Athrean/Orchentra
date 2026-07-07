@@ -5,6 +5,7 @@ import type { TerseMode } from './terse'
 import type { PlanLevel } from './plan-level'
 import type { SpineBudgetControls } from './spine'
 import type { SpineSavings, TerseModeUsage } from './usage'
+import type { ContextFile } from './context-files'
 import type { PolicyRule } from '../permissions/policy'
 import type { StoredPermissionRule } from '../permissions/store'
 
@@ -79,6 +80,8 @@ export interface SessionControl {
   getUsage(): UsageTotals
   /** Estimated live conversation footprint before provider-side caching. */
   getContextStats?(): ContextStats
+  /** Distinct files pulled into context via read_file, for /context transparency. */
+  listContextFiles?(): readonly ContextFile[]
   /** Current session goal, when one has been set with /goal. */
   getGoal?(): SessionGoal | null
   setGoal?(objective: string): SessionGoal
