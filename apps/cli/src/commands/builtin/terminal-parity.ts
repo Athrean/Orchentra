@@ -27,6 +27,7 @@ export class ContextCommand implements CommandHandler {
       turns: ctx.session.getTurns(),
       savings: ctx.session.getSavings?.(),
       breakdown: ctx.session.getContextBreakdown?.(),
+      files: ctx.session.listContextFiles?.(),
     })
     return card(ctx, 'Context', ctx.session.getModel(), sections)
   }

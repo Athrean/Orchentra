@@ -1,4 +1,4 @@
-import type { ContextBreakdown, ContextStats, SpineSavings, UsageTotals } from '@orchentra/cli-core'
+import type { ContextBreakdown, ContextFile, ContextStats, SpineSavings, UsageTotals } from '@orchentra/cli-core'
 import type { UiCardSection } from '../ui-output'
 
 export interface ContextReport {
@@ -8,6 +8,8 @@ export interface ContextReport {
   readonly savings?: SpineSavings
   /** Per-source detail: which tool schemas and re-read files fill the window. */
   readonly breakdown?: ContextBreakdown
+  /** Every distinct file loaded into context via read_file, most-read first. */
+  readonly files?: readonly ContextFile[]
 }
 
 const DEFAULT_WINDOW = 200_000
@@ -54,6 +56,7 @@ export function buildContextSections(report: ContextReport): UiCardSection[] {
           bold: overThreshold,
         },
         { key: 'Messages in context', value: fmt(messages) },
+        ...(report.files ? [{ key: 'Files in context', value: fmt(report.files.length) }] : []),
       ],
     },
     {
@@ -71,10 +74,23 @@ export function buildContextSections(report: ContextReport): UiCardSection[] {
   if (tools) sections.push(tools)
   const dups = duplicateReadsSection(report.breakdown)
   if (dups) sections.push(dups)
+  const files = filesSection(report.files)
+  if (files) sections.push(files)
 
   const savings = savingsSection(report.savings)
   if (savings) sections.push(savings)
   return sections
+}
+
+/** Every distinct file loaded into context, most-read first — capped so a
+ * long session doesn't blow out the card. Hidden when nothing was read. */
+function filesSection(files?: readonly ContextFile[]): UiCardSection | undefined {
+  if (!files || files.length === 0) return undefined
+  const CAP = 20
+  const shown = files.slice(0, CAP)
+  const rows = shown.map((f) => ({ key: f.path, value: f.reads > 1 ? `${f.reads}×` : '' }))
+  if (files.length > CAP) rows.push({ key: `…and ${files.length - CAP} more`, value: '' })
+  return { title: 'Files read into context', rows }
 }
 
 /** Tool schemas re-sent on every request, grouped by source (biggest first) so

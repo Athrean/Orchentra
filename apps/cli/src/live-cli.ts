@@ -20,6 +20,7 @@ import type {
   RuntimeEvent,
   SessionControl,
   SessionForkResult,
+  ContextFile,
   SessionGoal,
   SessionRecord,
   SessionResumeResult,
@@ -37,6 +38,7 @@ import type {
 } from '@orchentra/cli-core'
 import {
   UsageTracker,
+  collectContextFiles,
   compact,
   emptyUsage,
   buildSystemPrompt,
@@ -349,6 +351,10 @@ export class LiveCli implements SessionControl {
       contextWindowTokens: 200_000,
       compactThresholdRatio: this.compactionThreshold,
     }
+  }
+
+  listContextFiles(): readonly ContextFile[] {
+    return collectContextFiles(this.messages)
   }
 
   getContextBreakdown(): ContextBreakdown {

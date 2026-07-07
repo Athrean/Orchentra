@@ -106,6 +106,9 @@ export type {
   ToolRegistry,
 } from './tools'
 
+export type { ContextFile } from './context-files'
+export { collectContextFiles } from './context-files'
+
 export type {
   ContextStats,
   SessionControl,

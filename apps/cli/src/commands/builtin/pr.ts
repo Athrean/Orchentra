@@ -1,15 +1,56 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
-import { resolveToken, createPullRequest, findOpenPullByHead, GitHubClient } from '@orchentra/cli-api'
+import type { UiOutput } from '../ui-output'
+import {
+  resolveToken,
+  createPullRequest,
+  findOpenPullByHead,
+  listPullReviewComments,
+  GitHubClient,
+} from '@orchentra/cli-api'
+
+interface PrRef {
+  readonly number: number
+  readonly title: string
+  readonly html_url: string
+}
+
+/** Structured render of a PR's review comments: a summary card plus one row per comment. */
+export function reviewCommentsOutputs(pr: PrRef, comments: readonly { body: string; html_url: string }[]): UiOutput[] {
+  if (comments.length === 0) {
+    return [{ kind: 'note', tone: 'info', text: `No review comments on PR #${pr.number}.` }]
+  }
+  const outputs: UiOutput[] = [
+    {
+      kind: 'card',
+      title: 'PR review comments',
+      subtitle: `#${pr.number} ${pr.title}`,
+      sections: [
+        {
+          rows: [
+            { key: 'Comments', value: String(comments.length) },
+            { key: 'URL', value: pr.html_url },
+          ],
+        },
+      ],
+    },
+  ]
+  comments.forEach((c, i) => {
+    outputs.push({ kind: 'text', text: `${i + 1}. ${c.body.trim()}\n   ${c.html_url}` })
+  })
+  return outputs
+}
 
 export class PrCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'pr',
     aliases: [],
     summary: 'Create or update a pull request',
-    argumentHint: '[--title <t>] [--base <branch>]',
+    argumentHint: '[comments] [--title <t>] [--base <branch>]',
   }
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
+    if (args[0] === 'comments') return this.showComments(ctx)
+
     const title = extractFlag(args, '--title')
     const base = extractFlag(args, '--base') ?? 'main'
 
@@ -76,6 +117,48 @@ export class PrCommand implements CommandHandler {
       return prCard(ctx, 'PR created', pr.html_url, prTitle, branch, base)
     } catch (e) {
       return note(ctx, `error creating PR: ${(e as Error).message}`, 'warn')
+    }
+  }
+
+  private async showComments(ctx: CommandContext): Promise<boolean> {
+    const branchResult = Bun.spawnSync(['git', 'branch', '--show-current'], { cwd: ctx.cwd, stdout: 'pipe' })
+    const branch = new TextDecoder().decode(branchResult.stdout).trim()
+    if (!branch) return note(ctx, 'error: not on a branch', 'warn')
+
+    const remoteResult = Bun.spawnSync(['git', 'remote', 'get-url', 'origin'], { cwd: ctx.cwd, stdout: 'pipe' })
+    const remoteUrl = new TextDecoder().decode(remoteResult.stdout).trim()
+    const repoInfo = parseGitRemote(remoteUrl)
+    if (!repoInfo) return note(ctx, 'error: could not determine owner/repo from git remote', 'warn')
+
+    const token = resolveToken()
+    if (!token) return note(ctx, 'error: GitHub token not found. Run `orchentra doctor` to diagnose.', 'warn')
+
+    const client = new GitHubClient({ token: token.token })
+    const pr = await findOpenPullByHead(client, repoInfo.owner, repoInfo.repo, branch)
+    if (!pr) return note(ctx, `No open PR found for ${branch}.`, 'warn')
+
+    try {
+      const comments = await listPullReviewComments(client, repoInfo.owner, repoInfo.repo, pr.number)
+      for (const output of reviewCommentsOutputs(pr, comments)) emit(ctx, output)
+      return true
+    } catch (e) {
+      return note(ctx, `error fetching review comments: ${(e as Error).message}`, 'warn')
+    }
+  }
+}
+
+function emit(ctx: CommandContext, output: UiOutput): void {
+  if (ctx.ui) {
+    ctx.ui(output)
+    return
+  }
+  if (output.kind === 'text' || output.kind === 'note') {
+    process.stdout.write(output.text + '\n')
+  } else if (output.kind === 'card') {
+    const header = [output.title, output.subtitle].filter(Boolean).join(' — ')
+    process.stdout.write(header + '\n')
+    for (const section of output.sections) {
+      for (const row of section.rows) process.stdout.write(`  ${row.key}: ${row.value}\n`)
     }
   }
 }
