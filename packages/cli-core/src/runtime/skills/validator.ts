@@ -3,7 +3,6 @@ export interface ValidatedSkillFrontmatter {
   description: string
   allowedTools: string[]
   argumentNames: string[]
-  disableModelInvocation: boolean
 }
 
 export type ValidateSkillResult =
@@ -20,8 +19,6 @@ export function validateSkillFrontmatter(meta: Record<string, unknown>): Validat
   if (allowedTools.kind === 'error') return allowedTools
   const argumentNames = optionalStringArray(meta, 'arguments')
   if (argumentNames.kind === 'error') return argumentNames
-  const disableModelInvocation = optionalBoolean(meta, 'disable-model-invocation')
-  if (disableModelInvocation.kind === 'error') return disableModelInvocation
 
   return {
     kind: 'ok',
@@ -30,13 +27,19 @@ export function validateSkillFrontmatter(meta: Record<string, unknown>): Validat
       description: description.value,
       allowedTools: allowedTools.value,
       argumentNames: argumentNames.value,
-      disableModelInvocation: disableModelInvocation.value,
     },
   }
 }
 
-interface FieldOk<T> { kind: 'ok'; value: T }
-interface FieldErr { kind: 'error'; field: string; message: string }
+interface FieldOk<T> {
+  kind: 'ok'
+  value: T
+}
+interface FieldErr {
+  kind: 'error'
+  field: string
+  message: string
+}
 type FieldResult<T> = FieldOk<T> | FieldErr
 
 function requireString(meta: Record<string, unknown>, field: string): FieldResult<string> {
@@ -62,17 +65,4 @@ function optionalStringArray(meta: Record<string, unknown>, field: string): Fiel
     }
   }
   return { kind: 'ok', value: value as string[] }
-}
-
-function optionalBoolean(meta: Record<string, unknown>, field: string): FieldResult<boolean> {
-  const value = meta[field]
-  if (value === undefined) return { kind: 'ok', value: false }
-  if (typeof value === 'string') {
-    if (value === 'true') return { kind: 'ok', value: true }
-    if (value === 'false') return { kind: 'ok', value: false }
-  }
-  if (typeof value !== 'boolean') {
-    return { kind: 'error', field, message: `'${field}' must be a boolean` }
-  }
-  return { kind: 'ok', value }
 }

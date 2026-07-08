@@ -10,7 +10,6 @@ describe('validateSkillFrontmatter', () => {
     expect(result.value.description).toBe('say hi')
     expect(result.value.allowedTools).toEqual([])
     expect(result.value.argumentNames).toEqual([])
-    expect(result.value.disableModelInvocation).toBe(false)
   })
 
   test('rejects missing name', () => {
@@ -67,16 +66,5 @@ describe('validateSkillFrontmatter', () => {
     expect(result.kind).toBe('ok')
     if (result.kind !== 'ok') return
     expect(result.value.argumentNames).toEqual(['service', 'environment'])
-  })
-
-  test('parses disable-model-invocation as boolean', () => {
-    const result = validateSkillFrontmatter({
-      name: 'deploy',
-      description: 'd',
-      'disable-model-invocation': true,
-    })
-    expect(result.kind).toBe('ok')
-    if (result.kind !== 'ok') return
-    expect(result.value.disableModelInvocation).toBe(true)
   })
 })
