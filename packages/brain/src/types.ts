@@ -4,8 +4,7 @@
  * trigger surface of their own — they hang off existing executions.
  *
  * This file defines only the in-memory shapes. There is no shared DB package:
- * persistence is local on the CLI (the JSON pattern store) and Supabase on the
- * web — each owns its own storage of these shapes.
+ * persistence is local on the CLI (the JSON pattern store).
  */
 
 /** Outcome of a single investigation/fix run, summarised for later distillation. */

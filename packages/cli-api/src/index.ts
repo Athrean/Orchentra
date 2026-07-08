@@ -130,21 +130,4 @@ export {
   type CreatePullRequestInput,
 } from './github'
 
-export { postSlashCommand, CommandHttpError, type PostSlashCommandOptions } from './orchentra/commands'
-export {
-  fetchExecutionGraph,
-  fetchNodeLineage,
-  GraphHttpError,
-  type GraphNodeDto,
-  type ExecutionGraphResponse,
-  type NodeLineageResponse,
-  type FetchExecutionGraphOptions,
-  type FetchNodeLineageOptions,
-} from './orchentra/graph'
-export {
-  resolveOrchentraConfig,
-  MissingOrchentraConfigError,
-  type OrchentraConfig,
-  type ResolveConfigOptions,
-} from './orchentra/config'
 export { writeProjectSettings, type WriteProjectSettingsInput } from './orchentra/write-project-settings'
