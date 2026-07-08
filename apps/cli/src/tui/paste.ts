@@ -15,14 +15,21 @@ export interface PasteDecision {
 }
 
 const MIN_PASTE_CHARS = 200
-const MIN_PASTE_LINES = 4
+// Any embedded newline marks a paste/drag: shift+enter newlines are inserted
+// by the return-key branch and never flow through here, so a newline inside a
+// printable burst can only come from pasted or drag-dropped text.
+const MIN_PASTE_LINES = 2
 
 export function evaluatePaste(input: string): PasteDecision | null {
-  const lines = countLines(input)
-  if (input.length < MIN_PASTE_CHARS && lines < MIN_PASTE_LINES) return null
+  // Terminals translate LF to CR when pasting/dragging; a bare \r reaching the
+  // buffer overwrites the rendered row and deforms the input box, so normalize
+  // every CR/CRLF to LF before measuring or storing the content.
+  const content = input.replace(/\r\n?/g, '\n')
+  const lines = countLines(content)
+  if (content.length < MIN_PASTE_CHARS && lines < MIN_PASTE_LINES) return null
   const id = randomBytes(3).toString('hex')
   const marker = `[Pasted #${id} — ${lines} lines]`
-  return { isPaste: true, chipMarker: marker, chipId: id, content: input, lines }
+  return { isPaste: true, chipMarker: marker, chipId: id, content, lines }
 }
 
 function countLines(text: string): number {
