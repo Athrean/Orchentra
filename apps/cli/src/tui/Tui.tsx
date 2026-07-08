@@ -39,6 +39,7 @@ export interface TuiProps {
   readonly branch?: string
   readonly banner?: BannerOptions
   readonly clearScreen?: () => void
+  readonly resizeGeneration?: number
 }
 
 export function Tui(props: TuiProps): React.ReactElement {
@@ -384,7 +385,7 @@ export function Tui(props: TuiProps): React.ReactElement {
       <Transcript
         rows={state.transcript}
         streamingRowId={state.streamingRowId}
-        generation={state.screenGeneration}
+        generation={`${state.screenGeneration}:${props.resizeGeneration ?? 0}`}
         banner={props.banner}
       />
       <Box flexDirection="column">

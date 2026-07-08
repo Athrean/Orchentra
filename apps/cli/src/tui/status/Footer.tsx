@@ -3,7 +3,7 @@ import React from 'react'
 import { Box, Text } from 'ink'
 import type { PermissionMode, SessionTaskSummary, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import { formatUsd, pricingForModel } from '@orchentra/cli-core'
-import { THEME, modeAccent } from '../theme'
+import { THEME } from '../theme'
 import { FIGURES } from '../figures'
 import type { TurnStatus } from '../types'
 import { ShimmerText } from '../components/ShimmerText'
@@ -48,13 +48,16 @@ export function Footer(props: FooterProps): React.ReactElement {
   const cost = renderCost(props.turn.tokens, props.model)
   const context = renderContext(props.contextStats)
   const activeTasks = props.tasks?.filter((t) => t.status === 'running' || t.status === 'pending').length ?? 0
-  const cwdSegment = ` ${THEME.separator} ${formatCwd(props.cwd)}`
-  const branchSegment = props.branch ? ` ${THEME.separator} git:(${props.branch})` : ''
-  const tasksSegment =
-    activeTasks > 0 ? ` ${THEME.separator} ${FIGURES.gear} ${activeTasks} ${activeTasks === 1 ? 'task' : 'tasks'}` : ''
-  const costSegment = cost ? ` ${THEME.separator} ${cost}` : ''
-  const modeSegment = props.mode === 'workspace-write' ? '' : ` ${THEME.separator} ${formatMode(props.mode)}`
-  const terseSegment = props.terseMode === 'off' ? '' : ` ${THEME.separator} terse:${props.terseMode}`
+  const segments = [
+    props.model,
+    formatCwd(props.cwd),
+    props.branch ? `git:(${props.branch})` : null,
+    context?.text ?? null,
+    activeTasks > 0 ? `${FIGURES.gear} ${activeTasks} ${activeTasks === 1 ? 'task' : 'tasks'}` : null,
+    props.mode === 'workspace-write' ? null : formatMode(props.mode),
+    props.terseMode === 'off' ? null : `terse:${props.terseMode}`,
+    cost,
+  ].filter((segment): segment is string => !!segment)
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -62,15 +65,7 @@ export function Footer(props: FooterProps): React.ReactElement {
         <Text color={THEME.brand} bold>
           {THEME.dot}
         </Text>
-        <Text>{'  '}</Text>
-        <Text dimColor>{props.model}</Text>
-        <Text dimColor>{cwdSegment}</Text>
-        <Text dimColor>{branchSegment}</Text>
-        {context ? <Text color={context.color}>{` ${THEME.separator} ${context.text}`}</Text> : null}
-        {tasksSegment ? <Text color={THEME.brand}>{tasksSegment}</Text> : null}
-        {modeSegment ? <Text color={modeAccent(props.mode)}>{modeSegment}</Text> : null}
-        {terseSegment ? <Text color={THEME.accent}>{terseSegment}</Text> : null}
-        {costSegment ? <Text dimColor>{costSegment}</Text> : null}
+        <Text dimColor wrap="truncate-end">{`  ${segments.join(` ${THEME.separator} `)}`}</Text>
       </Box>
       {props.exitHintActive ? (
         <Text color={THEME.warn}>{`press ${props.exitHintKey === 'ctrl+d' ? 'Ctrl+D' : 'Ctrl+C'} again to exit`}</Text>

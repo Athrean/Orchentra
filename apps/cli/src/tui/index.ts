@@ -24,6 +24,8 @@ export interface RunTuiOptions {
   readonly banner?: BannerOptions
 }
 
+const ERASE_VIEWPORT = '\x1b[2J\x1b[H'
+
 // Ink's `clearTerminal` writes the byte sequence `\x1b[2J\x1b[3J\x1b[H`
 // (erase display + erase scrollback + cursor home). VSCode/Cursor integrated
 // terminals do not honor `\x1b[3J` — instead of wiping scrollback they shove
@@ -70,26 +72,14 @@ function inkStableStdout(stripScrollbackErase: boolean): NodeJS.WriteStream {
 }
 
 /**
- * Private Ink instance fields we poke on resize. Pinning `lastOutputHeight`
- * above viewport rows guarantees Ink's `shouldClearTerminalForFrame` path
- * fires on every SIGWINCH, which triggers a full `clearTerminal` + re-emit
- * of `fullStaticOutput` (welcome banner committed via Transcript's
- * `<Static>`) + the fresh dynamic frame. Without this hook Ink's default
- * resize path only does cursor-up/erase by the stale `lastOutputHeight`,
- * which on width change leaves residual input rows stacked above the live
- * one because reflow geometry has shifted.
- *
- * The `\x1b[3J` byte that `clearTerminal` emits is dangerous in VSCode/Cursor
- * (see SCROLLBACK_ERASE) — `inkStableStdout` strips it on IDE terminals so
- * the forced clear path is safe everywhere.
+ * Public Ink render handle. The internal Ink instance owns resize bookkeeping
+ * such as `lastOutputHeight`, but `render()` intentionally returns only this
+ * facade. Keep resize recovery on the public `clear`/`rerender` surface.
  */
-interface InkInstanceInternals {
-  lastOutputHeight?: number
-}
-
 interface InkInstanceHandle {
   cleanup(): void
   clear(): void
+  rerender(node: React.ReactNode): void
 }
 
 export async function runTui(opts: RunTuiOptions): Promise<void> {
@@ -100,16 +90,14 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
 
   const ide = isIdeTerminal()
 
-  let inst: InkInstanceInternals | null = null
-  const onResize = (): void => {
-    if (inst) inst.lastOutputHeight = 9999
-  }
-  // prependListener puts us at the head of the SIGWINCH chain so the height
-  // bump lands before Ink's own handler reads the field.
-  process.stdout.prependListener('resize', onResize)
-
   const instanceRef: { current: InkInstanceHandle | null } = { current: null }
-  const instance = render(
+  let renderedNode: React.ReactNode | null = null
+  let resizeGeneration = 0
+  let lastColumns = process.stdout.columns ?? 80
+  let lastRows = process.stdout.rows ?? 24
+  let resizeQueued = false
+
+  const createNode = (): React.ReactNode =>
     React.createElement(
       TuiErrorBoundary,
       {
@@ -125,17 +113,41 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
         branch: opts.branch,
         banner: opts.banner,
         clearScreen: (): void => instanceRef.current?.clear(),
+        resizeGeneration,
       }),
-    ),
-    {
-      stdout: inkStableStdout(ide),
-      exitOnCtrlC: false,
-      patchConsole: false,
-    },
-  )
-  instanceRef.current = instance
+    )
 
-  inst = instance as unknown as InkInstanceInternals
+  const onResize = (): void => {
+    const columns = process.stdout.columns ?? 80
+    const rows = process.stdout.rows ?? 24
+    if (columns === lastColumns && rows === lastRows) return
+    lastColumns = columns
+    lastRows = rows
+    if (resizeQueued) return
+    resizeQueued = true
+    queueMicrotask(() => {
+      resizeQueued = false
+      if (!instanceRef.current || renderedNode === null) return
+      resizeGeneration += 1
+      renderedNode = createNode()
+      process.stdout.write(ERASE_VIEWPORT)
+      instanceRef.current.clear()
+      instanceRef.current.rerender(renderedNode)
+    })
+  }
+  // Let Ink process its resize first, then repaint from a clean viewport in a
+  // microtask. This avoids stale wrapped rows when the live input/footer height
+  // changes during a side-by-side terminal drag.
+  process.stdout.prependListener('resize', onResize)
+
+  renderedNode = createNode()
+
+  const instance = render(renderedNode, {
+    stdout: inkStableStdout(ide),
+    exitOnCtrlC: false,
+    patchConsole: false,
+  })
+  instanceRef.current = instance
 
   try {
     await instance.waitUntilExit()

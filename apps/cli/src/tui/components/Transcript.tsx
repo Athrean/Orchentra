@@ -11,7 +11,7 @@ export const TOOL_ROW_DIM_AFTER_MS = 5_000
 
 export interface TranscriptProps {
   readonly rows: readonly TranscriptRow[]
-  readonly generation: number
+  readonly generation: React.Key
   /** The currently-streaming row, if any. Pulled out of `rows` because Static
    * commits each row exactly once — we render the live one separately until
    * it stops streaming. */
