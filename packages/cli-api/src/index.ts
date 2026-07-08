@@ -4,13 +4,7 @@ export { AnthropicProvider, type AnthropicConfig } from './anthropic/client'
 export { injectCacheBoundary } from './anthropic/cache'
 
 export { GeminiProvider, type GeminiConfig } from './gemini'
-export {
-  loginGemini,
-  logoutGemini,
-  resolveGeminiAccessToken,
-  type GeminiLoginOptions,
-  type GeminiLoginResult,
-} from './gemini/oauth'
+export { loginGemini, resolveGeminiAccessToken, type GeminiLoginOptions, type GeminiLoginResult } from './gemini/oauth'
 
 export {
   credentialsPath,
