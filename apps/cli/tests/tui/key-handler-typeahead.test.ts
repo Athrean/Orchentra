@@ -64,6 +64,16 @@ describe('type-ahead while a turn is running', () => {
     expect(press(state, 'c', {})).toEqual([{ type: 'buffer/set', buffer: 'abc', cursor: 3 }])
   })
 
+  test('a drag/paste burst with embedded CR collapses to a chip, never raw into the buffer', () => {
+    const state = runningState({ buffer: '', cursor: 0 })
+    const actions = press(state, "'/a.png'\r'/b.png'", {})
+    expect(actions[0]?.type).toBe('paste/add')
+    const set = actions[1]
+    expect(set?.type).toBe('buffer/set')
+    if (set?.type !== 'buffer/set') throw new Error('expected buffer/set')
+    expect(set.buffer).toMatch(/^\[Pasted #[a-z0-9]+ — 2 lines]$/)
+  })
+
   test('ctrl+c on an empty buffer still cancels the running turn', () => {
     let aborted = false
     const actions = press(runningState(), 'c', { ctrl: true }, { abort: () => (aborted = true) })
