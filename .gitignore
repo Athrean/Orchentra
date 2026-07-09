@@ -18,6 +18,10 @@ secrets/
 *.p12
 *.pfx
 
+# Files that only exist on local/* branches and must never be committed —
+# see scripts/check-local-only-guard.sh. The list itself is deliberately
+# not tracked (see .orchentra/), so this file names no paths.
+
 # Turbo cache
 .turbo/
 

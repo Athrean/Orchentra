@@ -1,4 +1,5 @@
 sh scripts/check-ref-leaks.sh
+sh scripts/check-local-only-guard.sh
 npx lint-staged
 bun run typecheck
 bun run test:precommit
