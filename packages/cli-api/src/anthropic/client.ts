@@ -90,8 +90,6 @@ export class AnthropicProvider implements Provider {
       })
     }
 
-    // Subscription OAuth tokens require the agentic beta + Claude-Code UA;
-    // without these the API replies "OAuth authentication is currently not
     const url = `${this.baseUrl}/v1/messages`
     const headers: Record<string, string> = {
       'content-type': 'application/json',
