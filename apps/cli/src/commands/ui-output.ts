@@ -60,19 +60,9 @@ export type UiOutput =
     }
   | {
       /**
-       * Open a full-bleed interactive flow inside the TUI. The TUI takes
-       * over keyboard handling for the duration of the flow and surfaces
-       * a status card; non-TUI surfaces fall back to the legacy
-       * stdout-based prompt.
-       */
-      readonly kind: 'login-flow'
-      readonly provider: 'anthropic'
-    }
-  | {
-      /**
-       * Open the nested in-TUI /login picker overlay. Three top-level
-       * tiers: Pro/Max OAuth, API-key drilldown, and a 3rd-party docs
-       * gateway. The TUI takes over input until the overlay dismisses.
+       * Open the nested in-TUI /login picker overlay. Two top-level tiers:
+       * API-key drilldown and a 3rd-party docs gateway. The TUI takes over
+       * input until the overlay dismisses.
        */
       readonly kind: 'login-picker'
     }

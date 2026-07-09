@@ -153,11 +153,6 @@ function routeUiOutput(output: UiOutput, args: SlashCommandExecutorArgs, activeS
       })
       return streamId
     }
-    case 'login-flow':
-      if (output.provider === 'anthropic') {
-        args.dispatch({ type: 'flow/start', flow: { kind: 'anthropic-login' } })
-      }
-      return activeStreamId
     case 'login-picker':
       args.dispatch({ type: 'flow/start', flow: { kind: 'login-picker' } })
       return activeStreamId

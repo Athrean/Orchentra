@@ -12,21 +12,22 @@ import {
 } from '@orchentra/cli-api'
 import { promptSelect } from '../ui/select'
 import { authStateHint } from './auth-state'
-import { runAnthropicLoginFlow } from '../ui/anthropic-login-flow'
 
-const OAUTH_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'gemini', 'github']
+const OAUTH_PROVIDERS: readonly ProviderKey[] = ['gemini', 'github']
 // `orchentra` is an api-key-only provider: the bootstrap orchestrator
 // mints the apiKey on the server side and the CLI persists it via the
 // same `saveCredential('orchentra', …)` path used by `/init`. Listing
 // it here lets `orchentra login orchentra --api-key <k>` accept the
 // manual-fallback path without erroring with "unknown provider".
-const API_KEY_PROVIDERS: readonly ProviderKey[] = ['openai', 'xai', 'dashscope', 'orchentra']
+// `anthropic` is API-key only — Orchentra does not ship subscription-OAuth
+// sign-in for any provider (see docs/current/canonical.md).
+const API_KEY_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope', 'orchentra']
 const SUPPORTED: readonly ProviderKey[] = [...OAUTH_PROVIDERS, ...API_KEY_PROVIDERS]
 
 const GITHUB_OAUTH_CLIENT_ID = process.env['ORCHENTRA_GITHUB_OAUTH_CLIENT_ID'] ?? 'Iv1.b507a08c87ecfe98'
 
 const PROVIDER_LABELS: Partial<Record<ProviderKey, string>> = {
-  anthropic: 'Anthropic (Claude Pro/Max)',
+  anthropic: 'Anthropic (Claude)',
   gemini: 'Gemini (Google)',
   github: 'GitHub',
   openai: 'OpenAI',
@@ -57,7 +58,6 @@ export async function runLogin(provider?: string, apiKey?: string): Promise<numb
   }
 
   try {
-    if (lower === 'anthropic') return await signInAnthropic()
     if (lower === 'gemini') return await signInGemini()
     if (lower === 'github') return await signInGithub()
     if (API_KEY_PROVIDERS.includes(lower)) return await signInWithApiKey(lower)
@@ -83,15 +83,6 @@ async function pickProvider(): Promise<ProviderKey | null> {
     return null
   }
   return result.value
-}
-
-async function signInAnthropic(): Promise<number> {
-  const r = await runAnthropicLoginFlow()
-  if (!r.ok) {
-    process.stderr.write(`  \x1b[31m${r.message}\x1b[0m\n`)
-    return 1
-  }
-  return 0
 }
 
 async function signInGemini(): Promise<number> {

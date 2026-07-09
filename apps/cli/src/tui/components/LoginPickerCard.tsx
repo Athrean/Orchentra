@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
 import { saveCredentialAsync, tryLoadKeytar, type ProviderKey } from '@orchentra/cli-api'
 import { THEME } from '../theme'
-import { AnthropicLoginCard } from './AnthropicLoginCard'
 import { ApiKeyPickerCard } from './ApiKeyPickerCard'
 import { ApiKeyInputCard } from './ApiKeyInputCard'
 import { ThirdPartyPickerCard } from './ThirdPartyPickerCard'
@@ -31,7 +30,6 @@ interface TopRow {
 }
 
 const TOP_ROWS: readonly TopRow[] = [
-  { label: 'Pro/Max plan', hint: 'Sign in with your Claude subscription · OAuth' },
   { label: 'API key', hint: 'Anthropic Console, OpenAI, OpenRouter, Gemini, xAI, DashScope' },
   { label: '3rd-party platform', hint: 'Amazon Bedrock, Microsoft Foundry, Vertex AI, Azure' },
 ]
@@ -64,8 +62,8 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
 
   useInput(
     (input, key) => {
-      if (state.kind === 'oauth' || state.kind === 'done' || state.kind === 'closed') {
-        // Child OAuth card / terminal states own their own input.
+      if (state.kind === 'done' || state.kind === 'closed') {
+        // Terminal states own their own input.
         return
       }
       if (saving) return
@@ -121,16 +119,6 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
     },
     { isActive: true },
   )
-
-  if (state.kind === 'oauth' && state.provider === 'anthropic') {
-    return (
-      <AnthropicLoginCard
-        onComplete={(result) => {
-          dispatch(result.ok ? { type: 'success', message: result.message } : { type: 'fail', error: result.message })
-        }}
-      />
-    )
-  }
 
   if (state.kind === 'apiKeyPicker') {
     return <ApiKeyPickerCard cursor={state.cursor} signedIn={new Set()} />

@@ -10,17 +10,18 @@ import {
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { authStateHint } from '../auth-state'
 import { promptSelect } from '../../ui/select'
-import { runAnthropicLoginFlow } from '../../ui/anthropic-login-flow'
 
-const OAUTH_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'gemini', 'github']
-const API_KEY_PROVIDERS: readonly ProviderKey[] = ['openai', 'xai', 'dashscope']
+const OAUTH_PROVIDERS: readonly ProviderKey[] = ['gemini', 'github']
+// Orchentra does not ship subscription-OAuth sign-in for any provider (see
+// docs/current/canonical.md) — anthropic is API-key only.
+const API_KEY_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope']
 const SUPPORTED: readonly ProviderKey[] = [...OAUTH_PROVIDERS, ...API_KEY_PROVIDERS]
 
 // GitHub OAuth client ID — public, distributed with the CLI for device flow.
 const GITHUB_OAUTH_CLIENT_ID = process.env['ORCHENTRA_GITHUB_OAUTH_CLIENT_ID'] ?? 'Iv1.b507a08c87ecfe98'
 
 const PROVIDER_LABELS: Record<ProviderKey, string> = {
-  anthropic: 'Anthropic (Claude Pro/Max)',
+  anthropic: 'Anthropic (Claude)',
   gemini: 'Gemini (Google)',
   github: 'GitHub',
   openai: 'OpenAI',
@@ -78,16 +79,9 @@ export class LoginCommand implements CommandHandler {
   }
 }
 
-// Anthropic login runs as a native Ink overlay inside the TUI — we emit a
-// `login-flow` UI event and the TUI takes over input until the OAuth code
-// has been exchanged. Other OAuth providers haven't been ported yet and
-// still need a fresh terminal, so we keep the legacy fallback for them.
+// OAuth providers (gemini/github) haven't been ported to a native in-TUI
+// overlay yet and need a fresh terminal, so we print instructions instead.
 function emitTuiLoginInstructions(ctx: CommandContext, provider?: ProviderKey): void {
-  if (provider === 'anthropic') {
-    ctx.ui?.({ kind: 'login-flow', provider: 'anthropic' })
-    return
-  }
-
   const target = provider ? `orchentra login ${provider}` : 'orchentra login'
   const apiKeyHint = provider && API_KEY_PROVIDERS.includes(provider) ? ` --api-key <key>` : ''
   ctx.ui?.({
@@ -133,7 +127,6 @@ async function pickProvider(): Promise<ProviderKey | null> {
 
 async function runProvider(provider: ProviderKey): Promise<boolean> {
   try {
-    if (provider === 'anthropic') return await doAnthropic()
     if (provider === 'gemini') return await doGemini()
     if (provider === 'github') return await doGithub()
     if (API_KEY_PROVIDERS.includes(provider)) return await doApiKey(provider)
@@ -153,15 +146,6 @@ async function saveApiKeyToBackend(provider: ProviderKey, apiKey: string): Promi
 async function saveApiKey(provider: ProviderKey, apiKey: string): Promise<boolean> {
   await saveApiKeyToBackend(provider, apiKey)
   process.stdout.write(`✓ saved ${provider} API key to OS keychain\n`)
-  return true
-}
-
-async function doAnthropic(): Promise<boolean> {
-  const result = await runAnthropicLoginFlow()
-  if (!result.ok) {
-    process.stderr.write(`  \x1b[31m${result.message}\x1b[0m\n`)
-    return false
-  }
   return true
 }
 
@@ -205,6 +189,7 @@ async function doGithub(): Promise<boolean> {
 async function doApiKey(provider: ProviderKey): Promise<boolean> {
   const label = PROVIDER_LABELS[provider]
   const envVars: Record<string, string> = {
+    anthropic: 'ANTHROPIC_API_KEY',
     openai: 'OPENAI_API_KEY',
     xai: 'XAI_API_KEY',
     dashscope: 'DASHSCOPE_API_KEY',
@@ -249,7 +234,7 @@ function usage(): string {
       '  /login <provider> --api-key <key>',
       '',
       'Providers:',
-      '  anthropic   OAuth (Claude Pro/Max subscription)',
+      '  anthropic   API key',
       '  gemini      OAuth (Google)',
       '  github      Device flow (PRs/issues/Actions)',
       '  openai      API key (pass --api-key or enter when prompted)',

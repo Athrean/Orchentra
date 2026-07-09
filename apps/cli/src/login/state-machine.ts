@@ -1,17 +1,17 @@
 /**
- * Pure state machine driving the in-TUI /login overlay. Three gateways:
- *   top → oauth (Pro/Max)
+ * Pure state machine driving the in-TUI /login overlay. Two gateways:
  *   top → apiKeyPicker → apiKeyInput (API key)
  *   top → thirdPartyPicker (docs links)
+ *
+ * Orchentra does not ship subscription-OAuth sign-in for any provider (see
+ * docs/current/canonical.md) — API key + third-party platforms only.
  *
  * Lives outside Ink so the same transitions can power the shell-verb
  * picker in a follow-up. All side effects (browser open, keychain save)
  * happen in the surface layer, not here.
  */
 
-export type TopTier = 'pro-max' | 'api-key' | 'third-party'
-
-export type OauthProvider = 'anthropic'
+export type TopTier = 'api-key' | 'third-party'
 
 export type ApiKeyProvider = 'anthropic-console' | 'openai' | 'openrouter' | 'gemini' | 'xai' | 'dashscope'
 
@@ -22,7 +22,6 @@ export type LoginState =
   | { kind: 'apiKeyPicker'; cursor: number }
   | { kind: 'apiKeyInput'; provider: ApiKeyProvider; buffer: string; error: string | null }
   | { kind: 'thirdPartyPicker'; cursor: number }
-  | { kind: 'oauth'; provider: OauthProvider }
   | { kind: 'done'; ok: boolean; message: string }
   | { kind: 'closed' }
 
@@ -36,7 +35,7 @@ export type LoginEvent =
   | { type: 'success'; message: string }
   | { type: 'fail'; error: string }
 
-export const TOP_ROW_COUNT = 3
+export const TOP_ROW_COUNT = 2
 
 export interface ApiKeyProviderRow {
   readonly provider: ApiKeyProvider
@@ -104,9 +103,8 @@ export function loginReducer(state: LoginState, event: LoginEvent): LoginState {
       return { kind: 'closed' }
     }
     if (event.type === 'select') {
-      if (state.cursor === 0) return { kind: 'oauth', provider: 'anthropic' }
-      if (state.cursor === 1) return { kind: 'apiKeyPicker', cursor: 0 }
-      if (state.cursor === 2) return { kind: 'thirdPartyPicker', cursor: 0 }
+      if (state.cursor === 0) return { kind: 'apiKeyPicker', cursor: 0 }
+      if (state.cursor === 1) return { kind: 'thirdPartyPicker', cursor: 0 }
     }
     return state
   }
@@ -121,7 +119,7 @@ export function loginReducer(state: LoginState, event: LoginEvent): LoginState {
         cursor: (state.cursor + THIRD_PARTY_PROVIDERS.length - 1) % THIRD_PARTY_PROVIDERS.length,
       }
     }
-    if (event.type === 'back') return { kind: 'top', cursor: 2 }
+    if (event.type === 'back') return { kind: 'top', cursor: 1 }
     if (event.type === 'select') {
       const row = THIRD_PARTY_PROVIDERS[state.cursor]
       if (!row) return state
@@ -140,7 +138,7 @@ export function loginReducer(state: LoginState, event: LoginEvent): LoginState {
         cursor: (state.cursor + API_KEY_PROVIDERS.length - 1) % API_KEY_PROVIDERS.length,
       }
     }
-    if (event.type === 'back') return { kind: 'top', cursor: 1 }
+    if (event.type === 'back') return { kind: 'top', cursor: 0 }
     if (event.type === 'select') {
       const row = API_KEY_PROVIDERS[state.cursor]
       if (!row) return state
@@ -154,13 +152,6 @@ export function loginReducer(state: LoginState, event: LoginEvent): LoginState {
     if (event.type === 'set-buffer') return { ...state, buffer: event.buffer, error: null }
     if (event.type === 'success') return { kind: 'done', ok: true, message: event.message }
     if (event.type === 'fail') return { ...state, error: event.error }
-    return state
-  }
-
-  if (state.kind === 'oauth') {
-    if (event.type === 'back') return { kind: 'top', cursor: 0 }
-    if (event.type === 'success') return { kind: 'done', ok: true, message: event.message }
-    if (event.type === 'fail') return { kind: 'done', ok: false, message: event.error }
     return state
   }
 

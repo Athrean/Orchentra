@@ -11,7 +11,6 @@ import {
 } from '@orchentra/cli-api'
 import { promptSelect } from '../ui/select'
 import { renderBannerFrame } from '../render/banner'
-import { runAnthropicLoginFlow } from '../ui/anthropic-login-flow'
 import { runInstallBootstrap } from './install-bootstrap'
 import { startLoopback } from './loopback-server'
 import { inferGitHubOwner } from '../util/git-owner'
@@ -118,8 +117,6 @@ export function makeDefaultFirstRunDeps(
   return {
     onStart: async () => renderFirstRunBanner(),
     pickProvider: async () => brandedPickProvider(),
-    pickAuthMethod: async (provider) => brandedPickAuthMethod(provider),
-    runOAuth: async (provider) => brandedRunOAuth(provider),
     promptApiKey: async (provider) => brandedPromptApiKey(provider),
     save: async (provider, apiKey) => {
       // Dual-write during the transition period: the plaintext file is the
@@ -235,31 +232,6 @@ async function brandedPickProvider(): Promise<ProviderKey | null> {
   })
   if (result.type === 'cancelled') return null
   return result.value
-}
-
-async function brandedPickAuthMethod(provider: ProviderKey): Promise<AuthMethod | null> {
-  // Only Anthropic ships a working OAuth flow today (Claude Pro/Max
-  // subscription). Every other provider goes straight to the API-key
-  // prompt so we don't surface a dead choice.
-  if (provider !== 'anthropic') return 'api-key'
-
-  const result = await promptSelect<AuthMethod>({
-    title: `  ${C.dim}Sign-in method${C.reset}`,
-    options: [
-      { value: 'oauth', label: 'Claude Pro / Max subscription (OAuth)', hint: 'browser sign-in' },
-      { value: 'api-key', label: 'API key (sk-ant-…)', hint: 'console.anthropic.com' },
-    ],
-  })
-  if (result.type === 'cancelled') return null
-  return result.value
-}
-
-async function brandedRunOAuth(provider: ProviderKey): Promise<{ ok: boolean; message?: string }> {
-  if (provider !== 'anthropic') {
-    return { ok: false, message: `OAuth is not wired up for ${provider} yet — use an API key.` }
-  }
-  const result = await runAnthropicLoginFlow()
-  return { ok: result.ok, message: result.message }
 }
 
 async function brandedPromptApiKey(provider: ProviderKey): Promise<string | null> {

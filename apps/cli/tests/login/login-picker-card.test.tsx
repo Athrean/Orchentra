@@ -7,10 +7,9 @@ import { ThirdPartyPickerCard } from '../../src/tui/components/ThirdPartyPickerC
 import { API_KEY_PROVIDERS, THIRD_PARTY_PROVIDERS } from '../../src/login/state-machine'
 
 describe('LoginPickerCard', () => {
-  test('renders three top-tier rows', () => {
+  test('renders two top-tier rows', () => {
     const { lastFrame } = render(<LoginPickerCard onComplete={() => {}} />)
     const out = lastFrame() ?? ''
-    expect(out).toContain('Pro/Max')
     expect(out).toContain('API key')
     expect(out).toContain('3rd-party')
   })

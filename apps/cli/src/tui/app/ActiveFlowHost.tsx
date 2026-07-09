@@ -4,7 +4,6 @@ import type { Dispatch } from 'react'
 import type { LiveCli } from '../../live-cli'
 import type { CommandRegistry } from '../../commands/builtin'
 import { setActiveRepo, setDefaultModel, trustWorkspace } from '../../session-config'
-import { AnthropicLoginCard } from '../components/AnthropicLoginCard'
 import { AskUserPrompt } from '../components/AskUserPrompt'
 import { CommandPalette } from '../components/CommandPalette'
 import { ConfirmationPrompt } from '../components/ConfirmationPrompt'
@@ -49,20 +48,6 @@ export function ActiveFlowHost(props: ActiveFlowHostProps): React.ReactElement |
               return
             }
             exit()
-          }}
-        />
-      )
-    case 'anthropic-login':
-      return (
-        <AnthropicLoginCard
-          onComplete={(result) => {
-            dispatch({ type: 'flow/end' })
-            dispatch({
-              type: 'transcript/push',
-              row: result.ok
-                ? { kind: 'system', id: randomUUID(), text: `${okGlyph()} ${result.message}`, tone: 'info' }
-                : { kind: 'error', id: randomUUID(), message: `Anthropic login: ${result.message}` },
-            })
           }}
         />
       )

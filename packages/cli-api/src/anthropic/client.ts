@@ -4,12 +4,10 @@ import { AnthropicApiError, classifyError, enrichAuthError, missingCredentialsEr
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
 import { injectCacheBoundary } from './cache'
 import type { ContentBlock, MessageRequest, StreamEvent, ToolDefinition, Usage } from './types'
-import { resolveAnthropicAuthToken } from './oauth'
 import { parseToolArguments } from '../tool-arguments'
 
 export interface AnthropicConfig {
   apiKey?: string
-  authToken?: string
   baseUrl?: string
   model?: string
   maxTokens?: number
@@ -18,22 +16,13 @@ export interface AnthropicConfig {
 
 interface AuthHeaders {
   'x-api-key'?: string
-  Authorization?: string
-  authSource: 'api_key' | 'bearer' | 'both'
+  authSource: 'api_key'
 }
 
 const ANTHROPIC_VERSION = '2023-06-01'
 // Public-only beta set used when authenticating with a console.anthropic.com
 // API key. Safe for any client.
 const ANTHROPIC_BETA_API_KEY = 'prompt-caching-scope-2026-01-05'
-// Subscription OAuth bearer tokens (claude.ai accounts) require the OAuth +
-// Claude-Code agentic beta set AND the Claude Code user-agent. Without
-// `oauth-2025-04-20` Anthropic returns "OAuth authentication is currently
-// not supported". interleaved-thinking + fine-grained-tool-streaming unlock
-// Claude 4+ tool flows.
-const ANTHROPIC_BETA_OAUTH =
-  'oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14'
-const ANTHROPIC_OAUTH_USER_AGENT = 'claude-cli/1.0.0 (external, cli)'
 const DEFAULT_USER_AGENT = 'OrchentraCLI/1.0'
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
@@ -43,7 +32,6 @@ export class AnthropicProvider implements Provider {
   private readonly maxTokens: number
   private readonly retryConfig: RetryConfig
   private readonly explicitApiKey: string | undefined
-  private readonly explicitAuthToken: string | undefined
 
   constructor(config: AnthropicConfig = {}) {
     this.baseUrl = (config.baseUrl ?? 'https://api.anthropic.com').replace(/\/$/, '')
@@ -51,43 +39,23 @@ export class AnthropicProvider implements Provider {
     this.maxTokens = config.maxTokens ?? 64000
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config.retries }
     this.explicitApiKey = config.apiKey
-    this.explicitAuthToken = config.authToken
   }
 
-  // Resolve credentials at request time so a stored OAuth token that has
-  // expired since the CLI was launched gets refreshed before the next
-  // request goes out — otherwise the API replies "OAuth authentication
-  // is currently not supported" and the user sees a flashing red error.
-  private async resolveAuthHeaders(): Promise<AuthHeaders> {
+  // Console API key only — Orchentra does not ship subscription-OAuth
+  // sign-in for any provider (see docs/current/canonical.md).
+  private resolveAuthHeaders(): AuthHeaders {
     const apiKey = this.explicitApiKey ?? process.env['ANTHROPIC_API_KEY']
-    let authToken = this.explicitAuthToken ?? process.env['ANTHROPIC_AUTH_TOKEN']
-
-    if (!apiKey && !authToken) {
-      const refreshed = await resolveAnthropicAuthToken()
-      if (refreshed) authToken = refreshed
-    }
-
-    if (apiKey && authToken) {
-      return {
-        'x-api-key': apiKey,
-        Authorization: `Bearer ${authToken}`,
-        authSource: 'both',
-      }
-    }
-    if (apiKey) return { 'x-api-key': apiKey, authSource: 'api_key' }
-    if (authToken) return { Authorization: `Bearer ${authToken}`, authSource: 'bearer' }
-    return { authSource: 'api_key' }
+    return apiKey ? { 'x-api-key': apiKey, authSource: 'api_key' } : { authSource: 'api_key' }
   }
 
   async *stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
-    const authHeaders = await this.resolveAuthHeaders()
-    if (!authHeaders['x-api-key'] && !authHeaders.Authorization) {
+    const authHeaders = this.resolveAuthHeaders()
+    if (!authHeaders['x-api-key']) {
       yield { kind: 'finish', stopReason: 'error' as StopReason }
       throw missingCredentialsError()
     }
 
-    const usingOAuth = authHeaders.authSource === 'bearer' || authHeaders.authSource === 'both'
-    const system = injectCacheBoundary(request.systemStatic, request.systemDynamic, { usingOAuth })
+    const system = injectCacheBoundary(request.systemStatic, request.systemDynamic)
     const thinkingBudget = request.thinkingTokenBudget
     const maxTokens = request.maxOutputTokens || this.maxTokens
     const body: MessageRequest = {
@@ -124,18 +92,13 @@ export class AnthropicProvider implements Provider {
 
     // Subscription OAuth tokens require the agentic beta + Claude-Code UA;
     // without these the API replies "OAuth authentication is currently not
-    // supported." API-key requests use the public beta set and our own UA.
     const url = `${this.baseUrl}/v1/messages`
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'anthropic-version': ANTHROPIC_VERSION,
-      'anthropic-beta': usingOAuth ? ANTHROPIC_BETA_OAUTH : ANTHROPIC_BETA_API_KEY,
-      'user-agent': usingOAuth ? ANTHROPIC_OAUTH_USER_AGENT : DEFAULT_USER_AGENT,
-      // Required when sending a Pro/Max OAuth bearer from a non-Claude-Code
-      // binary; matches what the official CLI sends. Omit on api-key calls.
-      ...(usingOAuth ? { 'anthropic-dangerous-direct-browser-access': 'true' } : {}),
-      ...(authHeaders['x-api-key'] ? { 'x-api-key': authHeaders['x-api-key'] } : {}),
-      ...(authHeaders.Authorization ? { Authorization: authHeaders.Authorization } : {}),
+      'anthropic-beta': ANTHROPIC_BETA_API_KEY,
+      'user-agent': DEFAULT_USER_AGENT,
+      'x-api-key': authHeaders['x-api-key'],
     }
 
     let lastError: AnthropicApiError | null = null
@@ -174,7 +137,7 @@ export class AnthropicProvider implements Provider {
 
         const apiError = classifyError(response.status, responseBody, errorType)
         const requestId = response.headers.get('request-id') ?? undefined
-        const rawToken = authHeaders['x-api-key'] ?? authHeaders.Authorization?.replace('Bearer ', '')
+        const rawToken = authHeaders['x-api-key']
         const withRequestId = new AnthropicApiError({
           status: apiError.status,
           errorType: apiError.errorType,

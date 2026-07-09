@@ -148,16 +148,15 @@ export interface TuiState {
    */
   readonly activeCard: ActiveCardState | null
   /**
-   * Active interactive flow (Anthropic OAuth login etc.). When set, the TUI
-   * renders the corresponding overlay component and disables the main
-   * input handler so the overlay owns keyboard input.
+   * Active interactive flow (login picker etc.). When set, the TUI renders
+   * the corresponding overlay component and disables the main input handler
+   * so the overlay owns keyboard input.
    */
   readonly activeFlow: ActiveFlowState | null
 }
 
 export type ActiveFlowState =
   | { readonly kind: 'trust-gate'; readonly cwd: string }
-  | { readonly kind: 'anthropic-login' }
   | { readonly kind: 'login-picker' }
   | { readonly kind: 'model-picker'; readonly current: string }
   | { readonly kind: 'effort-picker'; readonly current: EffortTier }

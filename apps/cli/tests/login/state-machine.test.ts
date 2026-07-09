@@ -10,12 +10,10 @@ describe('login state machine', () => {
     }
   })
 
-  test('top + select with cursor 0 opens anthropic oauth', () => {
+  test('top + select with cursor 0 opens the api-key drilldown', () => {
     const s = loginReducer(initialLoginState(), { type: 'select' })
-    expect(s.kind).toBe('oauth')
-    if (s.kind === 'oauth') {
-      expect(s.provider).toBe('anthropic')
-    }
+    expect(s.kind).toBe('apiKeyPicker')
+    if (s.kind === 'apiKeyPicker') expect(s.cursor).toBe(0)
   })
 
   test('cursor-down on top advances cursor and wraps at end', () => {
@@ -23,30 +21,27 @@ describe('login state machine', () => {
     s = loginReducer(s, { type: 'cursor-down' })
     expect(s.kind === 'top' && s.cursor).toBe(1)
     s = loginReducer(s, { type: 'cursor-down' })
-    expect(s.kind === 'top' && s.cursor).toBe(2)
-    s = loginReducer(s, { type: 'cursor-down' })
     expect(s.kind === 'top' && s.cursor).toBe(0)
   })
 
   test('cursor-up on top wraps to last row from 0', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
     s = loginReducer(s, { type: 'cursor-up' })
-    expect(s.kind === 'top' && s.cursor).toBe(2)
-    s = loginReducer(s, { type: 'cursor-up' })
     expect(s.kind === 'top' && s.cursor).toBe(1)
+    s = loginReducer(s, { type: 'cursor-up' })
+    expect(s.kind === 'top' && s.cursor).toBe(0)
   })
 
-  test('top + select with cursor 1 opens the api-key drilldown', () => {
+  test('top + select with cursor 1 opens the third-party drilldown', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
     s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
-    expect(s.kind).toBe('apiKeyPicker')
-    if (s.kind === 'apiKeyPicker') expect(s.cursor).toBe(0)
+    expect(s.kind).toBe('thirdPartyPicker')
+    if (s.kind === 'thirdPartyPicker') expect(s.cursor).toBe(0)
   })
 
   test('apiKeyPicker cursor-down wraps over all registry rows', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     expect(s.kind).toBe('apiKeyPicker')
     let lastCursor = -1
@@ -60,16 +55,14 @@ describe('login state machine', () => {
 
   test('apiKeyPicker + back returns to top with cursor on api-key row', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'back' })
     expect(s.kind).toBe('top')
-    if (s.kind === 'top') expect(s.cursor).toBe(1)
+    if (s.kind === 'top') expect(s.cursor).toBe(0)
   })
 
   test('apiKeyPicker + select opens apiKeyInput for the cursor row', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'select' })
     expect(s.kind).toBe('apiKeyInput')
@@ -82,7 +75,6 @@ describe('login state machine', () => {
 
   test('apiKeyInput + set-buffer replaces buffer and clears error', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'fail', error: 'bad key' })
@@ -95,7 +87,6 @@ describe('login state machine', () => {
 
   test('apiKeyInput + success transitions to done(ok=true)', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'success', message: 'saved openai key' })
@@ -108,7 +99,6 @@ describe('login state machine', () => {
 
   test('apiKeyInput + fail keeps user in input with error preserved', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'set-buffer', buffer: 'sk-abc' })
@@ -122,25 +112,14 @@ describe('login state machine', () => {
 
   test('apiKeyInput + back returns to apiKeyPicker', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'back' })
     expect(s.kind).toBe('apiKeyPicker')
   })
 
-  test('top + select with cursor 2 opens the third-party drilldown', () => {
-    let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
-    s = loginReducer(s, { type: 'cursor-down' })
-    s = loginReducer(s, { type: 'select' })
-    expect(s.kind).toBe('thirdPartyPicker')
-    if (s.kind === 'thirdPartyPicker') expect(s.cursor).toBe(0)
-  })
-
   test('thirdPartyPicker cursor-down wraps over registry', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     let lastCursor = -1
@@ -155,16 +134,14 @@ describe('login state machine', () => {
   test('thirdPartyPicker + back returns to top with cursor on 3rd-party row', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
     s = loginReducer(s, { type: 'cursor-down' })
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'back' })
     expect(s.kind).toBe('top')
-    if (s.kind === 'top') expect(s.cursor).toBe(2)
+    if (s.kind === 'top') expect(s.cursor).toBe(1)
   })
 
   test('thirdPartyPicker + select transitions to done with the docs URL in the message', () => {
     let s: ReturnType<typeof initialLoginState> = initialLoginState()
-    s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'cursor-down' })
     s = loginReducer(s, { type: 'select' })
     s = loginReducer(s, { type: 'select' })
@@ -183,32 +160,5 @@ describe('login state machine', () => {
   test('back from top closes overlay (same as cancel at root)', () => {
     const s = loginReducer(initialLoginState(), { type: 'back' })
     expect(s.kind).toBe('closed')
-  })
-
-  test('back from oauth returns to top with cursor on pro-max row', () => {
-    const oauth = loginReducer(initialLoginState(), { type: 'select' })
-    const s = loginReducer(oauth, { type: 'back' })
-    expect(s.kind).toBe('top')
-    if (s.kind === 'top') expect(s.cursor).toBe(0)
-  })
-
-  test('success from oauth lands in done with ok=true', () => {
-    const oauth = loginReducer(initialLoginState(), { type: 'select' })
-    const s = loginReducer(oauth, { type: 'success', message: 'Connected to Claude' })
-    expect(s.kind).toBe('done')
-    if (s.kind === 'done') {
-      expect(s.ok).toBe(true)
-      expect(s.message).toBe('Connected to Claude')
-    }
-  })
-
-  test('fail from oauth lands in done with ok=false', () => {
-    const oauth = loginReducer(initialLoginState(), { type: 'select' })
-    const s = loginReducer(oauth, { type: 'fail', error: 'nope' })
-    expect(s.kind).toBe('done')
-    if (s.kind === 'done') {
-      expect(s.ok).toBe(false)
-      expect(s.message).toBe('nope')
-    }
   })
 })
