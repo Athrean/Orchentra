@@ -162,6 +162,7 @@ export type ActiveFlowState =
   | { readonly kind: 'effort-picker'; readonly current: EffortTier }
   | { readonly kind: 'plan-level-picker'; readonly current: PlanLevel }
   | { readonly kind: 'command-palette' }
+  | { readonly kind: 'statusline-config' }
   | {
       readonly kind: 'repo-picker'
       readonly repos: readonly import('../commands/ui-output').RepoPickerItem[]

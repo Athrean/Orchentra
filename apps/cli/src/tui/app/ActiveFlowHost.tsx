@@ -3,7 +3,8 @@ import React from 'react'
 import type { Dispatch } from 'react'
 import type { LiveCli } from '../../live-cli'
 import type { CommandRegistry } from '../../commands/builtin'
-import { setActiveRepo, setDefaultModel, trustWorkspace } from '../../session-config'
+import { setActiveRepo, setDefaultModel, setStatuslineConfig, trustWorkspace } from '../../session-config'
+import type { StatuslineConfig } from '../../statusline'
 import { AskUserPrompt } from '../components/AskUserPrompt'
 import { CommandPalette } from '../components/CommandPalette'
 import { ConfirmationPrompt } from '../components/ConfirmationPrompt'
@@ -12,6 +13,7 @@ import { LoginPickerCard } from '../components/LoginPickerCard'
 import { ModelPickerCard } from '../components/ModelPickerCard'
 import { PlanLevelSlider } from '../components/PlanLevelSlider'
 import { RepoPickerCard } from '../components/RepoPickerCard'
+import { StatuslineConfigCard } from '../components/StatuslineConfigCard'
 import { ThemePicker } from '../components/ThemePicker'
 import { TrustDialog } from '../components/TrustDialog'
 import { loadActiveTheme, saveActiveTheme } from '../theme-registry'
@@ -25,6 +27,8 @@ export interface ActiveFlowHostProps {
   readonly dispatch: Dispatch<TuiAction>
   readonly getState: () => TuiState
   readonly exit: () => void
+  readonly statuslineConfig: StatuslineConfig
+  readonly setStatuslineConfig: (config: StatuslineConfig) => void
 }
 
 /**
@@ -190,6 +194,27 @@ export function ActiveFlowHost(props: ActiveFlowHostProps): React.ReactElement |
             const next = state.buffer.slice(0, state.cursor) + insert + state.buffer.slice(state.cursor)
             dispatch({ type: 'flow/end' })
             dispatch({ type: 'buffer/set', buffer: next, cursor: state.cursor + insert.length })
+          }}
+          onCancel={() => dispatch({ type: 'flow/end' })}
+        />
+      )
+    case 'statusline-config':
+      return (
+        <StatuslineConfigCard
+          current={props.statuslineConfig}
+          onSave={(config) => {
+            setStatuslineConfig(config)
+            props.setStatuslineConfig(config)
+            dispatch({ type: 'flow/end' })
+            dispatch({
+              type: 'transcript/push',
+              row: {
+                kind: 'system',
+                id: randomUUID(),
+                text: `${okGlyph()} statusline updated (applied now, saved for future sessions)`,
+                tone: 'info',
+              },
+            })
           }}
           onCancel={() => dispatch({ type: 'flow/end' })}
         />

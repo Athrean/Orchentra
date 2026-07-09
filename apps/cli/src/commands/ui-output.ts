@@ -111,6 +111,14 @@ export type UiOutput =
        */
       readonly kind: 'theme-picker'
     }
+  | {
+      /**
+       * Open the Codex-style statusline configurator. The TUI owns input until
+       * the user confirms or escapes, then persists the chosen field list to
+       * `~/.config/orchentra/session.json#statusline`.
+       */
+      readonly kind: 'statusline-config'
+    }
 
 export interface RepoPickerItem {
   readonly fullName: string

@@ -22,6 +22,7 @@ export interface ProviderRequest {
   maxOutputTokens: number
   effort?: EffortTier
   thinkingTokenBudget?: number
+  signal?: AbortSignal
 }
 
 export const EFFORT_TIERS = ['low', 'medium', 'high', 'xhigh', 'max'] as const

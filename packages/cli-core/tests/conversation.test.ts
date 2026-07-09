@@ -519,6 +519,36 @@ describe('ConversationRuntime', () => {
     expect(done).toMatchObject({ kind: 'done', reason: 'aborted' })
   })
 
+  test('passes abort signal to the provider and finishes an in-flight abort', async () => {
+    const controller = new AbortController()
+    const provider: Provider = {
+      stream(request): AsyncIterable<ProviderStreamEvent> {
+        expect(request.signal).toBe(controller.signal)
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              async next(): Promise<IteratorResult<ProviderStreamEvent>> {
+                await new Promise<void>((_resolve, reject) => {
+                  request.signal?.addEventListener('abort', () => reject(new Error('aborted by test')), { once: true })
+                })
+                return { done: true, value: undefined }
+              },
+            }
+          },
+        }
+      },
+    }
+    const deps = { ...makeDeps(provider), signal: controller.signal }
+    const rt = new ConversationRuntime(makeConfig(), deps)
+
+    const collecting = collect(rt, 'hi')
+    setTimeout(() => controller.abort(), 5)
+    const events = await collecting
+
+    expect(events.find((e) => e.kind === 'error')).toBeUndefined()
+    expect(events.find((e) => e.kind === 'done')).toMatchObject({ kind: 'done', reason: 'aborted' })
+  })
+
   test('emits span_start/span_end around each step', async () => {
     const provider = fakeProvider([
       [

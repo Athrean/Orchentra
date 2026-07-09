@@ -6,6 +6,7 @@ import {
   LOCAL_CONFIG,
   OpenAiCompatProvider,
   OPENAI_CONFIG,
+  OPENROUTER_CONFIG,
   XAI_CONFIG,
 } from '@orchentra/cli-api'
 import { DEFAULT_MODEL_ID, DEFAULT_OPUS_MODEL_ID, DEFAULT_HAIKU_MODEL_ID } from './model-catalog'
@@ -14,11 +15,16 @@ const BUILTIN_MODEL_ALIASES: Record<string, string> = {
   opus: DEFAULT_OPUS_MODEL_ID,
   sonnet: DEFAULT_MODEL_ID,
   haiku: DEFAULT_HAIKU_MODEL_ID,
-  grok: 'grok-3',
-  'grok-mini': 'grok-3-mini',
-  gemini: 'gemini-2.0-flash',
-  'gemini-pro': 'gemini-2.0-pro',
-  'gemini-flash': 'gemini-2.0-flash',
+  fable: 'claude-fable-5',
+  grok: 'grok-4.3',
+  gemini: 'gemini-3.1-pro-preview',
+  'gemini-pro': 'gemini-3.1-pro-preview',
+  qwen: 'qwen/qwen3.6-35b-a3b',
+  glm: 'z-ai/glm-5.2',
+  mistral: 'mistralai/mistral-medium-3-5',
+  deepseek: 'deepseek/deepseek-v4-pro',
+  'gpt-oss': 'openai/gpt-oss-120b',
+  'gpt-oss-local': 'ollama/gpt-oss:120b',
 }
 
 export interface CreatedProvider {
@@ -38,6 +44,8 @@ export function createProvider(model: string): CreatedProvider {
   switch (providerName) {
     case 'openai':
       return { providerName, provider: new OpenAiCompatProvider(OPENAI_CONFIG) }
+    case 'openrouter':
+      return { providerName, provider: new OpenAiCompatProvider(OPENROUTER_CONFIG) }
     case 'xai':
       return { providerName, provider: new OpenAiCompatProvider(XAI_CONFIG) }
     case 'dashscope':
@@ -51,14 +59,31 @@ export function createProvider(model: string): CreatedProvider {
   }
 }
 
-export function resolveProviderName(model: string): 'openai' | 'xai' | 'dashscope' | 'gemini' | 'anthropic' | 'local' {
+export function resolveProviderName(
+  model: string,
+): 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'anthropic' | 'local' {
   const lower = model.toLowerCase()
   if (lower.startsWith('ollama/')) return 'local'
+  if (isOpenRouterModelId(lower)) return 'openrouter'
   if (lower.startsWith('gpt') || lower.includes('openai')) return 'openai'
   if (lower.startsWith('grok') || lower.includes('xai')) return 'xai'
   if (lower.includes('qwen') || lower.includes('dashscope')) return 'dashscope'
   if (lower.startsWith('gemini') || lower.includes('google')) return 'gemini'
   return 'anthropic'
+}
+
+function isOpenRouterModelId(model: string): boolean {
+  return (
+    model.startsWith('openai/') ||
+    model.startsWith('anthropic/') ||
+    model.startsWith('google/') ||
+    model.startsWith('x-ai/') ||
+    model.startsWith('mistralai/') ||
+    model.startsWith('deepseek/') ||
+    model.startsWith('qwen/') ||
+    model.startsWith('z-ai/') ||
+    model.startsWith('zhipu/')
+  )
 }
 
 export function thinkingTokenBudgetForEffort(effort: EffortTier): number {

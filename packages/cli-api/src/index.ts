@@ -69,10 +69,12 @@ export {
   OpenAiCompatProvider,
   XAI_CONFIG,
   OPENAI_CONFIG,
+  OPENROUTER_CONFIG,
   DASHSCOPE_CONFIG,
   LOCAL_CONFIG,
   type OpenAiCompatConfig,
 } from './openai-compat'
+export { assertModelProvenance, ModelProvenanceError } from './model-provenance'
 
 export {
   resolveToken,

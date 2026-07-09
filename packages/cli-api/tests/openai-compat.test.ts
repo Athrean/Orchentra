@@ -56,6 +56,18 @@ describe('OpenAiCompatProvider effort', () => {
 
     expect(bodies[0]).not.toHaveProperty('reasoning_effort')
   })
+
+  test('passes the abort signal to fetch', async () => {
+    const bodies: unknown[] = []
+    const signals: (AbortSignal | null | undefined)[] = []
+    const controller = new AbortController()
+    globalThis.fetch = mockFetch(bodies, undefined, signals)
+
+    const provider = new OpenAiCompatProvider(OPENAI_CONFIG, 'key', 'https://example.test/v1')
+    await drain(provider.stream(request({ signal: controller.signal })))
+
+    expect(signals[0]).toBe(controller.signal)
+  })
 })
 
 describe('OpenAiCompatProvider local (Ollama) preset', () => {
@@ -102,6 +114,74 @@ describe('OpenAiCompatProvider local (Ollama) preset', () => {
     await drain(provider.stream(request({ model: 'ollama/qwen2.5-coder', effort: 'high' })))
 
     expect(bodies[0]).not.toHaveProperty('reasoning_effort')
+  })
+})
+
+describe('OpenAiCompatProvider model provenance', () => {
+  const originalFetch = globalThis.fetch
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  function streamFetch(sse: string): typeof globalThis.fetch {
+    return (async () =>
+      ({
+        ok: true,
+        status: 200,
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(sse))
+            controller.close()
+          },
+        }),
+      }) as Response) as typeof globalThis.fetch
+  }
+
+  async function collectText(iterable: AsyncIterable<{ kind: string; delta?: string }>): Promise<string> {
+    let text = ''
+    for await (const ev of iterable) {
+      if (ev.kind === 'text-delta' && ev.delta) text += ev.delta
+    }
+    return text
+  }
+
+  test('streams when the returned model matches the requested model', async () => {
+    globalThis.fetch = streamFetch(
+      ['data: {"model":"gpt-5","choices":[{"delta":{"content":"ok"}}]}', 'data: [DONE]', ''].join('\n\n'),
+    )
+    const provider = new OpenAiCompatProvider(OPENAI_CONFIG, 'key', 'https://example.test/v1')
+    const text = await collectText(provider.stream(request({ model: 'gpt-5' })))
+    expect(text).toBe('ok')
+  })
+
+  test('fails closed when a hosted provider returns a different model', async () => {
+    globalThis.fetch = streamFetch(
+      ['data: {"model":"gpt-5.5","choices":[{"delta":{"content":"leaked"}}]}', 'data: [DONE]', ''].join('\n\n'),
+    )
+    const provider = new OpenAiCompatProvider(OPENAI_CONFIG, 'key', 'https://example.test/v1')
+
+    let text = ''
+    try {
+      text = await collectText(provider.stream(request({ model: 'gpt-5' })))
+      expect.unreachable('Should have thrown on model mismatch')
+    } catch (err: unknown) {
+      expect((err as { name: string }).name).toBe('ModelProvenanceError')
+      expect((err as { requestedModel: string }).requestedModel).toBe('gpt-5')
+      expect((err as { actualModel: string }).actualModel).toBe('gpt-5.5')
+    }
+    expect(text).toBe('')
+  })
+
+  test('does not enforce provenance for local servers that rewrite model tags', async () => {
+    // Ollama returns `llama3:latest` for a `llama3` request — a tag rewrite, not
+    // a reroute. The local carve-out keeps this request-side verified only.
+    globalThis.fetch = streamFetch(
+      ['data: {"model":"llama3:latest","choices":[{"delta":{"content":"ok"}}]}', 'data: [DONE]', ''].join('\n\n'),
+    )
+    const provider = new OpenAiCompatProvider(LOCAL_CONFIG)
+    const text = await collectText(provider.stream(request({ model: 'ollama/llama3' })))
+    expect(text).toBe('ok')
   })
 })
 
@@ -164,9 +244,14 @@ describe('convertTool', () => {
   })
 })
 
-function mockFetch(bodies: unknown[], urls?: string[]): typeof globalThis.fetch {
+function mockFetch(
+  bodies: unknown[],
+  urls?: string[],
+  signals?: (AbortSignal | null | undefined)[],
+): typeof globalThis.fetch {
   return (async (url: string | URL | Request, init?: RequestInit) => {
     if (urls) urls.push(String(url))
+    if (signals) signals.push(init?.signal)
     if (typeof init?.body === 'string') bodies.push(JSON.parse(init.body))
     return {
       ok: true,

@@ -83,8 +83,29 @@ describe('Footer — idle', () => {
     )
     const out = strip(lastFrame() ?? '')
     expect(out).not.toContain('(esc to interrupt)')
-    expect(out).toContain('claude-opus-4-7')
+    expect(out).toContain('Opus 4.7')
+    expect(out).not.toContain('claude-opus-4-7')
     expect(out).toContain('git:(main)')
+  })
+
+  test('uses clean model labels for explicit model statusline fields', () => {
+    const { lastFrame } = render(
+      <Footer
+        model="claude-sonnet-4-20250514"
+        mode="workspace-write"
+        terseMode="off"
+        effort="medium"
+        cwd="/tmp"
+        turn={IDLE}
+        spinnerFrame={0}
+        exitHintActive={false}
+        statusline={{ useThemeColors: true, fields: ['model', 'model-with-reasoning'] }}
+      />,
+    )
+    const out = strip(lastFrame() ?? '')
+    expect(out).toContain('Sonnet 4')
+    expect(out).toContain('Sonnet 4 · medium')
+    expect(out).not.toContain('claude-sonnet-4-20250514')
   })
 
   test('shows workspace leaf and context percentage when stats are available', () => {

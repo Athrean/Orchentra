@@ -70,9 +70,10 @@ export class GeminiProvider implements Provider {
 
       let response: Response
       try {
-        response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+        response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: request.signal })
       } catch (err) {
         lastErr = err instanceof Error ? err : new Error(String(err))
+        if (request.signal?.aborted) throw lastErr
         continue
       }
 
@@ -170,7 +171,7 @@ export class GeminiProvider implements Provider {
   }
 }
 
-function buildGeminiRequest(request: ProviderRequest, defaultMaxTokens: number): GeminiRequest {
+export function buildGeminiRequest(request: ProviderRequest, defaultMaxTokens: number): GeminiRequest {
   const body: GeminiRequest = {
     contents: convertMessages(request.messages),
     generationConfig: {

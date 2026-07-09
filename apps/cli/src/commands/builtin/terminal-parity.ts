@@ -9,6 +9,8 @@ import type { UiCardSection } from '../ui-output'
 import { writeClipboard } from '../../ui/clipboard'
 import { loadHooks } from '../../hooks/load-hooks'
 import { buildContextSections } from './context-report'
+import { getStatuslineConfig } from '../../session-config'
+import { STATUSLINE_OPTIONS } from '../../statusline'
 
 export class ContextCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -396,18 +398,33 @@ export class StatuslineCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'statusline',
     aliases: [],
-    summary: 'Show the footer/statusline fields',
+    summary: 'Configure the footer/statusline fields',
   }
 
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
+    if (ctx.ui) {
+      ctx.ui({ kind: 'statusline-config' })
+      return true
+    }
+    const config = getStatuslineConfig()
+    const enabled = new Set(config.fields)
     return card(ctx, 'Statusline', 'footer', [
       {
+        title: 'Enabled',
         rows: [
-          { key: 'Model', value: ctx.session.getModel() },
-          { key: 'Mode', value: ctx.session.getPermissionMode() },
-          { key: 'Terse', value: ctx.session.getTerseMode?.() ?? 'off' },
-          { key: 'cwd', value: prettyCwd(ctx.cwd) },
+          { key: 'Theme colors', value: config.useThemeColors ? 'on' : 'off' },
+          ...STATUSLINE_OPTIONS.filter((option) => option.supported && enabled.has(option.id)).map((option) => ({
+            key: option.label,
+            value: option.description,
+          })),
         ],
+      },
+      {
+        title: 'Unavailable',
+        rows: STATUSLINE_OPTIONS.filter((option) => !option.supported).map((option) => ({
+          key: option.label,
+          value: option.description,
+        })),
       },
     ])
   }

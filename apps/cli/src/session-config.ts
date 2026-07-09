@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { isTerseMode, type TerseMode } from '@orchentra/cli-core'
 import { fingerprintWorkspace } from './sessions/workspace-fingerprint'
 import { LEGACY_FINGERPRINT, migrateLegacySessions } from './sessions/migrate-legacy'
+import { DEFAULT_STATUSLINE_CONFIG, normalizeStatuslineConfig, type StatuslineConfig } from './statusline'
 
 /**
  * Persistent CLI session state. Survives between invocations so the user
@@ -19,6 +20,7 @@ interface SessionConfigFile {
   activeRepo?: string
   activeTerseMode?: TerseMode
   defaultModel?: string
+  statusline?: StatuslineConfig
   /** Fingerprints of workspaces the user has answered the trust gate for. */
   trustedWorkspaces?: string[]
   [extra: string]: unknown
@@ -90,6 +92,7 @@ function load(): SessionConfigFile {
       activeRepo: typeof parsed.activeRepo === 'string' ? parsed.activeRepo : undefined,
       activeTerseMode: isTerseMode(parsed.activeTerseMode) ? parsed.activeTerseMode : undefined,
       defaultModel: typeof parsed.defaultModel === 'string' ? parsed.defaultModel : undefined,
+      statusline: normalizeStatuslineConfig(parsed.statusline),
       trustedWorkspaces: Array.isArray(parsed.trustedWorkspaces)
         ? parsed.trustedWorkspaces.filter((fp): fp is string => typeof fp === 'string')
         : undefined,
@@ -155,6 +158,16 @@ export function getDefaultModel(): string | null {
 export function setDefaultModel(model: string): void {
   const file = load()
   file.defaultModel = model
+  persist(file)
+}
+
+export function getStatuslineConfig(): StatuslineConfig {
+  return load().statusline ?? DEFAULT_STATUSLINE_CONFIG
+}
+
+export function setStatuslineConfig(config: StatuslineConfig): void {
+  const file = load()
+  file.statusline = normalizeStatuslineConfig(config)
   persist(file)
 }
 

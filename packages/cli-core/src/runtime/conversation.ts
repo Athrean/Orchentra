@@ -171,10 +171,27 @@ export class ConversationRuntime {
         maxOutputTokens: this.config.maxOutputTokens,
         effort: this.config.effort,
         thinkingTokenBudget: this.config.thinkingTokenBudget,
+        signal: this.deps.signal,
       }
 
       const turn = await this.runTurn(provider.stream(request), budget)
       for (const ev of turn.events) yield* this.emit(ev)
+
+      if (this.deps.signal?.aborted) {
+        yield* this.emit({
+          kind: 'span_end',
+          spanId: stepSpanId,
+          endedAt: this.now(),
+          status: 'error',
+        })
+        yield* this.emit({
+          kind: 'done',
+          reason: 'aborted',
+          steps: budget.currentSteps,
+          usage: budget.currentUsage,
+        })
+        return
+      }
 
       const warning = budget.consumeCostWarning()
       if (warning) {
@@ -335,11 +352,13 @@ export class ConversationRuntime {
       }
     } catch (err) {
       error = true
-      events.push({
-        kind: 'error',
-        message: err instanceof Error ? err.message : String(err),
-        retryable: false,
-      })
+      if (!this.deps.signal?.aborted) {
+        events.push({
+          kind: 'error',
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        })
+      }
     }
 
     budget.addUsage(usage)

@@ -1,6 +1,8 @@
 const KNOWN_MODEL_PATTERNS: RegExp[] = [
-  /^claude-(opus|sonnet|haiku)-\d/i,
+  /^claude-(fable|opus|sonnet|haiku)-\d/i,
+  /^(anthropic|openai|google|x-ai|mistralai|deepseek|qwen|z-ai|zhipu)\//i,
   /^gpt-\d/i,
+  /^gpt-oss-\d/i,
   /^o\d(-mini)?$/i,
   /^gemini-\d/i,
   /^grok-\d(-mini)?/i,

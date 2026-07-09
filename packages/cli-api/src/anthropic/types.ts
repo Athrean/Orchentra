@@ -25,7 +25,7 @@ export interface ContentBlockDelta {
 }
 
 export type StreamEvent =
-  | { type: 'message_start'; message: { usage: Usage; content?: OutputContentBlock[] } }
+  | { type: 'message_start'; message: { usage: Usage; content?: OutputContentBlock[]; model?: string } }
   | { type: 'content_block_start'; index: number; content_block: OutputContentBlock }
   | { type: 'content_block_delta'; index: number; delta: ContentBlockDelta }
   | { type: 'content_block_stop'; index: number }
@@ -38,7 +38,8 @@ export interface MessageRequest {
   messages: { role: 'user' | 'assistant'; content: string | ContentBlock[] }[]
   system?: string | SystemContentBlock[]
   tools?: ToolDefinition[]
-  thinking?: { type: 'enabled'; budget_tokens: number }
+  thinking?: { type: 'adaptive' }
+  output_config?: { effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' }
   stream?: boolean
   temperature?: number
   stop_sequences?: string[]

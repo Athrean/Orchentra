@@ -10,6 +10,8 @@ import {
   setActiveTerseMode,
   getDefaultModel,
   setDefaultModel,
+  getStatuslineConfig,
+  setStatuslineConfig,
   isWorkspaceTrusted,
   trustWorkspace,
   sessionConfigPath,
@@ -138,5 +140,19 @@ describe('session-config: activeRepo', () => {
     expect(raw.defaultModel).toBe('gpt-5')
     expect(raw.activeRepo).toBe('acme/api')
     expect(raw.activeTerseMode).toBe('lite')
+  })
+
+  test('round-trips statusline config and drops unsupported fields', () => {
+    setActiveRepo('acme/api')
+    setStatuslineConfig({
+      useThemeColors: false,
+      fields: ['model', 'weekly-limit', 'context-used', 'model'],
+    })
+
+    expect(getStatuslineConfig()).toEqual({
+      useThemeColors: false,
+      fields: ['model', 'context-used'],
+    })
+    expect(getActiveRepo()).toBe('acme/api')
   })
 })

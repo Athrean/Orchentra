@@ -1,8 +1,11 @@
 import { basename } from 'node:path'
 import React from 'react'
 import { Box, Text } from 'ink'
-import type { PermissionMode, SessionTaskSummary, TerseMode, UsageTotals } from '@orchentra/cli-core'
+import type { EffortTier, PermissionMode, SessionTaskSummary, TerseMode, UsageTotals } from '@orchentra/cli-core'
 import { formatUsd, pricingForModel } from '@orchentra/cli-core'
+import { CLI_VERSION } from '../../version'
+import { DEFAULT_STATUSLINE_CONFIG, type StatuslineConfig, type StatuslineFieldId } from '../../statusline'
+import { humanizeModelId } from '../../model-catalog'
 import { THEME } from '../theme'
 import { FIGURES } from '../figures'
 import type { TurnStatus } from '../types'
@@ -18,8 +21,10 @@ export interface FooterProps {
   readonly model: string
   readonly mode: PermissionMode
   readonly terseMode: TerseMode
+  readonly effort?: EffortTier
   readonly cwd: string
   readonly branch?: string
+  readonly sessionId?: string
   readonly turn: TurnStatus
   readonly spinnerFrame: number
   readonly exitHintActive: boolean
@@ -27,6 +32,7 @@ export interface FooterProps {
   readonly exitHintKey?: 'ctrl+c' | 'ctrl+d'
   readonly contextStats?: FooterContextStats
   readonly tasks?: readonly SessionTaskSummary[]
+  readonly statusline?: StatuslineConfig
 }
 
 export function Footer(props: FooterProps): React.ReactElement {
@@ -45,24 +51,15 @@ export function Footer(props: FooterProps): React.ReactElement {
     )
   }
 
-  const cost = renderCost(props.turn.tokens, props.model)
-  const context = renderContext(props.contextStats)
-  const activeTasks = props.tasks?.filter((t) => t.status === 'running' || t.status === 'pending').length ?? 0
-  const segments = [
-    props.model,
-    formatCwd(props.cwd),
-    props.branch ? `git:(${props.branch})` : null,
-    context?.text ?? null,
-    activeTasks > 0 ? `${FIGURES.gear} ${activeTasks} ${activeTasks === 1 ? 'task' : 'tasks'}` : null,
-    props.mode === 'workspace-write' ? null : formatMode(props.mode),
-    props.terseMode === 'off' ? null : `terse:${props.terseMode}`,
-    cost,
-  ].filter((segment): segment is string => !!segment)
+  const statusline = props.statusline ?? DEFAULT_STATUSLINE_CONFIG
+  const segments = statusline.fields
+    .map((field) => renderStatuslineField(field, props))
+    .filter((segment): segment is string => !!segment)
 
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box>
-        <Text color={THEME.brand} bold>
+        <Text color={statusline.useThemeColors ? THEME.brand : THEME.muted} bold>
           {THEME.dot}
         </Text>
         <Text dimColor wrap="truncate-end">{`  ${segments.join(` ${THEME.separator} `)}`}</Text>
@@ -72,6 +69,83 @@ export function Footer(props: FooterProps): React.ReactElement {
       ) : null}
     </Box>
   )
+}
+
+function renderStatuslineField(field: StatuslineFieldId, props: FooterProps): string | null {
+  const usage = props.turn.tokens
+  const context = renderContext(props.contextStats)
+  const totalTokens = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
+  const modelLabel = humanizeModelId(props.model)
+  switch (field) {
+    case 'model-with-reasoning':
+      return props.effort ? `${modelLabel} · ${props.effort}` : modelLabel
+    case 'current-dir':
+    case 'project-name':
+      return formatCwd(props.cwd)
+    case 'permissions':
+    case 'approval-mode':
+      return props.mode === 'workspace-write' ? null : formatMode(props.mode)
+    case 'terse-mode':
+      return props.terseMode === 'off' ? null : `terse:${props.terseMode}`
+    case 'active-tasks':
+      return renderActiveTasks(props.tasks)
+    case 'session-cost':
+      return renderCost(usage, props.model)
+    case 'model':
+      return modelLabel
+    case 'reasoning':
+      return props.effort ? `effort:${props.effort}` : null
+    case 'git-branch':
+      return props.branch ? `git:(${props.branch})` : null
+    case 'run-state':
+      return 'ready'
+    case 'context-used':
+      return context?.text ?? null
+    case 'context-remaining':
+      return renderContextRemaining(props.contextStats)
+    case 'codex-version':
+      return `orchentra ${CLI_VERSION}`
+    case 'context-window-size':
+      return props.contextStats?.contextWindowTokens
+        ? `${formatNumber(props.contextStats.contextWindowTokens)} ctx`
+        : null
+    case 'used-tokens':
+      return totalTokens > 0 ? `${formatNumber(totalTokens)} tokens` : null
+    case 'total-input-tokens':
+      return usage.inputTokens > 0 ? `${formatNumber(usage.inputTokens)} in` : null
+    case 'total-output-tokens':
+      return usage.outputTokens > 0 ? `${formatNumber(usage.outputTokens)} out` : null
+    case 'thread-id':
+      return props.sessionId ? `session:${props.sessionId.slice(0, 8)}` : null
+    case 'five-hour-limit':
+    case 'pull-request-number':
+    case 'branch-changes':
+    case 'weekly-limit':
+    case 'fast-mode':
+    case 'raw-output':
+    case 'thread-title':
+    case 'workspace-headline':
+    case 'task-progress':
+      return null
+  }
+}
+
+function renderActiveTasks(tasks: readonly SessionTaskSummary[] | undefined): string | null {
+  const activeTasks = tasks?.filter((t) => t.status === 'running' || t.status === 'pending').length ?? 0
+  if (activeTasks === 0) return null
+  return `${FIGURES.gear} ${activeTasks} ${activeTasks === 1 ? 'task' : 'tasks'}`
+}
+
+function renderCost(usage: UsageTotals, model: string): string | null {
+  if (usage.inputTokens === 0 && usage.outputTokens === 0) return null
+  const parts = [`${usage.inputTokens}↓ ${usage.outputTokens}↑`]
+  const pricing = pricingForModel(model)
+  if (pricing) {
+    const inputCost = (usage.inputTokens / 1_000_000) * pricing.inputCostPerMillion
+    const outputCost = (usage.outputTokens / 1_000_000) * pricing.outputCostPerMillion
+    parts.push(formatUsd(inputCost + outputCost))
+  }
+  return parts.join(`  ${THEME.bullet}  `)
 }
 
 interface StatusInnerProps {
@@ -127,18 +201,6 @@ function formatElapsed(ms: number): string {
   return `${m}m${s % 60}s`
 }
 
-function renderCost(usage: UsageTotals, model: string): string | null {
-  if (usage.inputTokens === 0 && usage.outputTokens === 0) return null
-  const parts = [`${usage.inputTokens}↓ ${usage.outputTokens}↑`]
-  const pricing = pricingForModel(model)
-  if (pricing) {
-    const inputCost = (usage.inputTokens / 1_000_000) * pricing.inputCostPerMillion
-    const outputCost = (usage.outputTokens / 1_000_000) * pricing.outputCostPerMillion
-    parts.push(formatUsd(inputCost + outputCost))
-  }
-  return parts.join(`  ${THEME.bullet}  `)
-}
-
 function renderContext(stats: FooterContextStats | undefined): { text: string; color: string } | null {
   const window = stats?.contextWindowTokens
   const estimated = stats?.estimatedTokens
@@ -148,6 +210,18 @@ function renderContext(stats: FooterContextStats | undefined): { text: string; c
   const compactAt = Math.round((stats?.compactThresholdRatio ?? 0.8) * 100)
   const color = used >= 90 ? THEME.danger : used >= compactAt ? THEME.warn : THEME.brandDim
   return { text: `ctx ${used}%`, color }
+}
+
+function renderContextRemaining(stats: FooterContextStats | undefined): string | null {
+  const window = stats?.contextWindowTokens
+  const estimated = stats?.estimatedTokens
+  if (!window || window <= 0 || estimated === undefined || estimated < 0) return null
+  const remaining = Math.max(0, Math.round(((window - estimated) / window) * 100))
+  return `ctx ${remaining}% left`
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en-US').format(Math.max(0, Math.round(value)))
 }
 
 function formatCwd(cwd: string): string {

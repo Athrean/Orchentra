@@ -11,7 +11,7 @@ function buildRequest(overrides?: Partial<ProviderRequest>): ProviderRequest {
     systemDynamic: 'Current time: now',
     messages: [{ role: 'user', content: 'hello' }],
     tools: [],
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-5',
     maxOutputTokens: 1024,
     ...overrides,
   }
@@ -32,7 +32,7 @@ async function collectEvents(provider: AnthropicProvider, request: ProviderReque
 describe('AnthropicProvider', () => {
   const originalFetch = globalThis.fetch
   let mockFetch: typeof globalThis.fetch
-  let capturedRequests: { headers: Record<string, string>; body: unknown }[] = []
+  let capturedRequests: { headers: Record<string, string>; body: unknown; signal?: AbortSignal | null }[] = []
 
   function mockServer(responses: { status?: number; body: string; headers?: Record<string, string> }[]): void {
     let callIndex = 0
@@ -46,7 +46,7 @@ describe('AnthropicProvider', () => {
       } catch {
         /* not JSON */
       }
-      capturedRequests.push({ headers: { ...(headers ?? {}) }, body: parsedBody })
+      capturedRequests.push({ headers: { ...(headers ?? {}) }, body: parsedBody, signal: init?.signal })
 
       const response = responses[callIndex++] ?? responses[responses.length - 1]
       const respHeaders = new Headers(response.headers)
@@ -69,6 +69,7 @@ describe('AnthropicProvider', () => {
   function lastRequest(): {
     headers: Record<string, string>
     body: { system?: { text: string }[]; [k: string]: unknown }
+    signal?: AbortSignal | null
   } {
     const req = capturedRequests[capturedRequests.length - 1]
     if (!req) throw new Error('no request captured')
@@ -166,15 +167,98 @@ describe('AnthropicProvider', () => {
     expect(finish).toMatchObject({ kind: 'finish', stopReason: 'end_turn' })
   })
 
-  test('sends Anthropic thinking budget when provided', async () => {
+  test('uses adaptive thinking plus output_config effort for Sonnet 5', async () => {
     mockServer([{ body: successSseFrame() }])
 
     const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
-    await collectEvents(provider, buildRequest({ effort: 'medium', thinkingTokenBudget: 4096 }))
+    await collectEvents(
+      provider,
+      buildRequest({ model: 'claude-sonnet-5', effort: 'medium', thinkingTokenBudget: 4096 }),
+    )
 
     const { body } = lastRequest()
-    expect(body.thinking).toEqual({ type: 'enabled', budget_tokens: 4096 })
-    expect(body.max_tokens).toBe(5120)
+    expect(body.thinking).toEqual({ type: 'adaptive' })
+    expect(body.output_config).toEqual({ effort: 'medium' })
+    expect(body.max_tokens).toBe(1024)
+  })
+
+  test('uses adaptive thinking plus output_config effort for Opus 4.8', async () => {
+    mockServer([{ body: successSseFrame() }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ model: 'claude-opus-4-8', effort: 'max', thinkingTokenBudget: 4096 }))
+
+    const { body } = lastRequest()
+    expect(body.thinking).toEqual({ type: 'adaptive' })
+    expect(body.output_config).toEqual({ effort: 'max' })
+    expect(body.max_tokens).toBe(1024)
+  })
+
+  // The 4.6 generation supports both adaptive thinking and effort. Sonnet 4.6 runs
+  // without thinking unless adaptive is sent explicitly, so an omitted field here
+  // would silently disable it — hence adaptive, not a bare effort payload.
+  test('uses adaptive thinking plus output_config effort for Sonnet 4.6', async () => {
+    mockServer([{ body: successSseFrame() }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(
+      provider,
+      buildRequest({ model: 'claude-sonnet-4-6', effort: 'high', thinkingTokenBudget: 4096 }),
+    )
+
+    const { body } = lastRequest()
+    expect(body.thinking).toEqual({ type: 'adaptive' })
+    expect(body.output_config).toEqual({ effort: 'high' })
+    expect(body.max_tokens).toBe(1024)
+  })
+
+  test('uses adaptive thinking plus output_config effort for Opus 4.6', async () => {
+    mockServer([{ body: successSseFrame() }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ model: 'claude-opus-4-6', effort: 'high', thinkingTokenBudget: 4096 }))
+
+    const { body } = lastRequest()
+    expect(body.thinking).toEqual({ type: 'adaptive' })
+    expect(body.output_config).toEqual({ effort: 'high' })
+  })
+
+  test('uses adaptive thinking plus output_config effort for Fable 5', async () => {
+    mockServer([{ body: successSseFrame() }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ model: 'claude-fable-5', effort: 'xhigh', thinkingTokenBudget: 4096 }))
+
+    const { body } = lastRequest()
+    expect(body.thinking).toEqual({ type: 'adaptive' })
+    expect(body.output_config).toEqual({ effort: 'xhigh' })
+  })
+
+  // The Haiku tier has no adaptive-thinking or effort surface (effort 400s there),
+  // so neither field is sent even when the runtime supplies a budget and effort.
+  test('omits thinking and output_config for the Haiku tier', async () => {
+    mockServer([{ body: successSseFrame() }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(
+      provider,
+      buildRequest({ model: 'claude-haiku-4-5-20251001', effort: 'medium', thinkingTokenBudget: 4096 }),
+    )
+
+    const { body } = lastRequest()
+    expect(body.thinking).toBeUndefined()
+    expect(body.output_config).toBeUndefined()
+    expect(body.max_tokens).toBe(1024)
+  })
+
+  test('passes the abort signal to fetch', async () => {
+    mockServer([{ body: successSseFrame() }])
+    const controller = new AbortController()
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    await collectEvents(provider, buildRequest({ signal: controller.signal }))
+
+    expect(lastRequest().signal).toBe(controller.signal)
   })
 
   test('streams tool-use events', async () => {
@@ -332,6 +416,82 @@ describe('AnthropicProvider', () => {
     } catch (err: unknown) {
       expect((err as { failureClass: string }).failureClass).toBe('provider_retry_exhausted')
     }
+  })
+
+  test('accepts a stream whose returned model matches the requested model', async () => {
+    const sseStream = [
+      sseFrame('message_start', {
+        type: 'message_start',
+        message: { model: 'claude-sonnet-5', usage: { input_tokens: 1, output_tokens: 0 } },
+      }),
+      sseFrame('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text' } }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'ok' },
+      }),
+      sseFrame('content_block_stop', { type: 'content_block_stop', index: 0 }),
+      sseFrame('message_delta', {
+        type: 'message_delta',
+        delta: { stop_reason: 'end_turn' },
+        usage: { output_tokens: 1 },
+      }),
+      sseFrame('message_stop', { type: 'message_stop' }),
+    ].join('')
+    mockServer([{ body: sseStream }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    const events = await collectEvents(provider, buildRequest({ model: 'claude-sonnet-5' }))
+
+    expect(events.filter((e) => e.kind === 'text-delta')).toEqual([{ kind: 'text-delta', delta: 'ok' }])
+  })
+
+  test('fails closed when the returned model differs from the requested model', async () => {
+    // Provider claims to have answered as Opus while the caller selected Sonnet:
+    // a silent reroute. No fallback is enabled, so this must throw before any
+    // content leaks — not stream Opus output as if it were Sonnet.
+    const sseStream = [
+      sseFrame('message_start', {
+        type: 'message_start',
+        message: { model: 'claude-opus-4-8', usage: { input_tokens: 1, output_tokens: 0 } },
+      }),
+      sseFrame('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text' } }),
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text: 'leaked' },
+      }),
+      sseFrame('message_stop', { type: 'message_stop' }),
+    ].join('')
+    mockServer([{ body: sseStream, headers: { 'request-id': 'req_abc123' } }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+
+    let leaked = false
+    try {
+      for await (const ev of provider.stream(buildRequest({ model: 'claude-sonnet-5' }))) {
+        if (ev.kind === 'text-delta') leaked = true
+      }
+      expect.unreachable('Should have thrown on model mismatch')
+    } catch (err: unknown) {
+      expect((err as { name: string }).name).toBe('ModelProvenanceError')
+      expect((err as { requestedModel: string }).requestedModel).toBe('claude-sonnet-5')
+      expect((err as { actualModel: string }).actualModel).toBe('claude-opus-4-8')
+      // request-id captured for provenance; no secrets in the message.
+      expect((err as Error).message).toContain('req_abc123')
+      expect((err as Error).message).not.toContain('test-key-123')
+    }
+    expect(leaked).toBe(false)
+  })
+
+  test('does not fake certainty when the provider omits a returned model', async () => {
+    // message_start carries no `model` field → request-side verified only, no throw.
+    mockServer([{ body: successSseFrame() }])
+
+    const provider = new AnthropicProvider({ retries: { maxRetries: 0 } })
+    const events = await collectEvents(provider, buildRequest({ model: 'claude-sonnet-5' }))
+
+    expect(events.filter((e) => e.kind === 'text-delta')).toEqual([{ kind: 'text-delta', delta: 'ok' }])
   })
 
   test('throws on missing API key', async () => {

@@ -10,6 +10,7 @@ import { emptyUsage } from '@orchentra/cli-core'
 import type { OpenAiMessage, OpenAiToolCall, OpenAiToolDefinition, OpenAiStreamDelta } from './types'
 import { getCredential, type ProviderKey } from '../credential-store'
 import { parseToolArguments } from '../tool-arguments'
+import { assertModelProvenance } from '../model-provenance'
 
 export interface OpenAiCompatConfig {
   providerName: string
@@ -41,6 +42,14 @@ const OPENAI_CONFIG: OpenAiCompatConfig = {
   credentialKey: 'openai',
 }
 
+const OPENROUTER_CONFIG: OpenAiCompatConfig = {
+  providerName: 'OpenRouter',
+  apiKeyEnv: 'OPENROUTER_API_KEY',
+  baseUrlEnv: 'OPENROUTER_BASE_URL',
+  defaultBaseUrl: 'https://openrouter.ai/api/v1',
+  credentialKey: 'openrouter',
+}
+
 const DASHSCOPE_CONFIG: OpenAiCompatConfig = {
   providerName: 'DashScope',
   apiKeyEnv: 'DASHSCOPE_API_KEY',
@@ -60,7 +69,7 @@ const LOCAL_CONFIG: OpenAiCompatConfig = {
   modelPrefix: 'ollama/',
 }
 
-export { XAI_CONFIG, OPENAI_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG }
+export { XAI_CONFIG, OPENAI_CONFIG, OPENROUTER_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG }
 
 export class OpenAiCompatProvider implements Provider {
   private readonly apiKey: string
@@ -82,6 +91,12 @@ export class OpenAiCompatProvider implements Provider {
   async *stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
     const url = `${this.baseUrl}/chat/completions`
     const wireModel = this.stripModelPrefix(request.model)
+    // Local inference servers (Ollama/LM Studio) rewrite model tags (e.g.
+    // `llama3` → `llama3:latest`), so exact-match provenance would false-positive
+    // there — enforce the `sent === returned` check only for hosted providers,
+    // which echo the requested model id verbatim. Local stays request-side
+    // verified only (no fake certainty).
+    const enforceProvenance = !this.config.modelPrefix
     const body = buildRequestBody({ ...request, model: wireModel }, supportsReasoningEffort(this.config, wireModel))
 
     const response = await fetch(url, {
@@ -91,6 +106,7 @@ export class OpenAiCompatProvider implements Provider {
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(body),
+      signal: request.signal,
     })
 
     if (!response.ok) {
@@ -107,6 +123,7 @@ export class OpenAiCompatProvider implements Provider {
 
     const decoder = new TextDecoder()
     let buffer = ''
+    let providerVerified = false
     const pendingToolCalls = new Map<number, { id: string; name: string; args: string }>()
 
     while (true) {
@@ -136,6 +153,13 @@ export class OpenAiCompatProvider implements Provider {
 
         const chunk = safeParseJson(data) as OpenAiStreamDelta | null
         if (!chunk?.choices?.length) continue
+
+        // Verify provenance on the first chunk that reports a model — before any
+        // text is yielded — so a rerouted response can't leak as the selected one.
+        if (enforceProvenance && !providerVerified && chunk.model) {
+          assertModelProvenance(wireModel, chunk.model, this.config.providerName)
+          providerVerified = true
+        }
 
         const choice = chunk.choices[0]
         const delta = choice.delta
@@ -214,8 +238,11 @@ function buildRequestBody(request: ProviderRequest, includeReasoningEffort = fal
 }
 
 function supportsReasoningEffort(config: OpenAiCompatConfig, model: string): boolean {
-  if (config.providerName !== 'OpenAI') return false
   const lower = model.toLowerCase()
+  if (config.providerName === 'OpenRouter') {
+    return lower.startsWith('openai/gpt-oss') || lower.startsWith('openai/gpt-5') || lower.includes('reasoning')
+  }
+  if (config.providerName !== 'OpenAI') return false
   return (
     lower.startsWith('o1') ||
     lower.startsWith('o3') ||

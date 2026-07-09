@@ -174,6 +174,9 @@ function routeUiOutput(output: UiOutput, args: SlashCommandExecutorArgs, activeS
     case 'theme-picker':
       args.dispatch({ type: 'flow/start', flow: { kind: 'theme-picker' } })
       return activeStreamId
+    case 'statusline-config':
+      args.dispatch({ type: 'flow/start', flow: { kind: 'statusline-config' } })
+      return activeStreamId
   }
 }
 

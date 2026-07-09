@@ -4,13 +4,21 @@ import { createProvider, resolveModelAlias, thinkingTokenBudgetForEffort } from 
 
 describe('provider factory', () => {
   test.each([
-    ['opus', 'claude-opus-4-7', 'anthropic'],
-    ['gpt-5', 'gpt-5', 'openai'],
-    ['grok-3-mini', 'grok-3-mini', 'xai'],
+    ['opus', 'claude-opus-4-8', 'anthropic'],
+    ['gpt-5.5', 'gpt-5.5', 'openai'],
+    ['grok', 'grok-4.3', 'xai'],
     ['qwen-max', 'qwen-max', 'dashscope'],
-    ['gemini-flash', 'gemini-2.0-flash', 'gemini'],
+    ['qwen', 'qwen/qwen3.6-35b-a3b', 'openrouter'],
+    ['gemini-pro', 'gemini-3.1-pro-preview', 'gemini'],
+    ['glm', 'z-ai/glm-5.2', 'openrouter'],
+    ['mistral', 'mistralai/mistral-medium-3-5', 'openrouter'],
+    ['deepseek', 'deepseek/deepseek-v4-pro', 'openrouter'],
+    ['gpt-oss', 'openai/gpt-oss-120b', 'openrouter'],
+    ['gpt-oss-local', 'ollama/gpt-oss:120b', 'local'],
     ['ollama/llama3', 'ollama/llama3', 'local'],
     ['ollama/qwen2.5-coder:7b', 'ollama/qwen2.5-coder:7b', 'local'],
+    ['openai/gpt-oss-120b', 'openai/gpt-oss-120b', 'openrouter'],
+    ['z-ai/glm-5.2', 'z-ai/glm-5.2', 'openrouter'],
   ])('resolves %s to model %s on %s', (raw, expectedModel, expectedProviderName) => {
     const model = resolveModelAlias(raw)
     const resolved = createProvider(model)

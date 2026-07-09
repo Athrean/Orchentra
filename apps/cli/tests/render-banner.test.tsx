@@ -33,7 +33,7 @@ describe('WelcomeBanner', () => {
     expect(lines).toHaveLength(3)
     expect(lines[0]).toContain('▄██▄')
     expect(lines[0]).toContain('Orchentra v0.1.0')
-    expect(lines[1]).toContain('Claude Sonnet 4')
+    expect(lines[1]).toContain('Sonnet 4')
     expect(lines[2]).toContain('/tmp/example')
   })
 
@@ -53,7 +53,7 @@ describe('WelcomeBanner', () => {
 
   test('shows the human-readable model name and provider on the meta line', () => {
     const out = runWith({ NO_COLOR: '1' }, () => renderFrame({ ...baseOpts, providerName: 'anthropic' }))
-    expect(out).toContain('Claude Sonnet 4.6')
+    expect(out).toContain('Sonnet 4.6')
     expect(out).not.toContain('claude-sonnet-4-6')
     expect(out).toContain('anthropic')
   })

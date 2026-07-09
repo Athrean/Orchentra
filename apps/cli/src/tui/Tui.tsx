@@ -27,7 +27,7 @@ import { Footer } from './status/Footer'
 import { Transcript } from './components/Transcript'
 import { ActiveCard } from './components/ActiveCard'
 import { buildToolDiffPreview } from './components/tool-diff-preview'
-import { isWorkspaceTrusted } from '../session-config'
+import { getStatuslineConfig, isWorkspaceTrusted } from '../session-config'
 import type { BannerOptions } from '../render/banner'
 
 export interface TuiProps {
@@ -48,6 +48,7 @@ export function Tui(props: TuiProps): React.ReactElement {
   const { stdout } = useStdout()
   const cols = stdout?.columns ?? 80
   const [cwd, setCwd] = useState(props.cwd)
+  const [statuslineConfig, setStatuslineConfigState] = useState(() => getStatuslineConfig())
 
   const [state, dispatch] = useReducer(
     reducer,
@@ -396,6 +397,8 @@ export function Tui(props: TuiProps): React.ReactElement {
           dispatch={dispatch}
           getState={() => stateRef.current}
           exit={exit}
+          statuslineConfig={statuslineConfig}
+          setStatuslineConfig={setStatuslineConfigState}
         />
         {state.activeCard ? <ActiveCard card={state.activeCard} /> : null}
         <QueuedMessages queued={state.queued} />
@@ -423,14 +426,17 @@ export function Tui(props: TuiProps): React.ReactElement {
           model={state.model}
           mode={state.mode}
           terseMode={state.terseMode}
+          effort={cli.getEffort?.()}
           cwd={cwd}
           branch={props.branch}
+          sessionId={cli.getSessionId()}
           turn={state.turn}
           spinnerFrame={spinnerFrame}
           exitHintActive={state.exitHintUntil !== null}
           exitHintKey={state.exitHintKey ?? undefined}
           contextStats={cli.getContextStats?.()}
           tasks={cli.listTaskSummaries?.()}
+          statusline={statuslineConfig}
         />
       </Box>
     </Box>

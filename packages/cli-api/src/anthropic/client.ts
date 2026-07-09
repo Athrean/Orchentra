@@ -5,6 +5,7 @@ import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry
 import { injectCacheBoundary } from './cache'
 import type { ContentBlock, MessageRequest, StreamEvent, ToolDefinition, Usage } from './types'
 import { parseToolArguments } from '../tool-arguments'
+import { assertModelProvenance } from '../model-provenance'
 
 export interface AnthropicConfig {
   apiKey?: string
@@ -56,18 +57,22 @@ export class AnthropicProvider implements Provider {
     }
 
     const system = injectCacheBoundary(request.systemStatic, request.systemDynamic)
-    const thinkingBudget = request.thinkingTokenBudget
+    const thinking = anthropicThinkingForModel(request.model || this.model, request.thinkingTokenBudget)
+    const outputConfig = anthropicOutputConfigForModel(request.model || this.model, request.effort)
     const maxTokens = request.maxOutputTokens || this.maxTokens
     const body: MessageRequest = {
       model: request.model || this.model,
-      max_tokens: thinkingBudget ? Math.max(maxTokens, thinkingBudget + maxTokens) : maxTokens,
+      max_tokens: maxTokens,
       messages: toAnthropicMessages(request.messages),
       system,
       stream: true,
     }
 
-    if (thinkingBudget) {
-      body.thinking = { type: 'enabled', budget_tokens: thinkingBudget }
+    if (thinking) {
+      body.thinking = thinking
+    }
+    if (outputConfig) {
+      body.output_config = outputConfig
     }
 
     if (request.tools.length > 0) {
@@ -113,8 +118,12 @@ export class AnthropicProvider implements Provider {
           method: 'POST',
           headers,
           body: JSON.stringify(body),
+          signal: request.signal,
         })
       } catch (err) {
+        if (request.signal?.aborted) {
+          throw err
+        }
         lastError = new AnthropicApiError({
           status: 0,
           message: err instanceof Error ? err.message : String(err),
@@ -156,7 +165,8 @@ export class AnthropicProvider implements Provider {
         throw new Error('Response body is null — streaming not supported')
       }
 
-      yield* this.consumeStream(response.body)
+      const requestId = response.headers.get('request-id') ?? undefined
+      yield* this.consumeStream(response.body, body.model, requestId)
       return
     }
 
@@ -172,7 +182,11 @@ export class AnthropicProvider implements Provider {
     }
   }
 
-  private async *consumeStream(body: ReadableStream<Uint8Array>): AsyncIterable<ProviderStreamEvent> {
+  private async *consumeStream(
+    body: ReadableStream<Uint8Array>,
+    requestedModel: string,
+    requestId: string | undefined,
+  ): AsyncIterable<ProviderStreamEvent> {
     const parser = new SseParser()
     const decoder = new TextDecoder()
     const pendingTools = new Map<number, { id: string; name: string; input: string }>()
@@ -204,6 +218,11 @@ export class AnthropicProvider implements Provider {
 
           switch (event.type) {
             case 'message_start': {
+              // Fail closed on the first frame — before any content is yielded —
+              // if the model the API says it answered with is not the one we
+              // requested. Anthropic echoes the exact model id sent, so any
+              // difference is a routing/contract drift, not a resolved alias.
+              assertModelProvenance(requestedModel, event.message?.model, 'anthropic', requestId)
               if (event.message?.usage) {
                 lastUsage = mergeUsage(lastUsage, event.message.usage)
               }
@@ -315,6 +334,31 @@ export class AnthropicProvider implements Provider {
       reader.releaseLock()
     }
   }
+}
+
+// We support only current-generation Claude models. The frontier tiers (Fable,
+// Opus, Sonnet) use adaptive thinking + output_config.effort; the Haiku tier has
+// neither surface (effort 400s there, and it predates adaptive thinking). Legacy
+// budget_tokens thinking is intentionally gone — a pre-4.6 model id yields an API
+// error rather than a silently-downgraded request.
+function isHaikuModel(model: string): boolean {
+  return model.toLowerCase().includes('haiku')
+}
+
+function anthropicThinkingForModel(
+  model: string,
+  thinkingBudget: number | undefined,
+): MessageRequest['thinking'] | undefined {
+  if (!thinkingBudget || isHaikuModel(model)) return undefined
+  return { type: 'adaptive' }
+}
+
+function anthropicOutputConfigForModel(
+  model: string,
+  effort: ProviderRequest['effort'],
+): MessageRequest['output_config'] | undefined {
+  if (!effort || isHaikuModel(model)) return undefined
+  return { effort }
 }
 
 function mapStopReason(reason: string): StopReason {
