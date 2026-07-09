@@ -14,7 +14,6 @@ function fixtureSkill(overrides: Partial<ParsedSkill> = {}): ParsedSkill {
     source: '/tmp/skills/hello/SKILL.md',
     allowedTools: [],
     argumentNames: [],
-    disableModelInvocation: false,
     meta: { name: 'hello', description: 'say hi' },
     ...overrides,
   }

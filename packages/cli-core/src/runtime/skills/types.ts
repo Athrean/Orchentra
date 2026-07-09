@@ -5,7 +5,6 @@ export interface ParsedSkill {
   source: string
   allowedTools: string[]
   argumentNames: string[]
-  disableModelInvocation: boolean
   meta: Record<string, unknown>
 }
 

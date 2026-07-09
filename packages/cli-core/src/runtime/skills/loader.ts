@@ -97,7 +97,6 @@ async function walkRoot(rootPath: string): Promise<RootResult> {
       source: skillFile,
       allowedTools: validated.value.allowedTools,
       argumentNames: validated.value.argumentNames,
-      disableModelInvocation: validated.value.disableModelInvocation,
       meta: parsed.meta,
     })
   }

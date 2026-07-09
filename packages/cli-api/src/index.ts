@@ -4,13 +4,7 @@ export { AnthropicProvider, type AnthropicConfig } from './anthropic/client'
 export { injectCacheBoundary } from './anthropic/cache'
 
 export { GeminiProvider, type GeminiConfig } from './gemini'
-export {
-  loginGemini,
-  logoutGemini,
-  resolveGeminiAccessToken,
-  type GeminiLoginOptions,
-  type GeminiLoginResult,
-} from './gemini/oauth'
+export { loginGemini, resolveGeminiAccessToken, type GeminiLoginOptions, type GeminiLoginResult } from './gemini/oauth'
 
 export {
   credentialsPath,
@@ -136,21 +130,4 @@ export {
   type CreatePullRequestInput,
 } from './github'
 
-export { postSlashCommand, CommandHttpError, type PostSlashCommandOptions } from './orchentra/commands'
-export {
-  fetchExecutionGraph,
-  fetchNodeLineage,
-  GraphHttpError,
-  type GraphNodeDto,
-  type ExecutionGraphResponse,
-  type NodeLineageResponse,
-  type FetchExecutionGraphOptions,
-  type FetchNodeLineageOptions,
-} from './orchentra/graph'
-export {
-  resolveOrchentraConfig,
-  MissingOrchentraConfigError,
-  type OrchentraConfig,
-  type ResolveConfigOptions,
-} from './orchentra/config'
 export { writeProjectSettings, type WriteProjectSettingsInput } from './orchentra/write-project-settings'

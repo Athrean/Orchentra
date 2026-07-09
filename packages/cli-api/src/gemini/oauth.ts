@@ -1,5 +1,5 @@
 import { buildAuthorizeUrl, captureLoopbackCode, generatePkce, generateState } from '../oauth-pkce'
-import { getCredential, saveCredential, clearCredential, type StoredCredential } from '../credential-store'
+import { getCredential, saveCredential, type StoredCredential } from '../credential-store'
 
 const GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
@@ -126,10 +126,6 @@ export async function resolveGeminiAccessToken(): Promise<string | null> {
   }
 
   return stored.accessToken ?? null
-}
-
-export function logoutGemini(): boolean {
-  return clearCredential('gemini')
 }
 
 interface TokenResponse {
