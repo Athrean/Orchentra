@@ -18,6 +18,21 @@ describe('evaluatePaste', () => {
     const result = evaluatePaste(big)
     expect(result).not.toBeNull()
   })
+
+  test('treats CR-separated drag-drop paths as a paste and normalizes CR to LF', () => {
+    // Terminals convert LF to CR when pasting/dragging; a bare \r reaching the
+    // buffer overwrites the rendered row and deforms the input box.
+    const result = evaluatePaste("'/Users/u/Desktop/a.png'\r'/Users/u/Desktop/b.png'")
+    expect(result).not.toBeNull()
+    expect(result!.lines).toBe(2)
+    expect(result!.content).toBe("'/Users/u/Desktop/a.png'\n'/Users/u/Desktop/b.png'")
+  })
+
+  test('treats a short two-line blob as a paste (no line-count floor above 2)', () => {
+    const result = evaluatePaste('line one\nline two')
+    expect(result).not.toBeNull()
+    expect(result!.lines).toBe(2)
+  })
 })
 
 describe('expandPastes', () => {

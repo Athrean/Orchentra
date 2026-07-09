@@ -243,26 +243,37 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
   }
 
   if (input && input.length > 0 && !key.ctrl && !key.meta) {
-    const paste = evaluatePaste(input)
-    if (paste) {
-      dispatch({
-        type: 'paste/add',
-        chip: { id: paste.chipId, content: paste.content, lines: paste.lines },
-      })
-      const insert = paste.chipMarker
-      const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
-      return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
-    }
-    const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
-    return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
+    return insertPrintable(cur, input, dispatch)
   }
+}
+
+/**
+ * Insert a printable burst at the cursor. Pasted/drag-dropped text (anything
+ * carrying embedded newlines, or a huge single line) collapses to a chip so
+ * raw multi-line content never reaches the rendered buffer.
+ */
+function insertPrintable(cur: TuiState, input: string, dispatch: Dispatch<TuiAction>): void {
+  const paste = evaluatePaste(input)
+  if (paste) {
+    dispatch({
+      type: 'paste/add',
+      chip: { id: paste.chipId, content: paste.content, lines: paste.lines },
+    })
+    const insert = paste.chipMarker
+    const next = cur.buffer.slice(0, cur.cursor) + insert + cur.buffer.slice(cur.cursor)
+    dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + insert.length })
+    return
+  }
+  const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
+  dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
 }
 
 /**
  * Key routing while a turn is running: the buffer is a type-ahead composer.
  * Enter queues the current buffer for submission once the runtime goes idle;
  * printable keys, backspace, and left/right edit it; Esc/Ctrl+C cancel the
- * turn. Slash/history/paste affordances stay idle-only for simplicity — the
+ * turn. Slash/history affordances stay idle-only for simplicity; paste bursts
+ * still collapse to chips here so raw newlines never deform the box, and the
  * queued text is expanded and routed normally when it finally submits.
  */
 function handleRunningTurnKey(
@@ -310,8 +321,7 @@ function handleRunningTurnKey(
     return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor - 1 })
   }
   if (input && input.length > 0 && !key.ctrl && !key.meta) {
-    const next = cur.buffer.slice(0, cur.cursor) + input + cur.buffer.slice(cur.cursor)
-    return dispatch({ type: 'buffer/set', buffer: next, cursor: cur.cursor + input.length })
+    return insertPrintable(cur, input, dispatch)
   }
 }
 
