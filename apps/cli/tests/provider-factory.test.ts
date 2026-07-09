@@ -4,7 +4,7 @@ import { createProvider, resolveModelAlias, thinkingTokenBudgetForEffort } from 
 
 describe('provider factory', () => {
   test.each([
-    ['opus', 'claude-opus-4-20250514', 'anthropic'],
+    ['opus', 'claude-opus-4-7', 'anthropic'],
     ['gpt-5', 'gpt-5', 'openai'],
     ['grok-3-mini', 'grok-3-mini', 'xai'],
     ['qwen-max', 'qwen-max', 'dashscope'],

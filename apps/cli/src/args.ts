@@ -1,5 +1,6 @@
 import type { PermissionMode } from '@orchentra/cli-core'
 import { getDefaultModel } from './session-config'
+import { DEFAULT_MODEL_ID } from './model-catalog'
 
 export type UpdateTag = 'alpha' | 'beta' | 'latest'
 
@@ -162,7 +163,7 @@ FLAGS
 }
 
 function defaultModel(): string {
-  return process.env.ORCHENTRA_MODEL ?? process.env.ORCHESTRA_MODEL ?? getDefaultModel() ?? 'claude-sonnet-4-20250514'
+  return process.env.ORCHENTRA_MODEL ?? process.env.ORCHESTRA_MODEL ?? getDefaultModel() ?? DEFAULT_MODEL_ID
 }
 
 function parseSessionArgs(rest: string[]): CliAction {

@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
+import { DEFAULT_MODEL_ID } from './model-catalog'
 
 export type InitStatus = 'created' | 'updated' | 'skipped'
 
@@ -16,7 +17,7 @@ export interface InitReport {
 const STARTER_SETTINGS =
   JSON.stringify(
     {
-      model: 'claude-sonnet-4-20250514',
+      model: DEFAULT_MODEL_ID,
       permissionMode: 'workspace-write',
       permissions: {
         allow: [],
