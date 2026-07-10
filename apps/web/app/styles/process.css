@@ -1,0 +1,134 @@
+/* Process and spine parts */
+
+.process {
+  padding: calc(var(--cell) * 9) var(--gutter) calc(var(--cell) * 6);
+}
+
+.process-head {
+  display: grid;
+  grid-template-columns: 0.82fr 1.18fr;
+  gap: calc(var(--cell) * 6);
+  align-items: start;
+}
+
+.process-head p,
+.supporting-head > p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--body);
+  font-size: clamp(15px, 1.15vw, 18px);
+  line-height: 1.62;
+}
+
+.four-part-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: calc(var(--cell) * 2);
+}
+
+.part {
+  position: relative;
+  min-height: 176px;
+  padding-bottom: 24px;
+}
+
+.part-title {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.part-title span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 20px;
+  background: var(--navy);
+  color: var(--paper);
+  font-size: 8px;
+  clip-path: var(--clip-pixel-small);
+}
+
+.part h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.part p {
+  margin: 14px 0 0;
+  color: var(--body);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.part-line {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, var(--ink) 0 5px, transparent 5px 9px);
+  transform-origin: left;
+}
+
+.spine-parts {
+  padding: 0 var(--gutter) calc(var(--cell) * 7);
+}
+
+.pixel-button {
+  position: relative;
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  padding: 14px 28px;
+  margin-top: 14px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+  clip-path: var(--clip-pixel-large);
+}
+
+.pixel-button:hover {
+  background: var(--blue);
+}
+
+.pixel-button span {
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pixel-button:hover span {
+  transform: translate(2px, -2px);
+}
+
+.level-list {
+  padding: 0;
+  margin: calc(var(--cell) * 2) 0 0;
+  list-style: none;
+}
+
+.level-list li {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: var(--cell);
+  padding: var(--cell) 0;
+  color: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  border-top: 1px solid var(--line);
+}
+
+.level-list li:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.level-code {
+  color: var(--muted);
+  font-size: 9px;
+}
