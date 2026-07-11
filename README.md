@@ -7,9 +7,9 @@
 
 # Orchentra
 
-### A CLI-first coding crew that spends less, writes less, and proves its review by running the code.
+### A local-first coding harness being built to prove completion by running the code and the product.
 
-[Quick start](#quick-start) · [Spine](#spine) · [CLI](#cli) · [Develop](#develop)
+[Quick start](#quick-start) · [Harness foundations](#harness-foundations) · [CLI](#cli) · [Develop](#develop)
 
 </div>
 
@@ -17,13 +17,15 @@
 
 ## What Is Orchentra?
 
-Orchentra is an AI coding agent that runs in your terminal. It can read and edit files, run shell commands, search the workspace, inspect git state, fetch web pages, use MCP tools, and continue from saved sessions.
+Orchentra is a local-first AI coding harness that runs in your terminal. Today it can read and edit files, run shell commands, search the workspace, inspect git state, fetch web pages, use MCP tools, and continue from saved sessions.
+
+The current pivot extends that working CLI with one truthful orchestrator, model-aware adapters, browser-native verification, and evidence-carrying traces. The target is simple: Orchentra should not claim a task is done based only on model prose or an exit code.
 
 The product is CLI-only and zero-DB. The web app in `apps/web` is a static marketing site for the CLI; it has no auth, database, GitHub App flow, dashboard, subscription management, or standalone pull-request reviewer.
 
-## Spine
+## Harness Foundations
 
-Every built-in agent should inherit the same spine:
+Every built-in agent inherits the same efficiency spine. It remains implementation discipline while evidence-gated verification becomes the product's headline capability:
 
 | Spine skill           | Job                                                                 | Saves                |
 | --------------------- | ------------------------------------------------------------------- | -------------------- |
@@ -53,7 +55,6 @@ Useful commands:
 orchentra                         # interactive TUI
 orchentra "<prompt>"              # one-shot prompt
 orchentra doctor                  # environment preflight
-orchentra init                    # scaffold local .orchentra config
 orchentra session replay latest   # replay the latest workspace session
 ```
 
@@ -80,7 +81,8 @@ orchentra login | logout | reauth | whoami
 ```text
 /help (/h /?)   /status (/st)   /clear (/cls)   /exit (/q)
 /compact        /model (/m)     /effort         /think
-/terse          /plan           /build          /review
+/terse          /budget         /lean           /plan
+/build          /review         /statusline     /usage
 /cost           /version (/v)   /init           /search
 /scan           /debug          /diff (/d)      /commit
 /pr             /issue (/iss)   /session        /resume
@@ -88,8 +90,6 @@ orchentra login | logout | reauth | whoami
 /config (/cfg) /memory (/mem)  /forget         /export
 /login (/li)   /logout (/lo)   /reauth         /auth (/whoami)
 ```
-
-Planned naming cleanup: keep existing names for compatibility, strengthen `/terse`, and add `/budget` plus `/lean` once those controls are first-class.
 
 ## Configuration
 
@@ -104,7 +104,7 @@ Example:
 
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "effort": "medium",
   "terseMode": "lite",
   "budget": {
@@ -143,9 +143,7 @@ Orchentra/
 ├── apps/
 │   ├── cli/                 # terminal app, TUI, commands, auth
 │   └── web/                 # static marketing site
-├── docs/                    # current docs + proposals
 ├── packages/
-│   ├── brain/               # episode/runbook/skill-export types
 │   ├── cli-api/             # provider clients, GitHub clients, auth helpers
 │   ├── cli-core/            # runtime, sessions, permissions, memory, budget
 │   ├── cli-tools/           # built-in tools + MCP client
