@@ -209,6 +209,22 @@ describe('BUILTIN_TOOLS', () => {
     expect(names.has('diagnostics')).toBe(true)
   })
 
+  test('does not advertise placeholder task or cron tools', () => {
+    const names = new Set(BUILTIN_TOOLS.map((tool) => tool.name))
+    for (const removed of [
+      'task_create',
+      'task_get',
+      'task_list',
+      'task_update',
+      'task_stop',
+      'cron_create',
+      'cron_delete',
+      'cron_list',
+    ]) {
+      expect(names.has(removed)).toBe(false)
+    }
+  })
+
   test('each tool has required fields', () => {
     for (const tool of BUILTIN_TOOLS) {
       expect(tool.name.length).toBeGreaterThan(0)

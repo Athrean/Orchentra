@@ -1,6 +1,6 @@
 {
   "name": "orchentra",
-  "packageManager": "bun@1.3.9",
+  "packageManager": "bun@1.3.14",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -10,9 +10,9 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format": "git ls-files -z -- '*.ts' '*.tsx' '*.md' '*.json' '*.yml' '*.yaml' | xargs -0 prettier --write",
     "test": "bun run test:precommit",
-    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests packages/brain/tests apps/cli/tests",
+    "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-tools/tests apps/cli/tests",
     "typecheck": "turbo run typecheck",
     "prepare": "husky"
   },
@@ -29,10 +29,7 @@
     "@typescript-eslint/eslint-plugin": "^8.57.1",
     "@typescript-eslint/parser": "^8.57.1",
     "eslint": "8",
-    "eslint-config-next": "^16.1.7",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-config-turbo": "^2.8.17",
-    "eslint-plugin-turbo": "^2.8.17",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.2.0",

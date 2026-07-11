@@ -1,5 +1,3 @@
-export const API_VERSION = '0.1.0'
-
 export { AnthropicProvider, type AnthropicConfig } from './anthropic/client'
 export { injectCacheBoundary } from './anthropic/cache'
 

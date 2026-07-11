@@ -62,9 +62,9 @@ describe('writeScaffold', () => {
   })
 
   test('treats a trailing-slash entry as a directory', () => {
-    const r = writeScaffold([{ path: 'packages/brain/', purpose: 'memory pkg' }], TMP)
+    const r = writeScaffold([{ path: 'packages/widget/', purpose: 'example pkg' }], TMP)
 
-    expect(existsSync(join(TMP, 'packages/brain'))).toBe(true)
-    expect(r.created).toEqual(['packages/brain/'])
+    expect(existsSync(join(TMP, 'packages/widget'))).toBe(true)
+    expect(r.created).toEqual(['packages/widget/'])
   })
 })
