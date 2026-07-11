@@ -504,9 +504,17 @@ function switchBranch(ctx: CommandContext, rawName: string | undefined, prefix: 
 }
 
 function git(cwd: string, args: readonly string[]): { ok: true; out: string } | { ok: false; err: string } {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 5000 })
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 5000, env: gitFreeEnv() })
   if (r.status === 0) return { ok: true, out: r.stdout.trimEnd() }
   return { ok: false, err: (r.stderr || r.stdout || '').trim() }
+}
+
+function gitFreeEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
+  }
+  return env
 }
 
 function card(ctx: CommandContext, title: string, subtitle: string, sections: readonly UiCardSection[]): boolean {

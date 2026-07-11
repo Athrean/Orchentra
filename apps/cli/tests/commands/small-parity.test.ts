@@ -569,7 +569,11 @@ describe('small slash parity commands', () => {
 })
 
 function git(cwd: string, args: readonly string[]): { stdout: string; stderr: string } {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  const env: NodeJS.ProcessEnv = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
+  }
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', env })
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || `git ${args.join(' ')} failed`)
   }
