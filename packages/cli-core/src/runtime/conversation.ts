@@ -19,7 +19,6 @@ import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
 import type { AskUserHandler, SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
-import type { PermissionEnforcer } from './permission-enforcer'
 import type { Enforcer } from '../permissions/enforcer'
 
 function exhaustionReason(by: BudgetState['exhaustedBy']): DoneReason {
@@ -62,7 +61,6 @@ export interface ConversationDeps {
    */
   budget?: RuntimeBudget
   hookRunner?: HookRunner
-  permissionEnforcer?: PermissionEnforcer
   enforcer?: Enforcer
   enforcerAskUser?: import('../permissions/enforcer').AskUser
   enforcerStore?: import('../permissions/store').PermissionStore
@@ -446,13 +444,6 @@ export class ConversationRuntime {
     let preHook: Awaited<ReturnType<HookRunner['runPreToolUse']>> | undefined
     if (this.deps.hookRunner) {
       preHook = await this.deps.hookRunner.runPreToolUse(call.name, inputJson)
-    }
-
-    if (this.deps.permissionEnforcer) {
-      const enforcement = this.deps.permissionEnforcer.check(call.name, inputJson)
-      if (enforcement.kind === 'denied') {
-        return { id: call.id, content: `permission denied: ${enforcement.reason}`, isError: true }
-      }
     }
 
     if (this.deps.enforcer && this.deps.enforcerAskUser && this.deps.permissionMode) {
