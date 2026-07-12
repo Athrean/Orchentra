@@ -2,6 +2,7 @@ import type { Provider, ProviderToolSchema } from './provider'
 import type { ToolLevel } from './permissions'
 import type { RuntimeBudget } from './budget'
 import type { ToolArtifact, ToolEvidence } from './events'
+import type { QuirkCounters } from './quirks'
 
 export interface TaskHandle {
   taskId: string
@@ -88,6 +89,12 @@ export interface ToolContext {
    * the nesting tree even though budget already bounds total spend.
    */
   subagentDepth?: number
+  /**
+   * Run-wide per-model deviation counters. The registry records malformed
+   * args / unknown-tool calls here keyed by `model`; sub-agents inherit the
+   * parent's instance so one run yields one set of counters.
+   */
+  quirks?: QuirkCounters
 }
 
 export interface ToolResult {

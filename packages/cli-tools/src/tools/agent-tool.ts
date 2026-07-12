@@ -213,6 +213,7 @@ async function runSubagent(
         spinePrompt: ctx.spinePrompt,
         workspaceRoots: ctx.workspaceRoots,
         subagentDepth: ctx.subagentDepth,
+        quirks: ctx.quirks,
         signal: abort.signal,
       },
     )
