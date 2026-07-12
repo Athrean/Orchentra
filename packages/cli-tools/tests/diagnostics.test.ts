@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
+import type { ToolContext } from '@orchentra/cli-core'
 import { parseDiagnostics, diagnosticsReport } from '../src/diagnostics'
+import { diagnosticsTool } from '../src/tools/diagnostics-tool'
 
 describe('parseDiagnostics', () => {
   test('parses a tsc error line into a structured diagnostic', () => {
@@ -55,5 +57,31 @@ describe('diagnosticsReport', () => {
     expect(r.errors).toBe(5)
     expect((r.text.match(/ error: /g) ?? []).length).toBe(3)
     expect(r.text).toContain('+2 more')
+  })
+})
+
+describe('diagnosticsTool permission gate', () => {
+  const ctx = (permissionMode?: 'read-only' | 'workspace-write'): ToolContext => ({
+    sessionId: 'diag-test',
+    cwd: '/tmp',
+    permissionMode,
+  })
+
+  test('blocks a write command override in read-only mode', async () => {
+    const result = await diagnosticsTool.execute({ command: 'rm -rf build' }, ctx('read-only'))
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('blocked')
+  })
+
+  test('blocks a write redirection override in read-only mode', async () => {
+    const result = await diagnosticsTool.execute({ command: 'tsc --noEmit > /tmp/out' }, ctx('read-only'))
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('blocked')
+  })
+
+  test('a read-only override still runs', async () => {
+    const result = await diagnosticsTool.execute({ command: 'echo "src/a.ts(1,1): error TS1: bad."' }, ctx('read-only'))
+    expect(result.isError).toBe(false)
+    expect(result.content).toContain('error')
   })
 })
