@@ -654,6 +654,35 @@ describe('ConversationRuntime', () => {
     expect(toolEnd.status).toBe('error')
   })
 
+  test('signed thinking blocks survive a tool-use continuation and stream as reasoning', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'thinking-delta', delta: 'inspect ' },
+        { kind: 'thinking-delta', delta: 'the file' },
+        { kind: 'thinking-signature', signature: 'sig-1' },
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: { path: '/a' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read', description: 'read', inputSchema: {} }],
+      has: () => true,
+      execute: async () => ({ content: 'file content', isError: false }),
+    }
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    const events = await collect(rt, 'go')
+
+    const reasoning = events.filter((e): e is Extract<RuntimeEvent, { kind: 'reasoning' }> => e.kind === 'reasoning')
+    expect(reasoning.map((e) => e.delta).join('')).toBe('inspect the file')
+
+    const assistantWithTools = rt.getFinalMessages().find((m) => m.role === 'assistant' && m.toolCalls)
+    expect(assistantWithTools?.thinking).toEqual([{ thinking: 'inspect the file', signature: 'sig-1' }])
+  })
+
   test('an injected budget carries dollar spend across runs', async () => {
     let providerCalls = 0
     const provider: Provider = {

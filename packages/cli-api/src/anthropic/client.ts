@@ -423,6 +423,12 @@ export function toAnthropicMessages(messages: readonly ChatMessage[]): MessageRe
 
     if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
       const blocks: ContentBlock[] = []
+      // Signed thinking blocks must be replayed verbatim, before any other
+      // content, when an assistant tool-use turn is continued — the API
+      // validates the signature and 400s if the blocks were dropped.
+      for (const block of m.thinking ?? []) {
+        blocks.push({ type: 'thinking', thinking: block.thinking, signature: block.signature })
+      }
       if (m.content) blocks.push({ type: 'text', text: m.content })
       for (const call of m.toolCalls) {
         blocks.push({ type: 'tool_use', id: call.id, name: call.name, input: call.input })

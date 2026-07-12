@@ -1,10 +1,22 @@
 import type { ToolCall, UsageTotals } from './events'
 
+/**
+ * A signed extended-thinking block from the provider. Anthropic requires the
+ * previous assistant turn's thinking blocks (with their signatures) to be
+ * replayed verbatim when continuing after tool results — dropping them breaks
+ * the continuation.
+ */
+export interface ThinkingBlock {
+  thinking: string
+  signature?: string
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'tool'
   content: string
   toolCallId?: string
   toolCalls?: ToolCall[]
+  thinking?: ThinkingBlock[]
 }
 
 export interface ProviderToolSchema {
