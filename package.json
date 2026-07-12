@@ -30,6 +30,8 @@
     "@typescript-eslint/parser": "^8.57.1",
     "eslint": "8",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-config-turbo": "^2.8.17",
+    "eslint-plugin-turbo": "^2.8.17",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.2.0",
