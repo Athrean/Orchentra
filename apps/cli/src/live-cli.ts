@@ -7,6 +7,7 @@ import type {
   ConversationDeps,
   AskUserHandler,
   AskUserRequest,
+  DoneReason,
   HookRunner,
   EffortTier,
   TerseMode,
@@ -93,6 +94,12 @@ import { isProviderAuthError, friendlyAuthErrorMessage } from '@orchentra/cli-ap
 import { thinkingTokenBudgetForEffort } from './provider-factory'
 
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
+
+/** Outcome of a single turn: `ok` only when the runtime finished with a clean stop. */
+export interface TurnRunResult {
+  readonly ok: boolean
+  readonly reason: DoneReason
+}
 
 export type RuntimeEventSink = (event: RuntimeEvent) => void
 export type AskUserOverride = AskUserHandler
@@ -673,7 +680,7 @@ export class LiveCli implements SessionControl {
     }
   }
 
-  async runTurn(input: string): Promise<void> {
+  async runTurn(input: string): Promise<TurnRunResult> {
     const sink = this.eventSink
     this.pendingFileUndoSnapshots.clear()
     this.currentTurnFileUndo = []
@@ -838,7 +845,7 @@ export class LiveCli implements SessionControl {
     let steps = 0
     let lastUsage: UsageTotals = emptyUsage()
     let assistantText = ''
-    let doneReason: string | undefined
+    let doneReason: DoneReason | undefined
 
     try {
       for await (const event of this.runtime.run({ userMessage: input, priorMessages: this.messages })) {
@@ -877,6 +884,7 @@ export class LiveCli implements SessionControl {
         process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
       }
     } catch (err) {
+      doneReason = 'error'
       const message = isProviderAuthError(err) ? friendlyAuthErrorMessage(err) : formatThrown(err)
       if (sink) {
         sink({ kind: 'error', message, retryable: false })
@@ -890,6 +898,7 @@ export class LiveCli implements SessionControl {
       this.pendingFileUndoSnapshots.clear()
       this.currentAbort = null
     }
+    return { ok: doneReason === 'stop', reason: doneReason ?? 'error' }
   }
 
   private async handleEvent(event: RuntimeEvent): Promise<void> {
