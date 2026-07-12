@@ -5,7 +5,6 @@ dist/
 *.db-journal
 *.db-wal
 *.db-shm
-orchentra.yml
 .env
 .env.*
 !.env.example
@@ -32,8 +31,7 @@ secrets/
 .vscode/
 .idea/
 
-# Product docs. All of docs/ is local-only — nothing under it is tracked
-# (canonical.md, roadmap.md, proposals, etc. stay off the public repo).
+# Product docs remain local-only pending the documentation-governance decision.
 docs/
 # Tracked product docs that live alongside the app they document
 !apps/*/docs/

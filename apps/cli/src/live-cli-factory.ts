@@ -11,7 +11,7 @@ import {
   type ToolRegistry,
 } from '@orchentra/cli-core'
 import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config'
-import { DefaultToolRegistry, BUILTIN_TOOLS, McpManager, DEFAULT_MCP_DEFER_TOKENS } from '@orchentra/cli-tools'
+import { DefaultToolRegistry, McpManager, DEFAULT_MCP_DEFER_TOKENS } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
 import type { HookProgressUpdate } from './hooks/types'
@@ -126,7 +126,5 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
 }
 
 function buildToolRegistry(): ToolRegistry {
-  const registry = new DefaultToolRegistry()
-  for (const tool of BUILTIN_TOOLS) registry.register(tool)
-  return registry
+  return new DefaultToolRegistry()
 }

@@ -40,7 +40,6 @@
     "react": "^19",
     "react-devtools-core": "^7.0.1",
     "typescript": "^5.9.3",
-    "zod": "^3.23.8",
-    "zod-to-json-schema": "^3.23.5"
+    "zod": "^3.23.8"
   }
 }

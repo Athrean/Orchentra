@@ -27,13 +27,7 @@ function exhaustionReason(by: BudgetState['exhaustedBy']): DoneReason {
   return 'budget_exhausted'
 }
 
-const PLAN_MODE_ALLOWED_TOOLS = new Set<string>([
-  'exit_plan_mode',
-  'enter_plan_mode',
-  'todo_write',
-  'task_list',
-  'task_get',
-])
+const PLAN_MODE_ALLOWED_TOOLS = new Set<string>(['exit_plan_mode', 'enter_plan_mode', 'todo_write'])
 
 export interface ConversationConfig {
   model: string

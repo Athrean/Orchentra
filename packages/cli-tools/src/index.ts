@@ -1,5 +1,3 @@
-export const TOOLS_VERSION = '0.1.0'
-
 export type { ValidationResult, CommandIntent } from './bash-validation'
 
 export {
@@ -65,19 +63,11 @@ export {
   type DiagnosticsReport,
   type Severity,
 } from './diagnostics'
-export { taskCreateTool } from './tools/task-create-tool'
-export { taskGetTool } from './tools/task-get-tool'
-export { taskListTool } from './tools/task-list-tool'
-export { taskUpdateTool } from './tools/task-update-tool'
-export { taskStopTool } from './tools/task-stop-tool'
 export { webFetchTool } from './tools/web-fetch-tool'
 export { webSearchTool } from './tools/web-search-tool'
 export { askUserTool } from './tools/ask-user-tool'
 export { todoWriteTool } from './tools/todo-write-tool'
 export { agentTool } from './tools/agent-tool'
-export { cronCreateTool } from './tools/cron-create-tool'
-export { cronDeleteTool } from './tools/cron-delete-tool'
-export { cronListTool } from './tools/cron-list-tool'
 export { notebookEditTool } from './tools/notebook-edit-tool'
 export { gitStatusTool, gitDiffTool, gitLogTool } from './tools/git-tools'
 export { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'

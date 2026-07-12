@@ -37,7 +37,7 @@ describe('planSlices', () => {
   test('drops directory entries (trailing slash)', () => {
     const slices = planSlices(
       plan([
-        { path: 'packages/brain/', purpose: 'a dir' },
+        { path: 'packages/widget/', purpose: 'a dir' },
         { path: 'src/a.ts', purpose: 'a file' },
       ]),
     )

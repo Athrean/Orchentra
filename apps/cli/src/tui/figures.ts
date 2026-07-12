@@ -15,5 +15,3 @@ export const FIGURES = {
   arrowUp: '↑',
   arrowDown: '↓',
 } as const
-
-export type FigureName = keyof typeof FIGURES

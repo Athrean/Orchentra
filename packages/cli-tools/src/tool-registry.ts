@@ -14,19 +14,11 @@ import { fileEditTool } from './tools/file-edit-tool'
 import { globTool } from './tools/glob-tool'
 import { grepTool } from './tools/grep-tool'
 import { diagnosticsTool } from './tools/diagnostics-tool'
-import { taskCreateTool } from './tools/task-create-tool'
-import { taskGetTool } from './tools/task-get-tool'
-import { taskListTool } from './tools/task-list-tool'
-import { taskUpdateTool } from './tools/task-update-tool'
-import { taskStopTool } from './tools/task-stop-tool'
 import { webFetchTool } from './tools/web-fetch-tool'
 import { webSearchTool } from './tools/web-search-tool'
 import { askUserTool } from './tools/ask-user-tool'
 import { todoWriteTool } from './tools/todo-write-tool'
 import { agentTool } from './tools/agent-tool'
-import { cronCreateTool } from './tools/cron-create-tool'
-import { cronDeleteTool } from './tools/cron-delete-tool'
-import { cronListTool } from './tools/cron-list-tool'
 import { notebookEditTool } from './tools/notebook-edit-tool'
 import { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'
 import { githubListIssuesTool, githubGetIssueTool } from './github/issues'
@@ -42,19 +34,11 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   globTool,
   grepTool,
   diagnosticsTool,
-  taskCreateTool,
-  taskGetTool,
-  taskListTool,
-  taskUpdateTool,
-  taskStopTool,
   webFetchTool,
   webSearchTool,
   askUserTool,
   todoWriteTool,
   agentTool,
-  cronCreateTool,
-  cronDeleteTool,
-  cronListTool,
   notebookEditTool,
   enterPlanModeTool,
   exitPlanModeTool,

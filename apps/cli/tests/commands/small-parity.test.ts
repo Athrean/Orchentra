@@ -268,9 +268,11 @@ describe('small slash parity commands', () => {
     expect(events).toEqual([{ kind: 'note', text: `Added read root: ${extra}`, tone: 'info' }])
   })
 
-  test('/fork creates a git branch and forks the live session', async () => {
+  test('/fork creates a branch in cwd despite inherited repo-local Git env', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'orchentra-fork-cmd-'))
+    const ambientCwd = mkdtempSync(join(tmpdir(), 'orchentra-fork-ambient-'))
     git(cwd, ['init', '-b', 'main'])
+    git(ambientCwd, ['init', '-b', 'main'])
     let forked = false
     const session: SessionControl = {
       ...makeSession(),
@@ -281,9 +283,19 @@ describe('small slash parity commands', () => {
     }
     const { ctx, events } = makeCtx(cwd, session)
 
-    await new ForkCommand().execute(['parallel-work'], ctx)
+    const previousGitDir = replaceEnv('GIT_DIR', join(ambientCwd, '.git'))
+    const previousGitWorkTree = replaceEnv('GIT_WORK_TREE', ambientCwd)
+    const previousGitIndexFile = replaceEnv('GIT_INDEX_FILE', join(ambientCwd, '.git', 'index'))
+    try {
+      await new ForkCommand().execute(['parallel-work'], ctx)
+    } finally {
+      restoreEnv('GIT_DIR', previousGitDir)
+      restoreEnv('GIT_WORK_TREE', previousGitWorkTree)
+      restoreEnv('GIT_INDEX_FILE', previousGitIndexFile)
+    }
 
     expect(git(cwd, ['branch', '--show-current']).stdout.trim()).toBe('parallel-work')
+    expect(git(ambientCwd, ['branch', '--show-current']).stdout.trim()).toBe('main')
     expect(forked).toBe(true)
     expect(events).toEqual([
       {
@@ -569,9 +581,40 @@ describe('small slash parity commands', () => {
 })
 
 function git(cwd: string, args: readonly string[]): { stdout: string; stderr: string } {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  for (const key of LOCAL_GIT_ENV_VARS) delete env[key]
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', env })
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || `git ${args.join(' ')} failed`)
   }
   return { stdout: result.stdout, stderr: result.stderr }
+}
+
+const LOCAL_GIT_ENV_VARS = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_CONFIG',
+  'GIT_CONFIG_PARAMETERS',
+  'GIT_CONFIG_COUNT',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_IMPLICIT_WORK_TREE',
+  'GIT_GRAFT_FILE',
+  'GIT_INDEX_FILE',
+  'GIT_NO_REPLACE_OBJECTS',
+  'GIT_REPLACE_REF_BASE',
+  'GIT_PREFIX',
+  'GIT_SHALLOW_FILE',
+  'GIT_COMMON_DIR',
+] as const
+
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[key]
+  else process.env[key] = value
+}
+
+function replaceEnv(key: string, value: string): string | undefined {
+  const previous = process.env[key]
+  process.env[key] = value
+  return previous
 }

@@ -21,7 +21,7 @@ describe('enforce', () => {
   })
 
   test('auto-allows actual read-class registry tools without consulting askUser', async () => {
-    for (const name of ['read_file', 'glob_search', 'grep_search', 'task_get', 'task_list', 'git_status']) {
+    for (const name of ['read_file', 'glob_search', 'grep_search', 'git_status', 'git_diff', 'git_log']) {
       let called = false
       const decision = await createEnforcer().enforce(
         { id: name, name, input: { path: '/tmp/x', pattern: 'TODO' } },
@@ -420,8 +420,8 @@ describe('enforce — mode escalation prompt', () => {
     expect(prompted).toBe(true)
   })
 
-  test('read-only + actual write-level registry tools → prompts for escalation', async () => {
-    for (const name of ['todo_write', 'task_update', 'mcp__fake__write_file']) {
+  test('read-only + write-level tool requirements → prompts for escalation', async () => {
+    for (const name of ['todo_write', 'mcp__fake__write_file']) {
       let prompted = false
       const decision = await createEnforcer().enforce(
         { id: name, name, input: { todos: [], taskId: 't1', status: 'completed' } },
