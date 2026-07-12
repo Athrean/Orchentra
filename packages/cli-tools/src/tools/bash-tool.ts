@@ -15,7 +15,6 @@ interface BashInput {
   timeout?: number
   description?: string
   run_in_background?: boolean
-  dangerously_disable_sandbox?: boolean
 }
 
 interface BashSpawnContext {
@@ -43,11 +42,9 @@ export function formatSandboxStatusLine(status: SandboxStatus): string {
 }
 
 export function resolveBashSpawn(input: BashInput, ctx: BashSpawnContext): ResolvedBashSpawn {
-  if (
-    input.dangerously_disable_sandbox ||
-    process.env.ORCHENTRA_SANDBOX_DISABLED === '1' ||
-    ctx.permissionMode === 'danger-full-access'
-  ) {
+  // Disabling the sandbox is a human decision (env var or permission mode) —
+  // never a model-visible input flag (audit-flagged hole).
+  if (process.env.ORCHENTRA_SANDBOX_DISABLED === '1' || ctx.permissionMode === 'danger-full-access') {
     return { program: 'sh', args: ['-c', input.command] }
   }
   const wrap = wrapBashCommand(input.command, ctx.cwd, {
@@ -76,7 +73,6 @@ export const bashTool: ToolDefinition = {
       timeout: { type: 'integer', minimum: 1 },
       description: { type: 'string' },
       run_in_background: { type: 'boolean' },
-      dangerously_disable_sandbox: { type: 'boolean' },
     },
     required: ['command'],
     additionalProperties: false,
