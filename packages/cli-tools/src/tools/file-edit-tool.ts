@@ -40,6 +40,15 @@ export const fileEditTool: ToolDefinition = {
       return {
         content: `edited: ${result.filePath} (replaceAll: ${result.replaceAll})`,
         isError: false,
+        data: { filePath: result.filePath, replaceAll: result.replaceAll },
+        artifacts: [{ uri: result.filePath, kind: 'file', action: 'modified' }],
+        evidence: [
+          {
+            kind: 'diff',
+            summary: `${result.structuredPatch.length} hunk(s) applied to ${result.filePath}`,
+            detail: result.structuredPatch,
+          },
+        ],
       }
     } catch (e) {
       return { content: `edit error: ${(e as Error).message}`, isError: true }

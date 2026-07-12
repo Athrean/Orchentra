@@ -122,13 +122,24 @@ export const agentTool: ToolDefinition = {
         : value,
     )
 
+    const evidence = results.map((r, i) => ({
+      kind: 'subagent',
+      summary: `task ${i + 1}: ${r.doneReason ?? 'stop'} after ${r.toolCalls ?? 0} tool call(s)${r.isError ? ' (error)' : ''}`,
+      detail: { doneReason: r.doneReason, toolCalls: r.toolCalls, isError: r.isError, role: role.name },
+    }))
+    const data = {
+      tasks: results.map((r) => ({ doneReason: r.doneReason, toolCalls: r.toolCalls, isError: r.isError })),
+    }
+
     if (results.length === 1) {
-      return { content: results[0].text, isError: results[0].isError }
+      return { content: results[0].text, isError: results[0].isError, data, evidence }
     }
 
     return {
       content: results.map((r, i) => `[task ${i + 1}] ${r.text}`).join('\n\n'),
       isError: results.some((r) => r.isError),
+      data,
+      evidence,
     }
   },
 }
@@ -141,12 +152,20 @@ function resolveTasks(input: AgentInput): string[] {
   return input?.prompt ? [input.prompt] : []
 }
 
+interface SubagentRunOutcome {
+  text: string
+  isError: boolean
+  rateLimited?: boolean
+  doneReason?: DoneReason
+  toolCalls?: number
+}
+
 async function runSubagent(
   prompt: string,
   model: string,
   ctx: ToolContext,
   role: SubagentRole,
-): Promise<{ text: string; isError: boolean; rateLimited?: boolean }> {
+): Promise<SubagentRunOutcome> {
   // The runtime reports stream failures as message strings, so wrap the
   // provider to keep the thrown error's type for rate-limit classification.
   let thrown: unknown
@@ -230,25 +249,39 @@ async function runSubagent(
         text: `agent error: ${errorMessage || 'provider stream failed'}`,
         isError: true,
         rateLimited: isRateLimitError(thrown),
+        doneReason,
+        toolCalls: toolCallsDone,
       }
     }
     if (doneReason === 'loop_detected') {
       return {
         text: resultText || `Sub-agent stopped: repeated tool-call loop detected after ${toolCallsDone} tool call(s).`,
         isError: true,
+        doneReason,
+        toolCalls: toolCallsDone,
       }
     }
     if (doneReason === 'aborted') {
       return {
         text: resultText || `Sub-agent stopped: parent budget exhausted after ${toolCallsDone} tool call(s).`,
         isError: false,
+        doneReason,
+        toolCalls: toolCallsDone,
       }
     }
     return {
       text: resultText || `Sub-agent completed (${toolCallsDone} tool call(s)).`,
       isError: false,
+      doneReason,
+      toolCalls: toolCallsDone,
     }
   } catch (e) {
-    return { text: `agent error: ${(e as Error).message}`, isError: true, rateLimited: isRateLimitError(e) }
+    return {
+      text: `agent error: ${(e as Error).message}`,
+      isError: true,
+      rateLimited: isRateLimitError(e),
+      doneReason: 'error',
+      toolCalls: 0,
+    }
   }
 }

@@ -2,6 +2,8 @@ export type {
   UsageTotals,
   ToolCall,
   ToolResultPayload,
+  ToolArtifact,
+  ToolEvidence,
   DoneReason,
   UserMessageEvent,
   TextEvent,

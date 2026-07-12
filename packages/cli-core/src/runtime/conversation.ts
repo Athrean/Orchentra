@@ -501,7 +501,11 @@ export class ConversationRuntime {
         await this.deps.hookRunner.runPostToolUse(call.name, inputJson, r.content, r.isError)
       }
 
-      return { id: call.id, content: r.content, isError: r.isError }
+      const payload: ToolResultPayload = { id: call.id, content: r.content, isError: r.isError }
+      if (r.data !== undefined) payload.data = r.data
+      if (r.artifacts !== undefined) payload.artifacts = r.artifacts
+      if (r.evidence !== undefined) payload.evidence = r.evidence
+      return payload
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
 

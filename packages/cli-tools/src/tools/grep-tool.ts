@@ -60,7 +60,18 @@ export const grepTool: ToolDefinition = {
 
       const header = `${result.numFiles} files matched`
       const body = result.content ?? result.filenames.join('\n')
-      return { content: `${header}\n${body}`, isError: false }
+      return {
+        content: `${header}\n${body}`,
+        isError: false,
+        data: result,
+        evidence: [
+          {
+            kind: 'matches',
+            summary: `${result.numFiles} file(s) matched /${input.pattern}/`,
+            detail: { numFiles: result.numFiles, numMatches: result.numMatches, numLines: result.numLines },
+          },
+        ],
+      }
     } catch (e) {
       return { content: `grep error: ${(e as Error).message}`, isError: true }
     }

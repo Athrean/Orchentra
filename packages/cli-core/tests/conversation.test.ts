@@ -224,6 +224,43 @@ describe('ConversationRuntime', () => {
     expect(done).toMatchObject({ kind: 'done', reason: 'stop' })
   })
 
+  test('structured data/artifacts/evidence pass through to the tool_result event', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'edit', input: { path: '/a' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'edit', description: 'edit file', inputSchema: {} }],
+      has: (n) => n === 'edit',
+      execute: async () => ({
+        content: 'edited: /a',
+        isError: false,
+        data: { filePath: '/a' },
+        artifacts: [{ uri: '/a', kind: 'file', action: 'modified' }],
+        evidence: [{ kind: 'diff', summary: '1 hunk(s) applied to /a', detail: [{ oldStart: 1 }] }],
+      }),
+    }
+
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    const events = await collect(rt, 'edit file')
+
+    const toolResult = events.find((e) => e.kind === 'tool_result')
+    expect(toolResult).toMatchObject({
+      kind: 'tool_result',
+      result: {
+        content: 'edited: /a',
+        isError: false,
+        data: { filePath: '/a' },
+        artifacts: [{ uri: '/a', kind: 'file', action: 'modified' }],
+        evidence: [{ kind: 'diff', summary: '1 hunk(s) applied to /a' }],
+      },
+    })
+  })
+
   test('passes permission mode into tool context', async () => {
     const provider = fakeProvider([
       [

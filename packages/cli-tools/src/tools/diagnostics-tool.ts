@@ -43,7 +43,19 @@ export const diagnosticsTool: ToolDefinition = {
       await proc.exited
       // Finding diagnostics is a successful run — isError is reserved for the
       // command failing to execute, not for the code under test having errors.
-      return { content: diagnosticsReport(`${stdout}\n${stderr}`).text, isError: false }
+      const report = diagnosticsReport(`${stdout}\n${stderr}`)
+      return {
+        content: report.text,
+        isError: false,
+        data: { errors: report.errors, warnings: report.warnings },
+        evidence: [
+          {
+            kind: 'diagnostics',
+            summary: `${report.errors} error(s), ${report.warnings} warning(s) from '${command}'`,
+            detail: report.diagnostics,
+          },
+        ],
+      }
     } catch (err) {
       return { content: `diagnostics: failed to run '${command}': ${(err as Error).message}`, isError: true }
     }
