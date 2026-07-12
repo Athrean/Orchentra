@@ -13,6 +13,7 @@ import {
   getLoadedSkills,
 } from './commands/builtin/skills-adapter'
 import { isFirstRun, markWelcomed } from './render/first-run'
+import { runOneShot } from './one-shot'
 import { runTui } from './tui'
 import { hasAnyLlmCredential } from './auth/credential-check'
 import { runFirstRunFlow, makeDefaultFirstRunDeps } from './auth/first-run-flow'
@@ -83,9 +84,7 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   }
 
   if (options.prompt) {
-    await cli.runTurn(options.prompt)
-    await cliCtx.close()
-    return 0
+    return runOneShot(cli, options.prompt, () => cliCtx.close())
   }
 
   const { branch, workspaceStatus } = readGitSummary(options.cwd)
