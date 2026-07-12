@@ -91,6 +91,12 @@ export interface ConversationDeps {
   sharedState?: SharedToolState
   askUser?: AskUserHandler
   workspaceRoots?: readonly string[]
+  /**
+   * Nesting depth when this runtime drives a sub-agent. Forwarded into every
+   * ToolContext so a nested `agent` call sees its own depth and the recursion
+   * cap holds down the tree.
+   */
+  subagentDepth?: number
 }
 
 export interface RunInput {
@@ -424,6 +430,7 @@ export class ConversationRuntime {
       permissionMode: this.deps.permissionMode,
       spinePrompt: this.deps.spinePrompt,
       budget,
+      subagentDepth: this.deps.subagentDepth,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {

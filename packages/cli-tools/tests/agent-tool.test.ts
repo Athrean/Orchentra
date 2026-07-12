@@ -385,6 +385,35 @@ describe('agentTool named types', () => {
   })
 })
 
+describe('agentTool runtime re-homing', () => {
+  test('a sub-agent stuck in a repeating tool-call loop is broken by the runtime detector', async () => {
+    // Regression for the agent-tool hand loop bypass: the old bespoke loop had
+    // no loop detection, so this scripted agent would burn all 10 iterations.
+    const turns: ProviderStreamEvent[][] = Array.from({ length: 10 }, (_, i): ProviderStreamEvent[] => [
+      { kind: 'tool-use', call: { id: `tc${i}`, name: 'ping', input: { attempt: i } } },
+      { kind: 'finish', stopReason: 'tool_use' },
+    ])
+    let executions = 0
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'ping', description: 'ping', inputSchema: {} }],
+      has: () => true,
+      register: () => {},
+      execute: async () => {
+        executions++
+        return { content: 'pong', isError: false }
+      },
+    }
+    const result = await agentTool.execute(
+      { prompt: 'loop forever' },
+      baseCtx({ provider: scriptedProvider(turns), tools }),
+    )
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('loop')
+    // Default detector threshold (6) fires before the 10-iteration cap.
+    expect(executions).toBeLessThan(10)
+  })
+})
+
 describe('agentTool recursion cap', () => {
   test('refuses to spawn when already at the recursion depth cap', async () => {
     const result = await agentTool.execute({ prompt: 'x' }, baseCtx({ subagentDepth: 2 }))

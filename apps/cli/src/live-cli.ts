@@ -44,6 +44,7 @@ import {
   collectContextFiles,
   compact,
   emptyUsage,
+  addUsage,
   buildSystemPrompt,
   ConversationRuntime,
   RuntimeBudget,
@@ -677,9 +678,15 @@ export class LiveCli implements SessionControl {
         maxOutputTokens: 512,
       }
       let text = ''
+      let usage: UsageTotals = emptyUsage()
       for await (const ev of provider.stream(request) as AsyncIterable<ProviderStreamEvent>) {
         if (ev.kind === 'text-delta') text += ev.delta
+        else if (ev.kind === 'usage') usage = addUsage(usage, ev.usage)
       }
+      // The summarizer is runtime infrastructure (invoked from inside a run
+      // via deps.compactionSummarizer), but its spend is real — land it in
+      // the run budget so dollar caps and warnings see it.
+      this.runBudget?.addUsage(usage)
       return text
     }
   }

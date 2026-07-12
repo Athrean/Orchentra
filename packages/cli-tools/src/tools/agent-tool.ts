@@ -2,12 +2,10 @@ import {
   type ToolDefinition,
   type ToolResult,
   type ToolContext,
-  type ChatMessage,
-  type ProviderRequest,
-  type ProviderStreamEvent,
-  type UsageTotals,
-  emptyUsage,
-  addUsage,
+  type DoneReason,
+  type Provider,
+  ConversationRuntime,
+  buildSystemPrompt,
 } from '@orchentra/cli-core'
 import { isRateLimitError } from '@orchentra/cli-api'
 import { runSubagentPool } from './subagent-pool'
@@ -149,69 +147,103 @@ async function runSubagent(
   ctx: ToolContext,
   role: SubagentRole,
 ): Promise<{ text: string; isError: boolean; rateLimited?: boolean }> {
+  // The runtime reports stream failures as message strings, so wrap the
+  // provider to keep the thrown error's type for rate-limit classification.
+  let thrown: unknown
+  const provider: Provider = {
+    stream(request) {
+      const source = ctx.provider!
+      return (async function* () {
+        try {
+          yield* source.stream(request)
+        } catch (err) {
+          thrown = err
+          throw err
+        }
+      })()
+    },
+  }
+
   try {
-    const messages: ChatMessage[] = [{ role: 'user', content: prompt }]
-    const toolSchemas = ctx.tools!.list()
+    const abort = new AbortController()
+    const runtime = new ConversationRuntime(
+      {
+        model,
+        maxOutputTokens: SUBAGENT_MAX_OUTPUT_TOKENS,
+        contextWindowTokens: 200_000,
+        compactionThreshold: 0.8,
+        keepRecentOnCompact: 6,
+        budget: { maxSteps: MAX_ITERATIONS_PER_SUBAGENT, maxTokens: 200_000, model },
+        sessionId: ctx.sessionId,
+        cwd: ctx.cwd,
+      },
+      {
+        provider,
+        tools: ctx.tools!,
+        systemPrompt: buildSystemPrompt({
+          staticParts: [
+            role.focus,
+            ctx.spinePrompt ?? '',
+            'Complete the delegated scope only. Do not push or perform destructive git operations.',
+          ],
+          dynamicParts: [],
+        }),
+        sharedState: ctx.sharedState,
+        askUser: ctx.askUser,
+        permissionMode: ctx.permissionMode,
+        spinePrompt: ctx.spinePrompt,
+        workspaceRoots: ctx.workspaceRoots,
+        subagentDepth: ctx.subagentDepth,
+        signal: abort.signal,
+      },
+    )
 
-    const request: ProviderRequest = {
-      systemStatic: [
-        role.focus,
-        ctx.spinePrompt,
-        'Complete the delegated scope only. Do not push or perform destructive git operations.',
-      ]
-        .filter(Boolean)
-        .join('\n\n'),
-      systemDynamic: '',
-      messages,
-      tools: toolSchemas,
-      model,
-      maxOutputTokens: SUBAGENT_MAX_OUTPUT_TOKENS,
-    }
-
+    let buf = ''
     let resultText = ''
     let toolCallsDone = 0
+    let doneReason: DoneReason = 'stop'
+    let errorMessage = ''
 
-    for (let i = 0; i < MAX_ITERATIONS_PER_SUBAGENT; i++) {
-      if (ctx.budget?.snapshot().exhausted) {
-        return {
-          text: resultText || `Sub-agent stopped: parent budget exhausted after ${toolCallsDone} tool call(s).`,
-          isError: false,
-        }
+    for await (const ev of runtime.run({ userMessage: prompt })) {
+      if (ev.kind === 'text') {
+        buf += ev.delta
+      } else if (ev.kind === 'tool_result') {
+        toolCallsDone++
+        buf = ''
+      } else if (ev.kind === 'usage') {
+        // Children draw the parent's live budget: spend lands as it happens,
+        // and an exhausted parent aborts the child mid-run. Skip the abort
+        // when the turn already failed — aborting here would relabel a
+        // provider error (e.g. a 429 the pool wants to classify) as 'aborted'.
+        ctx.budget?.addUsage(ev.turn)
+        if (!errorMessage && ctx.budget?.snapshot().exhausted) abort.abort()
+      } else if (ev.kind === 'error') {
+        errorMessage = ev.message
+      } else if (ev.kind === 'done') {
+        doneReason = ev.reason
       }
-
-      const stream = ctx.provider!.stream(request)
-      let text = ''
-      let hasToolCalls = false
-      let usage: UsageTotals = emptyUsage()
-
-      for await (const ev of stream as AsyncIterable<ProviderStreamEvent>) {
-        if (ev.kind === 'text-delta') {
-          text += ev.delta
-        } else if (ev.kind === 'usage') {
-          usage = addUsage(usage, ev.usage)
-        } else if (ev.kind === 'tool-use') {
-          hasToolCalls = true
-          const toolResult = await ctx.tools!.execute(ev.call.name, ev.call.input, ctx)
-          messages.push(
-            { role: 'assistant', content: text, toolCalls: [ev.call] },
-            { role: 'tool', content: toolResult.content, toolCallId: ev.call.id },
-          )
-          text = ''
-          toolCallsDone++
-        }
-      }
-
-      ctx.budget?.addUsage(usage)
-
-      if (text) {
-        resultText = text
-        messages.push({ role: 'assistant', content: text })
-      }
-
-      if (!hasToolCalls) break
-      request.messages = messages
     }
+    if (buf) resultText = buf
 
+    if (doneReason === 'error') {
+      return {
+        text: `agent error: ${errorMessage || 'provider stream failed'}`,
+        isError: true,
+        rateLimited: isRateLimitError(thrown),
+      }
+    }
+    if (doneReason === 'loop_detected') {
+      return {
+        text: resultText || `Sub-agent stopped: repeated tool-call loop detected after ${toolCallsDone} tool call(s).`,
+        isError: true,
+      }
+    }
+    if (doneReason === 'aborted') {
+      return {
+        text: resultText || `Sub-agent stopped: parent budget exhausted after ${toolCallsDone} tool call(s).`,
+        isError: false,
+      }
+    }
     return {
       text: resultText || `Sub-agent completed (${toolCallsDone} tool call(s)).`,
       isError: false,
