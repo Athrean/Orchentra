@@ -27,6 +27,8 @@ export { emptyUsage, addUsage, totalTokens } from './events'
 export type { QuirkKind } from './quirks'
 export { QuirkCounters } from './quirks'
 
+export { validateToolArgs } from './arg-validation'
+
 export type {
   PermissionMode,
   ToolLevel,
