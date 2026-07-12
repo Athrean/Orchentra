@@ -46,9 +46,6 @@ export {
   PermissionPolicy,
 } from './permissions'
 
-export type { EnforcementResult } from './permission-enforcer'
-export { PermissionEnforcer, isWithinWorkspace, isReadOnlyCommand } from './permission-enforcer'
-
 export type {
   WorkerStatus,
   WorkerFailureKind,
