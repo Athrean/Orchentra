@@ -509,11 +509,27 @@ function git(cwd: string, args: readonly string[]): { ok: true; out: string } | 
   return { ok: false, err: (r.stderr || r.stdout || '').trim() }
 }
 
+const LOCAL_GIT_ENV_VARS = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_CONFIG',
+  'GIT_CONFIG_PARAMETERS',
+  'GIT_CONFIG_COUNT',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_IMPLICIT_WORK_TREE',
+  'GIT_GRAFT_FILE',
+  'GIT_INDEX_FILE',
+  'GIT_NO_REPLACE_OBJECTS',
+  'GIT_REPLACE_REF_BASE',
+  'GIT_PREFIX',
+  'GIT_SHALLOW_FILE',
+  'GIT_COMMON_DIR',
+] as const
+
 function gitFreeEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
-  }
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  for (const key of LOCAL_GIT_ENV_VARS) delete env[key]
   return env
 }
 
