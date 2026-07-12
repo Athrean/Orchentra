@@ -94,6 +94,14 @@ export function renderCostWarning(costUsd: number, thresholdUsd: number, limitUs
   return `${YELLOW}${costWarningText(costUsd, thresholdUsd, limitUsd)}${RESET}`
 }
 
+export function loopDetectedText(toolName: string, count: number): string {
+  return `Loop detected: ${toolName} repeated ${count}x with near-identical input — run stopped`
+}
+
+export function renderLoopDetected(toolName: string, count: number): string {
+  return `${YELLOW}${loopDetectedText(toolName, count)}${RESET}`
+}
+
 export function toolOutputBudgetedText(droppedChars: number, keptChars: number): string {
   return `Tool output trimmed for context: ~${droppedChars.toLocaleString('en-US')} chars dropped, ${keptChars.toLocaleString('en-US')} kept (full result in session log)`
 }

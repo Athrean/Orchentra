@@ -46,6 +46,7 @@ import {
   emptyUsage,
   buildSystemPrompt,
   ConversationRuntime,
+  RuntimeBudget,
   estimateMessagesTokens,
   defaultEstimator,
   rewindBoundary,
@@ -86,6 +87,7 @@ import {
   renderCompactNotice,
   renderToolOutputBudgeted,
   renderCostWarning,
+  renderLoopDetected,
   renderMemorySaved,
 } from './renderer'
 import { readLine } from './input'
@@ -138,6 +140,8 @@ export class LiveCli implements SessionControl {
   private messages: ChatMessage[] = []
   private session: SessionWriter | null = null
   private runtime: ConversationRuntime | null = null
+  /** One budget per invocation: dollar spend accumulates across turns and sub-agent calls. */
+  private runBudget: RuntimeBudget | null = null
   private forceCompactFlag = false
   private eventSink: RuntimeEventSink | null = null
   private askUserOverride: AskUserOverride | null = null
@@ -767,6 +771,16 @@ export class LiveCli implements SessionControl {
       thinkingTokenBudget: thinkingTokenBudgetForEffort(this.effort),
     }
 
+    if (this.runBudget) {
+      this.runBudget.updateLimits({
+        maxCostUsd: this.budgetConfig?.maxCostUsd,
+        warnCostUsd: this.budgetConfig?.warnCostUsd,
+        model: this.model,
+      })
+    } else {
+      this.runBudget = new RuntimeBudget(config.budget)
+    }
+
     const systemPrompt: SystemPrompt = buildSystemPrompt({
       staticParts: [
         'You are Orchentra, a terminal AI coding agent focused on efficient, verifiable software work. ' +
@@ -816,6 +830,7 @@ export class LiveCli implements SessionControl {
       provider: this.provider,
       tools: this.tools,
       systemPrompt,
+      budget: this.runBudget,
       sharedState: this.sharedState,
       askUser,
       enforcer: this.enforcer,
@@ -930,6 +945,9 @@ export class LiveCli implements SessionControl {
           break
         case 'cost_warning':
           process.stdout.write(renderCostWarning(event.costUsd, event.thresholdUsd, event.limitUsd) + '\n')
+          break
+        case 'loop_detected':
+          process.stdout.write(renderLoopDetected(event.toolName, event.count) + '\n')
           break
         case 'error':
           if (!event.retryable) {

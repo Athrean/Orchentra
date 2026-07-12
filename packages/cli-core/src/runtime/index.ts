@@ -10,6 +10,7 @@ export type {
   ToolResultEvent,
   UsageEvent,
   CompactedEvent,
+  LoopDetectedEvent,
   HookProgressRuntimeEvent,
   ErrorEvent,
   DoneEvent,
@@ -67,6 +68,9 @@ export { WorkerRegistry, classifyStartupFailure } from './worker-boot'
 
 export type { BudgetConfig, BudgetState } from './budget'
 export { RuntimeBudget } from './budget'
+
+export type { LoopDetectionConfig, LoopCheck } from './loop-detector'
+export { LoopDetector, toolCallSignature, DEFAULT_REPEAT_THRESHOLD, DEFAULT_WINDOW_SIZE } from './loop-detector'
 
 export type {
   ChatMessage,
