@@ -26,6 +26,17 @@ describe('buildOneShotLlmCaller', () => {
     expect(r.tokensOut).toBe(3)
   })
 
+  test('propagates a provider stream failure as a thrown error', async () => {
+    const provider: Provider = {
+      // eslint-disable-next-line require-yield
+      async *stream() {
+        throw new Error('provider unavailable')
+      },
+    }
+    const llm = buildOneShotLlmCaller('claude-sonnet-4-20250514', () => ({ provider, providerName: 'anthropic' }))
+    expect(llm({ systemPrompt: 's', userPrompt: 'u' })).rejects.toThrow('provider unavailable')
+  })
+
   test('resolves model aliases before building the provider', async () => {
     let seenModel = ''
     const make = (model: string): { provider: Provider; providerName: string } => {
