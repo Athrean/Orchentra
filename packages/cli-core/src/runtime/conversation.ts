@@ -55,6 +55,12 @@ export interface ConversationDeps {
   provider: Provider
   tools: ToolRegistry
   systemPrompt: SystemPrompt
+  /**
+   * Run-scoped budget shared across turns (and, via ToolContext, sub-agent
+   * calls) within one invocation. When absent the runtime creates a
+   * turn-scoped budget from `config.budget`.
+   */
+  budget?: RuntimeBudget
   hookRunner?: HookRunner
   permissionEnforcer?: PermissionEnforcer
   enforcer?: Enforcer
@@ -114,7 +120,8 @@ export class ConversationRuntime {
   }
 
   private async *loop(input: RunInput): AsyncIterable<RuntimeEvent> {
-    const budget = new RuntimeBudget(this.config.budget)
+    const budget = this.deps.budget ?? new RuntimeBudget(this.config.budget)
+    budget.beginTurn()
     const loopDetector = new LoopDetector(this.config.loopDetection)
     const messages: ChatMessage[] = [...(input.priorMessages ?? []), { role: 'user', content: input.userMessage }]
     this.finalMessages = messages

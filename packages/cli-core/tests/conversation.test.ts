@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { ConversationRuntime, type ConversationConfig, type ConversationDeps } from '../src/runtime/conversation'
+import { RuntimeBudget } from '../src/runtime/budget'
 import type { HookRunner } from '../src/runtime/hooks'
 import type { ChatMessage, Provider, ProviderStreamEvent } from '../src/runtime/provider'
 import type { ToolContext, ToolRegistry, ToolResult } from '../src/runtime/tools'
@@ -651,5 +652,67 @@ describe('ConversationRuntime', () => {
       (e): e is Extract<RuntimeEvent, { kind: 'span_end' }> => e.kind === 'span_end' && e.spanId === toolStart.spanId,
     )!
     expect(toolEnd.status).toBe('error')
+  })
+
+  test('an injected budget carries dollar spend across runs', async () => {
+    let providerCalls = 0
+    const provider: Provider = {
+      async *stream() {
+        providerCalls++
+        yield { kind: 'text-delta', delta: 'hi' } as const
+        // 1000 output tokens at sonnet ($15/M) = $0.015 > the $0.01 cap.
+        yield {
+          kind: 'usage',
+          usage: { inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        } as const
+        yield { kind: 'finish', stopReason: 'end_turn' } as const
+      },
+    }
+    const config = makeConfig({
+      model: 'sonnet',
+      budget: { maxSteps: 10, maxTokens: 1_000_000_000, maxCostUsd: 0.01, model: 'sonnet' },
+    })
+    const budget = new RuntimeBudget(config.budget)
+    const deps: ConversationDeps = { ...makeDeps(provider), budget }
+
+    const first = await collect(new ConversationRuntime(config, deps), 'one')
+    const firstDone = first.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+    expect(firstDone.reason).toBe('cost_exhausted')
+
+    // Second turn: prior spend pushes the run over the cap before the provider
+    // is ever called — the budget survived the turn boundary.
+    const second = await collect(new ConversationRuntime(config, deps), 'two')
+    const secondDone = second.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+    expect(secondDone.reason).toBe('cost_exhausted')
+    expect(providerCalls).toBe(1)
+  })
+
+  test('an injected budget still resets the per-turn step guard', async () => {
+    const turnEvents = (): ProviderStreamEvent[][] => [
+      [
+        { kind: 'tool-use', call: { id: `tc${Math.random()}`, name: 'ping', input: {} } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ]
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'ping', description: 'ping', inputSchema: {} }],
+      has: () => true,
+      execute: async () => ({ content: 'pong', isError: false }),
+    }
+    const config = makeConfig({ budget: { maxSteps: 3, maxTokens: 1_000_000 } })
+    const budget = new RuntimeBudget(config.budget)
+
+    // Each turn consumes 2 steps; with run-carried steps the second turn would
+    // hit maxSteps 3. Both must finish with a clean stop.
+    for (const label of ['one', 'two']) {
+      const deps: ConversationDeps = { ...makeDeps(fakeProvider(turnEvents()), tools), budget }
+      const events = await collect(new ConversationRuntime(config, deps), label)
+      const done = events.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+      expect(done.reason).toBe('stop')
+    }
   })
 })
