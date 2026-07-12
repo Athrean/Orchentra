@@ -1,6 +1,8 @@
 import type { Provider, ProviderToolSchema } from './provider'
 import type { ToolLevel } from './permissions'
 import type { RuntimeBudget } from './budget'
+import type { ToolArtifact, ToolEvidence } from './events'
+import type { QuirkCounters } from './quirks'
 
 export interface TaskHandle {
   taskId: string
@@ -87,11 +89,24 @@ export interface ToolContext {
    * the nesting tree even though budget already bounds total spend.
    */
   subagentDepth?: number
+  /**
+   * Run-wide per-model deviation counters. The registry records malformed
+   * args / unknown-tool calls here keyed by `model`; sub-agents inherit the
+   * parent's instance so one run yields one set of counters.
+   */
+  quirks?: QuirkCounters
 }
 
 export interface ToolResult {
+  /** Model-facing text — the only field that reaches the provider. */
   content: string
   isError: boolean
+  /** Structured tool-specific payload for programmatic consumers (traces, gates, UIs). */
+  data?: unknown
+  /** Side effects: files/URLs the tool created, modified, or deleted. */
+  artifacts?: ToolArtifact[]
+  /** Machine-checkable proof of what the run did or found. */
+  evidence?: ToolEvidence[]
 }
 
 export interface ToolDefinition {

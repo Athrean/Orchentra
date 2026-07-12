@@ -30,6 +30,14 @@ export const globTool: ToolDefinition = {
       return {
         content: `${result.numFiles} files found (${result.durationMs}ms)${result.truncated ? ' [truncated]' : ''}\n${result.filenames.join('\n')}`,
         isError: false,
+        data: result,
+        evidence: [
+          {
+            kind: 'matches',
+            summary: `${result.numFiles} file(s) matched pattern ${input.pattern}${result.truncated ? ' (truncated)' : ''}`,
+            detail: { numFiles: result.numFiles, truncated: result.truncated },
+          },
+        ],
       }
     } catch (e) {
       return { content: `glob error: ${(e as Error).message}`, isError: true }

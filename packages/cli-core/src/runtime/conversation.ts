@@ -12,6 +12,7 @@ import {
 } from './events'
 import { compact, compactWithSummary, shouldCompact, type LlmSummarizer, type TokenEstimator } from './compaction'
 import { LoopDetector, type LoopDetectionConfig } from './loop-detector'
+import type { QuirkCounters } from './quirks'
 import { budgetToolOutput } from './tool-output-budget'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
@@ -95,6 +96,12 @@ export interface ConversationDeps {
    * cap holds down the tree.
    */
   subagentDepth?: number
+  /**
+   * Run-wide per-model deviation counters (malformed args, unknown tools).
+   * Forwarded into every ToolContext; pass the parent's instance into
+   * sub-agent runtimes so one run accumulates one set of counters.
+   */
+  quirks?: QuirkCounters
 }
 
 export interface RunInput {
@@ -444,6 +451,7 @@ export class ConversationRuntime {
       spinePrompt: this.deps.spinePrompt,
       budget,
       subagentDepth: this.deps.subagentDepth,
+      quirks: this.deps.quirks,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {
@@ -501,7 +509,11 @@ export class ConversationRuntime {
         await this.deps.hookRunner.runPostToolUse(call.name, inputJson, r.content, r.isError)
       }
 
-      return { id: call.id, content: r.content, isError: r.isError }
+      const payload: ToolResultPayload = { id: call.id, content: r.content, isError: r.isError }
+      if (r.data !== undefined) payload.data = r.data
+      if (r.artifacts !== undefined) payload.artifacts = r.artifacts
+      if (r.evidence !== undefined) payload.evidence = r.evidence
+      return payload
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
 

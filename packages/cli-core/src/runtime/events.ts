@@ -11,10 +11,40 @@ export interface ToolCall {
   input: unknown
 }
 
+/**
+ * A file, directory, or URL a tool produced or changed. Artifacts point at
+ * side effects; read-only inspection belongs in `data`, not here.
+ */
+export interface ToolArtifact {
+  /** Absolute path or URL of the affected thing. */
+  uri: string
+  kind: 'file' | 'directory' | 'url' | 'other'
+  action: 'created' | 'modified' | 'deleted'
+}
+
+/**
+ * Machine-checkable proof of what a tool run did or found — diff hunks, an
+ * exit code, structured diagnostics. `content` remains the model-facing text;
+ * evidence is for the harness (traces, completion gates, UIs) and is never
+ * sent back to the provider.
+ */
+export interface ToolEvidence {
+  /** Category, e.g. 'diff', 'exit-status', 'diagnostics', 'matches', 'arg-validation'. */
+  kind: string
+  /** One-line human-readable statement of what the evidence shows. */
+  summary: string
+  /** Structured payload backing the summary (hunks, findings, counts…). */
+  detail?: unknown
+}
+
 export interface ToolResultPayload {
   id: string
   content: string
   isError: boolean
+  /** Structured tool-specific payload for programmatic consumers. Not model input. */
+  data?: unknown
+  artifacts?: ToolArtifact[]
+  evidence?: ToolEvidence[]
 }
 
 export type DoneReason =

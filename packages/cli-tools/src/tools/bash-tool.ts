@@ -123,6 +123,14 @@ export const bashTool: ToolDefinition = {
       return {
         content: statusLine.length > 0 ? `${body}\n${statusLine}` : body,
         isError: exitCode !== 0,
+        data: { exitCode, sandboxed: spawn.sandboxStatus?.enabled ?? false },
+        evidence: [
+          {
+            kind: 'exit-status',
+            summary: `exit code ${exitCode}`,
+            detail: { exitCode, command: input.command, sandboxed: spawn.sandboxStatus?.enabled ?? false },
+          },
+        ],
       }
     } catch (e) {
       return { content: `execution error: ${(e as Error).message}`, isError: true }

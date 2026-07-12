@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { mkdirSync } from 'node:fs'
 import { DefaultToolRegistry, BUILTIN_TOOLS } from '../src/tool-registry'
-import type { ToolDefinition, ToolContext } from '@orchentra/cli-core'
+import { QuirkCounters, type ToolDefinition, type ToolContext } from '@orchentra/cli-core'
 
 const mockCtx: ToolContext = { sessionId: 'test', cwd: '/tmp' }
 
@@ -137,25 +137,68 @@ describe('DefaultToolRegistry', () => {
     expect(result.content).toContain('1 files matched')
   })
 
-  test('execute() rejects missing command for bash', async () => {
+  // Malformed args are rejected at the registry choke point with one typed
+  // error — the tool's own fallback checks no longer see them.
+  test('execute() rejects missing command for bash at the registry', async () => {
     const registry = new DefaultToolRegistry()
     const result = await registry.execute('bash', {}, mockCtx)
     expect(result.isError).toBe(true)
-    expect(result.content).toContain('command is required')
+    expect(result.content).toContain('invalid arguments for tool bash')
+    expect(result.content).toContain("missing required field 'command'")
   })
 
-  test('execute() rejects missing path for read_file', async () => {
+  test('execute() rejects missing path for read_file at the registry', async () => {
     const registry = new DefaultToolRegistry()
     const result = await registry.execute('read_file', {}, mockCtx)
     expect(result.isError).toBe(true)
-    expect(result.content).toContain('path is required')
+    expect(result.content).toContain("missing required field 'path'")
   })
 
-  test('execute() rejects missing pattern for grep_search', async () => {
+  test('execute() rejects missing pattern for grep_search at the registry', async () => {
     const registry = new DefaultToolRegistry()
     const result = await registry.execute('grep_search', {}, mockCtx)
     expect(result.isError).toBe(true)
-    expect(result.content).toContain('pattern is required')
+    expect(result.content).toContain("missing required field 'pattern'")
+  })
+
+  test('execute() rejects wrong-typed and unknown fields before dispatch, with evidence', async () => {
+    const registry = new DefaultToolRegistry()
+    let dispatched = false
+    registry.register({
+      name: 'probe',
+      description: 'validation probe',
+      level: 'read',
+      inputSchema: {
+        type: 'object',
+        properties: { path: { type: 'string' } },
+        required: ['path'],
+        additionalProperties: false,
+      },
+      execute: async () => {
+        dispatched = true
+        return { content: 'ran', isError: false }
+      },
+    })
+
+    const result = await registry.execute('probe', { path: 7, bogus: true }, mockCtx)
+    expect(dispatched).toBe(false)
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('path: expected string, got number')
+    expect(result.content).toContain("unknown field 'bogus'")
+    expect(result.evidence?.[0]?.kind).toBe('arg-validation')
+  })
+
+  test('execute() records malformed_args and unknown_tool quirks keyed by model', async () => {
+    const registry = new DefaultToolRegistry()
+    const quirks = new QuirkCounters()
+    const ctx: ToolContext = { ...mockCtx, model: 'claude-sonnet-5', quirks }
+
+    await registry.execute('bash', {}, ctx)
+    await registry.execute('bash', { command: 42 }, ctx)
+    await registry.execute('nonexistent', {}, ctx)
+
+    expect(quirks.count('claude-sonnet-5', 'malformed_args')).toBe(2)
+    expect(quirks.count('claude-sonnet-5', 'unknown_tool')).toBe(1)
   })
 
   test('execute() passes bash permissionMode through validation', async () => {
