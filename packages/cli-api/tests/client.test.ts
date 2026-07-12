@@ -690,6 +690,34 @@ describe('toAnthropicMessages', () => {
     ])
   })
 
+  test('replays signed thinking blocks first on an assistant tool-use turn', () => {
+    const msgs: ChatMessage[] = [
+      {
+        role: 'assistant',
+        content: 'checking',
+        thinking: [{ thinking: 'let me look at the file', signature: 'sig-abc' }],
+        toolCalls: [{ id: 'call-1', name: 'read_file', input: { path: '/tmp/a' } }],
+      },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([
+      {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'let me look at the file', signature: 'sig-abc' },
+          { type: 'text', text: 'checking' },
+          { type: 'tool_use', id: 'call-1', name: 'read_file', input: { path: '/tmp/a' } },
+        ],
+      },
+    ])
+  })
+
+  test('thinking on a plain assistant text message is not sent back', () => {
+    const msgs: ChatMessage[] = [
+      { role: 'assistant', content: 'done', thinking: [{ thinking: 'wrapped up', signature: 's' }] },
+    ]
+    expect(toAnthropicMessages(msgs)).toEqual([{ role: 'assistant', content: 'done' }])
+  })
+
   test('rewrites assistant + toolCalls into content blocks (text + tool_use)', () => {
     const msgs: ChatMessage[] = [
       {

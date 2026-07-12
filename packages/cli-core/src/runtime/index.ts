@@ -71,6 +71,7 @@ export { LoopDetector, toolCallSignature, DEFAULT_REPEAT_THRESHOLD, DEFAULT_WIND
 
 export type {
   ChatMessage,
+  ThinkingBlock,
   ProviderToolSchema,
   ProviderRequest,
   EffortTier,

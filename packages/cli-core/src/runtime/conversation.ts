@@ -14,7 +14,7 @@ import { compact, compactWithSummary, shouldCompact, type LlmSummarizer, type To
 import { LoopDetector, type LoopDetectionConfig } from './loop-detector'
 import { budgetToolOutput } from './tool-output-budget'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
-import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
+import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
 import type { AskUserHandler, SharedToolState, ToolContext, ToolRegistry } from './tools'
@@ -236,6 +236,7 @@ export class ConversationRuntime {
           role: 'assistant',
           content: turn.text,
           toolCalls: turn.toolCalls.length > 0 ? turn.toolCalls : undefined,
+          thinking: turn.thinking.length > 0 ? turn.thinking : undefined,
         })
       }
 
@@ -366,6 +367,8 @@ export class ConversationRuntime {
     const events: RuntimeEvent[] = []
     let text = ''
     const toolCalls: ToolCall[] = []
+    const thinking: ThinkingBlock[] = []
+    let currentThinking = ''
     let usage: UsageTotals = emptyUsage()
     let stopReason: ProviderStreamEvent extends { kind: 'finish' }
       ? never
@@ -377,6 +380,14 @@ export class ConversationRuntime {
         if (ev.kind === 'text-delta') {
           text += ev.delta
           events.push({ kind: 'text', delta: ev.delta })
+        } else if (ev.kind === 'thinking-delta') {
+          currentThinking += ev.delta
+          events.push({ kind: 'reasoning', delta: ev.delta })
+        } else if (ev.kind === 'thinking-signature') {
+          // The signature closes the current thinking block; both must be
+          // replayed verbatim on the next request of a tool-use continuation.
+          thinking.push({ thinking: currentThinking, signature: ev.signature })
+          currentThinking = ''
         } else if (ev.kind === 'tool-use') {
           toolCalls.push(ev.call)
           events.push({ kind: 'tool_use', call: ev.call })
@@ -405,6 +416,10 @@ export class ConversationRuntime {
       }
     }
 
+    if (currentThinking) {
+      thinking.push({ thinking: currentThinking })
+    }
+
     budget.addUsage(usage)
     events.push({
       kind: 'usage',
@@ -412,7 +427,7 @@ export class ConversationRuntime {
       turn: usage,
       cumulative: budget.currentUsage,
     })
-    return { events, text, toolCalls, stopReason, error }
+    return { events, text, toolCalls, thinking, stopReason, error }
   }
 
   private async runTool(call: ToolCall, budget: RuntimeBudget): Promise<ToolResultPayload> {
@@ -526,6 +541,7 @@ interface TurnResult {
   events: RuntimeEvent[]
   text: string
   toolCalls: ToolCall[]
+  thinking: ThinkingBlock[]
   stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'error'
   error: boolean
 }
