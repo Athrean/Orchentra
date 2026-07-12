@@ -11,11 +11,14 @@ describe('resolveBashSpawn', () => {
     else process.env.ORCHENTRA_SANDBOX_DISABLED = originalDisabled
   })
 
-  test('dangerously_disable_sandbox=true → direct spawn (no sandbox wrapper)', () => {
-    const r = resolveBashSpawn({ command: 'echo ok', dangerously_disable_sandbox: true }, { cwd: '/Users/dev/proj' })
-    expect(r.program).toBe('sh')
-    expect(r.args).toEqual(['-c', 'echo ok'])
-    expect(r.sandboxStatus).toBeUndefined()
+  test('a model-passed dangerously_disable_sandbox flag no longer bypasses the sandbox', () => {
+    if (process.platform !== 'darwin') return
+    // Regression for the audit-flagged hole: the flag was removed from the
+    // tool schema; even a stray extra property must not reach a direct spawn.
+    const input = { command: 'echo ok', dangerously_disable_sandbox: true } as unknown as { command: string }
+    const r = resolveBashSpawn(input, { cwd: '/Users/dev/proj' })
+    expect(r.program).toBe('sandbox-exec')
+    expect(r.sandboxStatus?.enabled).toBe(true)
   })
 
   test('ORCHENTRA_SANDBOX_DISABLED=1 → direct spawn', () => {
