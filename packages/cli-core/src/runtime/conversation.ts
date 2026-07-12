@@ -11,6 +11,7 @@ import {
   type UsageTotals,
 } from './events'
 import { compact, compactWithSummary, shouldCompact, type LlmSummarizer, type TokenEstimator } from './compaction'
+import { LoopDetector, type LoopDetectionConfig } from './loop-detector'
 import { budgetToolOutput } from './tool-output-budget'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
@@ -38,6 +39,11 @@ export interface ConversationConfig {
   /** Max chars of a tool result sent to the provider; over this it's trimmed (head+tail). 0 disables. */
   toolOutputBudgetChars?: number
   budget: BudgetConfig
+  /**
+   * Repeated-tool-call guardrail. Defaults on; set `repeatThreshold: 0` to
+   * disable. See LoopDetector for the window semantics.
+   */
+  loopDetection?: LoopDetectionConfig
   sessionId: string
   cwd: string
   effort?: EffortTier
@@ -109,6 +115,7 @@ export class ConversationRuntime {
 
   private async *loop(input: RunInput): AsyncIterable<RuntimeEvent> {
     const budget = new RuntimeBudget(this.config.budget)
+    const loopDetector = new LoopDetector(this.config.loopDetection)
     const messages: ChatMessage[] = [...(input.priorMessages ?? []), { role: 'user', content: input.userMessage }]
     this.finalMessages = messages
     const { provider, tools, systemPrompt } = this.deps
@@ -247,7 +254,39 @@ export class ConversationRuntime {
         return
       }
 
-      for (const call of turn.toolCalls) {
+      for (let callIndex = 0; callIndex < turn.toolCalls.length; callIndex++) {
+        const call = turn.toolCalls[callIndex]!
+        const check = loopDetector.record(call)
+        if (check.looping) {
+          // Break the loop: seal history with error results for this and any
+          // remaining calls (a dangling tool_use without a tool result would
+          // fail the next provider request), then end the run.
+          for (const skipped of turn.toolCalls.slice(callIndex)) {
+            const content = `loop detected: ${skipped.name} not executed — this call's signature repeated ${check.count}x recently; run stopped`
+            messages.push({ role: 'tool', content, toolCallId: skipped.id })
+            yield* this.emit({ kind: 'tool_result', result: { id: skipped.id, content, isError: true } })
+          }
+          yield* this.emit({
+            kind: 'loop_detected',
+            toolName: call.name,
+            signature: check.signature,
+            count: check.count,
+          })
+          yield* this.emit({
+            kind: 'span_end',
+            spanId: stepSpanId,
+            endedAt: this.now(),
+            status: 'error',
+            attributes: { loop_signature: check.signature, tool: call.name },
+          })
+          yield* this.emit({
+            kind: 'done',
+            reason: 'loop_detected',
+            steps: budget.currentSteps,
+            usage: budget.currentUsage,
+          })
+          return
+        }
         const toolSpanId = this.newId()
         yield* this.emit({
           kind: 'span_start',

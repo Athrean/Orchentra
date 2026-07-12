@@ -86,6 +86,7 @@ import {
   renderCompactNotice,
   renderToolOutputBudgeted,
   renderCostWarning,
+  renderLoopDetected,
   renderMemorySaved,
 } from './renderer'
 import { readLine } from './input'
@@ -930,6 +931,9 @@ export class LiveCli implements SessionControl {
           break
         case 'cost_warning':
           process.stdout.write(renderCostWarning(event.costUsd, event.thresholdUsd, event.limitUsd) + '\n')
+          break
+        case 'loop_detected':
+          process.stdout.write(renderLoopDetected(event.toolName, event.count) + '\n')
           break
         case 'error':
           if (!event.retryable) {

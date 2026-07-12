@@ -17,7 +17,14 @@ export interface ToolResultPayload {
   isError: boolean
 }
 
-export type DoneReason = 'stop' | 'budget_exhausted' | 'aborted' | 'error' | 'max_steps' | 'cost_exhausted'
+export type DoneReason =
+  | 'stop'
+  | 'budget_exhausted'
+  | 'aborted'
+  | 'error'
+  | 'max_steps'
+  | 'cost_exhausted'
+  | 'loop_detected'
 
 export interface TextEvent {
   kind: 'text'
@@ -85,6 +92,17 @@ export interface ToolOutputBudgetedEvent {
   originalChars: number
   keptChars: number
   droppedChars: number
+}
+
+/**
+ * Emitted when the loop detector breaks a run: one normalized tool-call
+ * signature repeated too many times within the recent-call window.
+ */
+export interface LoopDetectedEvent {
+  kind: 'loop_detected'
+  toolName: string
+  signature: string
+  count: number
 }
 
 /** Emitted when a failure→resolution memory is auto-captured after a turn. */
@@ -155,6 +173,7 @@ export type RuntimeEvent =
   | CompactedEvent
   | CostWarningEvent
   | ToolOutputBudgetedEvent
+  | LoopDetectedEvent
   | MemorySavedEvent
   | HookProgressRuntimeEvent
   | ErrorEvent
