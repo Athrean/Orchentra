@@ -556,6 +556,7 @@ export class ConversationRuntime {
       quirks: this.deps.quirks,
       providerName: this.config.providerName,
       harnessVersion: this.config.harnessVersion,
+      traceSink: this.deps.traceSink,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {

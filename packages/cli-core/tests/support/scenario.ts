@@ -122,6 +122,12 @@ export async function runScenario(s: Scenario): Promise<ScenarioResult> {
     provider: scriptedProvider(s.turns, s.onProviderRequest, s.beforeProviderTurn, s.afterProviderTurn),
     tools: s.tools ?? noopTools(),
     systemPrompt: buildSystemPrompt({ staticParts: ['sys'], dynamicParts: [] }),
+    // Keep scenarios off the real filesystem: no trace files, no tool-output
+    // recovery writes. The no-op sink also propagates to sub-agents via
+    // ToolContext, so concurrent fan-out ordering is microtask-deterministic
+    // (real disk writes before the first provider call would race under load).
+    traceSink: { append: () => {}, finalize: () => {} },
+    persistToolOutput: async () => {},
   }
   const runtime = new ConversationRuntime(makeConfig(s.config), deps)
 

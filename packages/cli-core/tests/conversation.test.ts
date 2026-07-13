@@ -7,8 +7,17 @@ import type { ToolContext, ToolRegistry, ToolResult } from '../src/runtime/tools
 import type { RuntimeEvent } from '../src/runtime/events'
 import { buildSystemPrompt } from '../src/runtime/system-prompt'
 import { createEnforcer } from '../src/permissions/enforcer'
-import { reconstructTranscript, type TraceManifest, type TraceSink } from '../src/runtime/trace'
+import {
+  reconstructTranscript,
+  traceEventsPath,
+  traceManifestPath,
+  type TraceManifest,
+  type TraceSink,
+} from '../src/runtime/trace'
 import { QuirkCounters } from '../src/runtime/quirks'
+import { mkdtempSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 function fakeProvider(responses: ProviderStreamEvent[][]): Provider {
   let callIndex = 0
@@ -969,6 +978,34 @@ describe('tracing', () => {
       { role: 'assistant', content: 'all done' },
     ])
     expect(rebuilt).toEqual(rt.getFinalMessages())
+  })
+
+  test('v0.3.0 exit criterion: replaying an on-disk manifest+events.jsonl pair reconstructs the run', async () => {
+    // The strongest form of the criterion: a real FileTraceSink writes the
+    // trace to disk, then we read manifest.json and events.jsonl back cold —
+    // no in-memory shortcut — and rebuild the exact run.
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-replay-'))
+    const deps: ConversationDeps = {
+      ...makeDeps(twoStepProvider(), readTools()),
+      // Clear makeDeps' no-op so the runtime builds its own default
+      // FileTraceSink — its trace id then matches rt.lastTraceId on disk.
+      traceSink: undefined,
+    }
+    const rt = new ConversationRuntime({ ...makeConfig({ cwd }) }, deps)
+    await collect(rt, 'read the file')
+    const traceId = rt.lastTraceId!
+
+    const eventLines = readFileSync(traceEventsPath(cwd, traceId), 'utf8').trim().split('\n')
+    const replayedEvents = eventLines.map((l) => JSON.parse(l) as RuntimeEvent)
+    const replayedManifest = JSON.parse(readFileSync(traceManifestPath(cwd, traceId), 'utf8')) as TraceManifest
+
+    // The events.jsonl alone rebuilds the transcript the runtime ended with.
+    expect(reconstructTranscript(replayedEvents)).toEqual(rt.getFinalMessages())
+    // The manifest agrees on the run's shape.
+    expect(replayedManifest.traceId).toBe(traceId)
+    expect(replayedManifest.doneReason).toBe('stop')
+    expect(replayedManifest.steps).toBe(2)
+    expect(replayedManifest.eventCounts.done).toBe(1)
   })
 
   test('permission denial is a typed permission_decision event', async () => {

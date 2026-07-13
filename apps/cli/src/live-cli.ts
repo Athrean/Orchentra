@@ -66,6 +66,7 @@ import {
   evaluate as evaluatePolicy,
   replaySession,
   SessionWriter,
+  QuirkCounters,
 } from '@orchentra/cli-core'
 import type {
   AskUser as ToolAskUser,
@@ -92,6 +93,7 @@ import {
   renderMemorySaved,
 } from './renderer'
 import { readLine } from './input'
+import { CLI_VERSION } from './version'
 import { createHeadlessAskToolUser } from './headless-tool-prompt'
 import { isProviderAuthError, friendlyAuthErrorMessage } from '@orchentra/cli-api'
 import { thinkingTokenBudgetForEffort } from './provider-factory'
@@ -124,6 +126,9 @@ export class LiveCli implements SessionControl {
   private terseMode: TerseMode
   private planLevel: PlanLevel = 'plus'
   private provider: Provider
+  private providerName: string
+  /** Run-wide per-model deviation counters, surfaced in each trace manifest. */
+  private readonly quirks = new QuirkCounters()
   private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
   private cwd: string
@@ -164,6 +169,7 @@ export class LiveCli implements SessionControl {
     model: string
     permissionMode: PermissionMode
     provider: Provider
+    providerName?: string
     resolveModel: ModelResolver
     tools: ToolRegistry
     effort?: EffortTier
@@ -180,6 +186,7 @@ export class LiveCli implements SessionControl {
     this.effort = deps.effort ?? 'medium'
     this.terseMode = deps.terseMode ?? 'off'
     this.provider = deps.provider
+    this.providerName = deps.providerName ?? 'unknown'
     this.resolveModel = deps.resolveModel
     this.tools = deps.tools
     this.cwd = deps.cwd
@@ -209,6 +216,7 @@ export class LiveCli implements SessionControl {
     const resolved = this.resolveModel(newModel)
     this.model = resolved.model
     this.provider = resolved.provider
+    this.providerName = resolved.providerName
     return resolved.model
   }
 
@@ -776,6 +784,8 @@ export class LiveCli implements SessionControl {
       cwd: this.cwd,
       effort: this.effort,
       thinkingTokenBudget: thinkingTokenBudgetForEffort(this.effort),
+      providerName: this.providerName,
+      harnessVersion: CLI_VERSION,
     }
 
     if (this.runBudget) {
@@ -860,6 +870,7 @@ export class LiveCli implements SessionControl {
       spinePrompt: spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'sub-agent' }),
       compactionSummarizer: this.buildCompactionSummarizer(),
       workspaceRoots,
+      quirks: this.quirks,
     }
 
     this.runtime = new ConversationRuntime(config, deps)

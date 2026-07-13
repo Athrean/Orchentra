@@ -231,6 +231,10 @@ async function runSubagent(
         workspaceRoots: ctx.workspaceRoots,
         subagentDepth: ctx.subagentDepth,
         quirks: ctx.quirks,
+        // Only when the host injected one (tests route sub-agents to a no-op
+        // sink). Unset in production so each sub-agent builds its own on-disk
+        // trace dir and lastTraceId links back into the parent manifest.
+        ...(ctx.traceSink ? { traceSink: ctx.traceSink } : {}),
         signal: abort.signal,
       },
     )

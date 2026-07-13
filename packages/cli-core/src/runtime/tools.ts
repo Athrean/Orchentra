@@ -109,6 +109,14 @@ export interface ToolContext {
    */
   providerName?: string
   harnessVersion?: string
+  /**
+   * Trace destination the host wants nested runtimes (sub-agents spawned by
+   * the `agent` tool) to use. When set, children write here instead of
+   * building their own FileTraceSink — the seam a host uses to route or
+   * silence child traces (tests inject a no-op to keep sub-agents off disk).
+   * Left unset in production so each sub-agent gets its own on-disk trace.
+   */
+  traceSink?: import('./trace').TraceSink
 }
 
 export interface ToolResult {
