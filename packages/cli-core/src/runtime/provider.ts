@@ -92,13 +92,7 @@ export interface FinishDelta {
 }
 
 export type ProviderStreamEvent =
-  | TextDelta
-  | ThinkingDelta
-  | ThinkingSignature
-  | ToolUseDelta
-  | ToolArgsDelta
-  | UsageDelta
-  | FinishDelta
+  TextDelta | ThinkingDelta | ThinkingSignature | ToolUseDelta | ToolArgsDelta | UsageDelta | FinishDelta
 
 export interface Provider {
   stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent>

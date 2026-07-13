@@ -1,0 +1,188 @@
+@font-face {
+  font-family: 'Nocturn';
+  src: url('/fonts/Nocturn-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nocturn';
+  src: url('/fonts/Nocturn-semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --paper: #ffffff;
+  --ink: #0a0a0a;
+  --body: #292929;
+  --muted: #838383;
+  --line: rgba(10, 10, 10, 0.12);
+  --navy: #18213c;
+  --blue: #3b5bd9;
+  --yellow: #f5c518;
+  --orange: #e85b32;
+  --lime: #d8ff00;
+  --green: #10a37f;
+  --cell: 14px;
+  --gutter: 56px;
+  --max-width: 1176px;
+  --font-body: 'Nocturn', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-pixel: var(--font-geist-pixel-circle), 'Geist Mono', ui-monospace, monospace;
+  --font-mono: 'SFMono-Regular', ui-monospace, Menlo, Consolas, monospace;
+  --clip-pixel-small: polygon(
+    5px 0,
+    calc(100% - 5px) 0,
+    calc(100% - 5px) 3px,
+    100% 3px,
+    100% calc(100% - 3px),
+    calc(100% - 5px) calc(100% - 3px),
+    calc(100% - 5px) 100%,
+    5px 100%,
+    5px calc(100% - 3px),
+    0 calc(100% - 3px),
+    0 3px,
+    5px 3px
+  );
+  --clip-pixel-medium: polygon(
+    8px 0,
+    calc(100% - 8px) 0,
+    calc(100% - 8px) 4px,
+    calc(100% - 4px) 4px,
+    calc(100% - 4px) 8px,
+    100% 8px,
+    100% calc(100% - 8px),
+    calc(100% - 4px) calc(100% - 8px),
+    calc(100% - 4px) calc(100% - 4px),
+    calc(100% - 8px) calc(100% - 4px),
+    calc(100% - 8px) 100%,
+    8px 100%,
+    8px calc(100% - 4px),
+    4px calc(100% - 4px),
+    4px calc(100% - 8px),
+    0 calc(100% - 8px),
+    0 8px,
+    4px 8px,
+    4px 4px,
+    8px 4px
+  );
+  --clip-pixel-large: polygon(
+    10px 0,
+    calc(100% - 10px) 0,
+    calc(100% - 10px) 5px,
+    calc(100% - 5px) 5px,
+    calc(100% - 5px) 10px,
+    100% 10px,
+    100% calc(100% - 10px),
+    calc(100% - 5px) calc(100% - 10px),
+    calc(100% - 5px) calc(100% - 5px),
+    calc(100% - 10px) calc(100% - 5px),
+    calc(100% - 10px) 100%,
+    10px 100%,
+    10px calc(100% - 5px),
+    5px calc(100% - 5px),
+    5px calc(100% - 10px),
+    0 calc(100% - 10px),
+    0 10px,
+    5px 10px,
+    5px 5px,
+    10px 5px
+  );
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+  overflow: clip;
+}
+
+/* Full-page dither canvas: fixed behind all content; sections stay
+   transparent so the field and the faint cell grid show through. */
+.pixel-field {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100lvh;
+  pointer-events: none;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+}
+
+::selection {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 4px;
+}
+
+.pixel-type {
+  font-family: var(--font-pixel);
+  font-weight: 500;
+}
+
+.content-wrap,
+.wide-wrap,
+.narrow-wrap {
+  width: 100%;
+  max-width: var(--max-width);
+  margin-inline: auto;
+}
+
+.wide-wrap {
+  max-width: 1280px;
+}
+
+.narrow-wrap {
+  max-width: 720px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,76 @@
+/* CTA */
+
+.install-cta {
+  position: relative;
+  padding: calc(var(--cell) * 12) var(--gutter) calc(var(--cell) * 13);
+  text-align: center;
+}
+
+.cta-kicker {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.install-cta h2 {
+  margin: 0;
+  font-size: clamp(48px, 8vw, 118px);
+  font-weight: 500;
+  line-height: 0.88;
+  letter-spacing: -0.065em;
+}
+
+.pixel-button--large {
+  min-height: 56px;
+  padding-inline: 36px;
+  margin-top: 42px;
+  font-size: 17px;
+}
+
+.cta-copy {
+  max-width: 47ch;
+  margin: 32px auto 0;
+  color: var(--muted);
+  font-size: clamp(15px, 1.2vw, 18px);
+  line-height: 1.6;
+}
+
+.copy-command {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  width: min(100%, 530px);
+  min-height: 48px;
+  padding: 0 15px;
+  margin: 22px auto 0;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 9px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.copy-command:hover {
+  border-color: var(--ink);
+  background: #f7f7f4;
+}
+
+.copy-command code {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.copy-prompt {
+  color: var(--green);
+  font-size: 14px;
+}

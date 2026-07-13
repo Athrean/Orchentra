@@ -1,69 +1,10 @@
 @import 'tailwindcss';
-
-@font-face {
-  font-family: 'Nocturn';
-  src: url('/fonts/Nocturn-regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Nocturn';
-  src: url('/fonts/Nocturn-semibold.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Nocturn';
-  src: url('/fonts/Nocturn-bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-:root {
-  --bg-base: #f7f7f8;
-  --bg-panel: #ffffff;
-  --ink: #0a0a0a;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-base: #080808;
-    --bg-panel: #000000;
-    --ink: #ffffff;
-  }
-}
-
-@theme inline {
-  --color-base: var(--bg-base);
-  --color-panel: var(--bg-panel);
-  --color-ink: var(--ink);
-  --color-emerald-ai: #10a37f;
-  --font-display: 'Nocturn', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', monospace;
-}
-
-@layer base {
-  html {
-    scroll-behavior: smooth;
-    background: var(--bg-base);
-  }
-
-  body {
-    margin: 0;
-    background: var(--bg-base);
-    color: var(--ink);
-    font-family: var(--font-display);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  ::selection {
-    background: #10a37f;
-    color: #000000;
-  }
-}
+@import './styles/base.css';
+@import './styles/hero.css';
+@import './styles/carousels.css';
+@import './styles/editorial.css';
+@import './styles/process.css';
+@import './styles/agents.css';
+@import './styles/cta.css';
+@import './styles/footer.css';
+@import './styles/responsive.css';

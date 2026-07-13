@@ -48,13 +48,7 @@ export interface ToolResultPayload {
 }
 
 export type DoneReason =
-  | 'stop'
-  | 'budget_exhausted'
-  | 'aborted'
-  | 'error'
-  | 'max_steps'
-  | 'cost_exhausted'
-  | 'loop_detected'
+  'stop' | 'budget_exhausted' | 'aborted' | 'error' | 'max_steps' | 'cost_exhausted' | 'loop_detected'
 
 export interface TextEvent {
   kind: 'text'

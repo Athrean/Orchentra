@@ -1,0 +1,206 @@
+/* Lead and horizontal showcases */
+
+.intro {
+  position: relative;
+  z-index: 3;
+  padding: 0 var(--gutter) calc(var(--cell) * 4);
+  margin-top: -18svh;
+  background: transparent;
+}
+
+.intro-lead {
+  max-width: 25ch;
+  margin: 0;
+  font-size: clamp(30px, 4.2vw, 58px);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+}
+
+.carousel-section {
+  position: relative;
+  padding: calc(var(--cell) * 5) 0 calc(var(--cell) * 9);
+}
+
+.carousel-shell {
+  position: relative;
+}
+
+.carousel-track {
+  display: flex;
+  gap: calc(var(--cell) * 2);
+  width: 100%;
+  padding: calc(var(--cell) * 3) max(var(--gutter), calc((100vw - var(--max-width)) / 2));
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-behavior: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-arrow {
+  position: absolute;
+  z-index: 8;
+  top: 200px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+  transition: background 0.2s;
+  clip-path: var(--clip-pixel-large);
+}
+
+.carousel-arrow:hover {
+  background: var(--blue);
+}
+
+.carousel-arrow--previous {
+  left: 16px;
+}
+
+.carousel-arrow--next {
+  right: 16px;
+}
+
+.specialist-card,
+.support-card {
+  flex: 0 0 min(90vw, 420px);
+  scroll-snap-align: start;
+}
+
+.specialist-visual,
+.role-visual {
+  position: relative;
+  height: 350px;
+  overflow: hidden;
+  background: #ededed;
+}
+
+.specialist-visual--blue {
+  background: #b9c9ff;
+}
+
+.specialist-visual--lime {
+  background: var(--lime);
+}
+
+.specialist-visual--orange {
+  background: #ffb09b;
+}
+
+.specialist-visual--navy {
+  background: #aab5d1;
+}
+
+.specialist-image {
+  position: absolute;
+  right: -8%;
+  bottom: -24%;
+  width: 91%;
+  aspect-ratio: 1;
+  height: auto;
+  filter: grayscale(1) contrast(1.3);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.specialist-image img {
+  object-fit: contain;
+}
+
+/* solid visual by default; the dither texture only surfaces on hover */
+.visual-dot-field {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-image: conic-gradient(from 180deg at 4px 4px, currentColor 90deg, transparent 0);
+  background-size: 11px 11px;
+  mask-image: linear-gradient(112deg, #000 28%, transparent 62%);
+  transition: opacity 0.4s ease;
+}
+
+.specialist-card:hover .visual-dot-field {
+  opacity: 0.22;
+}
+
+.specialist-command {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  left: 20px;
+  color: var(--ink);
+  font-size: clamp(40px, 5vw, 68px);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+.specialist-index {
+  position: absolute;
+  z-index: 3;
+  right: 16px;
+  bottom: 15px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  clip-path: var(--clip-pixel-medium);
+}
+
+.card-kicker,
+.section-kicker,
+.contrast-label,
+.cta-kicker,
+.footer-links h3,
+.footer-bottom,
+.part-title span,
+.level-code,
+.role-status,
+.tag-row,
+.copy-command {
+  font-family: var(--font-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+/* captions centred under the visual, wild.as-style */
+.specialist-card > .card-kicker,
+.support-card > .card-kicker {
+  margin: 17px 2px 0;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.specialist-card > h3,
+.support-card > h3 {
+  margin: 7px 2px 0;
+  font-size: clamp(23px, 2.1vw, 30px);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  text-align: center;
+}
+
+.specialist-card > p:last-child,
+.support-card > p {
+  max-width: 36ch;
+  margin: 10px auto 0;
+  color: var(--body);
+  font-size: 14.5px;
+  line-height: 1.55;
+  text-align: center;
+}
