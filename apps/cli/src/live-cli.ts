@@ -7,6 +7,7 @@ import type {
   ConversationDeps,
   AskUserHandler,
   AskUserRequest,
+  DoneReason,
   HookRunner,
   EffortTier,
   TerseMode,
@@ -41,10 +42,11 @@ import type {
 import {
   UsageTracker,
   collectContextFiles,
-  compact,
   emptyUsage,
+  addUsage,
   buildSystemPrompt,
   ConversationRuntime,
+  RuntimeBudget,
   estimateMessagesTokens,
   defaultEstimator,
   rewindBoundary,
@@ -63,6 +65,7 @@ import {
   evaluate as evaluatePolicy,
   replaySession,
   SessionWriter,
+  QuirkCounters,
 } from '@orchentra/cli-core'
 import type {
   AskUser as ToolAskUser,
@@ -85,14 +88,22 @@ import {
   renderCompactNotice,
   renderToolOutputBudgeted,
   renderCostWarning,
+  renderLoopDetected,
   renderMemorySaved,
 } from './renderer'
 import { readLine } from './input'
+import { CLI_VERSION } from './version'
 import { createHeadlessAskToolUser } from './headless-tool-prompt'
 import { isProviderAuthError, friendlyAuthErrorMessage } from '@orchentra/cli-api'
 import { thinkingTokenBudgetForEffort } from './provider-factory'
 
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
+
+/** Outcome of a single turn: `ok` only when the runtime finished with a clean stop. */
+export interface TurnRunResult {
+  readonly ok: boolean
+  readonly reason: DoneReason
+}
 
 export type RuntimeEventSink = (event: RuntimeEvent) => void
 export type AskUserOverride = AskUserHandler
@@ -114,6 +125,9 @@ export class LiveCli implements SessionControl {
   private terseMode: TerseMode
   private planLevel: PlanLevel = 'plus'
   private provider: Provider
+  private providerName: string
+  /** Run-wide per-model deviation counters, surfaced in each trace manifest. */
+  private readonly quirks = new QuirkCounters()
   private readonly resolveModel: ModelResolver
   private readonly tools: ToolRegistry
   private cwd: string
@@ -131,6 +145,8 @@ export class LiveCli implements SessionControl {
   private messages: ChatMessage[] = []
   private session: SessionWriter | null = null
   private runtime: ConversationRuntime | null = null
+  /** One budget per invocation: dollar spend accumulates across turns and sub-agent calls. */
+  private runBudget: RuntimeBudget | null = null
   private forceCompactFlag = false
   private eventSink: RuntimeEventSink | null = null
   private askUserOverride: AskUserOverride | null = null
@@ -152,6 +168,7 @@ export class LiveCli implements SessionControl {
     model: string
     permissionMode: PermissionMode
     provider: Provider
+    providerName?: string
     resolveModel: ModelResolver
     tools: ToolRegistry
     effort?: EffortTier
@@ -168,6 +185,7 @@ export class LiveCli implements SessionControl {
     this.effort = deps.effort ?? 'medium'
     this.terseMode = deps.terseMode ?? 'off'
     this.provider = deps.provider
+    this.providerName = deps.providerName ?? 'unknown'
     this.resolveModel = deps.resolveModel
     this.tools = deps.tools
     this.cwd = deps.cwd
@@ -197,6 +215,7 @@ export class LiveCli implements SessionControl {
     const resolved = this.resolveModel(newModel)
     this.model = resolved.model
     this.provider = resolved.provider
+    this.providerName = resolved.providerName
     return resolved.model
   }
 
@@ -666,44 +685,25 @@ export class LiveCli implements SessionControl {
         maxOutputTokens: 512,
       }
       let text = ''
+      let usage: UsageTotals = emptyUsage()
       for await (const ev of provider.stream(request) as AsyncIterable<ProviderStreamEvent>) {
         if (ev.kind === 'text-delta') text += ev.delta
+        else if (ev.kind === 'usage') usage = addUsage(usage, ev.usage)
       }
+      // The summarizer is runtime infrastructure (invoked from inside a run
+      // via deps.compactionSummarizer), but its spend is real — land it in
+      // the run budget so dollar caps and warnings see it.
+      this.runBudget?.addUsage(usage)
       return text
     }
   }
 
-  async runTurn(input: string): Promise<void> {
+  async runTurn(input: string): Promise<TurnRunResult> {
     const sink = this.eventSink
+    const forceCompaction = this.forceCompactFlag
+    this.forceCompactFlag = false
     this.pendingFileUndoSnapshots.clear()
     this.currentTurnFileUndo = []
-    // Handle forced compaction
-    if (this.forceCompactFlag) {
-      this.forceCompactFlag = false
-      const est = estimateMessagesTokens(this.messages, defaultEstimator)
-      if (est > 0) {
-        const result = compact({
-          messages: this.messages,
-          contextWindowTokens: 200_000,
-          thresholdRatio: 0,
-          keepRecent: 6,
-        })
-        if (result.compacted) {
-          this.messages = result.messages
-          this.tracker.recordCompaction(result.tokensSaved)
-          if (sink) {
-            sink({
-              kind: 'compacted',
-              droppedMessageCount: result.droppedCount,
-              tokensSaved: result.tokensSaved,
-              summary: '',
-            })
-          } else {
-            process.stdout.write(renderCompactNotice(result.droppedCount, result.tokensSaved) + '\n')
-          }
-        }
-      }
-    }
 
     if (!sink) this.spinner.start('Thinking...')
 
@@ -758,6 +758,18 @@ export class LiveCli implements SessionControl {
       cwd: this.cwd,
       effort: this.effort,
       thinkingTokenBudget: thinkingTokenBudgetForEffort(this.effort),
+      providerName: this.providerName,
+      harnessVersion: CLI_VERSION,
+    }
+
+    if (this.runBudget) {
+      this.runBudget.updateLimits({
+        maxCostUsd: this.budgetConfig?.maxCostUsd,
+        warnCostUsd: this.budgetConfig?.warnCostUsd,
+        model: this.model,
+      })
+    } else {
+      this.runBudget = new RuntimeBudget(config.budget)
     }
 
     const systemPrompt: SystemPrompt = buildSystemPrompt({
@@ -809,6 +821,7 @@ export class LiveCli implements SessionControl {
       provider: this.provider,
       tools: this.tools,
       systemPrompt,
+      budget: this.runBudget,
       sharedState: this.sharedState,
       askUser,
       enforcer: this.enforcer,
@@ -831,6 +844,7 @@ export class LiveCli implements SessionControl {
       spinePrompt: spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'sub-agent' }),
       compactionSummarizer: this.buildCompactionSummarizer(),
       workspaceRoots,
+      quirks: this.quirks,
     }
 
     this.runtime = new ConversationRuntime(config, deps)
@@ -838,10 +852,14 @@ export class LiveCli implements SessionControl {
     let steps = 0
     let lastUsage: UsageTotals = emptyUsage()
     let assistantText = ''
-    let doneReason: string | undefined
+    let doneReason: DoneReason | undefined
 
     try {
-      for await (const event of this.runtime.run({ userMessage: input, priorMessages: this.messages })) {
+      for await (const event of this.runtime.run({
+        userMessage: input,
+        priorMessages: this.messages,
+        forceCompaction,
+      })) {
         await this.handleEvent(event)
         if (event.kind === 'text') {
           assistantText += event.delta
@@ -877,6 +895,7 @@ export class LiveCli implements SessionControl {
         process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
       }
     } catch (err) {
+      doneReason = 'error'
       const message = isProviderAuthError(err) ? friendlyAuthErrorMessage(err) : formatThrown(err)
       if (sink) {
         sink({ kind: 'error', message, retryable: false })
@@ -890,6 +909,7 @@ export class LiveCli implements SessionControl {
       this.pendingFileUndoSnapshots.clear()
       this.currentAbort = null
     }
+    return { ok: doneReason === 'stop', reason: doneReason ?? 'error' }
   }
 
   private async handleEvent(event: RuntimeEvent): Promise<void> {
@@ -921,6 +941,9 @@ export class LiveCli implements SessionControl {
           break
         case 'cost_warning':
           process.stdout.write(renderCostWarning(event.costUsd, event.thresholdUsd, event.limitUsd) + '\n')
+          break
+        case 'loop_detected':
+          process.stdout.write(renderLoopDetected(event.toolName, event.count) + '\n')
           break
         case 'error':
           if (!event.retryable) {

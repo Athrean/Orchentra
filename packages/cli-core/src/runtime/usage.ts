@@ -100,6 +100,8 @@ export function summaryLines(usage: UsageTotals, label: string, model?: string):
 
   const main = [
     `${label}: total_tokens=${totalTokens(usage)}`,
+    `billed=${billedTokens(usage)}`,
+    `cached=${cachedTokens(usage)}`,
     `input=${usage.inputTokens}`,
     `output=${usage.outputTokens}`,
     `cache_write=${usage.cacheCreationTokens}`,
@@ -121,6 +123,19 @@ export function summaryLines(usage: UsageTotals, label: string, model?: string):
 
 export function costForTokens(tokens: number, usdPerMillion: number): number {
   return (tokens / 1_000_000) * usdPerMillion
+}
+
+/**
+ * Tokens billed at full input/output/cache-write rates. Cache reads are the
+ * cheap path (~10% of input rate) — lumping them into one total overstates
+ * what a run actually cost, so accounting reports the split, not just a sum.
+ */
+export function billedTokens(u: UsageTotals): number {
+  return u.inputTokens + u.outputTokens + u.cacheCreationTokens
+}
+
+export function cachedTokens(u: UsageTotals): number {
+  return u.cacheReadTokens
 }
 
 // Total estimated spend for `usage` under the model's pricing. Unknown models

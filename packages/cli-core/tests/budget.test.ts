@@ -72,4 +72,55 @@ describe('RuntimeBudget', () => {
     expect(warning?.costUsd).toBeGreaterThanOrEqual(0.005)
     expect(b.consumeCostWarning()).toBeNull() // only once
   })
+
+  test('beginTurn resets the per-turn step and token guards', () => {
+    const b = new RuntimeBudget({ maxSteps: 2, maxTokens: 100 })
+    b.tickStep()
+    b.tickStep()
+    b.addUsage({ inputTokens: 90, outputTokens: 20, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    expect(b.snapshot().exhausted).toBe(true)
+    b.beginTurn()
+    const snap = b.snapshot()
+    expect(snap.exhausted).toBe(false)
+    expect(snap.steps).toBe(0)
+  })
+
+  test('dollar cost survives beginTurn — spend is run-scoped', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, maxCostUsd: 0.02, model: 'sonnet' })
+    b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 }) // $0.015
+    expect(b.snapshot().exhausted).toBe(false)
+    b.beginTurn()
+    b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 }) // $0.030 total
+    const snap = b.snapshot()
+    expect(snap.exhausted).toBe(true)
+    expect(snap.exhaustedBy).toBe('cost')
+  })
+
+  test('cost warning fires once per run, not once per turn', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, warnCostUsd: 0.005, model: 'sonnet' })
+    b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    expect(b.consumeCostWarning()).not.toBeNull()
+    b.beginTurn()
+    expect(b.consumeCostWarning()).toBeNull()
+  })
+
+  test('updateLimits applies a new cost cap mid-run', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, model: 'sonnet' })
+    b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 }) // $0.015
+    expect(b.snapshot().exhausted).toBe(false)
+    b.updateLimits({ maxCostUsd: 0.01 })
+    expect(b.snapshot().exhaustedBy).toBe('cost')
+    b.updateLimits({ maxCostUsd: undefined })
+    expect(b.snapshot().exhausted).toBe(false)
+  })
+
+  test('changing the warn threshold re-arms the one-time warning', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, warnCostUsd: 0.005, model: 'sonnet' })
+    b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    expect(b.consumeCostWarning()).not.toBeNull()
+    b.updateLimits({ warnCostUsd: 0.01 })
+    const rearmed = b.consumeCostWarning()
+    expect(rearmed).not.toBeNull()
+    expect(rearmed?.thresholdUsd).toBe(0.01)
+  })
 })

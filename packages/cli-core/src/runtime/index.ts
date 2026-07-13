@@ -2,6 +2,8 @@ export type {
   UsageTotals,
   ToolCall,
   ToolResultPayload,
+  ToolArtifact,
+  ToolEvidence,
   DoneReason,
   UserMessageEvent,
   TextEvent,
@@ -10,6 +12,8 @@ export type {
   ToolResultEvent,
   UsageEvent,
   CompactedEvent,
+  LoopDetectedEvent,
+  PermissionDecisionEvent,
   HookProgressRuntimeEvent,
   ErrorEvent,
   DoneEvent,
@@ -20,6 +24,11 @@ export type {
 } from './events'
 
 export { emptyUsage, addUsage, totalTokens } from './events'
+
+export type { QuirkKind } from './quirks'
+export { QuirkCounters } from './quirks'
+
+export { validateToolArgs } from './arg-validation'
 
 export type {
   PermissionMode,
@@ -45,9 +54,6 @@ export {
   PermissionPolicy,
 } from './permissions'
 
-export type { EnforcementResult } from './permission-enforcer'
-export { PermissionEnforcer, isWithinWorkspace, isReadOnlyCommand } from './permission-enforcer'
-
 export type {
   WorkerStatus,
   WorkerFailureKind,
@@ -68,8 +74,12 @@ export { WorkerRegistry, classifyStartupFailure } from './worker-boot'
 export type { BudgetConfig, BudgetState } from './budget'
 export { RuntimeBudget } from './budget'
 
+export type { LoopDetectionConfig, LoopCheck } from './loop-detector'
+export { LoopDetector, toolCallSignature, DEFAULT_REPEAT_THRESHOLD, DEFAULT_WINDOW_SIZE } from './loop-detector'
+
 export type {
   ChatMessage,
+  ThinkingBlock,
   ProviderToolSchema,
   ProviderRequest,
   EffortTier,
@@ -227,7 +237,27 @@ export type {
 export { ConfigLoader, defaultConfigHome } from './config'
 
 export type { ModelPricing, UsageCostEstimate, TerseModeUsage, SpineSavings } from './usage'
-export { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from './usage'
+export {
+  pricingForModel,
+  estimateCost,
+  formatUsd,
+  summaryLines,
+  UsageTracker,
+  billedTokens,
+  cachedTokens,
+} from './usage'
+
+export { compactionNotesPath, renderCompactionNote, appendCompactionNote } from './compaction-notes'
+
+export type { TraceEvent, TraceSink, TraceManifest, TranscriptSnapshotEvent } from './trace'
+export {
+  FileTraceSink,
+  traceDir,
+  traceEventsPath,
+  traceManifestPath,
+  traceArtifactsDir,
+  reconstructTranscript,
+} from './trace'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
 export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'

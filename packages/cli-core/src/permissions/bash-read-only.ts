@@ -1,11 +1,11 @@
 /**
  * Tighter "is this bash command safe to auto-allow without prompting" check.
  *
- * Distinct from `runtime/permission-enforcer.isReadOnlyCommand`, which is the
- * gate for the legacy `read-only` mode and lets through runners like `git`,
- * `cargo`, `python`, `node` whose second token can mutate state. That looser
- * predicate is appropriate for users who explicitly opted into read-only
- * mode; it is NOT appropriate for unconditional auto-allow.
+ * Deliberately stricter than the read-only-mode gate in cli-tools'
+ * bash-validation: runners like `git`, `cargo`, `python`, `node` whose second
+ * token can mutate state are excluded here, because a looser predicate is
+ * only appropriate for users who explicitly opted into read-only mode — NOT
+ * for unconditional auto-allow.
  *
  * Rule: first token must be in PURE_READ. For `git`/`gh` the second token
  * must be in the per-tool sub-verb whitelist. Output redirects and in-place

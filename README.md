@@ -7,7 +7,7 @@
 
 # Orchentra
 
-### A local-first coding harness being built to prove completion by running the code and the product.
+### The local-first coding harness from Athrean Lab, being built to prove completion by running the code and the product.
 
 [Quick start](#quick-start) · [Harness foundations](#harness-foundations) · [CLI](#cli) · [Develop](#develop)
 
@@ -17,9 +17,9 @@
 
 ## What Is Orchentra?
 
-Orchentra is a local-first AI coding harness that runs in your terminal. Today it can read and edit files, run shell commands, search the workspace, inspect git state, fetch web pages, use MCP tools, and continue from saved sessions.
+Orchentra is Athrean Lab's local-first AI coding harness. It runs in your terminal and today can read and edit files, run shell commands, search the workspace, inspect git state, fetch web pages, use MCP tools, and continue from saved sessions.
 
-The current pivot extends that working CLI with one truthful orchestrator, model-aware adapters, browser-native verification, and evidence-carrying traces. The target is simple: Orchentra should not claim a task is done based only on model prose or an exit code.
+M1 is complete: one truthful orchestrator now covers normal turns, one-shot, composites, and sub-agents; runs carry typed evidence, honest accounting, durable compaction notes, and reconstructable local traces. The next phase adds browser-native execution and verification. The target is simple: Orchentra should not claim a task is done based only on model prose or an exit code.
 
 The product is CLI-only and zero-DB. The web app in `apps/web` is a static marketing site for the CLI; it has no auth, database, GitHub App flow, dashboard, subscription management, or standalone pull-request reviewer.
 
@@ -149,6 +149,7 @@ Orchentra/
 │   ├── cli-tools/           # built-in tools + MCP client
 │   ├── config-eslint/
 │   └── config-typescript/
+├── docs/                     # product, architecture, planning, releases, operations
 └── README.md
 ```
 
@@ -166,6 +167,6 @@ bun run build
 
 <div align="center">
 
-Built by [Athrean](https://github.com/Athrean).
+Orchentra is built by [Athrean Lab](https://github.com/Athrean).
 
 </div>

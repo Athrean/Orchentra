@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Dispatch, MutableRefObject } from 'react'
 import type { RuntimeEvent } from '@orchentra/cli-core'
-import { costWarningText, memorySavedText, toolOutputBudgetedText } from '../../renderer'
+import { costWarningText, loopDetectedText, memorySavedText, toolOutputBudgetedText } from '../../renderer'
 import type { TuiAction } from '../types'
 
 export interface RuntimeEventRefs {
@@ -98,6 +98,17 @@ export function handleRuntimeEvent(event: RuntimeEvent, dispatch: Dispatch<TuiAc
           id: randomUUID(),
           tone: 'info',
           text: toolOutputBudgetedText(event.droppedChars, event.keptChars),
+        },
+      })
+      break
+    case 'loop_detected':
+      dispatch({
+        type: 'transcript/push',
+        row: {
+          kind: 'system',
+          id: randomUUID(),
+          tone: 'warn',
+          text: loopDetectedText(event.toolName, event.count),
         },
       })
       break

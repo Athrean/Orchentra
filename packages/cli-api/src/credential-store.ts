@@ -3,17 +3,7 @@ import { join, dirname } from 'node:path'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
 
 export type ProviderKey =
-  | 'anthropic'
-  | 'openai'
-  | 'openrouter'
-  | 'xai'
-  | 'dashscope'
-  | 'gemini'
-  | 'github'
-  | 'aws'
-  | 'gcp'
-  | 'azure'
-  | 'orchentra'
+  'anthropic' | 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'github' | 'aws' | 'gcp' | 'azure'
 
 export interface StoredCredential {
   readonly apiKey?: string

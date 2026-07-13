@@ -26,10 +26,20 @@ export const fileWriteTool: ToolDefinition = {
     }
 
     try {
-      const result = await writeFileInWorkspace(input.path, input.content, ctx.cwd)
+      const result = await writeFileInWorkspace(input.path, input.content, ctx.cwd, ctx.sharedState?.fileReadHashes)
+      const action = result.type === 'create' ? 'created' : 'modified'
       return {
         content: `${result.type}: ${result.filePath}`,
         isError: false,
+        data: { filePath: result.filePath, bytes: input.content.length },
+        artifacts: [{ uri: result.filePath, kind: 'file', action }],
+        evidence: [
+          {
+            kind: 'diff',
+            summary: `${action} ${result.filePath} (${input.content.length} bytes)`,
+            detail: result.structuredPatch,
+          },
+        ],
       }
     } catch (e) {
       return { content: `write error: ${(e as Error).message}`, isError: true }

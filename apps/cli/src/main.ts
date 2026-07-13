@@ -21,8 +21,8 @@ async function main(argv: string[]): Promise<number> {
       return 0
 
     case 'init': {
-      const { runInitBootstrap } = await import('./commands/run-init')
-      return runInitBootstrap({ owner: action.owner, serverUrl: action.serverUrl })
+      const { runInit } = await import('./commands/run-init')
+      return runInit()
     }
 
     case 'update': {
@@ -77,8 +77,8 @@ async function main(argv: string[]): Promise<number> {
     }
 
     case 'login': {
-      const { runLogin } = await import('./commands/run-auth')
-      return runLogin(action.provider, action.apiKey)
+      const { createTerminalLoginIo, runLogin } = await import('./commands/run-auth')
+      return (await runLogin(action.provider, createTerminalLoginIo(action.apiKey))) ? 0 : 1
     }
 
     case 'logout': {

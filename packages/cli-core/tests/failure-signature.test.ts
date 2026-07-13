@@ -78,4 +78,12 @@ describe('redactSecrets', () => {
     expect(redacted).not.toContain('supersecretvalue')
     expect(redacted).toContain('<REDACTED>')
   })
+
+  test('removes an entire PEM private-key block, not only its header', () => {
+    const pem = ['-----BEGIN PRIVATE KEY-----', 'raw-private-material', '-----END PRIVATE KEY-----'].join('\n')
+    const redacted = redactSecrets(`before\n${pem}\nafter`)
+
+    expect(redacted).toBe('before\n<REDACTED>\nafter')
+    expect(redacted).not.toContain('raw-private-material')
+  })
 })

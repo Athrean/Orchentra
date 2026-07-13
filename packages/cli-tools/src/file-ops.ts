@@ -1,5 +1,6 @@
 import { join, resolve, dirname, basename, extname, relative } from 'node:path'
-import { existsSync, lstatSync, realpathSync } from 'node:fs'
+import { existsSync, lstatSync, realpathSync, renameSync, unlinkSync } from 'node:fs'
+import { createHash, randomBytes } from 'node:crypto'
 
 const MAX_READ_SIZE = 10 * 1024 * 1024
 const MAX_WRITE_SIZE = 10 * 1024 * 1024
@@ -17,6 +18,8 @@ export interface TextFilePayload {
 export interface ReadFileOutput {
   type: string
   file: TextFilePayload
+  /** sha256 of the FULL file content (not the selected range) — stale-read guard for later edits. */
+  sha256: string
 }
 
 export interface StructuredPatchHunk {
@@ -40,6 +43,7 @@ export interface EditFileOutput {
   oldString: string
   newString: string
   originalFile: string
+  updatedFile: string
   structuredPatch: StructuredPatchHunk[]
   userModified: boolean
   replaceAll: boolean
@@ -77,6 +81,30 @@ export interface GrepSearchOutput {
   numMatches?: number
   appliedLimit?: number
   appliedOffset?: number
+}
+
+export function contentHash(content: string): string {
+  return createHash('sha256').update(content).digest('hex')
+}
+
+/**
+ * Write via a temp file in the same directory + rename, so a crash mid-write
+ * never leaves a half-written target. rename(2) is atomic within a filesystem;
+ * same-directory keeps the temp on the same mount.
+ */
+async function atomicWrite(absolutePath: string, content: string): Promise<void> {
+  const tmp = join(dirname(absolutePath), `.${basename(absolutePath)}.tmp-${randomBytes(6).toString('hex')}`)
+  try {
+    await Bun.write(tmp, content)
+    renameSync(tmp, absolutePath)
+  } catch (err) {
+    try {
+      unlinkSync(tmp)
+    } catch {
+      // temp never created or already renamed
+    }
+    throw err
+  }
 }
 
 function isBinaryContent(buffer: Uint8Array): boolean {
@@ -222,6 +250,7 @@ export async function readFile(filePath: string, offset?: number, limit?: number
       startLine: startIndex + 1,
       totalLines: lines.length,
     },
+    sha256: contentHash(content),
   }
 }
 
@@ -239,7 +268,7 @@ export async function writeFile(filePath: string, content: string): Promise<Writ
     // file doesn't exist yet
   }
 
-  await Bun.write(absolutePath, content)
+  await atomicWrite(absolutePath, content)
 
   return {
     type: originalFile !== undefined ? 'update' : 'create',
@@ -255,6 +284,7 @@ export async function editFile(
   oldString: string,
   newString: string,
   replaceAll: boolean,
+  expectedHash?: string,
 ): Promise<EditFileOutput> {
   const absolutePath = normalizePath(filePath)
 
@@ -264,21 +294,32 @@ export async function editFile(
 
   const originalFile = await Bun.file(absolutePath).text()
 
-  if (!originalFile.includes(oldString)) {
+  if (expectedHash !== undefined && contentHash(originalFile) !== expectedHash) {
+    throw new Error(`stale read: ${absolutePath} changed since it was last read — re-read the file and retry the edit`)
+  }
+
+  const occurrences = originalFile.split(oldString).length - 1
+  if (occurrences === 0) {
     throw new Error('old_string not found in file')
+  }
+  if (occurrences > 1 && !replaceAll) {
+    throw new Error(
+      `old_string matches ${occurrences} times in ${absolutePath}; add surrounding context to make it unique, or pass replace_all: true`,
+    )
   }
 
   const updated = replaceAll
     ? originalFile.split(oldString).join(newString)
     : originalFile.replace(oldString, newString)
 
-  await Bun.write(absolutePath, updated)
+  await atomicWrite(absolutePath, updated)
 
   return {
     filePath: absolutePath,
     oldString,
     newString,
     originalFile,
+    updatedFile: updated,
     structuredPatch: makePatch(originalFile, updated),
     userModified: false,
     replaceAll,
@@ -488,11 +529,14 @@ export async function readFileInWorkspace(
   workspaceRoot: WorkspaceRoots,
   offset?: number,
   limit?: number,
+  readHashes?: Map<string, string>,
 ): Promise<ReadFileOutput> {
   const absolutePath = resolveWorkspacePath(filePath, workspaceRoot)
   validateWorkspaceBoundary(absolutePath, workspaceRoot)
   validateFilesystemBoundary(absolutePath, workspaceRoot)
-  return readFile(absolutePath, offset, limit)
+  const result = await readFile(absolutePath, offset, limit)
+  readHashes?.set(result.file.filePath, result.sha256)
+  return result
 }
 
 export async function globSearchInWorkspace(
@@ -523,11 +567,15 @@ export async function writeFileInWorkspace(
   filePath: string,
   content: string,
   workspaceRoot: string,
+  readHashes?: Map<string, string>,
 ): Promise<WriteFileOutput> {
   const absolutePath = resolveWorkspacePath(filePath, workspaceRoot, true)
   validateWorkspaceBoundary(absolutePath, workspaceRoot)
   validateFilesystemBoundary(absolutePath, workspaceRoot, true)
-  return writeFile(absolutePath, content)
+  const result = await writeFile(absolutePath, content)
+  // A write establishes known content, so later edits aren't spuriously stale.
+  readHashes?.set(result.filePath, contentHash(content))
+  return result
 }
 
 export async function editFileInWorkspace(
@@ -536,11 +584,14 @@ export async function editFileInWorkspace(
   newString: string,
   replaceAll: boolean,
   workspaceRoot: string,
+  readHashes?: Map<string, string>,
 ): Promise<EditFileOutput> {
   const absolutePath = resolveWorkspacePath(filePath, workspaceRoot)
   validateWorkspaceBoundary(absolutePath, workspaceRoot)
   validateFilesystemBoundary(absolutePath, workspaceRoot)
-  return editFile(absolutePath, oldString, newString, replaceAll)
+  const result = await editFile(absolutePath, oldString, newString, replaceAll, readHashes?.get(absolutePath))
+  readHashes?.set(result.filePath, contentHash(result.updatedFile))
+  return result
 }
 
 export async function isSymlinkEscape(filePath: string, workspaceRoot: string): Promise<boolean> {

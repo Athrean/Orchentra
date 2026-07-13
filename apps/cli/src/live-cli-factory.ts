@@ -80,6 +80,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     todos: [],
     agentCounter: 0,
     planMode: false,
+    fileReadHashes: new Map(),
   }
 
   // The hook adapter is built before the LiveCli it reports into, so route its
@@ -91,6 +92,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     model: initial.model,
     permissionMode: resolvedPermissionMode,
     provider: initial.provider,
+    providerName: initial.providerName,
     resolveModel,
     tools,
     cwd: options.cwd,

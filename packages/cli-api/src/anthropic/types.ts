@@ -46,13 +46,15 @@ export interface MessageRequest {
 }
 
 export interface ContentBlock {
-  type: 'text' | 'tool_use' | 'tool_result'
+  type: 'text' | 'tool_use' | 'tool_result' | 'thinking'
   text?: string
   id?: string
   name?: string
   input?: unknown
   tool_use_id?: string
   content?: string
+  thinking?: string
+  signature?: string
 }
 
 export interface SystemContentBlock {

@@ -5,6 +5,18 @@ import type { UiCardSection, UiKVRow } from '../ui-output'
 const TABS = ['All', 'Core', 'Workspace', 'Auth', 'Tools'] as const
 type TabName = (typeof TABS)[number]
 
+const QUICK_HINTS: UiCardSection = {
+  title: 'Quick hints',
+  rows: [
+    { key: 'Newline', value: 'Shift+Enter or Alt+Enter' },
+    { key: 'Editor', value: 'Ctrl+X' },
+    { key: 'Palette', value: 'Ctrl+P' },
+    { key: 'Mode', value: 'Shift+Tab' },
+    { key: 'Runtime', value: 'inline TUI; BYOK billing' },
+    { key: 'Usage', value: '/usage shows tokens and estimated cost' },
+  ],
+}
+
 const BUILTIN_CATEGORY: Record<string, TabName> = {
   help: 'Core',
   status: 'Core',
@@ -104,9 +116,14 @@ function pickTab(arg?: string): TabName {
 function sectionsFor(tab: TabName, specs: readonly SlashCommandSpec[]): UiCardSection[] {
   if (tab === 'All') {
     const groups = ['Core', 'Workspace', 'Auth', 'Tools'] as const
-    return groups.map((g) => ({ title: g, rows: rowsForCategory(specs, g) })).filter((s) => s.rows.length > 0)
+    return [
+      ...groups.map((g) => ({ title: g, rows: rowsForCategory(specs, g) })).filter((s) => s.rows.length > 0),
+      QUICK_HINTS,
+    ]
   }
-  return [{ rows: rowsForCategory(specs, tab) }]
+  const sections: UiCardSection[] = [{ rows: rowsForCategory(specs, tab) }]
+  if (tab === 'Core') sections.push(QUICK_HINTS)
+  return sections
 }
 
 function rowsForCategory(specs: readonly SlashCommandSpec[], category: TabName): UiKVRow[] {

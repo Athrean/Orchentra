@@ -1,0 +1,178 @@
+import { describe, expect, test } from 'bun:test'
+import { existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import {
+  FileTraceSink,
+  reconstructTranscript,
+  traceArtifactsDir,
+  traceEventsPath,
+  traceManifestPath,
+  type TraceEvent,
+  type TraceManifest,
+} from '../src/runtime/trace'
+import type { RuntimeEvent } from '../src/runtime/events'
+
+const manifest: TraceManifest = {
+  traceId: 't1',
+  sessionId: 's1',
+  task: 'do the thing',
+  model: 'test-model',
+  provider: 'anthropic',
+  harnessVersion: '0.1.0',
+  systemPromptVersion: 'abc123def456',
+  toolDefinitionsHash: '123abc456def',
+  startedAt: '2026-07-13T00:00:00.000Z',
+  endedAt: '2026-07-13T00:00:05.000Z',
+  latencyMs: 5000,
+  doneReason: 'stop',
+  steps: 2,
+  usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 3, cacheCreationTokens: 0 },
+  billedTokens: 15,
+  cachedTokens: 3,
+  estimatedCostUsd: 0.001,
+  contextSizeCurve: [13, 20],
+  modelCallLatenciesMs: [1200, 900],
+  retries: null,
+  loopDetections: 0,
+  compactions: [],
+  subAgentTraceIds: [],
+  filesChanged: [{ uri: 'src/a.ts', kind: 'file', action: 'modified' }],
+  quirks: { 'test-model': { malformed_args: 1 } },
+  eventCounts: { text: 2, done: 1 },
+  browserState: null,
+  screenshots: null,
+  consoleErrors: null,
+  networkFailures: null,
+  testResults: null,
+  gateDecisions: null,
+  graderResult: null,
+  failureCategory: null,
+}
+
+describe('FileTraceSink', () => {
+  test('appends events as JSONL and writes the manifest', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-'))
+    const sink = new FileTraceSink(cwd, 't1')
+
+    await sink.append({ kind: 'user_message', content: 'hello' })
+    await sink.append({ kind: 'text', delta: 'world' })
+    await sink.finalize(manifest)
+
+    const lines = readFileSync(traceEventsPath(cwd, 't1'), 'utf8').trim().split('\n')
+    expect(lines).toHaveLength(2)
+    expect(JSON.parse(lines[0]!)).toEqual({ kind: 'user_message', content: 'hello' })
+    expect(JSON.parse(lines[1]!)).toEqual({ kind: 'text', delta: 'world' })
+
+    const written = JSON.parse(readFileSync(traceManifestPath(cwd, 't1'), 'utf8')) as TraceManifest
+    expect(written).toEqual(manifest)
+  })
+
+  test('layout matches 12-TRACE-SYSTEM: per-run dir with events, manifest, artifacts', () => {
+    expect(traceEventsPath('/repo', 'r1')).toBe('/repo/.orchentra/traces/r1/events.jsonl')
+    expect(traceManifestPath('/repo', 'r1')).toBe('/repo/.orchentra/traces/r1/manifest.json')
+    expect(traceArtifactsDir('/repo', 'r1')).toBe('/repo/.orchentra/traces/r1/artifacts')
+  })
+
+  test('finalize creates the artifacts directory', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-'))
+    const sink = new FileTraceSink(cwd, 't2')
+    await sink.finalize(manifest)
+    const dir = traceArtifactsDir(cwd, 't2')
+    expect(existsSync(dir)).toBe(true)
+    expect(statSync(dir).isDirectory()).toBe(true)
+  })
+
+  test('redacts secrets before events and manifests reach disk', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-redaction-'))
+    const sink = new FileTraceSink(cwd, 'redacted')
+    const apiKey = `sk-proj-${'a'.repeat(32)}`
+    const bearer = `Bearer ${'b'.repeat(32)}`
+
+    await sink.append({
+      kind: 'tool_result',
+      result: {
+        id: 'tc1',
+        content: `request used ${bearer}`,
+        isError: false,
+        data: { apiKey, inputTokens: 17 },
+      },
+    })
+    await sink.append({
+      kind: 'transcript_snapshot',
+      messages: [{ role: 'user', content: `API_TOKEN=${apiKey}` }],
+    })
+    await sink.finalize({ ...manifest, task: `debug ${apiKey}` })
+
+    const eventsText = readFileSync(traceEventsPath(cwd, 'redacted'), 'utf8')
+    const manifestText = readFileSync(traceManifestPath(cwd, 'redacted'), 'utf8')
+    expect(eventsText).not.toContain(apiKey)
+    expect(eventsText).not.toContain(bearer)
+    expect(manifestText).not.toContain(apiKey)
+    expect(eventsText).toContain('<REDACTED>')
+
+    const first = JSON.parse(eventsText.trim().split('\n')[0]!) as {
+      result: { data: { apiKey: string; inputTokens: number } }
+    }
+    expect(first.result.data.apiKey).toBe('<REDACTED>')
+    expect(first.result.data.inputTokens).toBe(17)
+  })
+})
+
+describe('reconstructTranscript', () => {
+  test('prefers the exact final snapshot over lossy streamed replay', () => {
+    const exact = [
+      { role: 'user' as const, content: 'prior turn' },
+      {
+        role: 'assistant' as const,
+        content: 'answer',
+        thinking: [{ thinking: 'private chain', signature: 'sig-1' }],
+      },
+      { role: 'tool' as const, content: '[trimmed provider copy]', toolCallId: 'tc1' },
+    ]
+    const events: TraceEvent[] = [
+      { kind: 'user_message', content: 'current turn only' },
+      { kind: 'tool_result', result: { id: 'tc1', content: 'full display copy', isError: false } },
+      { kind: 'transcript_snapshot', messages: exact },
+    ]
+
+    expect(reconstructTranscript(events)).toEqual(exact)
+  })
+
+  test('rebuilds a multi-step transcript from events alone', () => {
+    const events: RuntimeEvent[] = [
+      { kind: 'user_message', content: 'do the thing' },
+      { kind: 'tool_use', call: { id: 'tc1', name: 'bash', input: { command: 'ls' } } },
+      { kind: 'tool_result', result: { id: 'tc1', content: 'a.txt', isError: false } },
+      { kind: 'text', delta: 'done ' },
+      { kind: 'text', delta: 'here' },
+      {
+        kind: 'done',
+        reason: 'stop',
+        steps: 2,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      },
+    ]
+    expect(reconstructTranscript(events)).toEqual([
+      { role: 'user', content: 'do the thing' },
+      { role: 'assistant', content: '', toolCalls: [{ id: 'tc1', name: 'bash', input: { command: 'ls' } }] },
+      { role: 'tool', content: 'a.txt', toolCallId: 'tc1' },
+      { role: 'assistant', content: 'done here' },
+    ])
+  })
+
+  test('replays the compaction splice the runtime made', () => {
+    const events: RuntimeEvent[] = [
+      { kind: 'user_message', content: 'first' },
+      { kind: 'text', delta: 'reply one' },
+      { kind: 'user_message', content: 'second' },
+      { kind: 'compacted', droppedMessageCount: 2, tokensSaved: 100, summary: 'user asked; agent replied' },
+      { kind: 'text', delta: 'reply two' },
+    ]
+    expect(reconstructTranscript(events)).toEqual([
+      { role: 'user', content: '[context-compacted] earlier turns summarized:\nuser asked; agent replied' },
+      { role: 'user', content: 'second' },
+      { role: 'assistant', content: 'reply two' },
+    ])
+  })
+})

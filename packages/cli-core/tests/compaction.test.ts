@@ -41,6 +41,37 @@ describe('compact', () => {
     expect(r.messages[3]!.content).toContain('msg-9')
   })
 
+  test('pair-safe boundary: retained window never opens on orphaned tool results', () => {
+    const messages: ChatMessage[] = [
+      { role: 'user', content: `start ${'x'.repeat(100)}` },
+      { role: 'user', content: `context ${'x'.repeat(100)}` },
+      { role: 'assistant', content: '', toolCalls: [{ id: 'tc1', name: 'read', input: {} }] },
+      { role: 'tool', content: 'result 1', toolCallId: 'tc1' },
+      { role: 'tool', content: 'result 2', toolCallId: 'tc2' },
+      { role: 'user', content: 'final' },
+    ]
+    // keepRecent 3 would naively slice at index 3 — right on the tool results,
+    // orphaning them from their assistant tool-call turn.
+    const r = compact({ messages, contextWindowTokens: 10, thresholdRatio: 0.1, keepRecent: 3 })
+    expect(r.compacted).toBe(true)
+    expect(r.messages[0]!.content).toContain('context-compacted')
+    expect(r.messages[1]!.role).toBe('assistant')
+    expect(r.messages[1]!.toolCalls?.[0]?.id).toBe('tc1')
+    expect(r.messages[2]!.role).toBe('tool')
+    expect(r.droppedCount).toBe(2)
+  })
+
+  test('pair-safe boundary: no compaction when walking back reaches the start', () => {
+    const messages: ChatMessage[] = [
+      { role: 'assistant', content: '', toolCalls: [{ id: 'tc1', name: 'read', input: {} }] },
+      { role: 'tool', content: 'result 1', toolCallId: 'tc1' },
+      { role: 'tool', content: 'result 2', toolCallId: 'tc2' },
+    ]
+    const r = compact({ messages, contextWindowTokens: 10, thresholdRatio: 0.1, keepRecent: 1 })
+    expect(r.compacted).toBe(false)
+    expect(r.messages).toEqual(messages)
+  })
+
   test('summary captures tool call IDs', () => {
     const messages: ChatMessage[] = [
       { role: 'user', content: 'do it' },

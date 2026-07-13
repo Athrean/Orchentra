@@ -1,6 +1,8 @@
 import type { Provider, ProviderToolSchema } from './provider'
 import type { ToolLevel } from './permissions'
 import type { RuntimeBudget } from './budget'
+import type { ToolArtifact, ToolEvidence } from './events'
+import type { QuirkCounters } from './quirks'
 
 export interface TaskHandle {
   taskId: string
@@ -31,6 +33,13 @@ export interface SharedToolState {
   todos: TodoItem[]
   agentCounter: number
   planMode: boolean
+  /**
+   * sha256 of each file's full content as last read or written this session,
+   * keyed by absolute path. edit_file checks against it so an edit planned
+   * from a stale read (file changed underneath) is rejected instead of
+   * silently applied to content the model never saw.
+   */
+  fileReadHashes?: Map<string, string>
 }
 
 export interface AskUserOption {
@@ -87,11 +96,39 @@ export interface ToolContext {
    * the nesting tree even though budget already bounds total spend.
    */
   subagentDepth?: number
+  /**
+   * Run-wide per-model deviation counters. The registry records malformed
+   * args / unknown-tool calls here keyed by `model`; sub-agents inherit the
+   * parent's instance so one run yields one set of counters.
+   */
+  quirks?: QuirkCounters
+  /**
+   * Provider backend name and harness version of the hosting run, forwarded
+   * so nested runtimes (sub-agents) record the same identity in their trace
+   * manifests.
+   */
+  providerName?: string
+  harnessVersion?: string
+  /**
+   * Trace destination the host wants nested runtimes (sub-agents spawned by
+   * the `agent` tool) to use. When set, children write here instead of
+   * building their own FileTraceSink — the seam a host uses to route or
+   * silence child traces (tests inject a no-op to keep sub-agents off disk).
+   * Left unset in production so each sub-agent gets its own on-disk trace.
+   */
+  traceSink?: import('./trace').TraceSink
 }
 
 export interface ToolResult {
+  /** Model-facing text — the only field that reaches the provider. */
   content: string
   isError: boolean
+  /** Structured tool-specific payload for programmatic consumers (traces, gates, UIs). */
+  data?: unknown
+  /** Side effects: files/URLs the tool created, modified, or deleted. */
+  artifacts?: ToolArtifact[]
+  /** Machine-checkable proof of what the run did or found. */
+  evidence?: ToolEvidence[]
 }
 
 export interface ToolDefinition {

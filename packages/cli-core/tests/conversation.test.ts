@@ -1,11 +1,24 @@
 import { describe, expect, test } from 'bun:test'
 import { ConversationRuntime, type ConversationConfig, type ConversationDeps } from '../src/runtime/conversation'
+import { RuntimeBudget } from '../src/runtime/budget'
 import type { HookRunner } from '../src/runtime/hooks'
 import type { ChatMessage, Provider, ProviderStreamEvent } from '../src/runtime/provider'
 import type { ToolContext, ToolRegistry, ToolResult } from '../src/runtime/tools'
 import type { RuntimeEvent } from '../src/runtime/events'
 import { buildSystemPrompt } from '../src/runtime/system-prompt'
 import { createEnforcer } from '../src/permissions/enforcer'
+import {
+  reconstructTranscript,
+  traceEventsPath,
+  traceManifestPath,
+  type TraceEvent,
+  type TraceManifest,
+  type TraceSink,
+} from '../src/runtime/trace'
+import { QuirkCounters } from '../src/runtime/quirks'
+import { mkdtempSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 function fakeProvider(responses: ProviderStreamEvent[][]): Provider {
   let callIndex = 0
@@ -49,12 +62,36 @@ function makeDeps(provider: Provider, tools?: ToolRegistry): ConversationDeps {
     systemPrompt: buildSystemPrompt({ staticParts: ['sys'], dynamicParts: [] }),
     // No-op by default so budgeting tests don't hit the real filesystem.
     persistToolOutput: async () => {},
+    persistCompactionNote: async () => {},
+    traceSink: { append: () => {}, finalize: () => {} },
   }
 }
 
-async function collect(runtime: ConversationRuntime, input: string): Promise<RuntimeEvent[]> {
+/** In-memory trace sink capturing everything a run appends + its manifest. */
+function captureTrace(): { sink: TraceSink; events: TraceEvent[]; manifests: TraceManifest[] } {
+  const events: TraceEvent[] = []
+  const manifests: TraceManifest[] = []
+  return {
+    sink: {
+      append: (ev) => {
+        events.push(ev)
+      },
+      finalize: (m) => {
+        manifests.push(m)
+      },
+    },
+    events,
+    manifests,
+  }
+}
+
+async function collect(
+  runtime: ConversationRuntime,
+  input: string,
+  priorMessages?: ChatMessage[],
+): Promise<RuntimeEvent[]> {
   const events: RuntimeEvent[] = []
-  for await (const ev of runtime.run({ userMessage: input })) {
+  for await (const ev of runtime.run({ userMessage: input, priorMessages })) {
     events.push(ev)
   }
   return events
@@ -104,6 +141,39 @@ describe('ConversationRuntime', () => {
     const compacted = events.find((e): e is Extract<RuntimeEvent, { kind: 'compacted' }> => e.kind === 'compacted')
     expect(compacted).toBeDefined()
     expect(compacted!.summary).toBe('SUMMARIZER-RAN')
+  })
+
+  test('compaction persists a durable note to the session NOTES.md path', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'text-delta', delta: 'ok' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const config = makeConfig({ contextWindowTokens: 100, compactionThreshold: 0.1, keepRecentOnCompact: 2 })
+    const notes: Array<{ path: string; note: string }> = []
+    const deps: ConversationDeps = {
+      ...makeDeps(provider),
+      compactionSummarizer: async () => 'SUMMARIZER-RAN',
+      persistCompactionNote: async (path, note) => {
+        notes.push({ path, note })
+      },
+    }
+    const rt = new ConversationRuntime(config, deps)
+    const prior: ChatMessage[] = Array.from({ length: 6 }, (_, i) => ({
+      role: 'user' as const,
+      content: `old message ${i} ${'x'.repeat(80)}`,
+    }))
+
+    for await (const ev of rt.run({ userMessage: 'new task', priorMessages: prior })) {
+      void ev
+    }
+
+    expect(notes.length).toBe(1)
+    expect(notes[0]!.path).toContain('test-session')
+    expect(notes[0]!.path.endsWith('NOTES.md')).toBe(true)
+    expect(notes[0]!.note).toContain('SUMMARIZER-RAN')
+    expect(notes[0]!.note).toContain('## Compaction —')
   })
 
   test('budget exhaustion stops the loop', async () => {
@@ -221,6 +291,43 @@ describe('ConversationRuntime', () => {
     expect(toolResult).toMatchObject({ kind: 'tool_result', result: { content: 'file content', isError: false } })
     const done = events.find((e) => e.kind === 'done')
     expect(done).toMatchObject({ kind: 'done', reason: 'stop' })
+  })
+
+  test('structured data/artifacts/evidence pass through to the tool_result event', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'edit', input: { path: '/a' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'edit', description: 'edit file', inputSchema: {} }],
+      has: (n) => n === 'edit',
+      execute: async () => ({
+        content: 'edited: /a',
+        isError: false,
+        data: { filePath: '/a' },
+        artifacts: [{ uri: '/a', kind: 'file', action: 'modified' }],
+        evidence: [{ kind: 'diff', summary: '1 hunk(s) applied to /a', detail: [{ oldStart: 1 }] }],
+      }),
+    }
+
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    const events = await collect(rt, 'edit file')
+
+    const toolResult = events.find((e) => e.kind === 'tool_result')
+    expect(toolResult).toMatchObject({
+      kind: 'tool_result',
+      result: {
+        content: 'edited: /a',
+        isError: false,
+        data: { filePath: '/a' },
+        artifacts: [{ uri: '/a', kind: 'file', action: 'modified' }],
+        evidence: [{ kind: 'diff', summary: '1 hunk(s) applied to /a' }],
+      },
+    })
   })
 
   test('passes permission mode into tool context', async () => {
@@ -560,15 +667,14 @@ describe('ConversationRuntime', () => {
     const rt = new ConversationRuntime(makeConfig(), makeDeps(provider))
     const events = await collect(rt, 'hi')
 
-    const spanStarts = events.filter((e) => e.kind === 'span_start')
-    const spanEnds = events.filter((e) => e.kind === 'span_end')
+    const spanStarts = events.filter((e): e is Extract<RuntimeEvent, { kind: 'span_start' }> => e.kind === 'span_start')
+    const spanEnds = events.filter((e): e is Extract<RuntimeEvent, { kind: 'span_end' }> => e.kind === 'span_end')
 
-    expect(spanStarts).toHaveLength(1)
-    expect(spanEnds).toHaveLength(1)
+    // One step span plus its nested model_call span.
+    expect(spanStarts.map((s) => s.name)).toEqual(['step', 'model_call'])
+    expect(spanEnds).toHaveLength(2)
 
-    const start = spanStarts[0] as Extract<RuntimeEvent, { kind: 'span_start' }>
-    const end = spanEnds[0] as Extract<RuntimeEvent, { kind: 'span_end' }>
-
+    const start = spanStarts[0]!
     expect(start.name).toBe('step')
     expect(start.attributes?.step).toBe(1)
     expect(typeof start.spanId).toBe('string')
@@ -576,9 +682,15 @@ describe('ConversationRuntime', () => {
     expect(typeof start.startedAt).toBe('string')
     expect(start.parentSpanId).toBeUndefined()
 
-    expect(end.spanId).toBe(start.spanId)
+    const modelStart = spanStarts[1]!
+    expect(modelStart.parentSpanId).toBe(start.spanId)
+
+    const end = spanEnds.find((e) => e.spanId === start.spanId)!
     expect(end.status).toBe('ok')
     expect(typeof end.endedAt).toBe('string')
+    const modelEnd = spanEnds.find((e) => e.spanId === modelStart.spanId)!
+    expect(modelEnd.status).toBe('ok')
+    expect(modelEnd.attributes?.stop_reason).toBe('end_turn')
   })
 
   test('emits nested span around each tool call', async () => {
@@ -651,5 +763,324 @@ describe('ConversationRuntime', () => {
       (e): e is Extract<RuntimeEvent, { kind: 'span_end' }> => e.kind === 'span_end' && e.spanId === toolStart.spanId,
     )!
     expect(toolEnd.status).toBe('error')
+  })
+
+  test('signed thinking blocks survive a tool-use continuation and stream as reasoning', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'thinking-delta', delta: 'inspect ' },
+        { kind: 'thinking-delta', delta: 'the file' },
+        { kind: 'thinking-signature', signature: 'sig-1' },
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: { path: '/a' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read', description: 'read', inputSchema: {} }],
+      has: () => true,
+      execute: async () => ({ content: 'file content', isError: false }),
+    }
+    const rt = new ConversationRuntime(makeConfig(), makeDeps(provider, tools))
+    const events = await collect(rt, 'go')
+
+    const reasoning = events.filter((e): e is Extract<RuntimeEvent, { kind: 'reasoning' }> => e.kind === 'reasoning')
+    expect(reasoning.map((e) => e.delta).join('')).toBe('inspect the file')
+
+    const assistantWithTools = rt.getFinalMessages().find((m) => m.role === 'assistant' && m.toolCalls)
+    expect(assistantWithTools?.thinking).toEqual([{ thinking: 'inspect the file', signature: 'sig-1' }])
+  })
+
+  test('an injected budget carries dollar spend across runs', async () => {
+    let providerCalls = 0
+    const provider: Provider = {
+      async *stream() {
+        providerCalls++
+        yield { kind: 'text-delta', delta: 'hi' } as const
+        // 1000 output tokens at sonnet ($15/M) = $0.015 > the $0.01 cap.
+        yield {
+          kind: 'usage',
+          usage: { inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        } as const
+        yield { kind: 'finish', stopReason: 'end_turn' } as const
+      },
+    }
+    const config = makeConfig({
+      model: 'sonnet',
+      budget: { maxSteps: 10, maxTokens: 1_000_000_000, maxCostUsd: 0.01, model: 'sonnet' },
+    })
+    const budget = new RuntimeBudget(config.budget)
+    const deps: ConversationDeps = { ...makeDeps(provider), budget }
+
+    const first = await collect(new ConversationRuntime(config, deps), 'one')
+    const firstDone = first.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+    expect(firstDone.reason).toBe('cost_exhausted')
+
+    // Second turn: prior spend pushes the run over the cap before the provider
+    // is ever called — the budget survived the turn boundary.
+    const second = await collect(new ConversationRuntime(config, deps), 'two')
+    const secondDone = second.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+    expect(secondDone.reason).toBe('cost_exhausted')
+    expect(providerCalls).toBe(1)
+  })
+
+  test('an injected budget still resets the per-turn step guard', async () => {
+    const turnEvents = (): ProviderStreamEvent[][] => [
+      [
+        { kind: 'tool-use', call: { id: `tc${Math.random()}`, name: 'ping', input: {} } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ]
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'ping', description: 'ping', inputSchema: {} }],
+      has: () => true,
+      execute: async () => ({ content: 'pong', isError: false }),
+    }
+    const config = makeConfig({ budget: { maxSteps: 3, maxTokens: 1_000_000 } })
+    const budget = new RuntimeBudget(config.budget)
+
+    // Each turn consumes 2 steps; with run-carried steps the second turn would
+    // hit maxSteps 3. Both must finish with a clean stop.
+    for (const label of ['one', 'two']) {
+      const deps: ConversationDeps = { ...makeDeps(fakeProvider(turnEvents()), tools), budget }
+      const events = await collect(new ConversationRuntime(config, deps), label)
+      const done = events.find((e) => e.kind === 'done') as Extract<RuntimeEvent, { kind: 'done' }>
+      expect(done.reason).toBe('stop')
+    }
+  })
+})
+
+describe('tracing', () => {
+  function twoStepProvider(): Provider {
+    return fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read', input: { path: '/a' } } },
+        { kind: 'usage', usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 3, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'all ' },
+        { kind: 'text-delta', delta: 'done' },
+        { kind: 'usage', usage: { inputTokens: 8, outputTokens: 2, cacheReadTokens: 0, cacheCreationTokens: 0 } },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+  }
+
+  function readTools(): ToolRegistry {
+    return {
+      list: () => [{ name: 'read', description: 'read file', inputSchema: {} }],
+      has: (n) => n === 'read',
+      execute: async () => ({ content: 'file content', isError: false }),
+    }
+  }
+
+  test('every event lands in the trace and the manifest closes the run', async () => {
+    const trace = captureTrace()
+    const deps: ConversationDeps = {
+      ...makeDeps(twoStepProvider(), readTools()),
+      traceSink: trace.sink,
+      quirks: new QuirkCounters(),
+    }
+    const rt = new ConversationRuntime(makeConfig(), deps)
+    await collect(rt, 'read the file')
+
+    expect(trace.events[0]).toEqual({ kind: 'user_message', content: 'read the file' })
+    const kinds = trace.events.map((e) => e.kind)
+    for (const expected of ['tool_use', 'tool_result', 'text', 'usage', 'done']) {
+      expect(kinds).toContain(expected)
+    }
+
+    const modelSpan = trace.events.find(
+      (e): e is Extract<RuntimeEvent, { kind: 'span_start' }> => e.kind === 'span_start' && e.name === 'model_call',
+    )
+    expect(modelSpan).toBeDefined()
+    expect(modelSpan!.parentSpanId).toBeDefined()
+    expect(modelSpan!.attributes).toMatchObject({ model: 'test' })
+
+    expect(trace.manifests).toHaveLength(1)
+    const manifest = trace.manifests[0]!
+    expect(manifest.sessionId).toBe('test-session')
+    expect(manifest.model).toBe('test')
+    expect(manifest.doneReason).toBe('stop')
+    expect(manifest.steps).toBe(2)
+    expect(manifest.usage).toEqual({ inputTokens: 18, outputTokens: 7, cacheReadTokens: 3, cacheCreationTokens: 0 })
+    expect(manifest.billedTokens).toBe(25)
+    expect(manifest.cachedTokens).toBe(3)
+    expect(manifest.eventCounts.tool_result).toBe(1)
+    expect(manifest.eventCounts.done).toBe(1)
+    expect(manifest.quirks).toEqual({})
+    expect(manifest.traceId.length).toBeGreaterThan(0)
+    expect(manifest.startedAt.length).toBeGreaterThan(0)
+
+    // 12-TRACE-SYSTEM manifest fields
+    expect(manifest.task).toBe('read the file')
+    expect(manifest.provider).toBeNull()
+    expect(manifest.harnessVersion).toBeNull()
+    expect(manifest.systemPromptVersion).toMatch(/^[0-9a-f]{12}$/)
+    expect(manifest.toolDefinitionsHash).toMatch(/^[0-9a-f]{12}$/)
+    expect(manifest.contextSizeCurve).toEqual([13, 8])
+    expect(manifest.modelCallLatenciesMs).toHaveLength(2)
+    expect(manifest.retries).toBeNull()
+    expect(manifest.loopDetections).toBe(0)
+    expect(manifest.compactions).toEqual([])
+    expect(manifest.subAgentTraceIds).toEqual([])
+    expect(manifest.filesChanged).toEqual([])
+    expect(manifest.gateDecisions).toBeNull()
+    expect(manifest.graderResult).toBeNull()
+    expect(manifest.failureCategory).toBeNull()
+  })
+
+  test('manifest records run identity, file artifacts, and sub-agent trace ids', async () => {
+    const trace = captureTrace()
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'agent', input: { prompt: 'fix it' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'agent', description: 'sub-agent', inputSchema: {} }],
+      has: (n) => n === 'agent',
+      execute: async () => ({
+        content: 'child done',
+        isError: false,
+        artifacts: [{ uri: 'src/a.ts', kind: 'file' as const, action: 'modified' as const }],
+        evidence: [{ kind: 'subagent', summary: 'task 1: stop', detail: { traceId: 'child-trace-1' } }],
+      }),
+    }
+    const deps: ConversationDeps = { ...makeDeps(provider, tools), traceSink: trace.sink }
+    const rt = new ConversationRuntime({ ...makeConfig(), providerName: 'anthropic', harnessVersion: '0.1.0' }, deps)
+    await collect(rt, 'delegate the fix')
+
+    const manifest = trace.manifests[0]!
+    expect(manifest.provider).toBe('anthropic')
+    expect(manifest.harnessVersion).toBe('0.1.0')
+    expect(manifest.filesChanged).toEqual([{ uri: 'src/a.ts', kind: 'file', action: 'modified' }])
+    expect(manifest.subAgentTraceIds).toEqual(['child-trace-1'])
+    expect(rt.lastTraceId).toBe(manifest.traceId)
+  })
+
+  test('M1 exit criterion: the full run is reconstructable from its trace alone', async () => {
+    const trace = captureTrace()
+    const deps: ConversationDeps = { ...makeDeps(twoStepProvider(), readTools()), traceSink: trace.sink }
+    const rt = new ConversationRuntime(makeConfig(), deps)
+    await collect(rt, 'read the file')
+
+    const rebuilt = reconstructTranscript(trace.events)
+    expect(rebuilt).toEqual([
+      { role: 'user', content: 'read the file' },
+      { role: 'assistant', content: '', toolCalls: [{ id: 'tc1', name: 'read', input: { path: '/a' } }] },
+      { role: 'tool', content: 'file content', toolCallId: 'tc1' },
+      { role: 'assistant', content: 'all done' },
+    ])
+    expect(rebuilt).toEqual(rt.getFinalMessages())
+  })
+
+  test('v0.3.0 exit criterion: replaying an on-disk manifest+events.jsonl pair reconstructs the run', async () => {
+    // The strongest form of the criterion: a real FileTraceSink writes the
+    // trace to disk, then we read manifest.json and events.jsonl back cold —
+    // no in-memory shortcut — and rebuild the exact run.
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-replay-'))
+    const deps: ConversationDeps = {
+      ...makeDeps(twoStepProvider(), readTools()),
+      // Clear makeDeps' no-op so the runtime builds its own default
+      // FileTraceSink — its trace id then matches rt.lastTraceId on disk.
+      traceSink: undefined,
+    }
+    const rt = new ConversationRuntime({ ...makeConfig({ cwd }) }, deps)
+    const prior: ChatMessage[] = [
+      { role: 'user', content: 'keep this earlier turn' },
+      {
+        role: 'assistant',
+        content: 'earlier answer',
+        thinking: [{ thinking: 'signed reasoning', signature: 'sig-previous' }],
+      },
+    ]
+    await collect(rt, 'read the file', prior)
+    const traceId = rt.lastTraceId!
+
+    const eventLines = readFileSync(traceEventsPath(cwd, traceId), 'utf8').trim().split('\n')
+    const replayedEvents = eventLines.map((l) => JSON.parse(l) as TraceEvent)
+    const replayedManifest = JSON.parse(readFileSync(traceManifestPath(cwd, traceId), 'utf8')) as TraceManifest
+
+    // The events.jsonl alone rebuilds the transcript the runtime ended with.
+    expect(reconstructTranscript(replayedEvents)).toEqual(rt.getFinalMessages())
+    // The manifest agrees on the run's shape.
+    expect(replayedManifest.traceId).toBe(traceId)
+    expect(replayedManifest.doneReason).toBe('stop')
+    expect(replayedManifest.steps).toBe(2)
+    expect(replayedManifest.eventCounts.done).toBe(1)
+    expect(replayedManifest.eventCounts.transcript_snapshot).toBe(1)
+  })
+
+  test('permission denial is a typed permission_decision event', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'write_file', input: { path: 'a.txt', content: 'x' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'write_file', description: 'write', inputSchema: {} }],
+      has: (n) => n === 'write_file',
+      execute: async () => ({ content: 'written', isError: false }),
+    }
+    const deps: ConversationDeps = {
+      ...makeDeps(provider, tools),
+      enforcer: createEnforcer(),
+      enforcerAskUser: async () => 'deny',
+      permissionMode: 'read-only',
+    }
+    const rt = new ConversationRuntime(makeConfig(), deps)
+    const events = await collect(rt, 'write it')
+
+    const decision = events.find(
+      (e): e is Extract<RuntimeEvent, { kind: 'permission_decision' }> => e.kind === 'permission_decision',
+    )
+    expect(decision).toBeDefined()
+    expect(decision!).toMatchObject({ tool: 'write_file', toolCallId: 'tc1', decision: 'deny' })
+    expect(decision!.reason).toBeDefined()
+    const result = events.find((e) => e.kind === 'tool_result')
+    expect(result).toMatchObject({ kind: 'tool_result', result: { isError: true } })
+  })
+
+  test('permission allow is recorded too — traces show what was let through', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'read_file', input: { path: 'a.txt' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'read_file', description: 'read', inputSchema: {} }],
+      has: (n) => n === 'read_file',
+      execute: async () => ({ content: 'contents', isError: false }),
+    }
+    const deps: ConversationDeps = {
+      ...makeDeps(provider, tools),
+      enforcer: createEnforcer(),
+      enforcerAskUser: async () => 'deny',
+      permissionMode: 'read-only',
+    }
+    const rt = new ConversationRuntime(makeConfig(), deps)
+    const events = await collect(rt, 'read it')
+
+    const decision = events.find(
+      (e): e is Extract<RuntimeEvent, { kind: 'permission_decision' }> => e.kind === 'permission_decision',
+    )
+    expect(decision).toMatchObject({ tool: 'read_file', decision: 'allow' })
+    const result = events.find((e) => e.kind === 'tool_result')
+    expect(result).toMatchObject({ kind: 'tool_result', result: { content: 'contents', isError: false } })
   })
 })

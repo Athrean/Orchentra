@@ -1,50 +1,68 @@
-/**
- * Slice 5: `orchentra login orchentra --api-key <k>` must save the
- * bootstrap-issued apiKey through the same `saveCredential('orchentra', …)`
- * path the orchestrator uses. Before this slice the verb errored with
- * `unknown provider: orchentra` because the provider lists in
- * `run-auth.ts` only covered LLM/SCM providers.
- */
+import { describe, expect, test } from 'bun:test'
+import { runLogin, type LoginIo } from '../src/commands/run-auth'
+import type { ProviderKey } from '@orchentra/cli-api'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { getCredential } from '@orchentra/cli-api'
-import { runLogin } from '../src/commands/run-auth'
+function fakeIo(overrides: Partial<LoginIo> = {}): {
+  io: LoginIo
+  output: string[]
+  errors: string[]
+  saves: Array<{ provider: ProviderKey; apiKey: string }>
+} {
+  const output: string[] = []
+  const errors: string[] = []
+  const saves: Array<{ provider: ProviderKey; apiKey: string }> = []
+  return {
+    output,
+    errors,
+    saves,
+    io: {
+      canPrompt: true,
+      pickProvider: async () => null,
+      promptApiKey: async () => null,
+      openBrowser: async () => {},
+      saveApiKey: async (provider, apiKey) => {
+        saves.push({ provider, apiKey })
+      },
+      out: (message) => output.push(message),
+      error: (message) => errors.push(message),
+      ...overrides,
+    },
+  }
+}
 
-describe('runLogin — orchentra provider', () => {
-  let configHome: string
-  let originalEnv: { home: string | undefined }
+describe('runLogin', () => {
+  test('saves an inline API key through shared service', async () => {
+    const state = fakeIo({ apiKey: 'sk-test' })
 
-  beforeEach(() => {
-    configHome = mkdtempSync(join(tmpdir(), 'run-auth-orchentra-home-'))
-    originalEnv = { home: process.env.ORCHENTRA_CONFIG_HOME }
-    process.env.ORCHENTRA_CONFIG_HOME = configHome
+    expect(await runLogin('openai', state.io)).toBe(true)
+    expect(state.saves).toEqual([{ provider: 'openai', apiKey: 'sk-test' }])
+    expect(state.output).toEqual(['✓ saved openai API key'])
   })
 
-  afterEach(() => {
-    rmSync(configHome, { recursive: true, force: true })
-    if (originalEnv.home === undefined) delete process.env.ORCHENTRA_CONFIG_HOME
-    else process.env.ORCHENTRA_CONFIG_HOME = originalEnv.home
+  test('uses provider picker when provider is omitted', async () => {
+    const state = fakeIo({
+      pickProvider: async (options) => {
+        expect(options.map((option) => option.value)).toContain('github')
+        return 'openai'
+      },
+      promptApiKey: async () => 'picked-key',
+    })
+
+    expect(await runLogin(undefined, state.io)).toBe(true)
+    expect(state.saves).toEqual([{ provider: 'openai', apiKey: 'picked-key' }])
   })
 
-  test('login orchentra --api-key <k> saves the credential and exits 0', async () => {
-    const original = process.stderr.write.bind(process.stderr)
-    const errChunks: string[] = []
-    process.stderr.write = ((c: string | Uint8Array): boolean => {
-      errChunks.push(typeof c === 'string' ? c : new TextDecoder().decode(c))
-      return true
-    }) as typeof process.stderr.write
-    try {
-      const code = await runLogin('orchentra', 'orch_test_key')
-      expect(code).toBe(0)
-      // No "unknown provider" regression message on stderr.
-      expect(errChunks.join('')).not.toMatch(/unknown provider/i)
-    } finally {
-      process.stderr.write = original
-    }
-    const cred = getCredential('orchentra')
-    expect(cred?.apiKey).toBe('orch_test_key')
+  test('gives TUI a shell command for terminal-bound OAuth', async () => {
+    const state = fakeIo({ canPrompt: false })
+
+    expect(await runLogin('github', state.io)).toBe(true)
+    expect(state.output).toEqual(['Run in a fresh terminal: orchentra login github'])
+  })
+
+  test('rejects unsupported providers', async () => {
+    const state = fakeIo()
+
+    expect(await runLogin('orchentra', state.io)).toBe(false)
+    expect(state.errors.join('\n')).toContain('unknown provider: orchentra')
   })
 })

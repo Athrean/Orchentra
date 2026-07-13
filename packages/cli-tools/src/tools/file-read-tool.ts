@@ -28,8 +28,26 @@ export const fileReadTool: ToolDefinition = {
     }
 
     try {
-      const result = await readFileInWorkspace(input.path, ctx.workspaceRoots ?? ctx.cwd, input.offset, input.limit)
-      return { content: result.file.content, isError: false }
+      const result = await readFileInWorkspace(
+        input.path,
+        ctx.workspaceRoots ?? ctx.cwd,
+        input.offset,
+        input.limit,
+        ctx.sharedState?.fileReadHashes,
+      )
+      const { filePath, startLine, numLines, totalLines } = result.file
+      return {
+        content: result.file.content,
+        isError: false,
+        data: { filePath, startLine, numLines, totalLines },
+        evidence: [
+          {
+            kind: 'file-read',
+            summary: `read ${filePath} lines ${startLine}–${startLine + numLines - 1} of ${totalLines}`,
+            detail: { filePath, startLine, numLines, totalLines },
+          },
+        ],
+      }
     } catch (e) {
       return { content: `read error: ${(e as Error).message}`, isError: true }
     }

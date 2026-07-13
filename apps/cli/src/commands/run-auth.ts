@@ -1,28 +1,22 @@
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
 import {
+  clearCredential,
+  credentialsPath,
+  getCredential,
+  listCredentialProviders,
   loginGemini,
   loginWithDeviceFlow,
-  saveCredential,
-  clearCredential,
-  listCredentialProviders,
-  getCredential,
-  credentialsPath,
+  saveCredentialAsync,
+  tryLoadKeytar,
   type ProviderKey,
 } from '@orchentra/cli-api'
 import { promptSelect } from '../ui/select'
 import { authStateHint } from './auth-state'
 
 const OAUTH_PROVIDERS: readonly ProviderKey[] = ['gemini', 'github']
-// `orchentra` is an api-key-only provider: the bootstrap orchestrator
-// mints the apiKey on the server side and the CLI persists it via the
-// same `saveCredential('orchentra', …)` path used by `/init`. Listing
-// it here lets `orchentra login orchentra --api-key <k>` accept the
-// manual-fallback path without erroring with "unknown provider".
-// `anthropic` is API-key only — Orchentra does not ship subscription-OAuth
-// sign-in for any provider (see docs/current/canonical.md).
-const API_KEY_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope', 'orchentra']
-const SUPPORTED: readonly ProviderKey[] = [...OAUTH_PROVIDERS, ...API_KEY_PROVIDERS]
+const API_KEY_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope']
+export const LOGIN_PROVIDERS: readonly ProviderKey[] = [...OAUTH_PROVIDERS, ...API_KEY_PROVIDERS]
 
 const GITHUB_OAUTH_CLIENT_ID = process.env['ORCHENTRA_GITHUB_OAUTH_CLIENT_ID'] ?? 'Iv1.b507a08c87ecfe98'
 
@@ -33,181 +27,152 @@ const PROVIDER_LABELS: Partial<Record<ProviderKey, string>> = {
   openai: 'OpenAI',
   xai: 'xAI (Grok)',
   dashscope: 'DashScope (Qwen)',
-  orchentra: 'Orchentra (bootstrap apiKey)',
 }
 
-export async function runLogin(provider?: string, apiKey?: string): Promise<number> {
-  let lower: ProviderKey
+export interface LoginProviderOption {
+  readonly value: ProviderKey
+  readonly label: string
+  readonly hint: string
+}
+
+export interface LoginIo {
+  readonly apiKey?: string
+  readonly canPrompt: boolean
+  pickProvider(options: readonly LoginProviderOption[]): Promise<ProviderKey | null>
+  promptApiKey(provider: ProviderKey): Promise<string | null>
+  openBrowser(url: string): Promise<void>
+  saveApiKey(provider: ProviderKey, apiKey: string): Promise<void>
+  out(message: string): void
+  error(message: string): void
+}
+
+export async function runLogin(provider: string | undefined, io: LoginIo): Promise<boolean> {
+  let selected: ProviderKey
   if (!provider) {
-    const picked = await pickProvider()
-    if (!picked) return 0
-    lower = picked
+    if (!io.canPrompt) {
+      io.error('login: provider required')
+      return false
+    }
+    const picked = await io.pickProvider(providerOptions())
+    if (!picked) {
+      io.out('cancelled')
+      return true
+    }
+    selected = picked
   } else {
-    lower = provider.toLowerCase() as ProviderKey
-    if (!SUPPORTED.includes(lower)) {
-      process.stderr.write(`unknown provider: ${provider}\n`)
-      process.stderr.write(`supported: ${SUPPORTED.join(', ')}\n`)
-      return 1
+    selected = provider.toLowerCase() as ProviderKey
+    if (!LOGIN_PROVIDERS.includes(selected)) {
+      io.error(`unknown provider: ${provider}\nsupported: ${LOGIN_PROVIDERS.join(', ')}`)
+      return false
     }
   }
 
-  if (apiKey) {
-    const path = saveCredential(lower, { apiKey })
-    process.stdout.write(`✓ saved ${lower} API key → ${path}\n`)
-    return 0
-  }
-
   try {
-    if (lower === 'gemini') return await signInGemini()
-    if (lower === 'github') return await signInGithub()
-    if (API_KEY_PROVIDERS.includes(lower)) return await signInWithApiKey(lower)
-    process.stderr.write(`no login flow for ${lower}\n`)
-    return 1
-  } catch (err) {
-    process.stderr.write(`login failed: ${(err as Error).message}\n`)
-    return 1
+    if (io.apiKey) {
+      await io.saveApiKey(selected, io.apiKey)
+      io.out(`✓ saved ${selected} API key`)
+      return true
+    }
+
+    if (!io.canPrompt) {
+      const keyHint = API_KEY_PROVIDERS.includes(selected) ? ' --api-key <key>' : ''
+      io.out(`Run in a fresh terminal: orchentra login ${selected}${keyHint}`)
+      return true
+    }
+
+    if (selected === 'gemini') return await signInGemini(io)
+    if (selected === 'github') return await signInGitHub(io)
+    return await signInWithApiKey(selected, io)
+  } catch (error) {
+    io.error(`login failed: ${error instanceof Error ? error.message : String(error)}`)
+    return false
   }
 }
 
-async function pickProvider(): Promise<ProviderKey | null> {
-  const result = await promptSelect<ProviderKey>({
-    title: 'Choose a provider to sign in:',
-    options: SUPPORTED.map((p) => ({
-      value: p,
-      label: PROVIDER_LABELS[p] ?? p,
-      hint: authStateHint(p),
-    })),
-  })
-  if (result.type === 'cancelled') {
-    process.stdout.write('cancelled\n')
-    return null
+export function createTerminalLoginIo(apiKey?: string): LoginIo {
+  return {
+    ...(apiKey ? { apiKey } : {}),
+    canPrompt: true,
+    pickProvider: async (options) => {
+      const result = await promptSelect<ProviderKey>({
+        title: 'Choose a provider to sign in:',
+        options: [...options],
+      })
+      return result.type === 'cancelled' ? null : result.value
+    },
+    promptApiKey: async (provider) => readLineFromStdin(`API key for ${PROVIDER_LABELS[provider] ?? provider}: `),
+    openBrowser: openInBrowser,
+    saveApiKey: saveLoginApiKey,
+    out: (message) => process.stdout.write(withNewline(message)),
+    error: (message) => process.stderr.write(withNewline(message)),
   }
-  return result.value
 }
 
-async function signInGemini(): Promise<number> {
-  printHeader('Sign in with Google', 'Use your Google account for Gemini.')
-  const r = await loginGemini({
+export function createNonInteractiveLoginIo(options: {
+  readonly apiKey?: string
+  readonly out: (message: string) => void
+  readonly error: (message: string) => void
+}): LoginIo {
+  return {
+    ...(options.apiKey ? { apiKey: options.apiKey } : {}),
+    canPrompt: false,
+    pickProvider: async () => null,
+    promptApiKey: async () => null,
+    openBrowser: async () => {},
+    saveApiKey: saveLoginApiKey,
+    out: options.out,
+    error: options.error,
+  }
+}
+
+export async function saveLoginApiKey(provider: ProviderKey, apiKey: string): Promise<void> {
+  const shim = await tryLoadKeytar()
+  await saveCredentialAsync(provider, { apiKey }, undefined, shim)
+}
+
+function providerOptions(): LoginProviderOption[] {
+  return LOGIN_PROVIDERS.map((value) => ({
+    value,
+    label: PROVIDER_LABELS[value] ?? value,
+    hint: authStateHint(value),
+  }))
+}
+
+async function signInGemini(io: LoginIo): Promise<boolean> {
+  io.out('Sign in with Google — use your Google account for Gemini.')
+  const result = await loginGemini({
     onAuthUrl: async (url) => {
-      await openInBrowser(url)
-      process.stdout.write('\n  A browser tab has opened. Approve access to continue.\n')
-      process.stdout.write(`  If the browser didn't open, visit:\n  \x1b[2m${url}\x1b[0m\n\n`)
-      process.stdout.write('  Waiting for browser…\n')
+      await io.openBrowser(url)
+      io.out(`Approve access in your browser. If it did not open, visit:\n${url}\nWaiting for browser…`)
     },
   })
-  const who = r.accountEmail ? `  \x1b[2m(${r.accountEmail})\x1b[0m` : ''
-  process.stdout.write(`\n\x1b[32m✓ Connected to Gemini\x1b[0m${who}\n`)
-  return 0
+  const account = result.accountEmail ? ` (${result.accountEmail})` : ''
+  io.out(`✓ Connected to Gemini${account}`)
+  return true
 }
 
-async function signInGithub(): Promise<number> {
-  printHeader('Sign in to GitHub', 'Device-flow sign-in for PRs, issues, and Actions.')
-  const r = await loginWithDeviceFlow({
+async function signInGitHub(io: LoginIo): Promise<boolean> {
+  io.out('Sign in to GitHub — device flow for PRs, issues, and Actions.')
+  const result = await loginWithDeviceFlow({
     clientId: GITHUB_OAUTH_CLIENT_ID,
     onUserCode: ({ userCode, verificationUri }) => {
-      process.stdout.write(`\n  1. Open \x1b[36m${verificationUri}\x1b[0m\n`)
-      process.stdout.write(`  2. Enter code: \x1b[1m${userCode}\x1b[0m\n\n`)
-      process.stdout.write('  Waiting for authorization…\n')
+      io.out(`Open ${verificationUri}\nEnter code: ${userCode}\nWaiting for authorization…`)
     },
   })
-  process.stdout.write(
-    `\n\x1b[32m✓ Connected to GitHub\x1b[0m${r.persistedPath ? `  \x1b[2m(${r.persistedPath})\x1b[0m` : ''}\n`,
-  )
-  return 0
+  const path = result.persistedPath ? ` (${result.persistedPath})` : ''
+  io.out(`✓ Connected to GitHub${path}`)
+  return true
 }
 
-async function signInWithApiKey(provider: ProviderKey): Promise<number> {
-  const label = PROVIDER_LABELS[provider] ?? provider
-  const envVars: Partial<Record<ProviderKey, string>> = {
-    openai: 'OPENAI_API_KEY',
-    xai: 'XAI_API_KEY',
-    dashscope: 'DASHSCOPE_API_KEY',
-  }
-  const envVar = envVars[provider]
-  const subtitle = envVar
-    ? `API key is saved locally. Or set ${envVar} in your shell instead.`
-    : 'API key is saved locally to ~/.config/orchentra/credentials.json.'
-  printHeader(`Sign in to ${label}`, subtitle)
-  process.stdout.write('\n')
-  const key = (await readLineFromStdin('  API key: ')).trim()
+async function signInWithApiKey(provider: ProviderKey, io: LoginIo): Promise<boolean> {
+  const key = (await io.promptApiKey(provider))?.trim() ?? ''
   if (!key) {
-    process.stdout.write('\n  cancelled\n')
-    return 0
+    io.out('cancelled')
+    return true
   }
-  const path = saveCredential(provider, { apiKey: key })
-  process.stdout.write(`\n\x1b[32m✓ Saved ${provider} API key\x1b[0m  \x1b[2m(${path})\x1b[0m\n`)
-  return 0
-}
-
-function printHeader(title: string, subtitle: string): void {
-  process.stdout.write('\n')
-  process.stdout.write(`  \x1b[1m${title}\x1b[0m\n`)
-  process.stdout.write(`  \x1b[2m${subtitle}\x1b[0m\n`)
-}
-
-export async function runLogout(provider: string): Promise<number> {
-  const lower = provider.toLowerCase() as ProviderKey
-  if (!SUPPORTED.includes(lower)) {
-    process.stderr.write(`unknown provider: ${provider}\n`)
-    return 1
-  }
-  const cleared = clearCredential(lower)
-  if (cleared) process.stdout.write(`✓ cleared stored credentials for ${lower}\n`)
-  else process.stdout.write(`no stored credentials for ${lower}\n`)
-  return 0
-}
-
-export async function runAuthStatus(): Promise<number> {
-  process.stdout.write(`Credential store: ${credentialsPath()}\n\n`)
-  const signedIn = listCredentialProviders()
-  const rows: Array<{ p: string; s: string }> = []
-  for (const p of SUPPORTED) {
-    rows.push({ p, s: describe(p, signedIn.includes(p)) })
-  }
-  const width = Math.max(...rows.map((r) => r.p.length))
-  for (const r of rows) {
-    process.stdout.write(`  ${r.p.padEnd(width)}  ${r.s}\n`)
-  }
-  process.stdout.write('\nEnv vars override stored credentials.\n')
-  return 0
-}
-
-function describe(provider: ProviderKey, hasStored: boolean): string {
-  const envMap: Record<ProviderKey, readonly string[]> = {
-    anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
-    gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_OAUTH_TOKEN'],
-    openai: ['OPENAI_API_KEY'],
-    openrouter: ['OPENROUTER_API_KEY'],
-    xai: ['XAI_API_KEY'],
-    dashscope: ['DASHSCOPE_API_KEY'],
-    github: ['ORCHENTRA_GITHUB_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN'],
-    aws: [],
-    gcp: [],
-    azure: [],
-    orchentra: ['ORCHENTRA_API_KEY'],
-  }
-  for (const v of envMap[provider] ?? []) {
-    if (process.env[v] && process.env[v]!.trim()) return `env:${v}`
-  }
-  if (!hasStored) return 'not signed in'
-  const c = getCredential(provider)
-  if (!c) return 'not signed in'
-  const bits: string[] = []
-  if (c.accessToken) bits.push('oauth')
-  if (c.apiKey) bits.push('api-key')
-  if (c.accountEmail) bits.push(c.accountEmail)
-  if (c.expiresAt) {
-    const secs = Math.round((c.expiresAt - Date.now()) / 1000)
-    bits.push(secs > 0 ? `expires ${formatSecs(secs)}` : 'expired (will refresh)')
-  }
-  return `stored (${bits.join(', ')})`
-}
-
-function formatSecs(s: number): string {
-  if (s < 60) return `${s}s`
-  if (s < 3600) return `${Math.round(s / 60)}m`
-  if (s < 86400) return `${Math.round(s / 3600)}h`
-  return `${Math.round(s / 86400)}d`
+  await io.saveApiKey(provider, key)
+  io.out(`✓ Saved ${provider} API key`)
+  return true
 }
 
 async function readLineFromStdin(prompt: string): Promise<string> {
@@ -221,10 +186,10 @@ async function readLineFromStdin(prompt: string): Promise<string> {
 
 async function openInBrowser(url: string): Promise<void> {
   const platform = process.platform
-  const cmd = platform === 'darwin' ? 'open' : platform === 'win32' ? 'start' : 'xdg-open'
-  try {
-    await new Promise<void>((resolve) => {
-      const child = spawn(cmd, platform === 'win32' ? ['', url] : [url], {
+  const command = platform === 'darwin' ? 'open' : platform === 'win32' ? 'start' : 'xdg-open'
+  await new Promise<void>((resolve) => {
+    try {
+      const child = spawn(command, platform === 'win32' ? ['', url] : [url], {
         stdio: 'ignore',
         detached: true,
         shell: platform === 'win32',
@@ -233,8 +198,71 @@ async function openInBrowser(url: string): Promise<void> {
       child.on('exit', () => resolve())
       child.unref()
       setTimeout(resolve, 500)
-    })
-  } catch {
-    /* ignore */
+    } catch {
+      resolve()
+    }
+  })
+}
+
+function withNewline(message: string): string {
+  return message.endsWith('\n') ? message : `${message}\n`
+}
+
+export async function runLogout(provider: string): Promise<number> {
+  const selected = provider.toLowerCase() as ProviderKey
+  if (!LOGIN_PROVIDERS.includes(selected)) {
+    process.stderr.write(`unknown provider: ${provider}\n`)
+    return 1
   }
+  const cleared = clearCredential(selected)
+  process.stdout.write(
+    cleared ? `✓ cleared stored credentials for ${selected}\n` : `no stored credentials for ${selected}\n`,
+  )
+  return 0
+}
+
+export async function runAuthStatus(): Promise<number> {
+  process.stdout.write(`Credential store: ${credentialsPath()}\n\n`)
+  const signedIn = listCredentialProviders()
+  const rows = LOGIN_PROVIDERS.map((provider) => ({
+    provider,
+    status: describe(provider, signedIn.includes(provider)),
+  }))
+  const width = Math.max(...rows.map((row) => row.provider.length))
+  for (const row of rows) process.stdout.write(`  ${row.provider.padEnd(width)}  ${row.status}\n`)
+  process.stdout.write('\nEnv vars override stored credentials.\n')
+  return 0
+}
+
+function describe(provider: ProviderKey, hasStored: boolean): string {
+  const envMap: Partial<Record<ProviderKey, readonly string[]>> = {
+    anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
+    gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_OAUTH_TOKEN'],
+    openai: ['OPENAI_API_KEY'],
+    xai: ['XAI_API_KEY'],
+    dashscope: ['DASHSCOPE_API_KEY'],
+    github: ['ORCHENTRA_GITHUB_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN'],
+  }
+  for (const variable of envMap[provider] ?? []) {
+    if (process.env[variable]?.trim()) return `env:${variable}`
+  }
+  if (!hasStored) return 'not signed in'
+  const credential = getCredential(provider)
+  if (!credential) return 'not signed in'
+  const bits: string[] = []
+  if (credential.accessToken) bits.push('oauth')
+  if (credential.apiKey) bits.push('api-key')
+  if (credential.accountEmail) bits.push(credential.accountEmail)
+  if (credential.expiresAt) {
+    const seconds = Math.round((credential.expiresAt - Date.now()) / 1000)
+    bits.push(seconds > 0 ? `expires ${formatSeconds(seconds)}` : 'expired (will refresh)')
+  }
+  return `stored (${bits.join(', ')})`
+}
+
+function formatSeconds(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h`
+  return `${Math.round(seconds / 86400)}d`
 }

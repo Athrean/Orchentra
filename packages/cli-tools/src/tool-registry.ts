@@ -1,5 +1,6 @@
 import {
   requiredModeForLevel,
+  validateToolArgs,
   type ToolRegistry,
   type ToolDefinition,
   type ToolContext,
@@ -89,7 +90,25 @@ export class DefaultToolRegistry implements ToolRegistry {
   async execute(name: string, args: unknown, ctx: ToolContext): Promise<ToolResult> {
     const tool = this.tools.get(name)
     if (!tool) {
+      ctx.quirks?.record(ctx.model ?? 'unknown', 'unknown_tool')
       return { content: `unsupported tool: ${name}`, isError: true }
+    }
+    // One validation choke point: malformed args fail here with a typed
+    // error instead of wherever each tool happens to read its input.
+    const problems = validateToolArgs(tool.inputSchema, args)
+    if (problems.length > 0) {
+      ctx.quirks?.record(ctx.model ?? 'unknown', 'malformed_args')
+      return {
+        content: `invalid arguments for tool ${name}: ${problems.join('; ')}`,
+        isError: true,
+        evidence: [
+          {
+            kind: 'arg-validation',
+            summary: `${problems.length} validation problem(s) rejected before dispatch`,
+            detail: { tool: name, problems },
+          },
+        ],
+      }
     }
     return tool.execute(args, ctx)
   }

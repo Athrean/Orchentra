@@ -203,7 +203,9 @@ describe('scenario harness', () => {
     expect(result.doneReason).toBe('budget_exhausted')
     expect(result.totalTokens).toBe(33)
     expect(requests).toHaveLength(2)
-    expect(toolResult(result.events, 'agent-budget')?.content).toContain('parent budget exhausted after 1 tool call(s)')
+    // The runtime-homed sub-agent aborts as soon as the exhausting usage lands,
+    // before executing the queued tool call (the old hand loop ran it first).
+    expect(toolResult(result.events, 'agent-budget')?.content).toContain('parent budget exhausted after 0 tool call(s)')
   })
 
   test('agent scenario: tasks fan out into independent sub-agent provider turns and labelled results', async () => {

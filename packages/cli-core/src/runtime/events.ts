@@ -11,13 +11,44 @@ export interface ToolCall {
   input: unknown
 }
 
+/**
+ * A file, directory, or URL a tool produced or changed. Artifacts point at
+ * side effects; read-only inspection belongs in `data`, not here.
+ */
+export interface ToolArtifact {
+  /** Absolute path or URL of the affected thing. */
+  uri: string
+  kind: 'file' | 'directory' | 'url' | 'other'
+  action: 'created' | 'modified' | 'deleted'
+}
+
+/**
+ * Machine-checkable proof of what a tool run did or found — diff hunks, an
+ * exit code, structured diagnostics. `content` remains the model-facing text;
+ * evidence is for the harness (traces, completion gates, UIs) and is never
+ * sent back to the provider.
+ */
+export interface ToolEvidence {
+  /** Category, e.g. 'diff', 'exit-status', 'diagnostics', 'matches', 'arg-validation'. */
+  kind: string
+  /** One-line human-readable statement of what the evidence shows. */
+  summary: string
+  /** Structured payload backing the summary (hunks, findings, counts…). */
+  detail?: unknown
+}
+
 export interface ToolResultPayload {
   id: string
   content: string
   isError: boolean
+  /** Structured tool-specific payload for programmatic consumers. Not model input. */
+  data?: unknown
+  artifacts?: ToolArtifact[]
+  evidence?: ToolEvidence[]
 }
 
-export type DoneReason = 'stop' | 'budget_exhausted' | 'aborted' | 'error' | 'max_steps' | 'cost_exhausted'
+export type DoneReason =
+  'stop' | 'budget_exhausted' | 'aborted' | 'error' | 'max_steps' | 'cost_exhausted' | 'loop_detected'
 
 export interface TextEvent {
   kind: 'text'
@@ -85,6 +116,30 @@ export interface ToolOutputBudgetedEvent {
   originalChars: number
   keptChars: number
   droppedChars: number
+}
+
+/**
+ * Emitted when the loop detector breaks a run: one normalized tool-call
+ * signature repeated too many times within the recent-call window.
+ */
+export interface LoopDetectedEvent {
+  kind: 'loop_detected'
+  toolName: string
+  signature: string
+  count: number
+}
+
+/**
+ * Typed record of a permission-enforcer decision for a tool call. Emitted
+ * only when an enforcer actually ran — never synthesized — so traces show
+ * what was allowed or denied and why.
+ */
+export interface PermissionDecisionEvent {
+  kind: 'permission_decision'
+  tool: string
+  toolCallId: string
+  decision: 'allow' | 'deny'
+  reason?: string
 }
 
 /** Emitted when a failure→resolution memory is auto-captured after a turn. */
@@ -155,6 +210,8 @@ export type RuntimeEvent =
   | CompactedEvent
   | CostWarningEvent
   | ToolOutputBudgetedEvent
+  | LoopDetectedEvent
+  | PermissionDecisionEvent
   | MemorySavedEvent
   | HookProgressRuntimeEvent
   | ErrorEvent

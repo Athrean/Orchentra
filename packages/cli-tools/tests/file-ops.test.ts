@@ -68,12 +68,12 @@ describe('editFile', () => {
     expect(editFile(path, 'not found', 'replacement', false)).rejects.toThrow('not found')
   })
 
-  test('replaces first occurrence only', async () => {
+  test('rejects an ambiguous old_string instead of silently replacing the first occurrence', async () => {
     const path = tempPath('edit-first.txt')
     await writeFile(path, 'alpha beta alpha')
-    await editFile(path, 'alpha', 'omega', false)
+    await expect(editFile(path, 'alpha', 'omega', false)).rejects.toThrow(/matches 2 times/)
     const readBack = await readFile(path)
-    expect(readBack.file.content).toBe('omega beta alpha')
+    expect(readBack.file.content).toBe('alpha beta alpha')
   })
 })
 

@@ -1,24 +1,30 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { RuntimeBudget, type BudgetConfig, type BudgetState } from './budget'
 import {
   addUsage,
   emptyUsage,
   type DoneReason,
+  type PermissionDecisionEvent,
   type RuntimeEvent,
   type SpanAttributeValue,
+  type ToolArtifact,
   type ToolCall,
   type ToolResultPayload,
   type UsageTotals,
 } from './events'
 import { compact, compactWithSummary, shouldCompact, type LlmSummarizer, type TokenEstimator } from './compaction'
+import { LoopDetector, type LoopDetectionConfig } from './loop-detector'
+import type { QuirkCounters } from './quirks'
 import { budgetToolOutput } from './tool-output-budget'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
-import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent } from './provider'
+import { appendCompactionNote, compactionNotesPath, renderCompactionNote } from './compaction-notes'
+import { FileTraceSink, type TraceSink, type TraceManifest } from './trace'
+import { billedTokens, cachedTokens, estimatedCostUsd } from './usage'
+import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
 import type { AskUserHandler, SharedToolState, ToolContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
-import type { PermissionEnforcer } from './permission-enforcer'
 import type { Enforcer } from '../permissions/enforcer'
 
 function exhaustionReason(by: BudgetState['exhaustedBy']): DoneReason {
@@ -38,19 +44,33 @@ export interface ConversationConfig {
   /** Max chars of a tool result sent to the provider; over this it's trimmed (head+tail). 0 disables. */
   toolOutputBudgetChars?: number
   budget: BudgetConfig
+  /**
+   * Repeated-tool-call guardrail. Defaults on; set `repeatThreshold: 0` to
+   * disable. See LoopDetector for the window semantics.
+   */
+  loopDetection?: LoopDetectionConfig
   sessionId: string
   cwd: string
   effort?: EffortTier
   thinkingTokenBudget?: number
   estimator?: TokenEstimator
+  /** Provider backend name, recorded in the trace manifest when known. */
+  providerName?: string
+  /** Harness (CLI) version, recorded in the trace manifest when known. */
+  harnessVersion?: string
 }
 
 export interface ConversationDeps {
   provider: Provider
   tools: ToolRegistry
   systemPrompt: SystemPrompt
+  /**
+   * Run-scoped budget shared across turns (and, via ToolContext, sub-agent
+   * calls) within one invocation. When absent the runtime creates a
+   * turn-scoped budget from `config.budget`.
+   */
+  budget?: RuntimeBudget
   hookRunner?: HookRunner
-  permissionEnforcer?: PermissionEnforcer
   enforcer?: Enforcer
   enforcerAskUser?: import('../permissions/enforcer').AskUser
   enforcerStore?: import('../permissions/store').PermissionStore
@@ -72,6 +92,15 @@ export interface ConversationDeps {
    * Injectable so tests/hosts can avoid real disk I/O or redirect storage.
    */
   persistToolOutput?: (path: string, content: string) => Promise<void>
+  /** Override for tests; defaults to appending the note to the session's NOTES.md. */
+  persistCompactionNote?: (path: string, note: string) => Promise<void>
+  /**
+   * Trace destination for this runtime's runs. Defaults to a FileTraceSink
+   * writing per-run events.jsonl + manifest.json under
+   * `.orchentra/traces/<run-id>/`, so every run — including sub-agent runs —
+   * leaves an auditable trace unless a test injects a no-op.
+   */
+  traceSink?: TraceSink
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -79,15 +108,54 @@ export interface ConversationDeps {
   sharedState?: SharedToolState
   askUser?: AskUserHandler
   workspaceRoots?: readonly string[]
+  /**
+   * Nesting depth when this runtime drives a sub-agent. Forwarded into every
+   * ToolContext so a nested `agent` call sees its own depth and the recursion
+   * cap holds down the tree.
+   */
+  subagentDepth?: number
+  /**
+   * Run-wide per-model deviation counters (malformed args, unknown tools).
+   * Forwarded into every ToolContext; pass the parent's instance into
+   * sub-agent runtimes so one run accumulates one set of counters.
+   */
+  quirks?: QuirkCounters
 }
 
 export interface RunInput {
   userMessage: string
   priorMessages?: ChatMessage[]
+  /** Compact prior context before this turn, regardless of threshold. */
+  forceCompaction?: boolean
+}
+
+interface ActiveTrace {
+  sink: TraceSink
+  traceId: string
+  startedAt: string
+  task: string
+  systemPromptVersion: string
+  toolDefinitionsHash: string
+  eventCounts: Record<string, number>
+  contextSizeCurve: number[]
+  // Open model_call spans (spanId → epoch ms) so span_end can close latency.
+  modelCallStarts: Map<string, number>
+  modelCallLatenciesMs: number[]
+  compactions: { droppedMessageCount: number; tokensSaved: number }[]
+  filesChanged: ToolArtifact[]
+  subAgentTraceIds: string[]
+}
+
+function versionHash(content: string): string {
+  return createHash('sha256').update(content).digest('hex').slice(0, 12)
 }
 
 export class ConversationRuntime {
   private finalMessages: ChatMessage[] = []
+  // Per-run trace state; set at loop start so emit() can append every event.
+  // A runtime never runs concurrently with itself, so one slot suffices.
+  private trace: ActiveTrace | null = null
+  private lastTraceIdValue: string | null = null
 
   constructor(
     private readonly config: ConversationConfig,
@@ -107,11 +175,68 @@ export class ConversationRuntime {
     return this.finalMessages
   }
 
+  /**
+   * Trace id of the most recent run (the run's directory name under
+   * `.orchentra/traces/`). Hosts spawning this runtime — the agent tool in
+   * particular — use it to link the child trace from the parent manifest.
+   */
+  get lastTraceId(): string | null {
+    return this.lastTraceIdValue
+  }
+
   private async *loop(input: RunInput): AsyncIterable<RuntimeEvent> {
-    const budget = new RuntimeBudget(this.config.budget)
-    const messages: ChatMessage[] = [...(input.priorMessages ?? []), { role: 'user', content: input.userMessage }]
+    const budget = this.deps.budget ?? new RuntimeBudget(this.config.budget)
+    budget.beginTurn()
+    const loopDetector = new LoopDetector(this.config.loopDetection)
+    const messages: ChatMessage[] = [...(input.priorMessages ?? [])]
     this.finalMessages = messages
     const { provider, tools, systemPrompt } = this.deps
+
+    const traceId = this.newId()
+    this.lastTraceIdValue = traceId
+    this.trace = {
+      sink: this.deps.traceSink ?? new FileTraceSink(this.config.cwd, traceId),
+      traceId,
+      startedAt: this.now(),
+      task: input.userMessage,
+      systemPromptVersion: versionHash(systemPrompt.static),
+      toolDefinitionsHash: versionHash(JSON.stringify(tools.list())),
+      eventCounts: {},
+      contextSizeCurve: [],
+      modelCallStarts: new Map(),
+      modelCallLatenciesMs: [],
+      compactions: [],
+      filesChanged: [],
+      subAgentTraceIds: [],
+    }
+    if (input.forceCompaction) {
+      // Explicit compaction belongs to the runtime too: the same boundary is
+      // persisted, emitted, session-recorded, and included in the manifest.
+      // Keep the current user message outside the dropped history, matching
+      // the command's existing "compact before the next turn" semantics.
+      const compaction = await this.maybeCompact(messages, true)
+      if (compaction) {
+        messages.splice(0, messages.length, ...compaction.messages)
+        const persistNote = this.deps.persistCompactionNote ?? appendCompactionNote
+        await persistNote(
+          compactionNotesPath(this.config.cwd, this.config.sessionId),
+          renderCompactionNote(this.now(), compaction),
+        )
+        yield* this.emit({
+          kind: 'compacted',
+          droppedMessageCount: compaction.droppedCount,
+          tokensSaved: compaction.tokensSaved,
+          summary: compaction.summary,
+        })
+      }
+    }
+
+    messages.push({ role: 'user', content: input.userMessage })
+
+    // Trace-only record of the run's input: consumers render the user message
+    // themselves, so it is appended to the trace without entering the event
+    // stream — reconstruction needs it, UIs must not see it twice.
+    await this.trace.sink.append({ kind: 'user_message', content: input.userMessage })
 
     while (true) {
       if (this.deps.signal?.aborted) {
@@ -138,6 +263,13 @@ export class ConversationRuntime {
       const compaction = await this.maybeCompact(messages)
       if (compaction) {
         messages.splice(0, messages.length, ...compaction.messages)
+        // Durable artifact: the summary the model will act on also lands on
+        // disk, so dropped history stays auditable after the run.
+        const persistNote = this.deps.persistCompactionNote ?? appendCompactionNote
+        await persistNote(
+          compactionNotesPath(this.config.cwd, this.config.sessionId),
+          renderCompactionNote(this.now(), compaction),
+        )
         yield* this.emit({
           kind: 'compacted',
           droppedMessageCount: compaction.droppedCount,
@@ -168,8 +300,24 @@ export class ConversationRuntime {
         signal: this.deps.signal,
       }
 
+      const modelSpanId = this.newId()
+      yield* this.emit({
+        kind: 'span_start',
+        spanId: modelSpanId,
+        parentSpanId: stepSpanId,
+        name: 'model_call',
+        startedAt: this.now(),
+        attributes: { model: this.config.model },
+      })
       const turn = await this.runTurn(provider.stream(request), budget)
       for (const ev of turn.events) yield* this.emit(ev)
+      yield* this.emit({
+        kind: 'span_end',
+        spanId: modelSpanId,
+        endedAt: this.now(),
+        status: turn.error ? 'error' : 'ok',
+        attributes: { stop_reason: turn.stopReason, tool_calls: turn.toolCalls.length },
+      })
 
       if (this.deps.signal?.aborted) {
         yield* this.emit({
@@ -218,6 +366,7 @@ export class ConversationRuntime {
           role: 'assistant',
           content: turn.text,
           toolCalls: turn.toolCalls.length > 0 ? turn.toolCalls : undefined,
+          thinking: turn.thinking.length > 0 ? turn.thinking : undefined,
         })
       }
 
@@ -247,7 +396,39 @@ export class ConversationRuntime {
         return
       }
 
-      for (const call of turn.toolCalls) {
+      for (let callIndex = 0; callIndex < turn.toolCalls.length; callIndex++) {
+        const call = turn.toolCalls[callIndex]!
+        const check = loopDetector.record(call)
+        if (check.looping) {
+          // Break the loop: seal history with error results for this and any
+          // remaining calls (a dangling tool_use without a tool result would
+          // fail the next provider request), then end the run.
+          for (const skipped of turn.toolCalls.slice(callIndex)) {
+            const content = `loop detected: ${skipped.name} not executed — this call's signature repeated ${check.count}x recently; run stopped`
+            messages.push({ role: 'tool', content, toolCallId: skipped.id })
+            yield* this.emit({ kind: 'tool_result', result: { id: skipped.id, content, isError: true } })
+          }
+          yield* this.emit({
+            kind: 'loop_detected',
+            toolName: call.name,
+            signature: check.signature,
+            count: check.count,
+          })
+          yield* this.emit({
+            kind: 'span_end',
+            spanId: stepSpanId,
+            endedAt: this.now(),
+            status: 'error',
+            attributes: { loop_signature: check.signature, tool: call.name },
+          })
+          yield* this.emit({
+            kind: 'done',
+            reason: 'loop_detected',
+            steps: budget.currentSteps,
+            usage: budget.currentUsage,
+          })
+          return
+        }
         const toolSpanId = this.newId()
         yield* this.emit({
           kind: 'span_start',
@@ -257,7 +438,8 @@ export class ConversationRuntime {
           startedAt: this.now(),
           attributes: { tool: call.name, tool_call_id: call.id },
         })
-        const result = await this.runTool(call, budget)
+        const { payload: result, permission } = await this.runTool(call, budget)
+        if (permission) yield* this.emit(permission)
         // Trim only the provider-bound copy; the full result still goes to the
         // display + session log below, so the budget is transport-only. The
         // recovery path is computed up front (cheap, deterministic) but only
@@ -316,6 +498,8 @@ export class ConversationRuntime {
     const events: RuntimeEvent[] = []
     let text = ''
     const toolCalls: ToolCall[] = []
+    const thinking: ThinkingBlock[] = []
+    let currentThinking = ''
     let usage: UsageTotals = emptyUsage()
     let stopReason: ProviderStreamEvent extends { kind: 'finish' }
       ? never
@@ -327,6 +511,14 @@ export class ConversationRuntime {
         if (ev.kind === 'text-delta') {
           text += ev.delta
           events.push({ kind: 'text', delta: ev.delta })
+        } else if (ev.kind === 'thinking-delta') {
+          currentThinking += ev.delta
+          events.push({ kind: 'reasoning', delta: ev.delta })
+        } else if (ev.kind === 'thinking-signature') {
+          // The signature closes the current thinking block; both must be
+          // replayed verbatim on the next request of a tool-use continuation.
+          thinking.push({ thinking: currentThinking, signature: ev.signature })
+          currentThinking = ''
         } else if (ev.kind === 'tool-use') {
           toolCalls.push(ev.call)
           events.push({ kind: 'tool_use', call: ev.call })
@@ -347,12 +539,17 @@ export class ConversationRuntime {
     } catch (err) {
       error = true
       if (!this.deps.signal?.aborted) {
+        this.deps.quirks?.record(this.config.model, 'provider_error')
         events.push({
           kind: 'error',
           message: err instanceof Error ? err.message : String(err),
           retryable: false,
         })
       }
+    }
+
+    if (currentThinking) {
+      thinking.push({ thinking: currentThinking })
     }
 
     budget.addUsage(usage)
@@ -362,10 +559,13 @@ export class ConversationRuntime {
       turn: usage,
       cumulative: budget.currentUsage,
     })
-    return { events, text, toolCalls, stopReason, error }
+    return { events, text, toolCalls, thinking, stopReason, error }
   }
 
-  private async runTool(call: ToolCall, budget: RuntimeBudget): Promise<ToolResultPayload> {
+  private async runTool(
+    call: ToolCall,
+    budget: RuntimeBudget,
+  ): Promise<{ payload: ToolResultPayload; permission?: PermissionDecisionEvent }> {
     const ctx: ToolContext = {
       sessionId: this.config.sessionId,
       cwd: this.config.cwd,
@@ -378,13 +578,20 @@ export class ConversationRuntime {
       permissionMode: this.deps.permissionMode,
       spinePrompt: this.deps.spinePrompt,
       budget,
+      subagentDepth: this.deps.subagentDepth,
+      quirks: this.deps.quirks,
+      providerName: this.config.providerName,
+      harnessVersion: this.config.harnessVersion,
+      traceSink: this.deps.traceSink,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {
       return {
-        id: call.id,
-        content: `plan mode active: tool "${call.name}" is blocked. Call exit_plan_mode to resume execution.`,
-        isError: true,
+        payload: {
+          id: call.id,
+          content: `plan mode active: tool "${call.name}" is blocked. Call exit_plan_mode to resume execution.`,
+          isError: true,
+        },
       }
     }
 
@@ -395,13 +602,7 @@ export class ConversationRuntime {
       preHook = await this.deps.hookRunner.runPreToolUse(call.name, inputJson)
     }
 
-    if (this.deps.permissionEnforcer) {
-      const enforcement = this.deps.permissionEnforcer.check(call.name, inputJson)
-      if (enforcement.kind === 'denied') {
-        return { id: call.id, content: `permission denied: ${enforcement.reason}`, isError: true }
-      }
-    }
-
+    let permission: PermissionDecisionEvent | undefined
     if (this.deps.enforcer && this.deps.enforcerAskUser && this.deps.permissionMode) {
       const hookReason = preHook?.permissionReason ?? (preHook?.messages.join('; ') || undefined)
       const hookOverride = preHook?.permissionOverride
@@ -427,12 +628,26 @@ export class ConversationRuntime {
         workspaceRoot: this.config.cwd,
       })
       if (decision.kind === 'deny') {
-        return { id: call.id, content: `permission denied: ${decision.reason}`, isError: true }
+        permission = {
+          kind: 'permission_decision',
+          tool: call.name,
+          toolCallId: call.id,
+          decision: 'deny',
+          reason: decision.reason,
+        }
+        return {
+          payload: { id: call.id, content: `permission denied: ${decision.reason}`, isError: true },
+          permission,
+        }
       }
+      permission = { kind: 'permission_decision', tool: call.name, toolCallId: call.id, decision: 'allow' }
     }
 
     if (preHook?.denied) {
-      return { id: call.id, content: `hook denied: ${preHook.messages.join('; ')}`, isError: true }
+      return {
+        payload: { id: call.id, content: `hook denied: ${preHook.messages.join('; ')}`, isError: true },
+        permission,
+      }
     }
 
     try {
@@ -442,7 +657,11 @@ export class ConversationRuntime {
         await this.deps.hookRunner.runPostToolUse(call.name, inputJson, r.content, r.isError)
       }
 
-      return { id: call.id, content: r.content, isError: r.isError }
+      const payload: ToolResultPayload = { id: call.id, content: r.content, isError: r.isError }
+      if (r.data !== undefined) payload.data = r.data
+      if (r.artifacts !== undefined) payload.artifacts = r.artifacts
+      if (r.evidence !== undefined) payload.evidence = r.evidence
+      return { payload, permission }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
 
@@ -450,14 +669,16 @@ export class ConversationRuntime {
         await this.deps.hookRunner.runPostToolUseFailure(call.name, inputJson, message)
       }
 
-      return { id: call.id, content: message, isError: true }
+      return { payload: { id: call.id, content: message, isError: true }, permission }
     }
   }
 
-  private async maybeCompact(messages: ChatMessage[]): Promise<CompactedOutput | null> {
+  private async maybeCompact(messages: ChatMessage[], forced = false): Promise<CompactedOutput | null> {
     const { contextWindowTokens, compactionThreshold, keepRecentOnCompact } = this.config
-    const needs = shouldCompact(messages, contextWindowTokens, compactionThreshold, this.config.estimator)
-    if (!needs) return null
+    if (!forced) {
+      const needs = shouldCompact(messages, contextWindowTokens, compactionThreshold, this.config.estimator)
+      if (!needs) return null
+    }
     const input = {
       messages,
       contextWindowTokens,
@@ -465,16 +686,108 @@ export class ConversationRuntime {
       keepRecent: keepRecentOnCompact,
       estimator: this.config.estimator,
     }
-    const r = this.deps.compactionSummarizer
-      ? await compactWithSummary(input, this.deps.compactionSummarizer)
-      : compact(input)
+    // A queued explicit compaction preserves its deterministic, no-extra-call
+    // behavior. Threshold compaction may use the injected bounded summarizer.
+    const r =
+      !forced && this.deps.compactionSummarizer
+        ? await compactWithSummary(input, this.deps.compactionSummarizer)
+        : compact(input)
     if (!r.compacted) return null
     return r
   }
 
+  /**
+   * Accumulates the manifest signals that only exist mid-stream: context
+   * size per model call, model-call latency, compactions, file artifacts,
+   * and sub-agent trace ids surfaced through agent-tool evidence.
+   */
+  private recordManifestSignals(trace: ActiveTrace, event: RuntimeEvent): void {
+    if (event.kind === 'usage') {
+      trace.contextSizeCurve.push(event.turn.inputTokens + event.turn.cacheReadTokens + event.turn.cacheCreationTokens)
+    } else if (event.kind === 'span_start' && event.name === 'model_call') {
+      trace.modelCallStarts.set(event.spanId, Date.parse(event.startedAt))
+    } else if (event.kind === 'span_end' && trace.modelCallStarts.has(event.spanId)) {
+      const started = trace.modelCallStarts.get(event.spanId)!
+      trace.modelCallStarts.delete(event.spanId)
+      const ended = Date.parse(event.endedAt)
+      trace.modelCallLatenciesMs.push(
+        Number.isFinite(started) && Number.isFinite(ended) ? Math.max(0, ended - started) : 0,
+      )
+    } else if (event.kind === 'compacted') {
+      trace.compactions.push({ droppedMessageCount: event.droppedMessageCount, tokensSaved: event.tokensSaved })
+    } else if (event.kind === 'tool_result') {
+      for (const artifact of event.result.artifacts ?? []) {
+        const seen = trace.filesChanged.some((a) => a.uri === artifact.uri && a.action === artifact.action)
+        if (!seen) trace.filesChanged.push(artifact)
+      }
+      for (const item of event.result.evidence ?? []) {
+        if (item.kind === 'subagent' && item.detail && typeof item.detail === 'object') {
+          const childTraceId = (item.detail as Record<string, unknown>).traceId
+          if (typeof childTraceId === 'string') trace.subAgentTraceIds.push(childTraceId)
+        }
+      }
+    }
+  }
+
   private async *emit(event: RuntimeEvent): AsyncIterable<RuntimeEvent> {
+    if (this.trace) {
+      if (event.kind === 'done') {
+        const snapshot = { kind: 'transcript_snapshot' as const, messages: this.finalMessages }
+        this.trace.eventCounts[snapshot.kind] = (this.trace.eventCounts[snapshot.kind] ?? 0) + 1
+        await this.trace.sink.append(snapshot)
+      }
+      this.recordManifestSignals(this.trace, event)
+      this.trace.eventCounts[event.kind] = (this.trace.eventCounts[event.kind] ?? 0) + 1
+      await this.trace.sink.append(event)
+      if (event.kind === 'done') {
+        await this.trace.sink.finalize(this.buildManifest(this.trace, event.reason, event.steps, event.usage))
+        this.trace = null
+      }
+    }
     if (this.deps.onEvent) await this.deps.onEvent(event)
     yield event
+  }
+
+  private buildManifest(trace: ActiveTrace, reason: DoneReason, steps: number, usage: UsageTotals): TraceManifest {
+    const endedAt = this.now()
+    const startedMs = Date.parse(trace.startedAt)
+    const endedMs = Date.parse(endedAt)
+    return {
+      traceId: trace.traceId,
+      sessionId: this.config.sessionId,
+      task: trace.task,
+      model: this.config.model,
+      provider: this.config.providerName ?? null,
+      harnessVersion: this.config.harnessVersion ?? null,
+      systemPromptVersion: trace.systemPromptVersion,
+      toolDefinitionsHash: trace.toolDefinitionsHash,
+      startedAt: trace.startedAt,
+      endedAt,
+      latencyMs: Number.isFinite(startedMs) && Number.isFinite(endedMs) ? Math.max(0, endedMs - startedMs) : 0,
+      doneReason: reason,
+      steps,
+      usage,
+      billedTokens: billedTokens(usage),
+      cachedTokens: cachedTokens(usage),
+      estimatedCostUsd: estimatedCostUsd(usage, this.config.budget.model ?? this.config.model),
+      contextSizeCurve: trace.contextSizeCurve,
+      modelCallLatenciesMs: trace.modelCallLatenciesMs,
+      retries: null,
+      loopDetections: trace.eventCounts['loop_detected'] ?? 0,
+      compactions: trace.compactions,
+      subAgentTraceIds: trace.subAgentTraceIds,
+      filesChanged: trace.filesChanged,
+      quirks: this.deps.quirks?.snapshot() ?? {},
+      eventCounts: trace.eventCounts,
+      browserState: null,
+      screenshots: null,
+      consoleErrors: null,
+      networkFailures: null,
+      testResults: null,
+      gateDecisions: null,
+      graderResult: null,
+      failureCategory: reason === 'stop' ? null : reason,
+    }
   }
 }
 
@@ -482,6 +795,7 @@ interface TurnResult {
   events: RuntimeEvent[]
   text: string
   toolCalls: ToolCall[]
+  thinking: ThinkingBlock[]
   stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'error'
   error: boolean
 }
