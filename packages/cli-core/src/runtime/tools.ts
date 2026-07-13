@@ -3,6 +3,7 @@ import type { ToolLevel } from './permissions'
 import type { RuntimeBudget } from './budget'
 import type { ToolArtifact, ToolEvidence } from './events'
 import type { QuirkCounters } from './quirks'
+import type { ProcessSupervisor } from './process-supervisor'
 
 export interface TaskHandle {
   taskId: string
@@ -40,6 +41,12 @@ export interface SharedToolState {
    * silently applied to content the model never saw.
    */
   fileReadHashes?: Map<string, string>
+  /**
+   * Run-scoped supervisor for background processes (dev servers). bash routes
+   * `run_in_background` commands here instead of blocking on exit; the host
+   * calls `shutdown()` at run end so no spawned server outlives the session.
+   */
+  processSupervisor?: ProcessSupervisor
 }
 
 export interface AskUserOption {
