@@ -72,6 +72,14 @@ export { notebookEditTool } from './tools/notebook-edit-tool'
 export { gitStatusTool, gitDiffTool, gitLogTool } from './tools/git-tools'
 export { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'
 export {
+  browserTools,
+  browserNavigateTool,
+  browserSnapshotTool,
+  browserActTool,
+  browserScreenshotTool,
+  browserCloseTool,
+} from './tools/browser-tools'
+export {
   githubListIssuesTool,
   githubGetIssueTool,
   listGitHubIssues,

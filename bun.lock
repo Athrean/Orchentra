@@ -22,11 +22,12 @@
       "name": "@athreanlab/orchentra",
       "version": "0.1.0",
       "bin": {
-        "orchentra": "./dist/main.js",
-        "otr": "./dist/main.js",
+        "orchentra": "dist/main.js",
+        "otr": "dist/main.js",
       },
       "devDependencies": {
         "@orchentra/cli-api": "workspace:*",
+        "@orchentra/cli-browser": "workspace:*",
         "@orchentra/cli-core": "workspace:*",
         "@orchentra/cli-tools": "workspace:*",
         "@orchentra/eslint-config": "workspace:*",
@@ -80,6 +81,26 @@
       "optionalDependencies": {
         "keytar": "^7.9.0",
       },
+    },
+    "packages/cli-browser": {
+      "name": "@orchentra/cli-browser",
+      "version": "0.1.0",
+      "dependencies": {
+        "@orchentra/cli-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@orchentra/eslint-config": "workspace:*",
+        "@orchentra/typescript-config": "workspace:*",
+        "@types/bun": "latest",
+        "eslint": "^8.57.0",
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "playwright": "^1.40.0",
+      },
+      "optionalPeers": [
+        "playwright",
+      ],
     },
     "packages/cli-core": {
       "name": "@orchentra/cli-core",
@@ -244,6 +265,8 @@
     "@nolyfill/is-core-module": ["@nolyfill/is-core-module@1.0.39", "", {}, "sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA=="],
 
     "@orchentra/cli-api": ["@orchentra/cli-api@workspace:packages/cli-api"],
+
+    "@orchentra/cli-browser": ["@orchentra/cli-browser@workspace:packages/cli-browser"],
 
     "@orchentra/cli-core": ["@orchentra/cli-core@workspace:packages/cli-core"],
 

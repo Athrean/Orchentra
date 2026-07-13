@@ -4,6 +4,7 @@ import type { RuntimeBudget } from './budget'
 import type { ToolArtifact, ToolEvidence } from './events'
 import type { QuirkCounters } from './quirks'
 import type { ProcessSupervisor } from './process-supervisor'
+import type { BrowserRunSession } from './browser'
 
 export interface TaskHandle {
   taskId: string
@@ -47,6 +48,13 @@ export interface SharedToolState {
    * calls `shutdown()` at run end so no spawned server outlives the session.
    */
   processSupervisor?: ProcessSupervisor
+  /**
+   * Run-scoped browser session (a11y-driven verification). Owned by the host,
+   * lazy over Playwright — constructing it pulls no browser dependency; the
+   * first navigate triggers the lazy engine load. Torn down at run end via
+   * `shutdown()` so no Chromium outlives the session.
+   */
+  browser?: BrowserRunSession
 }
 
 export interface AskUserOption {
