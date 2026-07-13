@@ -26,7 +26,7 @@ export const fileWriteTool: ToolDefinition = {
     }
 
     try {
-      const result = await writeFileInWorkspace(input.path, input.content, ctx.cwd)
+      const result = await writeFileInWorkspace(input.path, input.content, ctx.cwd, ctx.sharedState?.fileReadHashes)
       const action = result.type === 'create' ? 'created' : 'modified'
       return {
         content: `${result.type}: ${result.filePath}`,

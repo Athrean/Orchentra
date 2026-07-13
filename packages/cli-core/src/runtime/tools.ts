@@ -33,6 +33,13 @@ export interface SharedToolState {
   todos: TodoItem[]
   agentCounter: number
   planMode: boolean
+  /**
+   * sha256 of each file's full content as last read or written this session,
+   * keyed by absolute path. edit_file checks against it so an edit planned
+   * from a stale read (file changed underneath) is rejected instead of
+   * silently applied to content the model never saw.
+   */
+  fileReadHashes?: Map<string, string>
 }
 
 export interface AskUserOption {

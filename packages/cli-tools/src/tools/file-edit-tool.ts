@@ -36,6 +36,7 @@ export const fileEditTool: ToolDefinition = {
         input.new_string,
         input.replace_all ?? false,
         ctx.cwd,
+        ctx.sharedState?.fileReadHashes,
       )
       return {
         content: `edited: ${result.filePath} (replaceAll: ${result.replaceAll})`,

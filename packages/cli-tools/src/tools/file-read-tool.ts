@@ -28,7 +28,13 @@ export const fileReadTool: ToolDefinition = {
     }
 
     try {
-      const result = await readFileInWorkspace(input.path, ctx.workspaceRoots ?? ctx.cwd, input.offset, input.limit)
+      const result = await readFileInWorkspace(
+        input.path,
+        ctx.workspaceRoots ?? ctx.cwd,
+        input.offset,
+        input.limit,
+        ctx.sharedState?.fileReadHashes,
+      )
       const { filePath, startLine, numLines, totalLines } = result.file
       return {
         content: result.file.content,
