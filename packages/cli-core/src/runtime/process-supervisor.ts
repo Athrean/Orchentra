@@ -1,5 +1,7 @@
+import { spawn as spawnChild } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { connect } from 'node:net'
+import { Readable } from 'node:stream'
 
 /**
  * ProcessSupervisor — run-scoped lifecycle for background processes (dev
@@ -56,7 +58,10 @@ export interface ManagedProcess {
 export interface SupervisedHandle {
   readonly pid?: number
   readonly exited: Promise<number>
+  /** Graceful terminate (SIGTERM). Should target the whole process group. */
   kill(): void
+  /** Force terminate (SIGKILL) when a graceful kill doesn't take. Optional. */
+  forceKill?(): void
   readonly stdout?: ReadableStream<Uint8Array> | null
   readonly stderr?: ReadableStream<Uint8Array> | null
 }
@@ -130,18 +135,40 @@ export function sanitizeChildEnv(
 }
 
 function defaultSpawn(req: SpawnRequest): SupervisedHandle {
-  const proc = Bun.spawn([req.program, ...req.args], {
+  // `detached: true` puts the child in its own process group so we can signal
+  // the whole tree. `sh -c "<cmd>"` forks the real server as a grandchild on
+  // some shells (Linux dash), so killing only the direct child would leak the
+  // server — signalling the group (-pid) reaches it regardless.
+  const child = spawnChild(req.program, [...req.args], {
     cwd: req.cwd,
     env: req.env,
-    stdout: 'pipe',
-    stderr: 'pipe',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: true,
   })
+  const exited = new Promise<number>((resolve) => {
+    child.once('exit', (code, signal) => resolve(code ?? (signal ? 143 : 0)))
+    child.once('error', () => resolve(1))
+  })
+  const signalGroup = (signal: NodeJS.Signals): void => {
+    const pid = child.pid
+    if (pid === undefined) return
+    try {
+      process.kill(-pid, signal)
+    } catch {
+      try {
+        child.kill(signal)
+      } catch {
+        // already gone
+      }
+    }
+  }
   return {
-    pid: proc.pid,
-    exited: proc.exited,
-    kill: () => proc.kill(),
-    stdout: proc.stdout as unknown as ReadableStream<Uint8Array> | null,
-    stderr: proc.stderr as unknown as ReadableStream<Uint8Array> | null,
+    pid: child.pid,
+    exited,
+    kill: () => signalGroup('SIGTERM'),
+    forceKill: () => signalGroup('SIGKILL'),
+    stdout: child.stdout ? (Readable.toWeb(child.stdout) as unknown as ReadableStream<Uint8Array>) : null,
+    stderr: child.stderr ? (Readable.toWeb(child.stderr) as unknown as ReadableStream<Uint8Array>) : null,
   }
 }
 
@@ -264,7 +291,7 @@ export class ProcessSupervisor {
     return Array.from(this.entries.values(), (e) => e.proc)
   }
 
-  /** Terminate one process and await its exit. Idempotent. */
+  /** Terminate one process (group) and await its exit. Idempotent. */
   async stop(id: string): Promise<void> {
     const entry = this.entries.get(id)
     if (!entry) return
@@ -273,7 +300,16 @@ export class ProcessSupervisor {
     } catch {
       // already gone
     }
-    await entry.handle.exited.catch(() => {})
+    const exited = entry.handle.exited.catch(() => 0)
+    const stillAlive = await Promise.race([exited.then(() => false), delay(2000).then(() => true)])
+    if (stillAlive && entry.handle.forceKill) {
+      try {
+        entry.handle.forceKill()
+      } catch {
+        // already gone
+      }
+      await entry.handle.exited.catch(() => {})
+    }
   }
 
   /** Terminate every managed process. Called at run end — leaves no zombies. */
