@@ -67,6 +67,24 @@ describe('restrictRegistry', () => {
     expect(names).not.toContain('agent')
   })
 
+  test('browser-tester keeps browser ops + bash + read-only, drops write and agent', () => {
+    const browserEntries: Record<string, PermissionMode> = {
+      ...entries,
+      browser_navigate: 'danger-full-access',
+      browser_snapshot: 'read-only',
+      browser_act: 'danger-full-access',
+    }
+    const restricted = restrictRegistry(fakeRegistry(browserEntries), resolveSubagentRole('browser-tester').role!)
+    const names = restricted.list().map((t) => t.name)
+    expect(names).toContain('browser_navigate')
+    expect(names).toContain('browser_act')
+    expect(names).toContain('browser_snapshot')
+    expect(names).toContain('bash')
+    expect(names).toContain('read_file')
+    expect(names).not.toContain('write_file')
+    expect(names).not.toContain('agent')
+  })
+
   test('builder and generic pass the registry through untouched', () => {
     const registry = fakeRegistry(entries)
     expect(restrictRegistry(registry, resolveSubagentRole('builder').role!)).toBe(registry)
