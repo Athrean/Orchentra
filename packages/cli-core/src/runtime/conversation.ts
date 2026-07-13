@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { RuntimeBudget, type BudgetConfig, type BudgetState } from './budget'
 import {
   addUsage,
@@ -7,6 +7,7 @@ import {
   type PermissionDecisionEvent,
   type RuntimeEvent,
   type SpanAttributeValue,
+  type ToolArtifact,
   type ToolCall,
   type ToolResultPayload,
   type UsageTotals,
@@ -53,6 +54,10 @@ export interface ConversationConfig {
   effort?: EffortTier
   thinkingTokenBudget?: number
   estimator?: TokenEstimator
+  /** Provider backend name, recorded in the trace manifest when known. */
+  providerName?: string
+  /** Harness (CLI) version, recorded in the trace manifest when known. */
+  harnessVersion?: string
 }
 
 export interface ConversationDeps {
@@ -126,7 +131,21 @@ interface ActiveTrace {
   sink: TraceSink
   traceId: string
   startedAt: string
+  task: string
+  systemPromptVersion: string
+  toolDefinitionsHash: string
   eventCounts: Record<string, number>
+  contextSizeCurve: number[]
+  // Open model_call spans (spanId → epoch ms) so span_end can close latency.
+  modelCallStarts: Map<string, number>
+  modelCallLatenciesMs: number[]
+  compactions: { droppedMessageCount: number; tokensSaved: number }[]
+  filesChanged: ToolArtifact[]
+  subAgentTraceIds: string[]
+}
+
+function versionHash(content: string): string {
+  return createHash('sha256').update(content).digest('hex').slice(0, 12)
 }
 
 export class ConversationRuntime {
@@ -134,6 +153,7 @@ export class ConversationRuntime {
   // Per-run trace state; set at loop start so emit() can append every event.
   // A runtime never runs concurrently with itself, so one slot suffices.
   private trace: ActiveTrace | null = null
+  private lastTraceIdValue: string | null = null
 
   constructor(
     private readonly config: ConversationConfig,
@@ -153,6 +173,15 @@ export class ConversationRuntime {
     return this.finalMessages
   }
 
+  /**
+   * Trace id of the most recent run (the run's directory name under
+   * `.orchentra/traces/`). Hosts spawning this runtime — the agent tool in
+   * particular — use it to link the child trace from the parent manifest.
+   */
+  get lastTraceId(): string | null {
+    return this.lastTraceIdValue
+  }
+
   private async *loop(input: RunInput): AsyncIterable<RuntimeEvent> {
     const budget = this.deps.budget ?? new RuntimeBudget(this.config.budget)
     budget.beginTurn()
@@ -162,11 +191,21 @@ export class ConversationRuntime {
     const { provider, tools, systemPrompt } = this.deps
 
     const traceId = this.newId()
+    this.lastTraceIdValue = traceId
     this.trace = {
       sink: this.deps.traceSink ?? new FileTraceSink(this.config.cwd, traceId),
       traceId,
       startedAt: this.now(),
+      task: input.userMessage,
+      systemPromptVersion: versionHash(systemPrompt.static),
+      toolDefinitionsHash: versionHash(JSON.stringify(tools.list())),
       eventCounts: {},
+      contextSizeCurve: [],
+      modelCallStarts: new Map(),
+      modelCallLatenciesMs: [],
+      compactions: [],
+      filesChanged: [],
+      subAgentTraceIds: [],
     }
     // Trace-only record of the run's input: consumers render the user message
     // themselves, so it is appended to the trace without entering the event
@@ -515,6 +554,8 @@ export class ConversationRuntime {
       budget,
       subagentDepth: this.deps.subagentDepth,
       quirks: this.deps.quirks,
+      providerName: this.config.providerName,
+      harnessVersion: this.config.harnessVersion,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {
@@ -623,8 +664,42 @@ export class ConversationRuntime {
     return r
   }
 
+  /**
+   * Accumulates the manifest signals that only exist mid-stream: context
+   * size per model call, model-call latency, compactions, file artifacts,
+   * and sub-agent trace ids surfaced through agent-tool evidence.
+   */
+  private recordManifestSignals(trace: ActiveTrace, event: RuntimeEvent): void {
+    if (event.kind === 'usage') {
+      trace.contextSizeCurve.push(event.turn.inputTokens + event.turn.cacheReadTokens + event.turn.cacheCreationTokens)
+    } else if (event.kind === 'span_start' && event.name === 'model_call') {
+      trace.modelCallStarts.set(event.spanId, Date.parse(event.startedAt))
+    } else if (event.kind === 'span_end' && trace.modelCallStarts.has(event.spanId)) {
+      const started = trace.modelCallStarts.get(event.spanId)!
+      trace.modelCallStarts.delete(event.spanId)
+      const ended = Date.parse(event.endedAt)
+      trace.modelCallLatenciesMs.push(
+        Number.isFinite(started) && Number.isFinite(ended) ? Math.max(0, ended - started) : 0,
+      )
+    } else if (event.kind === 'compacted') {
+      trace.compactions.push({ droppedMessageCount: event.droppedMessageCount, tokensSaved: event.tokensSaved })
+    } else if (event.kind === 'tool_result') {
+      for (const artifact of event.result.artifacts ?? []) {
+        const seen = trace.filesChanged.some((a) => a.uri === artifact.uri && a.action === artifact.action)
+        if (!seen) trace.filesChanged.push(artifact)
+      }
+      for (const item of event.result.evidence ?? []) {
+        if (item.kind === 'subagent' && item.detail && typeof item.detail === 'object') {
+          const childTraceId = (item.detail as Record<string, unknown>).traceId
+          if (typeof childTraceId === 'string') trace.subAgentTraceIds.push(childTraceId)
+        }
+      }
+    }
+  }
+
   private async *emit(event: RuntimeEvent): AsyncIterable<RuntimeEvent> {
     if (this.trace) {
+      this.recordManifestSignals(this.trace, event)
       this.trace.eventCounts[event.kind] = (this.trace.eventCounts[event.kind] ?? 0) + 1
       await this.trace.sink.append(event)
       if (event.kind === 'done') {
@@ -637,20 +712,44 @@ export class ConversationRuntime {
   }
 
   private buildManifest(trace: ActiveTrace, reason: DoneReason, steps: number, usage: UsageTotals): TraceManifest {
+    const endedAt = this.now()
+    const startedMs = Date.parse(trace.startedAt)
+    const endedMs = Date.parse(endedAt)
     return {
       traceId: trace.traceId,
       sessionId: this.config.sessionId,
+      task: trace.task,
       model: this.config.model,
+      provider: this.config.providerName ?? null,
+      harnessVersion: this.config.harnessVersion ?? null,
+      systemPromptVersion: trace.systemPromptVersion,
+      toolDefinitionsHash: trace.toolDefinitionsHash,
       startedAt: trace.startedAt,
-      endedAt: this.now(),
+      endedAt,
+      latencyMs: Number.isFinite(startedMs) && Number.isFinite(endedMs) ? Math.max(0, endedMs - startedMs) : 0,
       doneReason: reason,
       steps,
       usage,
       billedTokens: billedTokens(usage),
       cachedTokens: cachedTokens(usage),
       estimatedCostUsd: estimatedCostUsd(usage, this.config.budget.model ?? this.config.model),
+      contextSizeCurve: trace.contextSizeCurve,
+      modelCallLatenciesMs: trace.modelCallLatenciesMs,
+      retries: null,
+      loopDetections: trace.eventCounts['loop_detected'] ?? 0,
+      compactions: trace.compactions,
+      subAgentTraceIds: trace.subAgentTraceIds,
+      filesChanged: trace.filesChanged,
       quirks: this.deps.quirks?.snapshot() ?? {},
       eventCounts: trace.eventCounts,
+      browserState: null,
+      screenshots: null,
+      consoleErrors: null,
+      networkFailures: null,
+      testResults: null,
+      gateDecisions: null,
+      graderResult: null,
+      failureCategory: reason === 'stop' ? null : reason,
     }
   }
 }

@@ -905,6 +905,54 @@ describe('tracing', () => {
     expect(manifest.quirks).toEqual({})
     expect(manifest.traceId.length).toBeGreaterThan(0)
     expect(manifest.startedAt.length).toBeGreaterThan(0)
+
+    // 12-TRACE-SYSTEM manifest fields
+    expect(manifest.task).toBe('read the file')
+    expect(manifest.provider).toBeNull()
+    expect(manifest.harnessVersion).toBeNull()
+    expect(manifest.systemPromptVersion).toMatch(/^[0-9a-f]{12}$/)
+    expect(manifest.toolDefinitionsHash).toMatch(/^[0-9a-f]{12}$/)
+    expect(manifest.contextSizeCurve).toEqual([13, 8])
+    expect(manifest.modelCallLatenciesMs).toHaveLength(2)
+    expect(manifest.retries).toBeNull()
+    expect(manifest.loopDetections).toBe(0)
+    expect(manifest.compactions).toEqual([])
+    expect(manifest.subAgentTraceIds).toEqual([])
+    expect(manifest.filesChanged).toEqual([])
+    expect(manifest.gateDecisions).toBeNull()
+    expect(manifest.graderResult).toBeNull()
+    expect(manifest.failureCategory).toBeNull()
+  })
+
+  test('manifest records run identity, file artifacts, and sub-agent trace ids', async () => {
+    const trace = captureTrace()
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'agent', input: { prompt: 'fix it' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'agent', description: 'sub-agent', inputSchema: {} }],
+      has: (n) => n === 'agent',
+      execute: async () => ({
+        content: 'child done',
+        isError: false,
+        artifacts: [{ uri: 'src/a.ts', kind: 'file' as const, action: 'modified' as const }],
+        evidence: [{ kind: 'subagent', summary: 'task 1: stop', detail: { traceId: 'child-trace-1' } }],
+      }),
+    }
+    const deps: ConversationDeps = { ...makeDeps(provider, tools), traceSink: trace.sink }
+    const rt = new ConversationRuntime({ ...makeConfig(), providerName: 'anthropic', harnessVersion: '0.1.0' }, deps)
+    await collect(rt, 'delegate the fix')
+
+    const manifest = trace.manifests[0]!
+    expect(manifest.provider).toBe('anthropic')
+    expect(manifest.harnessVersion).toBe('0.1.0')
+    expect(manifest.filesChanged).toEqual([{ uri: 'src/a.ts', kind: 'file', action: 'modified' }])
+    expect(manifest.subAgentTraceIds).toEqual(['child-trace-1'])
+    expect(rt.lastTraceId).toBe(manifest.traceId)
   })
 
   test('M1 exit criterion: the full run is reconstructable from its trace alone', async () => {

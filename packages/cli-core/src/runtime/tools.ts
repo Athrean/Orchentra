@@ -102,6 +102,13 @@ export interface ToolContext {
    * parent's instance so one run yields one set of counters.
    */
   quirks?: QuirkCounters
+  /**
+   * Provider backend name and harness version of the hosting run, forwarded
+   * so nested runtimes (sub-agents) record the same identity in their trace
+   * manifests.
+   */
+  providerName?: string
+  harnessVersion?: string
 }
 
 export interface ToolResult {
