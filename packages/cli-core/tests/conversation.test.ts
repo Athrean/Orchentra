@@ -7,8 +7,17 @@ import type { ToolContext, ToolRegistry, ToolResult } from '../src/runtime/tools
 import type { RuntimeEvent } from '../src/runtime/events'
 import { buildSystemPrompt } from '../src/runtime/system-prompt'
 import { createEnforcer } from '../src/permissions/enforcer'
-import { reconstructTranscript, type TraceManifest, type TraceSink } from '../src/runtime/trace'
+import {
+  reconstructTranscript,
+  traceEventsPath,
+  traceManifestPath,
+  type TraceManifest,
+  type TraceSink,
+} from '../src/runtime/trace'
 import { QuirkCounters } from '../src/runtime/quirks'
+import { mkdtempSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 function fakeProvider(responses: ProviderStreamEvent[][]): Provider {
   let callIndex = 0
@@ -905,6 +914,54 @@ describe('tracing', () => {
     expect(manifest.quirks).toEqual({})
     expect(manifest.traceId.length).toBeGreaterThan(0)
     expect(manifest.startedAt.length).toBeGreaterThan(0)
+
+    // 12-TRACE-SYSTEM manifest fields
+    expect(manifest.task).toBe('read the file')
+    expect(manifest.provider).toBeNull()
+    expect(manifest.harnessVersion).toBeNull()
+    expect(manifest.systemPromptVersion).toMatch(/^[0-9a-f]{12}$/)
+    expect(manifest.toolDefinitionsHash).toMatch(/^[0-9a-f]{12}$/)
+    expect(manifest.contextSizeCurve).toEqual([13, 8])
+    expect(manifest.modelCallLatenciesMs).toHaveLength(2)
+    expect(manifest.retries).toBeNull()
+    expect(manifest.loopDetections).toBe(0)
+    expect(manifest.compactions).toEqual([])
+    expect(manifest.subAgentTraceIds).toEqual([])
+    expect(manifest.filesChanged).toEqual([])
+    expect(manifest.gateDecisions).toBeNull()
+    expect(manifest.graderResult).toBeNull()
+    expect(manifest.failureCategory).toBeNull()
+  })
+
+  test('manifest records run identity, file artifacts, and sub-agent trace ids', async () => {
+    const trace = captureTrace()
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'agent', input: { prompt: 'fix it' } } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'agent', description: 'sub-agent', inputSchema: {} }],
+      has: (n) => n === 'agent',
+      execute: async () => ({
+        content: 'child done',
+        isError: false,
+        artifacts: [{ uri: 'src/a.ts', kind: 'file' as const, action: 'modified' as const }],
+        evidence: [{ kind: 'subagent', summary: 'task 1: stop', detail: { traceId: 'child-trace-1' } }],
+      }),
+    }
+    const deps: ConversationDeps = { ...makeDeps(provider, tools), traceSink: trace.sink }
+    const rt = new ConversationRuntime({ ...makeConfig(), providerName: 'anthropic', harnessVersion: '0.1.0' }, deps)
+    await collect(rt, 'delegate the fix')
+
+    const manifest = trace.manifests[0]!
+    expect(manifest.provider).toBe('anthropic')
+    expect(manifest.harnessVersion).toBe('0.1.0')
+    expect(manifest.filesChanged).toEqual([{ uri: 'src/a.ts', kind: 'file', action: 'modified' }])
+    expect(manifest.subAgentTraceIds).toEqual(['child-trace-1'])
+    expect(rt.lastTraceId).toBe(manifest.traceId)
   })
 
   test('M1 exit criterion: the full run is reconstructable from its trace alone', async () => {
@@ -921,6 +978,34 @@ describe('tracing', () => {
       { role: 'assistant', content: 'all done' },
     ])
     expect(rebuilt).toEqual(rt.getFinalMessages())
+  })
+
+  test('v0.3.0 exit criterion: replaying an on-disk manifest+events.jsonl pair reconstructs the run', async () => {
+    // The strongest form of the criterion: a real FileTraceSink writes the
+    // trace to disk, then we read manifest.json and events.jsonl back cold —
+    // no in-memory shortcut — and rebuild the exact run.
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-replay-'))
+    const deps: ConversationDeps = {
+      ...makeDeps(twoStepProvider(), readTools()),
+      // Clear makeDeps' no-op so the runtime builds its own default
+      // FileTraceSink — its trace id then matches rt.lastTraceId on disk.
+      traceSink: undefined,
+    }
+    const rt = new ConversationRuntime({ ...makeConfig({ cwd }) }, deps)
+    await collect(rt, 'read the file')
+    const traceId = rt.lastTraceId!
+
+    const eventLines = readFileSync(traceEventsPath(cwd, traceId), 'utf8').trim().split('\n')
+    const replayedEvents = eventLines.map((l) => JSON.parse(l) as RuntimeEvent)
+    const replayedManifest = JSON.parse(readFileSync(traceManifestPath(cwd, traceId), 'utf8')) as TraceManifest
+
+    // The events.jsonl alone rebuilds the transcript the runtime ended with.
+    expect(reconstructTranscript(replayedEvents)).toEqual(rt.getFinalMessages())
+    // The manifest agrees on the run's shape.
+    expect(replayedManifest.traceId).toBe(traceId)
+    expect(replayedManifest.doneReason).toBe('stop')
+    expect(replayedManifest.steps).toBe(2)
+    expect(replayedManifest.eventCounts.done).toBe(1)
   })
 
   test('permission denial is a typed permission_decision event', async () => {

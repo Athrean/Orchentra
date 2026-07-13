@@ -92,6 +92,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     model: initial.model,
     permissionMode: resolvedPermissionMode,
     provider: initial.provider,
+    providerName: initial.providerName,
     resolveModel,
     tools,
     cwd: options.cwd,

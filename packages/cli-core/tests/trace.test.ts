@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   FileTraceSink,
   reconstructTranscript,
+  traceArtifactsDir,
   traceEventsPath,
   traceManifestPath,
   type TraceManifest,
@@ -14,42 +15,71 @@ import type { RuntimeEvent } from '../src/runtime/events'
 const manifest: TraceManifest = {
   traceId: 't1',
   sessionId: 's1',
+  task: 'do the thing',
   model: 'test-model',
+  provider: 'anthropic',
+  harnessVersion: '0.1.0',
+  systemPromptVersion: 'abc123def456',
+  toolDefinitionsHash: '123abc456def',
   startedAt: '2026-07-13T00:00:00.000Z',
   endedAt: '2026-07-13T00:00:05.000Z',
+  latencyMs: 5000,
   doneReason: 'stop',
   steps: 2,
   usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 3, cacheCreationTokens: 0 },
   billedTokens: 15,
   cachedTokens: 3,
   estimatedCostUsd: 0.001,
+  contextSizeCurve: [13, 20],
+  modelCallLatenciesMs: [1200, 900],
+  retries: null,
+  loopDetections: 0,
+  compactions: [],
+  subAgentTraceIds: [],
+  filesChanged: [{ uri: 'src/a.ts', kind: 'file', action: 'modified' }],
   quirks: { 'test-model': { malformed_args: 1 } },
   eventCounts: { text: 2, done: 1 },
+  browserState: null,
+  screenshots: null,
+  consoleErrors: null,
+  networkFailures: null,
+  testResults: null,
+  gateDecisions: null,
+  graderResult: null,
+  failureCategory: null,
 }
 
 describe('FileTraceSink', () => {
   test('appends events as JSONL and writes the manifest', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'trace-'))
-    const sink = new FileTraceSink(cwd, 's1', 't1')
+    const sink = new FileTraceSink(cwd, 't1')
 
     await sink.append({ kind: 'user_message', content: 'hello' })
     await sink.append({ kind: 'text', delta: 'world' })
     await sink.finalize(manifest)
 
-    const lines = readFileSync(traceEventsPath(cwd, 's1', 't1'), 'utf8')
-      .trim()
-      .split('\n')
+    const lines = readFileSync(traceEventsPath(cwd, 't1'), 'utf8').trim().split('\n')
     expect(lines).toHaveLength(2)
     expect(JSON.parse(lines[0]!)).toEqual({ kind: 'user_message', content: 'hello' })
     expect(JSON.parse(lines[1]!)).toEqual({ kind: 'text', delta: 'world' })
 
-    const written = JSON.parse(readFileSync(traceManifestPath(cwd, 's1', 't1'), 'utf8')) as TraceManifest
+    const written = JSON.parse(readFileSync(traceManifestPath(cwd, 't1'), 'utf8')) as TraceManifest
     expect(written).toEqual(manifest)
   })
 
-  test('paths are per-session and per-trace', () => {
-    expect(traceEventsPath('/repo', 's1', 't1')).toBe('/repo/.orchentra/sessions/s1/traces/t1.jsonl')
-    expect(traceManifestPath('/repo', 's1', 't1')).toBe('/repo/.orchentra/sessions/s1/traces/t1.manifest.json')
+  test('layout matches 12-TRACE-SYSTEM: per-run dir with events, manifest, artifacts', () => {
+    expect(traceEventsPath('/repo', 'r1')).toBe('/repo/.orchentra/traces/r1/events.jsonl')
+    expect(traceManifestPath('/repo', 'r1')).toBe('/repo/.orchentra/traces/r1/manifest.json')
+    expect(traceArtifactsDir('/repo', 'r1')).toBe('/repo/.orchentra/traces/r1/artifacts')
+  })
+
+  test('finalize creates the artifacts directory', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-'))
+    const sink = new FileTraceSink(cwd, 't2')
+    await sink.finalize(manifest)
+    const dir = traceArtifactsDir(cwd, 't2')
+    expect(existsSync(dir)).toBe(true)
+    expect(statSync(dir).isDirectory()).toBe(true)
   })
 })
 

@@ -125,10 +125,23 @@ export const agentTool: ToolDefinition = {
     const evidence = results.map((r, i) => ({
       kind: 'subagent',
       summary: `task ${i + 1}: ${r.doneReason ?? 'stop'} after ${r.toolCalls ?? 0} tool call(s)${r.isError ? ' (error)' : ''}`,
-      detail: { doneReason: r.doneReason, toolCalls: r.toolCalls, isError: r.isError, role: role.name },
+      // traceId links the child's own trace dir; the parent runtime lifts it
+      // into the manifest's subAgentTraceIds.
+      detail: {
+        doneReason: r.doneReason,
+        toolCalls: r.toolCalls,
+        isError: r.isError,
+        role: role.name,
+        traceId: r.traceId,
+      },
     }))
     const data = {
-      tasks: results.map((r) => ({ doneReason: r.doneReason, toolCalls: r.toolCalls, isError: r.isError })),
+      tasks: results.map((r) => ({
+        doneReason: r.doneReason,
+        toolCalls: r.toolCalls,
+        isError: r.isError,
+        traceId: r.traceId,
+      })),
     }
 
     if (results.length === 1) {
@@ -158,6 +171,8 @@ interface SubagentRunOutcome {
   rateLimited?: boolean
   doneReason?: DoneReason
   toolCalls?: number
+  /** Trace id of the child run, linking its trace dir from the parent manifest. */
+  traceId?: string
 }
 
 async function runSubagent(
@@ -195,6 +210,8 @@ async function runSubagent(
         budget: { maxSteps: MAX_ITERATIONS_PER_SUBAGENT, maxTokens: 200_000, model },
         sessionId: ctx.sessionId,
         cwd: ctx.cwd,
+        providerName: ctx.providerName,
+        harnessVersion: ctx.harnessVersion,
       },
       {
         provider,
@@ -214,6 +231,10 @@ async function runSubagent(
         workspaceRoots: ctx.workspaceRoots,
         subagentDepth: ctx.subagentDepth,
         quirks: ctx.quirks,
+        // Only when the host injected one (tests route sub-agents to a no-op
+        // sink). Unset in production so each sub-agent builds its own on-disk
+        // trace dir and lastTraceId links back into the parent manifest.
+        ...(ctx.traceSink ? { traceSink: ctx.traceSink } : {}),
         signal: abort.signal,
       },
     )
@@ -244,6 +265,7 @@ async function runSubagent(
       }
     }
     if (buf) resultText = buf
+    const traceId = runtime.lastTraceId ?? undefined
 
     if (doneReason === 'error') {
       return {
@@ -252,6 +274,7 @@ async function runSubagent(
         rateLimited: isRateLimitError(thrown),
         doneReason,
         toolCalls: toolCallsDone,
+        traceId,
       }
     }
     if (doneReason === 'loop_detected') {
@@ -260,6 +283,7 @@ async function runSubagent(
         isError: true,
         doneReason,
         toolCalls: toolCallsDone,
+        traceId,
       }
     }
     if (doneReason === 'aborted') {
@@ -268,6 +292,7 @@ async function runSubagent(
         isError: false,
         doneReason,
         toolCalls: toolCallsDone,
+        traceId,
       }
     }
     return {
@@ -275,6 +300,7 @@ async function runSubagent(
       isError: false,
       doneReason,
       toolCalls: toolCallsDone,
+      traceId,
     }
   } catch (e) {
     return {
