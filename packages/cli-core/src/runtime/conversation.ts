@@ -19,7 +19,8 @@ import { budgetToolOutput } from './tool-output-budget'
 import { SNAPSHOT_CONTENT_MARKER, supersedeSnapshots } from './browser-context'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
 import { appendCompactionNote, compactionNotesPath, renderCompactionNote } from './compaction-notes'
-import { FileTraceSink, type TraceSink, type TraceManifest } from './trace'
+import { FileTraceSink, type TraceSink, type TraceManifest, type TestResultEntry } from './trace'
+import type { ConsoleErrorEntry, FailedRequestEntry } from './browser'
 import { billedTokens, cachedTokens, estimatedCostUsd } from './usage'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
 import type { EffortTier } from './provider'
@@ -145,6 +146,16 @@ interface ActiveTrace {
   compactions: { droppedMessageCount: number; tokensSaved: number }[]
   filesChanged: ToolArtifact[]
   subAgentTraceIds: string[]
+  // M2 browser evidence, accumulated from tool-result evidence mid-stream.
+  browserActive: boolean
+  browserLastUrl: string | null
+  browserNavigations: number
+  browserConsoleErrors: ConsoleErrorEntry[]
+  browserNetworkFailures: FailedRequestEntry[]
+  browserConsoleSeen: Set<string>
+  browserNetworkSeen: Set<string>
+  screenshots: string[]
+  testResults: TestResultEntry[]
 }
 
 function versionHash(content: string): string {
@@ -209,6 +220,15 @@ export class ConversationRuntime {
       compactions: [],
       filesChanged: [],
       subAgentTraceIds: [],
+      browserActive: false,
+      browserLastUrl: null,
+      browserNavigations: 0,
+      browserConsoleErrors: [],
+      browserNetworkFailures: [],
+      browserConsoleSeen: new Set(),
+      browserNetworkSeen: new Set(),
+      screenshots: [],
+      testResults: [],
     }
     if (input.forceCompaction) {
       // Explicit compaction belongs to the runtime too: the same boundary is
@@ -729,8 +749,64 @@ export class ConversationRuntime {
         if (item.kind === 'subagent' && item.detail && typeof item.detail === 'object') {
           const childTraceId = (item.detail as Record<string, unknown>).traceId
           if (typeof childTraceId === 'string') trace.subAgentTraceIds.push(childTraceId)
+        } else {
+          this.recordBrowserSignal(trace, item)
         }
       }
+    }
+  }
+
+  /**
+   * Pulls M2 browser evidence out of a tool result into the manifest: navigation
+   * targets, per-snapshot console/network deltas (and cumulative diagnostics on
+   * failures, deduped by timestamp so a repeated cumulative dump is not
+   * double-counted), screenshots, and exit-status test results.
+   */
+  private recordBrowserSignal(trace: ActiveTrace, item: { kind: string; detail?: unknown }): void {
+    const detail = (item.detail ?? {}) as Record<string, unknown>
+    if (item.kind === 'browser-navigation') {
+      trace.browserActive = true
+      trace.browserNavigations++
+      if (typeof detail.url === 'string') trace.browserLastUrl = detail.url
+    } else if (item.kind === 'browser-snapshot') {
+      trace.browserActive = true
+      if (typeof detail.url === 'string') trace.browserLastUrl = detail.url
+      this.mergeConsole(trace, detail.newConsoleErrors)
+      this.mergeNetwork(trace, detail.newFailedRequests)
+    } else if (item.kind === 'browser-action') {
+      trace.browserActive = true
+    } else if (item.kind === 'browser-diagnostics') {
+      trace.browserActive = true
+      this.mergeConsole(trace, detail.consoleErrors)
+      this.mergeNetwork(trace, detail.failedRequests)
+    } else if (item.kind === 'browser-screenshot') {
+      if (typeof detail.path === 'string' && !trace.screenshots.includes(detail.path)) {
+        trace.screenshots.push(detail.path)
+      }
+    } else if (item.kind === 'exit-status') {
+      if (typeof detail.command === 'string' && typeof detail.exitCode === 'number') {
+        trace.testResults.push({ command: detail.command, exitCode: detail.exitCode, passed: detail.exitCode === 0 })
+      }
+    }
+  }
+
+  private mergeConsole(trace: ActiveTrace, raw: unknown): void {
+    if (!Array.isArray(raw)) return
+    for (const entry of raw as ConsoleErrorEntry[]) {
+      const key = `${entry.at} ${entry.text}`
+      if (trace.browserConsoleSeen.has(key)) continue
+      trace.browserConsoleSeen.add(key)
+      trace.browserConsoleErrors.push(entry)
+    }
+  }
+
+  private mergeNetwork(trace: ActiveTrace, raw: unknown): void {
+    if (!Array.isArray(raw)) return
+    for (const entry of raw as FailedRequestEntry[]) {
+      const key = `${entry.at} ${entry.method} ${entry.url} ${entry.status ?? ''}`
+      if (trace.browserNetworkSeen.has(key)) continue
+      trace.browserNetworkSeen.add(key)
+      trace.browserNetworkFailures.push(entry)
     }
   }
 
@@ -784,11 +860,14 @@ export class ConversationRuntime {
       filesChanged: trace.filesChanged,
       quirks: this.deps.quirks?.snapshot() ?? {},
       eventCounts: trace.eventCounts,
-      browserState: null,
-      screenshots: null,
-      consoleErrors: null,
-      networkFailures: null,
-      testResults: null,
+      browserState: trace.browserActive
+        ? { lastUrl: trace.browserLastUrl, navigations: trace.browserNavigations }
+        : null,
+      screenshots: trace.screenshots.length > 0 ? trace.screenshots : null,
+      // `[]` is meaningful once the browser ran (clean console/network); null means it never ran.
+      consoleErrors: trace.browserActive ? trace.browserConsoleErrors : null,
+      networkFailures: trace.browserActive ? trace.browserNetworkFailures : null,
+      testResults: trace.testResults.length > 0 ? trace.testResults : null,
       gateDecisions: null,
       graderResult: null,
       failureCategory: reason === 'stop' ? null : reason,

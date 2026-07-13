@@ -287,7 +287,14 @@ export {
   supersedeSnapshots,
 } from './browser-context'
 
-export type { TraceEvent, TraceSink, TraceManifest, TranscriptSnapshotEvent } from './trace'
+export type {
+  TraceEvent,
+  TraceSink,
+  TraceManifest,
+  TranscriptSnapshotEvent,
+  BrowserStateSummary,
+  TestResultEntry,
+} from './trace'
 export {
   FileTraceSink,
   traceDir,
