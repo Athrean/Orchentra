@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import {
   ConfigLoader,
   InMemoryTaskStore,
+  ProcessSupervisor,
   SessionWriter,
   defaultEstimator,
   isKnownModel,
@@ -81,6 +82,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     agentCounter: 0,
     planMode: false,
     fileReadHashes: new Map(),
+    processSupervisor: new ProcessSupervisor(),
   }
 
   // The hook adapter is built before the LiveCli it reports into, so route its
@@ -121,6 +123,8 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     resolvedPermissionMode,
     providerName: initial.providerName,
     async close(): Promise<void> {
+      // Kill any background dev servers before the session ends — no zombies.
+      await sharedState.processSupervisor?.shutdown()
       await cli.persistSession()
       await mcpManager.shutdown()
     },

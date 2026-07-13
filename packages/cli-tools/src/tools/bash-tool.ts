@@ -3,12 +3,21 @@ import {
   prepareSandboxDirs,
   wrapBashCommand,
   type PermissionMode,
+  type ProcessSupervisor,
   type SandboxStatus,
   type ToolDefinition,
   type ToolResult,
   type ToolContext,
 } from '@orchentra/cli-core'
 import { validateCommand } from '../bash-validation'
+
+/**
+ * How long a `run_in_background` call waits for a dev server to report ready
+ * (URL scraped + probe passes) before returning the handle anyway. Long enough
+ * for a dev server to bind and print its URL; short enough that a non-server
+ * background job doesn't stall the prompt.
+ */
+const BACKGROUND_READY_TIMEOUT_MS = 10_000
 
 interface BashInput {
   command: string
@@ -88,6 +97,14 @@ export const bashTool: ToolDefinition = {
       return { content: `blocked: ${validation.reason}`, isError: true }
     }
 
+    // Background commands (dev servers) go through the run-scoped supervisor so
+    // the call returns a handle + readiness/URL instead of blocking on exit.
+    // Without a supervisor in context we fall back to running foreground.
+    const supervisor = ctx.sharedState?.processSupervisor
+    if (input.run_in_background && supervisor) {
+      return startBackground(input, ctx, supervisor)
+    }
+
     const timeoutMs = input.timeout ? input.timeout * 1000 : 120_000
     const spawn = resolveBashSpawn(input, ctx)
 
@@ -136,4 +153,54 @@ export const bashTool: ToolDefinition = {
       return { content: `execution error: ${(e as Error).message}`, isError: true }
     }
   },
+}
+
+async function startBackground(input: BashInput, ctx: ToolContext, supervisor: ProcessSupervisor): Promise<ToolResult> {
+  const proc = supervisor.start({
+    command: input.command,
+    cwd: ctx.cwd,
+    label: input.description ?? input.command,
+    // Empty readiness spec: no known port, so discover the URL by scraping the
+    // dev server's own startup log, then probe it.
+    readiness: {},
+  })
+  const ready = await supervisor.waitUntilReady(proc.id, BACKGROUND_READY_TIMEOUT_MS)
+
+  const summary =
+    ready.status === 'ready'
+      ? `background process ready${ready.url ? ` at ${ready.url}` : ''}`
+      : ready.status === 'failed' || ready.status === 'exited'
+        ? `background process ${ready.status}${ready.exitCode != null ? ` (exit ${ready.exitCode})` : ''}`
+        : `background process started (status ${ready.status})`
+
+  const handleParts = [`[background pid=${ready.pid ?? '?'} id=${proc.id} status=${ready.status}`]
+  if (ready.url) handleParts.push(`url=${ready.url}`)
+  handleParts.push('unsandboxed]')
+
+  return {
+    content: `${summary}\n${handleParts.join(' ')}`,
+    isError: ready.status === 'failed',
+    data: {
+      backgroundProcessId: proc.id,
+      pid: ready.pid,
+      status: ready.status,
+      url: ready.url,
+      port: ready.port,
+    },
+    evidence: [
+      {
+        kind: 'process-status',
+        summary,
+        detail: {
+          id: proc.id,
+          command: input.command,
+          status: ready.status,
+          url: ready.url,
+          port: ready.port,
+          exitCode: ready.exitCode,
+          sandboxed: false,
+        },
+      },
+    ],
+  }
 }
