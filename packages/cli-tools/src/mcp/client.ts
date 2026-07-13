@@ -9,7 +9,7 @@ import type {
 import { JSON_RPC_VERSION, MCP_PROTOCOL_VERSION } from './protocol'
 import type { Transport } from './transport'
 
-const CLIENT_INFO = { name: 'orchentra-cli', version: '0.1.0' }
+const CLIENT_INFO = { name: 'orchentra-cli', version: '0.2.0' }
 const CLIENT_CAPABILITIES: Record<string, unknown> = { tools: {} }
 
 export interface McpClientOptions {
