@@ -40,13 +40,39 @@ function diagnosticsEvidence(session: BrowserRunSession): ToolEvidence[] {
   ]
 }
 
+/** Model-facing console/network summary — the failing result carries it so the model never has to ask (tenet 5). */
+function formatDiagnostics(session: BrowserRunSession): string {
+  const diag = session.diagnostics()
+  const parts: string[] = []
+  if (diag.consoleErrors.length > 0) {
+    parts.push(
+      `\nconsole errors (${diag.consoleErrors.length}):\n` +
+        diag.consoleErrors
+          .slice(-5)
+          .map((e) => `  - ${e.text}`)
+          .join('\n'),
+    )
+  }
+  if (diag.failedRequests.length > 0) {
+    parts.push(
+      `\nfailed requests (${diag.failedRequests.length}):\n` +
+        diag.failedRequests
+          .slice(-5)
+          .map((r) => `  - ${r.method} ${r.url}${r.status ? ` [${r.status}]` : ''}`)
+          .join('\n'),
+    )
+  }
+  return parts.join('')
+}
+
 function errorResult(session: BrowserRunSession, err: unknown): ToolResult {
   const kind = isBrowserOpError(err) ? err.kind : 'error'
   const message = err instanceof Error ? err.message : String(err)
+  const diag = session.diagnostics()
   return {
-    content: `browser ${kind}: ${message}`,
+    content: `browser ${kind}: ${message}${formatDiagnostics(session)}`,
     isError: true,
-    data: { failureKind: kind },
+    data: { failureKind: kind, consoleErrors: diag.consoleErrors, failedRequests: diag.failedRequests },
     evidence: [
       { kind: 'browser-failure', summary: `browser op failed (${kind})`, detail: { kind, message } },
       ...diagnosticsEvidence(session),

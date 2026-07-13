@@ -163,10 +163,18 @@ describe('browser_act', () => {
   test('a failed op surfaces the classified kind plus diagnostics evidence', async () => {
     const session = new FakeSession()
     session.actError = browserOpError('ref-not-found', 'ref e9 is not in the current snapshot')
-    session.diag = { consoleErrors: [{ text: 'boom', at: 'now' }], failedRequests: [] }
+    session.diag = {
+      consoleErrors: [{ text: 'boom', at: 'now' }],
+      failedRequests: [{ url: '/api/x', method: 'GET', status: 500, at: 'now' }],
+    }
     const res = await browserActTool.execute({ ref: 'e9', action: 'click' }, ctxWith(session))
     expect(res.isError).toBe(true)
     expect(res.content).toContain('browser ref-not-found')
+    // The model-facing content carries the console/network status — no need to ask.
+    expect(res.content).toContain('console errors (1)')
+    expect(res.content).toContain('boom')
+    expect(res.content).toContain('failed requests (1)')
+    expect(res.content).toContain('GET /api/x [500]')
     const kinds = (res.evidence ?? []).map((e) => e.kind)
     expect(kinds).toContain('browser-failure')
     expect(kinds).toContain('browser-diagnostics')
