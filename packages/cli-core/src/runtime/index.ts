@@ -13,6 +13,7 @@ export type {
   UsageEvent,
   CompactedEvent,
   LoopDetectedEvent,
+  PermissionDecisionEvent,
   HookProgressRuntimeEvent,
   ErrorEvent,
   DoneEvent,
@@ -247,6 +248,9 @@ export {
 } from './usage'
 
 export { compactionNotesPath, renderCompactionNote, appendCompactionNote } from './compaction-notes'
+
+export type { TraceSink, TraceManifest } from './trace'
+export { FileTraceSink, traceEventsPath, traceManifestPath, reconstructTranscript } from './trace'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
 export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'

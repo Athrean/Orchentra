@@ -4,6 +4,7 @@ import {
   addUsage,
   emptyUsage,
   type DoneReason,
+  type PermissionDecisionEvent,
   type RuntimeEvent,
   type SpanAttributeValue,
   type ToolCall,
@@ -16,6 +17,8 @@ import type { QuirkCounters } from './quirks'
 import { budgetToolOutput } from './tool-output-budget'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
 import { appendCompactionNote, compactionNotesPath, renderCompactionNote } from './compaction-notes'
+import { FileTraceSink, type TraceSink, type TraceManifest } from './trace'
+import { billedTokens, cachedTokens, estimatedCostUsd } from './usage'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
@@ -86,6 +89,13 @@ export interface ConversationDeps {
   persistToolOutput?: (path: string, content: string) => Promise<void>
   /** Override for tests; defaults to appending the note to the session's NOTES.md. */
   persistCompactionNote?: (path: string, note: string) => Promise<void>
+  /**
+   * Trace destination for this runtime's runs. Defaults to a FileTraceSink
+   * writing per-run JSONL + manifest under the session directory, so every
+   * run — including sub-agent runs — leaves an auditable trace unless a test
+   * injects a no-op.
+   */
+  traceSink?: TraceSink
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -112,8 +122,18 @@ export interface RunInput {
   priorMessages?: ChatMessage[]
 }
 
+interface ActiveTrace {
+  sink: TraceSink
+  traceId: string
+  startedAt: string
+  eventCounts: Record<string, number>
+}
+
 export class ConversationRuntime {
   private finalMessages: ChatMessage[] = []
+  // Per-run trace state; set at loop start so emit() can append every event.
+  // A runtime never runs concurrently with itself, so one slot suffices.
+  private trace: ActiveTrace | null = null
 
   constructor(
     private readonly config: ConversationConfig,
@@ -140,6 +160,18 @@ export class ConversationRuntime {
     const messages: ChatMessage[] = [...(input.priorMessages ?? []), { role: 'user', content: input.userMessage }]
     this.finalMessages = messages
     const { provider, tools, systemPrompt } = this.deps
+
+    const traceId = this.newId()
+    this.trace = {
+      sink: this.deps.traceSink ?? new FileTraceSink(this.config.cwd, this.config.sessionId, traceId),
+      traceId,
+      startedAt: this.now(),
+      eventCounts: {},
+    }
+    // Trace-only record of the run's input: consumers render the user message
+    // themselves, so it is appended to the trace without entering the event
+    // stream — reconstruction needs it, UIs must not see it twice.
+    await this.trace.sink.append({ kind: 'user_message', content: input.userMessage })
 
     while (true) {
       if (this.deps.signal?.aborted) {
@@ -203,8 +235,24 @@ export class ConversationRuntime {
         signal: this.deps.signal,
       }
 
+      const modelSpanId = this.newId()
+      yield* this.emit({
+        kind: 'span_start',
+        spanId: modelSpanId,
+        parentSpanId: stepSpanId,
+        name: 'model_call',
+        startedAt: this.now(),
+        attributes: { model: this.config.model },
+      })
       const turn = await this.runTurn(provider.stream(request), budget)
       for (const ev of turn.events) yield* this.emit(ev)
+      yield* this.emit({
+        kind: 'span_end',
+        spanId: modelSpanId,
+        endedAt: this.now(),
+        status: turn.error ? 'error' : 'ok',
+        attributes: { stop_reason: turn.stopReason, tool_calls: turn.toolCalls.length },
+      })
 
       if (this.deps.signal?.aborted) {
         yield* this.emit({
@@ -325,7 +373,8 @@ export class ConversationRuntime {
           startedAt: this.now(),
           attributes: { tool: call.name, tool_call_id: call.id },
         })
-        const result = await this.runTool(call, budget)
+        const { payload: result, permission } = await this.runTool(call, budget)
+        if (permission) yield* this.emit(permission)
         // Trim only the provider-bound copy; the full result still goes to the
         // display + session log below, so the budget is transport-only. The
         // recovery path is computed up front (cheap, deterministic) but only
@@ -425,6 +474,7 @@ export class ConversationRuntime {
     } catch (err) {
       error = true
       if (!this.deps.signal?.aborted) {
+        this.deps.quirks?.record(this.config.model, 'provider_error')
         events.push({
           kind: 'error',
           message: err instanceof Error ? err.message : String(err),
@@ -447,7 +497,10 @@ export class ConversationRuntime {
     return { events, text, toolCalls, thinking, stopReason, error }
   }
 
-  private async runTool(call: ToolCall, budget: RuntimeBudget): Promise<ToolResultPayload> {
+  private async runTool(
+    call: ToolCall,
+    budget: RuntimeBudget,
+  ): Promise<{ payload: ToolResultPayload; permission?: PermissionDecisionEvent }> {
     const ctx: ToolContext = {
       sessionId: this.config.sessionId,
       cwd: this.config.cwd,
@@ -466,9 +519,11 @@ export class ConversationRuntime {
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {
       return {
-        id: call.id,
-        content: `plan mode active: tool "${call.name}" is blocked. Call exit_plan_mode to resume execution.`,
-        isError: true,
+        payload: {
+          id: call.id,
+          content: `plan mode active: tool "${call.name}" is blocked. Call exit_plan_mode to resume execution.`,
+          isError: true,
+        },
       }
     }
 
@@ -479,6 +534,7 @@ export class ConversationRuntime {
       preHook = await this.deps.hookRunner.runPreToolUse(call.name, inputJson)
     }
 
+    let permission: PermissionDecisionEvent | undefined
     if (this.deps.enforcer && this.deps.enforcerAskUser && this.deps.permissionMode) {
       const hookReason = preHook?.permissionReason ?? (preHook?.messages.join('; ') || undefined)
       const hookOverride = preHook?.permissionOverride
@@ -504,12 +560,26 @@ export class ConversationRuntime {
         workspaceRoot: this.config.cwd,
       })
       if (decision.kind === 'deny') {
-        return { id: call.id, content: `permission denied: ${decision.reason}`, isError: true }
+        permission = {
+          kind: 'permission_decision',
+          tool: call.name,
+          toolCallId: call.id,
+          decision: 'deny',
+          reason: decision.reason,
+        }
+        return {
+          payload: { id: call.id, content: `permission denied: ${decision.reason}`, isError: true },
+          permission,
+        }
       }
+      permission = { kind: 'permission_decision', tool: call.name, toolCallId: call.id, decision: 'allow' }
     }
 
     if (preHook?.denied) {
-      return { id: call.id, content: `hook denied: ${preHook.messages.join('; ')}`, isError: true }
+      return {
+        payload: { id: call.id, content: `hook denied: ${preHook.messages.join('; ')}`, isError: true },
+        permission,
+      }
     }
 
     try {
@@ -523,7 +593,7 @@ export class ConversationRuntime {
       if (r.data !== undefined) payload.data = r.data
       if (r.artifacts !== undefined) payload.artifacts = r.artifacts
       if (r.evidence !== undefined) payload.evidence = r.evidence
-      return payload
+      return { payload, permission }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
 
@@ -531,7 +601,7 @@ export class ConversationRuntime {
         await this.deps.hookRunner.runPostToolUseFailure(call.name, inputJson, message)
       }
 
-      return { id: call.id, content: message, isError: true }
+      return { payload: { id: call.id, content: message, isError: true }, permission }
     }
   }
 
@@ -554,8 +624,34 @@ export class ConversationRuntime {
   }
 
   private async *emit(event: RuntimeEvent): AsyncIterable<RuntimeEvent> {
+    if (this.trace) {
+      this.trace.eventCounts[event.kind] = (this.trace.eventCounts[event.kind] ?? 0) + 1
+      await this.trace.sink.append(event)
+      if (event.kind === 'done') {
+        await this.trace.sink.finalize(this.buildManifest(this.trace, event.reason, event.steps, event.usage))
+        this.trace = null
+      }
+    }
     if (this.deps.onEvent) await this.deps.onEvent(event)
     yield event
+  }
+
+  private buildManifest(trace: ActiveTrace, reason: DoneReason, steps: number, usage: UsageTotals): TraceManifest {
+    return {
+      traceId: trace.traceId,
+      sessionId: this.config.sessionId,
+      model: this.config.model,
+      startedAt: trace.startedAt,
+      endedAt: this.now(),
+      doneReason: reason,
+      steps,
+      usage,
+      billedTokens: billedTokens(usage),
+      cachedTokens: cachedTokens(usage),
+      estimatedCostUsd: estimatedCostUsd(usage, this.config.budget.model ?? this.config.model),
+      quirks: this.deps.quirks?.snapshot() ?? {},
+      eventCounts: trace.eventCounts,
+    }
   }
 }
 
