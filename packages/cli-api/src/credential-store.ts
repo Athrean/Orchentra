@@ -13,7 +13,6 @@ export type ProviderKey =
   | 'aws'
   | 'gcp'
   | 'azure'
-  | 'orchentra'
 
 export interface StoredCredential {
   readonly apiKey?: string

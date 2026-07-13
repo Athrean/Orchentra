@@ -26,6 +26,13 @@ describe('parseArgs', () => {
     expect(parseArgs(['node', 'orchentra', 'init']).kind).toBe('init')
   })
 
+  test('init rejects removed remote-bootstrap arguments', () => {
+    expect(() => parseArgs(['node', 'orchentra', 'init', '--server-url', 'http://localhost'])).toThrow(
+      'init: unknown argument',
+    )
+    expect(() => parseArgs(['node', 'orchentra', 'init', '--owner', 'Athrean'])).toThrow('init: unknown argument')
+  })
+
   test('reauth returns reauth action', () => {
     expect(parseArgs(['node', 'orchentra', 'reauth']).kind).toBe('reauth')
   })

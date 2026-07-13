@@ -93,18 +93,6 @@ export function isJsonRpcResponse(value: unknown): value is JsonRpcResponse {
   return 'result' in value || 'error' in value
 }
 
-export function isJsonRpcNotification(value: unknown): value is JsonRpcNotification {
-  if (!isObject(value)) return false
-  if (value.jsonrpc !== JSON_RPC_VERSION) return false
-  return !('id' in value) && typeof value.method === 'string'
-}
-
-export function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
-  if (!isObject(value)) return false
-  if (value.jsonrpc !== JSON_RPC_VERSION) return false
-  return 'id' in value && typeof value.method === 'string'
-}
-
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

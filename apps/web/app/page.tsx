@@ -2,7 +2,6 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
 
 const GITHUB_URL = 'https://github.com/Athrean/Orchentra'
 const INSTALL_COMMAND = 'npm install -g @orchentra/cli'
@@ -309,15 +308,9 @@ function Hero(): React.ReactNode {
       {/* 6 Column Cards Background */}
       <div className="absolute inset-0 grid grid-cols-6">
         {[1, 2, 3, 4, 5, 6].map((num) => (
-          <motion.div
-            key={num}
-            initial="rest"
-            whileHover="hover"
-            animate="rest"
-            className="group relative h-full cursor-pointer border-l border-ink/[0.04] first:border-l-0"
-          >
+          <div key={num} className="group relative h-full cursor-pointer border-l border-ink/[0.04] first:border-l-0">
             <EdgeOverlay headImage={`/heads/${num}.png`} />
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -419,11 +412,8 @@ function Runtime(): React.ReactNode {
 
         <div className="grid border-l border-t border-ink/10 md:grid-cols-2 lg:grid-cols-3">
           {runtimeCards.map((card) => (
-            <motion.article
+            <article
               key={card.index}
-              initial="rest"
-              whileHover="hover"
-              animate="rest"
               className="group relative min-h-[320px] overflow-hidden border-b border-r border-ink/10 bg-base p-6 transition duration-200 hover:-translate-y-1 hover:border-ink/50"
             >
               <EdgeOverlay headImage={card.image} />
@@ -442,7 +432,7 @@ function Runtime(): React.ReactNode {
                   {card.signal}
                 </code>
               </div>
-            </motion.article>
+            </article>
           ))}
         </div>
       </div>

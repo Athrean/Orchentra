@@ -129,5 +129,3 @@ export {
   type PullRequestRef,
   type CreatePullRequestInput,
 } from './github'
-
-export { writeProjectSettings, type WriteProjectSettingsInput } from './orchentra/write-project-settings'

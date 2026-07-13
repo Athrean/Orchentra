@@ -351,49 +351,6 @@ export class HooksCommand implements CommandHandler {
   }
 }
 
-export class TerminalSetupCommand implements CommandHandler {
-  spec: SlashCommandSpec = {
-    name: 'terminal-setup',
-    aliases: [],
-    summary: 'Show terminal keybinding setup guidance',
-  }
-
-  async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
-    return card(ctx, 'Terminal Setup', 'keybindings', [
-      {
-        rows: [
-          { key: 'Newline', value: 'Shift+Enter or Alt+Enter' },
-          { key: 'External editor', value: 'Ctrl+X' },
-          { key: 'Command palette', value: 'Ctrl+P' },
-          { key: 'Mode cycle', value: 'Shift+Tab' },
-        ],
-      },
-    ])
-  }
-}
-
-export class TuiCommand implements CommandHandler {
-  spec: SlashCommandSpec = {
-    name: 'tui',
-    aliases: [],
-    summary: 'Inspect terminal renderer mode',
-    argumentHint: '[default|fullscreen]',
-  }
-
-  async execute(args: string[], ctx: CommandContext): Promise<boolean> {
-    const requested = args[0]
-    const rows = [
-      { key: 'Renderer', value: 'default' },
-      { key: 'Fullscreen', value: 'not enabled' },
-      { key: 'Requested', value: requested ?? '(none)' },
-    ]
-    if (requested && !['default', 'fullscreen'].includes(requested)) {
-      return note(ctx, 'Usage: /tui [default|fullscreen]', 'warn')
-    }
-    return card(ctx, 'TUI', 'renderer', [{ rows }])
-  }
-}
-
 export class StatuslineCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'statusline',
@@ -468,26 +425,6 @@ export class UsageCommand implements CommandHandler {
       })
     }
     return card(ctx, 'Usage', ctx.session.getModel(), sections)
-  }
-}
-
-export class UsageCreditsCommand implements CommandHandler {
-  spec: SlashCommandSpec = {
-    name: 'usage-credits',
-    aliases: [],
-    summary: 'Explain usage credits for the active runtime',
-  }
-
-  async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
-    return card(ctx, 'Usage Credits', 'BYOK runtime', [
-      {
-        rows: [
-          { key: 'Plan credits', value: 'not used' },
-          { key: 'Billing path', value: 'provider API key / local account' },
-          { key: 'Budget controls', value: 'use config cost caps and /usage' },
-        ],
-      },
-    ])
   }
 }
 

@@ -1,6 +1,6 @@
 # `@orchentra/cli`
 
-The terminal surface for Orchentra. Ships as TypeScript + Bun for local
+The terminal surface for Orchentra, the coding harness from Athrean Lab. Ships as TypeScript + Bun for local
 development, as a bundled npm CLI, and as optional per-architecture
 single-file binaries.
 

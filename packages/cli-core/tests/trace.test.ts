@@ -8,6 +8,7 @@ import {
   traceArtifactsDir,
   traceEventsPath,
   traceManifestPath,
+  type TraceEvent,
   type TraceManifest,
 } from '../src/runtime/trace'
 import type { RuntimeEvent } from '../src/runtime/events'
@@ -81,9 +82,63 @@ describe('FileTraceSink', () => {
     expect(existsSync(dir)).toBe(true)
     expect(statSync(dir).isDirectory()).toBe(true)
   })
+
+  test('redacts secrets before events and manifests reach disk', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'trace-redaction-'))
+    const sink = new FileTraceSink(cwd, 'redacted')
+    const apiKey = `sk-proj-${'a'.repeat(32)}`
+    const bearer = `Bearer ${'b'.repeat(32)}`
+
+    await sink.append({
+      kind: 'tool_result',
+      result: {
+        id: 'tc1',
+        content: `request used ${bearer}`,
+        isError: false,
+        data: { apiKey, inputTokens: 17 },
+      },
+    })
+    await sink.append({
+      kind: 'transcript_snapshot',
+      messages: [{ role: 'user', content: `API_TOKEN=${apiKey}` }],
+    })
+    await sink.finalize({ ...manifest, task: `debug ${apiKey}` })
+
+    const eventsText = readFileSync(traceEventsPath(cwd, 'redacted'), 'utf8')
+    const manifestText = readFileSync(traceManifestPath(cwd, 'redacted'), 'utf8')
+    expect(eventsText).not.toContain(apiKey)
+    expect(eventsText).not.toContain(bearer)
+    expect(manifestText).not.toContain(apiKey)
+    expect(eventsText).toContain('<REDACTED>')
+
+    const first = JSON.parse(eventsText.trim().split('\n')[0]!) as {
+      result: { data: { apiKey: string; inputTokens: number } }
+    }
+    expect(first.result.data.apiKey).toBe('<REDACTED>')
+    expect(first.result.data.inputTokens).toBe(17)
+  })
 })
 
 describe('reconstructTranscript', () => {
+  test('prefers the exact final snapshot over lossy streamed replay', () => {
+    const exact = [
+      { role: 'user' as const, content: 'prior turn' },
+      {
+        role: 'assistant' as const,
+        content: 'answer',
+        thinking: [{ thinking: 'private chain', signature: 'sig-1' }],
+      },
+      { role: 'tool' as const, content: '[trimmed provider copy]', toolCallId: 'tc1' },
+    ]
+    const events: TraceEvent[] = [
+      { kind: 'user_message', content: 'current turn only' },
+      { kind: 'tool_result', result: { id: 'tc1', content: 'full display copy', isError: false } },
+      { kind: 'transcript_snapshot', messages: exact },
+    ]
+
+    expect(reconstructTranscript(events)).toEqual(exact)
+  })
+
   test('rebuilds a multi-step transcript from events alone', () => {
     const events: RuntimeEvent[] = [
       { kind: 'user_message', content: 'do the thing' },

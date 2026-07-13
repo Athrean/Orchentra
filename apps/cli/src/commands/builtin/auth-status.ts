@@ -3,7 +3,7 @@ import { THEME } from '../../tui/theme'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import type { UiKVRow } from '../ui-output'
 
-const PROVIDERS = ['anthropic', 'gemini', 'openai', 'xai', 'dashscope', 'github', 'orchentra'] as const
+const PROVIDERS = ['anthropic', 'gemini', 'openai', 'xai', 'dashscope', 'github'] as const
 type Provider = (typeof PROVIDERS)[number]
 
 export class AuthStatusCommand implements CommandHandler {
@@ -63,7 +63,6 @@ function envStatus(provider: Provider): string | null {
     xai: ['XAI_API_KEY'],
     dashscope: ['DASHSCOPE_API_KEY'],
     github: ['ORCHENTRA_GITHUB_TOKEN', 'GITHUB_TOKEN', 'GH_TOKEN'],
-    orchentra: ['ORCHENTRA_API_KEY'],
   }
   const vars = map[provider] ?? []
   for (const v of vars) {

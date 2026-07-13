@@ -31,8 +31,9 @@ secrets/
 .vscode/
 .idea/
 
-# Product docs remain local-only pending the documentation-governance decision.
-docs/
+# Canonical product docs are tracked. The four pivot audits are immutable,
+# local source material and remain outside product history.
+docs/discovery/
 # Tracked product docs that live alongside the app they document
 !apps/*/docs/
 UBIQUITOUS_LANGUAGE.md

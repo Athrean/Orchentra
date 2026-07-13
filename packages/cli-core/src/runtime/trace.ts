@@ -3,9 +3,26 @@ import { dirname, join } from 'node:path'
 import type { RuntimeEvent, UsageTotals, DoneReason, ToolCall, ToolArtifact } from './events'
 import type { ChatMessage } from './provider'
 import type { QuirkKind } from './quirks'
+import { redactSecrets } from '../memory/failure-signature'
 
 /**
- * Per-run trace: every RuntimeEvent appended as JSONL while the run streams,
+ * Trace-only checkpoint of the exact provider-bound transcript at run end.
+ *
+ * Replaying streamed events is useful for older traces and live consumers,
+ * but it cannot recover prior-turn context, signed thinking blocks, or the
+ * trimmed copy of an oversized tool result exactly. This final checkpoint is
+ * therefore the authoritative reconstruction record. It is written to the
+ * trace only; it is not emitted to the UI or duplicated in the session log.
+ */
+export interface TranscriptSnapshotEvent {
+  kind: 'transcript_snapshot'
+  messages: ChatMessage[]
+}
+
+export type TraceEvent = RuntimeEvent | TranscriptSnapshotEvent
+
+/**
+ * Per-run trace: every runtime event plus trace-only checkpoints appended as JSONL while the run streams,
  * plus a manifest written when the run finishes. The trace is the audit
  * surface — a run must be reconstructable from it alone (M1 exit criterion,
  * proven by {@link reconstructTranscript}), and the manifest is where honest
@@ -70,7 +87,7 @@ export interface TraceManifest {
 }
 
 export interface TraceSink {
-  append(event: RuntimeEvent): void | Promise<void>
+  append(event: TraceEvent): void | Promise<void>
   finalize(manifest: TraceManifest): void | Promise<void>
 }
 
@@ -105,13 +122,13 @@ export class FileTraceSink implements TraceSink {
     private readonly traceId: string,
   ) {}
 
-  async append(event: RuntimeEvent): Promise<void> {
+  async append(event: TraceEvent): Promise<void> {
     const path = traceEventsPath(this.cwd, this.traceId)
     if (!this.dirReady) {
       await mkdir(dirname(path), { recursive: true })
       this.dirReady = true
     }
-    await appendFile(path, `${JSON.stringify(event)}\n`, 'utf8')
+    await appendFile(path, `${JSON.stringify(redactTraceData(event))}\n`, 'utf8')
   }
 
   async finalize(manifest: TraceManifest): Promise<void> {
@@ -124,8 +141,42 @@ export class FileTraceSink implements TraceSink {
     // nothing writes into it yet — an empty dir means "no artifacts", which
     // is distinct from "layout not yet migrated".
     await mkdir(traceArtifactsDir(this.cwd, this.traceId), { recursive: true })
-    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+    await writeFile(path, `${JSON.stringify(redactTraceData(manifest), null, 2)}\n`, 'utf8')
   }
+}
+
+/** Redact strings and secret-shaped object fields immediately before disk I/O. */
+function redactTraceData(value: unknown, key?: string): unknown {
+  if (key && isSensitiveKey(key)) return '<REDACTED>'
+  if (typeof value === 'string') return redactSecrets(value)
+  if (Array.isArray(value)) return value.map((item) => redactTraceData(item))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([entryKey, entryValue]) => [
+        entryKey,
+        redactTraceData(entryValue, entryKey),
+      ]),
+    )
+  }
+  return value
+}
+
+function isSensitiveKey(key: string): boolean {
+  const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()
+  const parts = normalized.split(/[^a-z0-9]+/).filter(Boolean)
+  const tail = parts[parts.length - 1]
+  return (
+    tail === 'key' ||
+    tail === 'token' ||
+    tail === 'secret' ||
+    tail === 'password' ||
+    tail === 'passwd' ||
+    tail === 'pwd' ||
+    tail === 'authorization' ||
+    tail === 'cookie' ||
+    tail === 'credential' ||
+    tail === 'credentials'
+  )
 }
 
 /**
@@ -135,7 +186,15 @@ export class FileTraceSink implements TraceSink {
  * message, tool_use events its tool calls, tool_result events the tool
  * messages, and a compacted event replays the same splice the runtime made.
  */
-export function reconstructTranscript(events: RuntimeEvent[]): ChatMessage[] {
+export function reconstructTranscript(events: readonly TraceEvent[]): ChatMessage[] {
+  // New traces carry an exact terminal checkpoint. Prefer it over inferred
+  // replay so prior context, thinking signatures, and provider-bound trimmed
+  // tool content survive a cold reconstruction byte-for-byte.
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i]!
+    if (event.kind === 'transcript_snapshot') return event.messages
+  }
+
   const messages: ChatMessage[] = []
   let text = ''
   let toolCalls: ToolCall[] = []

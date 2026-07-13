@@ -23,4 +23,12 @@ describe('/login slash handler', () => {
     expect(emitted.length).toBe(1)
     expect(emitted[0]?.kind).toBe('login-picker')
   })
+
+  test('provider args use shared login service', async () => {
+    const cmd = new LoginCommand()
+    const { ctx, emitted } = fakeCtx()
+
+    expect(await cmd.execute(['github'], ctx)).toBe(true)
+    expect(emitted).toEqual([{ kind: 'note', tone: 'info', text: 'Run in a fresh terminal: orchentra login github' }])
+  })
 })

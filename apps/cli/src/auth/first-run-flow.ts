@@ -1,19 +1,13 @@
-import { randomBytes } from 'node:crypto'
-import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
 import {
   saveCredential,
   saveCredentialAsync,
   tryLoadKeytar,
-  writeProjectSettings,
   type KeychainShim,
   type ProviderKey,
 } from '@orchentra/cli-api'
 import { promptSelect } from '../ui/select'
 import { renderBannerFrame } from '../render/banner'
-import { runInstallBootstrap } from './install-bootstrap'
-import { startLoopback } from './loopback-server'
-import { inferGitHubOwner } from '../util/git-owner'
 import { CLI_NAME, CLI_VERSION } from '../version'
 import { DEFAULT_MODEL_ID } from '../model-catalog'
 
@@ -49,18 +43,6 @@ export interface FirstRunDeps {
   promptApiKey(provider: ProviderKey): Promise<string | null>
   save(provider: ProviderKey, apiKey: string): Promise<void>
   out?(msg: string): void
-  /**
-   * Slice 5: after the LLM credential is saved, optionally prompt
-   * `Bootstrap GH App now? [Y/n]`. The prompt and the orchestrator
-   * are both injected so tests don't touch stdin or the network.
-   * When `promptBootstrap` is unset, the prompt does not fire — the
-   * legacy callers (reauth, headless tests) keep their current
-   * behaviour. Bootstrap is opportunistic: failures or "n" still
-   * return `{ kind: 'saved' }` because the LLM credential is the
-   * gate for first-run completion, not the GH App install.
-   */
-  promptBootstrap?(): Promise<boolean>
-  runBootstrap?(): Promise<void>
 }
 
 export async function runFirstRunFlow(deps: FirstRunDeps): Promise<FirstRunResult> {
@@ -80,7 +62,6 @@ export async function runFirstRunFlow(deps: FirstRunDeps): Promise<FirstRunResul
       return { kind: 'cancelled' }
     }
     deps.out?.(`Signed in to ${provider}.`)
-    await maybePromptBootstrap(deps)
     return { kind: 'saved', provider }
   }
 
@@ -91,30 +72,10 @@ export async function runFirstRunFlow(deps: FirstRunDeps): Promise<FirstRunResul
 
   await deps.save(provider, apiKey)
   deps.out?.(`Saved ${provider} key.`)
-  await maybePromptBootstrap(deps)
   return { kind: 'saved', provider }
 }
 
-async function maybePromptBootstrap(deps: FirstRunDeps): Promise<void> {
-  if (!deps.promptBootstrap) return
-  const yes = await deps.promptBootstrap()
-  if (!yes) return
-  if (!deps.runBootstrap) return
-  await deps.runBootstrap()
-}
-
-export interface DefaultFirstRunOptions {
-  /** Working directory used to infer the GH App install owner. */
-  readonly cwd?: string
-}
-
-export function makeDefaultFirstRunDeps(
-  home?: string,
-  shim?: KeychainShim | null,
-  opts: DefaultFirstRunOptions = {},
-): FirstRunDeps {
-  const cwd = opts.cwd ?? process.cwd()
-  const owner = inferGitHubOwner(cwd)?.owner ?? null
+export function makeDefaultFirstRunDeps(home?: string, shim?: KeychainShim | null): FirstRunDeps {
   return {
     onStart: async () => renderFirstRunBanner(),
     pickProvider: async () => brandedPickProvider(),
@@ -136,68 +97,6 @@ export function makeDefaultFirstRunDeps(
       }
     },
     out: (msg) => process.stdout.write(`  ${C.brand}✓${C.reset} ${msg}\n`),
-    // Slice 5: after the LLM credential lands, offer to wire up the
-    // GitHub App install in the same session. Skip the offer entirely
-    // when the cwd has no inferrable GitHub origin — the orchestrator
-    // needs an `owner` and there's no good UX for prompting it from
-    // inside a stdin-driven yes/no.
-    ...(owner
-      ? {
-          promptBootstrap: async () => brandedPromptYesNo('Bootstrap GH App now? [Y/n] '),
-          runBootstrap: async () => {
-            const result = await runInstallBootstrap({
-              serverUrl: process.env.ORCHENTRA_SERVER_URL ?? 'http://localhost:3001',
-              owner,
-              appSlug: 'orchentra',
-              cwd,
-              timeoutMs: 5 * 60_000,
-              randomState: () => randomBytes(24).toString('hex'),
-              openBrowser: defaultOpenBrowser,
-              makeLoopback: (o) => startLoopback({ timeoutMs: o.timeoutMs }),
-              fetch,
-              writeSettings: (i) => writeProjectSettings(i),
-              saveApiKey: (apiKey) => saveCredential('orchentra', { apiKey }, home),
-            })
-            if (!result.ok) {
-              process.stderr.write(`  ${C.dim}bootstrap failed: ${result.error}${C.reset}\n`)
-              return
-            }
-            process.stdout.write(`  ${C.brand}✓${C.reset} GH App installed (orgId=${result.orgId}).\n`)
-          },
-        }
-      : {}),
-  }
-}
-
-async function defaultOpenBrowser(url: string): Promise<void> {
-  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
-  await new Promise<void>((resolve) => {
-    try {
-      const child = spawn(cmd, process.platform === 'win32' ? ['', url] : [url], {
-        stdio: 'ignore',
-        detached: true,
-        shell: process.platform === 'win32',
-      })
-      child.on('error', () => resolve())
-      child.on('exit', () => resolve())
-      child.unref()
-      setTimeout(resolve, 500)
-    } catch {
-      resolve()
-    }
-  })
-}
-
-async function brandedPromptYesNo(prompt: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout })
-  try {
-    const ans = (await rl.question(`  ${C.brand}❯${C.reset} ${prompt}`)).trim().toLowerCase()
-    // Default Y — empty input or anything starting with 'y' is yes.
-    return ans === '' || ans.startsWith('y')
-  } catch {
-    return false
-  } finally {
-    rl.close()
   }
 }
 

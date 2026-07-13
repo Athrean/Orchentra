@@ -42,7 +42,6 @@ import type {
 import {
   UsageTracker,
   collectContextFiles,
-  compact,
   emptyUsage,
   addUsage,
   buildSystemPrompt,
@@ -701,35 +700,10 @@ export class LiveCli implements SessionControl {
 
   async runTurn(input: string): Promise<TurnRunResult> {
     const sink = this.eventSink
+    const forceCompaction = this.forceCompactFlag
+    this.forceCompactFlag = false
     this.pendingFileUndoSnapshots.clear()
     this.currentTurnFileUndo = []
-    // Handle forced compaction
-    if (this.forceCompactFlag) {
-      this.forceCompactFlag = false
-      const est = estimateMessagesTokens(this.messages, defaultEstimator)
-      if (est > 0) {
-        const result = compact({
-          messages: this.messages,
-          contextWindowTokens: 200_000,
-          thresholdRatio: 0,
-          keepRecent: 6,
-        })
-        if (result.compacted) {
-          this.messages = result.messages
-          this.tracker.recordCompaction(result.tokensSaved)
-          if (sink) {
-            sink({
-              kind: 'compacted',
-              droppedMessageCount: result.droppedCount,
-              tokensSaved: result.tokensSaved,
-              summary: '',
-            })
-          } else {
-            process.stdout.write(renderCompactNotice(result.droppedCount, result.tokensSaved) + '\n')
-          }
-        }
-      }
-    }
 
     if (!sink) this.spinner.start('Thinking...')
 
@@ -881,7 +855,11 @@ export class LiveCli implements SessionControl {
     let doneReason: DoneReason | undefined
 
     try {
-      for await (const event of this.runtime.run({ userMessage: input, priorMessages: this.messages })) {
+      for await (const event of this.runtime.run({
+        userMessage: input,
+        priorMessages: this.messages,
+        forceCompaction,
+      })) {
         await this.handleEvent(event)
         if (event.kind === 'text') {
           assistantText += event.delta

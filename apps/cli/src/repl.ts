@@ -28,7 +28,7 @@ export interface ReplOptions {
 export async function runRepl(options: ReplOptions): Promise<number> {
   const shim = await tryLoadKeytar()
   if (!(await hasAnyLlmCredential(homedir(), shim))) {
-    const result = await runFirstRunFlow(makeDefaultFirstRunDeps(undefined, shim, { cwd: options.cwd }))
+    const result = await runFirstRunFlow(makeDefaultFirstRunDeps(undefined, shim))
     if (result.kind === 'cancelled') {
       process.stderr.write(
         'orchentra needs at least one LLM provider configured. Run `orchentra reauth` to try again.\n',

@@ -13,6 +13,7 @@ import type { LlmCaller } from '../../src/composites/scan'
 import { SearchCommand } from '../../src/commands/builtin/search'
 import { ThinkCommand } from '../../src/commands/builtin/think'
 import { ClearCommand } from '../../src/commands/builtin/clear'
+import { HelpCommand } from '../../src/commands/builtin/help'
 import {
   AddDirCommand,
   CdCommand,
@@ -90,11 +91,25 @@ describe('small slash parity commands', () => {
     expect(names).toContain('fork')
     expect(names).toContain('goal')
     expect(names).toContain('hooks')
-    expect(names).toContain('terminal-setup')
-    expect(names).toContain('tui')
+    expect(names).not.toContain('terminal-setup')
+    expect(names).not.toContain('tui')
     expect(names).toContain('statusline')
     expect(names).toContain('usage')
-    expect(names).toContain('usage-credits')
+    expect(names).not.toContain('usage-credits')
+  })
+
+  test('/help carries hints from removed static commands', async () => {
+    const registry = createBuiltinRegistry()
+    const { ctx, events } = makeCtx('/work')
+
+    await new HelpCommand(registry).execute([], ctx)
+
+    const output = events[0]
+    if (output?.kind !== 'card') throw new Error('expected help card')
+    const hints = output.sections.find((section) => section.title === 'Quick hints')
+    expect(hints?.rows).toContainEqual({ key: 'Newline', value: 'Shift+Enter or Alt+Enter' })
+    expect(hints?.rows).toContainEqual({ key: 'Runtime', value: 'inline TUI; BYOK billing' })
+    expect(hints?.rows).toContainEqual({ key: 'Usage', value: '/usage shows tokens and estimated cost' })
   })
 
   test('/goal stores, reports, and clears a session goal', async () => {

@@ -249,7 +249,7 @@ export {
 
 export { compactionNotesPath, renderCompactionNote, appendCompactionNote } from './compaction-notes'
 
-export type { TraceSink, TraceManifest } from './trace'
+export type { TraceEvent, TraceSink, TraceManifest, TranscriptSnapshotEvent } from './trace'
 export {
   FileTraceSink,
   traceDir,

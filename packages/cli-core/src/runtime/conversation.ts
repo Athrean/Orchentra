@@ -125,6 +125,8 @@ export interface ConversationDeps {
 export interface RunInput {
   userMessage: string
   priorMessages?: ChatMessage[]
+  /** Compact prior context before this turn, regardless of threshold. */
+  forceCompaction?: boolean
 }
 
 interface ActiveTrace {
@@ -186,7 +188,7 @@ export class ConversationRuntime {
     const budget = this.deps.budget ?? new RuntimeBudget(this.config.budget)
     budget.beginTurn()
     const loopDetector = new LoopDetector(this.config.loopDetection)
-    const messages: ChatMessage[] = [...(input.priorMessages ?? []), { role: 'user', content: input.userMessage }]
+    const messages: ChatMessage[] = [...(input.priorMessages ?? [])]
     this.finalMessages = messages
     const { provider, tools, systemPrompt } = this.deps
 
@@ -207,6 +209,30 @@ export class ConversationRuntime {
       filesChanged: [],
       subAgentTraceIds: [],
     }
+    if (input.forceCompaction) {
+      // Explicit compaction belongs to the runtime too: the same boundary is
+      // persisted, emitted, session-recorded, and included in the manifest.
+      // Keep the current user message outside the dropped history, matching
+      // the command's existing "compact before the next turn" semantics.
+      const compaction = await this.maybeCompact(messages, true)
+      if (compaction) {
+        messages.splice(0, messages.length, ...compaction.messages)
+        const persistNote = this.deps.persistCompactionNote ?? appendCompactionNote
+        await persistNote(
+          compactionNotesPath(this.config.cwd, this.config.sessionId),
+          renderCompactionNote(this.now(), compaction),
+        )
+        yield* this.emit({
+          kind: 'compacted',
+          droppedMessageCount: compaction.droppedCount,
+          tokensSaved: compaction.tokensSaved,
+          summary: compaction.summary,
+        })
+      }
+    }
+
+    messages.push({ role: 'user', content: input.userMessage })
+
     // Trace-only record of the run's input: consumers render the user message
     // themselves, so it is appended to the trace without entering the event
     // stream — reconstruction needs it, UIs must not see it twice.
@@ -647,10 +673,12 @@ export class ConversationRuntime {
     }
   }
 
-  private async maybeCompact(messages: ChatMessage[]): Promise<CompactedOutput | null> {
+  private async maybeCompact(messages: ChatMessage[], forced = false): Promise<CompactedOutput | null> {
     const { contextWindowTokens, compactionThreshold, keepRecentOnCompact } = this.config
-    const needs = shouldCompact(messages, contextWindowTokens, compactionThreshold, this.config.estimator)
-    if (!needs) return null
+    if (!forced) {
+      const needs = shouldCompact(messages, contextWindowTokens, compactionThreshold, this.config.estimator)
+      if (!needs) return null
+    }
     const input = {
       messages,
       contextWindowTokens,
@@ -658,9 +686,12 @@ export class ConversationRuntime {
       keepRecent: keepRecentOnCompact,
       estimator: this.config.estimator,
     }
-    const r = this.deps.compactionSummarizer
-      ? await compactWithSummary(input, this.deps.compactionSummarizer)
-      : compact(input)
+    // A queued explicit compaction preserves its deterministic, no-extra-call
+    // behavior. Threshold compaction may use the injected bounded summarizer.
+    const r =
+      !forced && this.deps.compactionSummarizer
+        ? await compactWithSummary(input, this.deps.compactionSummarizer)
+        : compact(input)
     if (!r.compacted) return null
     return r
   }
@@ -700,6 +731,11 @@ export class ConversationRuntime {
 
   private async *emit(event: RuntimeEvent): AsyncIterable<RuntimeEvent> {
     if (this.trace) {
+      if (event.kind === 'done') {
+        const snapshot = { kind: 'transcript_snapshot' as const, messages: this.finalMessages }
+        this.trace.eventCounts[snapshot.kind] = (this.trace.eventCounts[snapshot.kind] ?? 0) + 1
+        await this.trace.sink.append(snapshot)
+      }
       this.recordManifestSignals(this.trace, event)
       this.trace.eventCounts[event.kind] = (this.trace.eventCounts[event.kind] ?? 0) + 1
       await this.trace.sink.append(event)

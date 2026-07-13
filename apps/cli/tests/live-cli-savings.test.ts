@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Provider, ProviderStreamEvent, SharedToolState } from '@orchentra/cli-core'
@@ -95,7 +95,10 @@ describe('LiveCli measured savings', () => {
       ]),
     )
     const cli = makeCli(provider, cwd)
-    cli.setEventSink(() => {})
+    const compactedEvents: Array<{ summary: string }> = []
+    cli.setEventSink((event) => {
+      if (event.kind === 'compacted') compactedEvents.push(event)
+    })
 
     for (let i = 0; i < 8; i++) await cli.runTurn(`turn ${i}: ${long}`)
     cli.forceCompact()
@@ -104,5 +107,33 @@ describe('LiveCli measured savings', () => {
     const savings = cli.getSavings()
     expect(savings.compactions).toBe(1)
     expect(savings.compactionTokensSaved).toBeGreaterThan(0)
+
+    const notes = readFileSync(join(cwd, '.orchentra', 'sessions', 'savings-session', 'NOTES.md'), 'utf8')
+    expect(notes).toContain('## Compaction')
+    expect(notes).toContain('turn 0')
+    expect(compactedEvents).toHaveLength(1)
+    expect(compactedEvents[0]!.summary).not.toBe('')
+    expect(notes).toContain(compactedEvents[0]!.summary)
+
+    const traceRoot = join(cwd, '.orchentra', 'traces')
+    const forcedRun = readdirSync(traceRoot)
+      .map((traceId) => ({
+        traceId,
+        manifest: JSON.parse(readFileSync(join(traceRoot, traceId, 'manifest.json'), 'utf8')) as {
+          task: string
+          compactions: Array<{ droppedMessageCount: number; tokensSaved: number }>
+        },
+      }))
+      .find(({ manifest }) => manifest.task === 'after compaction')
+    expect(forcedRun).toBeDefined()
+    expect(forcedRun!.manifest.compactions).toHaveLength(1)
+    expect(forcedRun!.manifest.compactions[0]!.tokensSaved).toBeGreaterThan(0)
+
+    const traceKinds = readFileSync(join(traceRoot, forcedRun!.traceId, 'events.jsonl'), 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => (JSON.parse(line) as { kind: string }).kind)
+    expect(traceKinds).toContain('compacted')
+    expect(traceKinds).toContain('transcript_snapshot')
   })
 })

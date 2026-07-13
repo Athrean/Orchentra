@@ -7,7 +7,7 @@ export type UpdateTag = 'alpha' | 'beta' | 'latest'
 export type CliAction =
   | { kind: 'version' }
   | { kind: 'help' }
-  | { kind: 'init'; owner?: string; serverUrl?: string }
+  | { kind: 'init' }
   | {
       kind: 'prompt'
       prompt: string
@@ -49,7 +49,8 @@ export function parseArgs(argv: string[]): CliAction {
     return { kind: 'help' }
   }
   if (first === 'init') {
-    return parseInitArgs(args.slice(1))
+    if (args.length > 1) throw new Error(`init: unknown argument: ${args[1]}`)
+    return { kind: 'init' }
   }
 
   if (first === 'update') {
@@ -189,34 +190,6 @@ function parseMcpArgs(rest: string[]): CliAction {
     return { kind: 'mcp', sub: 'test', name }
   }
   throw new Error(`mcp: unknown subcommand '${sub}'. expected 'list' or 'test <name>'`)
-}
-
-function parseInitArgs(rest: string[]): CliAction {
-  let owner: string | undefined
-  let serverUrl: string | undefined
-  for (let i = 0; i < rest.length; i++) {
-    const arg = rest[i]
-    if (arg.startsWith('--owner=')) {
-      owner = arg.slice('--owner='.length)
-      continue
-    }
-    if (arg === '--owner') {
-      owner = rest[++i]
-      if (!owner) throw new Error('init: --owner requires a value')
-      continue
-    }
-    if (arg.startsWith('--server-url=')) {
-      serverUrl = arg.slice('--server-url='.length)
-      continue
-    }
-    if (arg === '--server-url') {
-      serverUrl = rest[++i]
-      if (!serverUrl) throw new Error('init: --server-url requires a value')
-      continue
-    }
-    throw new Error(`init: unknown argument: ${arg}`)
-  }
-  return { kind: 'init', owner, serverUrl }
 }
 
 function parseUpdateArgs(rest: string[]): CliAction {

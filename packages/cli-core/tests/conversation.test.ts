@@ -11,6 +11,7 @@ import {
   reconstructTranscript,
   traceEventsPath,
   traceManifestPath,
+  type TraceEvent,
   type TraceManifest,
   type TraceSink,
 } from '../src/runtime/trace'
@@ -67,8 +68,8 @@ function makeDeps(provider: Provider, tools?: ToolRegistry): ConversationDeps {
 }
 
 /** In-memory trace sink capturing everything a run appends + its manifest. */
-function captureTrace(): { sink: TraceSink; events: RuntimeEvent[]; manifests: TraceManifest[] } {
-  const events: RuntimeEvent[] = []
+function captureTrace(): { sink: TraceSink; events: TraceEvent[]; manifests: TraceManifest[] } {
+  const events: TraceEvent[] = []
   const manifests: TraceManifest[] = []
   return {
     sink: {
@@ -84,9 +85,13 @@ function captureTrace(): { sink: TraceSink; events: RuntimeEvent[]; manifests: T
   }
 }
 
-async function collect(runtime: ConversationRuntime, input: string): Promise<RuntimeEvent[]> {
+async function collect(
+  runtime: ConversationRuntime,
+  input: string,
+  priorMessages?: ChatMessage[],
+): Promise<RuntimeEvent[]> {
   const events: RuntimeEvent[] = []
-  for await (const ev of runtime.run({ userMessage: input })) {
+  for await (const ev of runtime.run({ userMessage: input, priorMessages })) {
     events.push(ev)
   }
   return events
@@ -992,11 +997,19 @@ describe('tracing', () => {
       traceSink: undefined,
     }
     const rt = new ConversationRuntime({ ...makeConfig({ cwd }) }, deps)
-    await collect(rt, 'read the file')
+    const prior: ChatMessage[] = [
+      { role: 'user', content: 'keep this earlier turn' },
+      {
+        role: 'assistant',
+        content: 'earlier answer',
+        thinking: [{ thinking: 'signed reasoning', signature: 'sig-previous' }],
+      },
+    ]
+    await collect(rt, 'read the file', prior)
     const traceId = rt.lastTraceId!
 
     const eventLines = readFileSync(traceEventsPath(cwd, traceId), 'utf8').trim().split('\n')
-    const replayedEvents = eventLines.map((l) => JSON.parse(l) as RuntimeEvent)
+    const replayedEvents = eventLines.map((l) => JSON.parse(l) as TraceEvent)
     const replayedManifest = JSON.parse(readFileSync(traceManifestPath(cwd, traceId), 'utf8')) as TraceManifest
 
     // The events.jsonl alone rebuilds the transcript the runtime ended with.
@@ -1006,6 +1019,7 @@ describe('tracing', () => {
     expect(replayedManifest.doneReason).toBe('stop')
     expect(replayedManifest.steps).toBe(2)
     expect(replayedManifest.eventCounts.done).toBe(1)
+    expect(replayedManifest.eventCounts.transcript_snapshot).toBe(1)
   })
 
   test('permission denial is a typed permission_decision event', async () => {
