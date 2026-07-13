@@ -1,4 +1,4 @@
-# `@orchentra/cli`
+# `@athreanlab/orchentra`
 
 The terminal surface for Orchentra, the coding harness from Athrean Lab. Ships as TypeScript + Bun for local
 development, as a bundled npm CLI, and as optional per-architecture
@@ -10,7 +10,7 @@ The npm package installs the bundled Bun entrypoint and exposes both the
 canonical command and the short alias:
 
 ```bash
-npm install -g @orchentra/cli
+npm install -g @athreanlab/orchentra
 orchentra --version
 otr --version
 ```
@@ -92,3 +92,7 @@ orchentra --version
 
 The matching `install.sh` and release-publishing workflow are not part of
 this package — they will land alongside the first tagged release.
+
+## License
+
+Apache-2.0 — see [`LICENSE`](../../LICENSE) at the repository root.

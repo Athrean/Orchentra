@@ -3,8 +3,8 @@ export const README_URL = `${GITHUB_URL}#readme`
 export const RELEASES_URL = `${GITHUB_URL}/releases`
 export const ISSUES_URL = `${GITHUB_URL}/issues`
 export const SECURITY_URL = `${GITHUB_URL}/security`
-export const PRODUCT_CONTRACT_URL = `${GITHUB_URL}/blob/main/docs/current/canonical.md`
-export const INSTALL_COMMAND = 'npm install -g @orchentra/cli'
+export const PRODUCT_CONTRACT_URL = `${GITHUB_URL}/blob/main/docs/README.md`
+export const INSTALL_COMMAND = 'npm install -g @athreanlab/orchentra'
 
 export const specialists = [
   {

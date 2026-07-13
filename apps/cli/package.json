@@ -1,5 +1,5 @@
 {
-  "name": "@orchentra/cli",
+  "name": "@athreanlab/orchentra",
   "version": "0.1.0",
   "description": "The local-first coding harness from Athrean Lab.",
   "author": "Athrean Lab",
@@ -12,7 +12,7 @@
     "url": "git+https://github.com/Athrean/Orchentra.git",
     "directory": "apps/cli"
   },
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "bin": {
     "orchentra": "./dist/main.js",
     "otr": "./dist/main.js"
