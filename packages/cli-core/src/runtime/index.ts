@@ -249,6 +249,19 @@ export {
 
 export { compactionNotesPath, renderCompactionNote, appendCompactionNote } from './compaction-notes'
 
+export type {
+  ProcessStatus,
+  ReadinessSpec,
+  ProcessSpec,
+  ManagedProcess,
+  SupervisedHandle,
+  SpawnRequest,
+  ProcessSpawner,
+  ReadinessProbe,
+  SupervisorOptions,
+} from './process-supervisor'
+export { ProcessSupervisor, sanitizeChildEnv, isSecretEnvName } from './process-supervisor'
+
 export type { TraceEvent, TraceSink, TraceManifest, TranscriptSnapshotEvent } from './trace'
 export {
   FileTraceSink,
