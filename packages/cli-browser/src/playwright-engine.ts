@@ -145,8 +145,6 @@ class PlaywrightPage implements EnginePage {
   async goto(url: string, timeoutMs: number): Promise<GotoResult> {
     return this.guard(async () => {
       const resp = await this.page.goto(url, { timeout: timeoutMs, waitUntil: 'domcontentloaded' })
-      // Deterministic settle in the executor, bounded — never spend a model turn polling.
-      await this.page.waitForLoadState('networkidle', { timeout: Math.min(timeoutMs, 5000) }).catch(() => {})
       return { url: this.page.url(), status: resp?.status(), title: await this.page.title() }
     }, 'nav-error')
   }
@@ -157,6 +155,11 @@ class PlaywrightPage implements EnginePage {
 
   title(): Promise<string> {
     return this.page.title()
+  }
+
+  waitForStable(timeoutMs: number): Promise<void> {
+    // Deterministic settle in the executor; a genuine hang classifies as wait-timeout.
+    return this.guard(() => this.page.waitForLoadState('networkidle', { timeout: timeoutMs }), 'nav-error')
   }
 
   a11ySnapshot(): Promise<RawA11yNode | null> {

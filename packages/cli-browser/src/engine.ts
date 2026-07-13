@@ -38,6 +38,12 @@ export interface EnginePage {
   goto(url: string, timeoutMs: number): Promise<GotoResult>
   currentUrl(): string
   title(): Promise<string>
+  /**
+   * Block until the page is network-idle / DOM-stable, bounded by timeoutMs.
+   * Runs inside the executor so no model turn is spent polling; a timeout is
+   * raised as a `wait-timeout` BrowserOpError for the manager to surface.
+   */
+  waitForStable(timeoutMs: number): Promise<void>
   a11ySnapshot(): Promise<RawA11yNode | null>
   click(loc: LocatorDescriptor, timeoutMs: number): Promise<void>
   fill(loc: LocatorDescriptor, text: string, timeoutMs: number): Promise<void>
