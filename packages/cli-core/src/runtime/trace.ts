@@ -3,7 +3,22 @@ import { dirname, join } from 'node:path'
 import type { RuntimeEvent, UsageTotals, DoneReason, ToolCall, ToolArtifact } from './events'
 import type { ChatMessage } from './provider'
 import type { QuirkKind } from './quirks'
+import type { ConsoleErrorEntry, FailedRequestEntry } from './browser'
 import { redactSecrets } from '../memory/failure-signature'
+
+/** Browser session summary for the manifest — populated once browser ops run. */
+export interface BrowserStateSummary {
+  /** Last URL the run navigated to; null when nothing navigated. */
+  lastUrl: string | null
+  navigations: number
+}
+
+/** A command whose exit status the run recorded (test/typecheck/repro runs). */
+export interface TestResultEntry {
+  command: string
+  exitCode: number
+  passed: boolean
+}
 
 /**
  * Trace-only checkpoint of the exact provider-bound transcript at run end.
@@ -72,12 +87,16 @@ export interface TraceManifest {
   filesChanged: ToolArtifact[]
   quirks: Record<string, Partial<Record<QuirkKind, number>>>
   eventCounts: Record<string, number>
-  /** M2 placeholders — browser execution does not exist yet. */
-  browserState: null
-  screenshots: null
-  consoleErrors: null
-  networkFailures: null
-  testResults: null
+  /**
+   * M2 browser evidence. `null` means no browser op ran; once one does,
+   * console/network carry `[]` (browser ran, clean) vs a populated list. Test
+   * results are the exit-status commands the run executed.
+   */
+  browserState: BrowserStateSummary | null
+  screenshots: string[] | null
+  consoleErrors: ConsoleErrorEntry[] | null
+  networkFailures: FailedRequestEntry[] | null
+  testResults: TestResultEntry[] | null
   /** M4 placeholder — no completion gate exists yet. */
   gateDecisions: null
   /** M3 placeholder — no eval grader exists yet. */

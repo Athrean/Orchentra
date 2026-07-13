@@ -27,6 +27,8 @@ export interface BrowserSessionManagerOptions {
   /** How many times a crashed session may restart before the op surfaces `crash`. */
   readonly maxRestarts?: number
   readonly defaultTimeoutMs?: number
+  /** Bound for the in-executor network-idle / DOM-stable settle after nav/act. */
+  readonly settleTimeoutMs?: number
 }
 
 /**
@@ -45,6 +47,7 @@ export class BrowserSessionManager implements BrowserRunSession {
   private readonly artifactDir: string
   private readonly maxRestarts: number
   private readonly defaultTimeoutMs: number
+  private readonly settleTimeoutMs: number
 
   private engine?: BrowserEngine
   private page?: EnginePage
@@ -61,19 +64,27 @@ export class BrowserSessionManager implements BrowserRunSession {
     this.artifactDir = options.artifactDir ?? join(options.cwd, '.orchentra', 'artifacts')
     this.maxRestarts = options.maxRestarts ?? 1
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? 15_000
+    this.settleTimeoutMs = options.settleTimeoutMs ?? 8_000
   }
 
   async navigate(params: BrowserNavigateParams): Promise<BrowserNavigateResult> {
     const page = await this.ensurePage()
-    const result = await page.goto(params.url, params.timeoutMs ?? this.defaultTimeoutMs)
+    const timeout = params.timeoutMs ?? this.defaultTimeoutMs
+    const result = await page.goto(params.url, timeout)
     this.lastUrl = result.url || params.url
     // New document — every prior ref is stale.
     this.refs.clear()
+    // Deterministic settle before the model observes; a hang surfaces as wait-timeout.
+    await page.waitForStable(this.settleTimeoutMs)
     return { url: result.url, title: result.title, status: result.status }
   }
 
   async snapshot(): Promise<BrowserSnapshot> {
     const page = this.requirePage()
+    // Best-effort settle so the observation reflects a stable DOM; a snapshot
+    // must still return, so a slow page does not fail the read here (nav/act own
+    // the classified wait-timeout).
+    await page.waitForStable(this.settleTimeoutMs).catch(() => {})
     const raw = await page.a11ySnapshot()
     const { tree, registry } = assignRefs(raw)
     this.refs = registry
@@ -91,22 +102,29 @@ export class BrowserSessionManager implements BrowserRunSession {
   async act(params: BrowserActParams): Promise<BrowserActResult> {
     this.requirePage()
     try {
-      await this.performOnce(params)
+      await this.performAndSettle(params)
       return { action: params.action, ref: params.ref, remapped: false }
     } catch (err) {
       if (isBrowserOpError(err) && err.kind === 'crash') {
         await this.recoverFromCrash()
-        await this.performOnce(params)
+        await this.performAndSettle(params)
         return { action: params.action, ref: params.ref, remapped: true }
       }
       if (isBrowserOpError(err) && err.kind === 'ref-not-found') {
         // Re-observe and remap once; a second miss propagates as a tool error.
         await this.snapshot()
-        await this.performOnce(params)
+        await this.performAndSettle(params)
         return { action: params.action, ref: params.ref, remapped: true }
       }
       throw err
     }
+  }
+
+  private async performAndSettle(params: BrowserActParams): Promise<void> {
+    await this.performOnce(params)
+    // Deterministic settle after the action so the next observation is stable;
+    // a genuine hang surfaces as a classified wait-timeout.
+    await this.requirePage().waitForStable(this.settleTimeoutMs)
   }
 
   async screenshot(params: BrowserScreenshotParams): Promise<BrowserScreenshotResult> {

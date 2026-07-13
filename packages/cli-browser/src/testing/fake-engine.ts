@@ -14,6 +14,8 @@ export interface FakeEngineControls {
   newPageCount(): number
   /** Arm the current page so its next act throws a crash and closes the page. */
   crashNextAction(): void
+  /** Arm the current page so its next waitForStable raises a wait-timeout. */
+  hangNextWait(): void
 }
 
 export interface FakeLoginOptions {
@@ -29,6 +31,7 @@ export function createFakeLoginEngine(options: FakeLoginOptions = {}): {
   const validPass = options.validPass ?? 'secret'
   let newPages = 0
   let armed = false
+  let hang = false
 
   const engine: BrowserEngine = {
     async newPage(): Promise<EnginePage> {
@@ -40,6 +43,10 @@ export function createFakeLoginEngine(options: FakeLoginOptions = {}): {
         () => {
           armed = false
         },
+        () => hang,
+        () => {
+          hang = false
+        },
       )
     },
     async close(): Promise<void> {},
@@ -49,6 +56,9 @@ export function createFakeLoginEngine(options: FakeLoginOptions = {}): {
     newPageCount: (): number => newPages,
     crashNextAction: (): void => {
       armed = true
+    },
+    hangNextWait: (): void => {
+      hang = true
     },
   }
 
@@ -69,6 +79,8 @@ class FakeLoginPage implements EnginePage {
     private readonly validPass: string,
     private readonly isArmed: () => boolean,
     private readonly disarm: () => void,
+    private readonly isHung: () => boolean,
+    private readonly clearHang: () => void,
   ) {}
 
   async goto(url: string): Promise<GotoResult> {
@@ -86,6 +98,13 @@ class FakeLoginPage implements EnginePage {
 
   async title(): Promise<string> {
     return this.pageTitle()
+  }
+
+  async waitForStable(): Promise<void> {
+    if (this.isHung()) {
+      this.clearHang()
+      throw browserOpError('wait-timeout', 'fake page never settled')
+    }
   }
 
   async a11ySnapshot(): Promise<RawA11yNode | null> {
