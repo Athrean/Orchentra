@@ -202,9 +202,11 @@ describe('ProcessSupervisor (real dev server)', () => {
     await sup.shutdown()
     expect(sup.get(proc.id)).toBeUndefined()
 
-    // No leaked process: the port no longer accepts connections.
-    const stillUp = await tcpOpen('127.0.0.1', port)
-    expect(stillUp).toBe(false)
+    // No leaked process: the port stops accepting connections. The killed
+    // grandchild releases the port a few ms after its parent's exit resolves, so
+    // poll for a bounded window — a genuine leak never frees it, a clean kill
+    // does promptly.
+    expect(await waitForPortClosed('127.0.0.1', port, 3000)).toBe(true)
   }, 20_000)
 })
 
@@ -220,4 +222,13 @@ function tcpOpen(host: string, port: number): Promise<boolean> {
     socket.once('timeout', () => finish(false))
     socket.once('error', () => finish(false))
   })
+}
+
+async function waitForPortClosed(host: string, port: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (!(await tcpOpen(host, port))) return true
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  return false
 }

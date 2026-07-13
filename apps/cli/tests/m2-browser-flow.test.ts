@@ -123,6 +123,15 @@ function tcpOpen(host: string, port: number): Promise<boolean> {
   })
 }
 
+async function waitForPortClosed(host: string, port: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (!(await tcpOpen(host, port))) return true
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  return false
+}
+
 describe('M2 browser verification flow (supervisor + dev server + tools)', () => {
   let dir: string | undefined
   afterEach(async () => {
@@ -198,7 +207,7 @@ describe('M2 browser verification flow (supervisor + dev server + tools)', () =>
     await browser.shutdown()
     await supervisor.shutdown()
 
-    // No zombie: the dev-server port is no longer accepting connections.
-    expect(await tcpOpen('127.0.0.1', port)).toBe(false)
+    // No zombie: the dev-server port is released promptly after teardown.
+    expect(await waitForPortClosed('127.0.0.1', port, 3000)).toBe(true)
   }, 20_000)
 })
