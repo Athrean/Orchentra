@@ -114,6 +114,21 @@ export function isBrowserOpError(value: unknown): value is BrowserOpError {
   )
 }
 
+/** Compact indented text rendering of an a11y tree — refs only, never raw DOM. */
+export function renderA11yTree(nodes: A11yNode[], indent = 0): string {
+  const lines: string[] = []
+  for (const node of nodes) {
+    const parts = [`${'  '.repeat(indent)}[${node.ref}] ${node.role}`]
+    if (node.name) parts.push(`"${node.name}"`)
+    if (node.value) parts.push(`= ${JSON.stringify(node.value)}`)
+    if (node.checked) parts.push('(checked)')
+    if (node.disabled) parts.push('(disabled)')
+    lines.push(parts.join(' '))
+    if (node.children && node.children.length > 0) lines.push(renderA11yTree(node.children, indent + 1))
+  }
+  return lines.join('\n')
+}
+
 /**
  * Run-scoped browser session. A singleton per run, owned by SharedToolState and
  * torn down via `shutdown()` at run end so no Chromium outlives the session.

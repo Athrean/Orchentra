@@ -279,7 +279,7 @@ export type {
   BrowserOpError,
   BrowserRunSession,
 } from './browser'
-export { browserOpError, isBrowserOpError } from './browser'
+export { browserOpError, isBrowserOpError, renderA11yTree } from './browser'
 
 export type { TraceEvent, TraceSink, TraceManifest, TranscriptSnapshotEvent } from './trace'
 export {

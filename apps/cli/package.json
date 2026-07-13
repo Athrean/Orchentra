@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@orchentra/cli-api": "workspace:*",
+    "@orchentra/cli-browser": "workspace:*",
     "@orchentra/cli-core": "workspace:*",
     "@orchentra/cli-tools": "workspace:*",
     "@orchentra/eslint-config": "workspace:*",

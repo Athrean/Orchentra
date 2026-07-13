@@ -22,11 +22,12 @@
       "name": "@athreanlab/orchentra",
       "version": "0.1.0",
       "bin": {
-        "orchentra": "./dist/main.js",
-        "otr": "./dist/main.js",
+        "orchentra": "dist/main.js",
+        "otr": "dist/main.js",
       },
       "devDependencies": {
         "@orchentra/cli-api": "workspace:*",
+        "@orchentra/cli-browser": "workspace:*",
         "@orchentra/cli-core": "workspace:*",
         "@orchentra/cli-tools": "workspace:*",
         "@orchentra/eslint-config": "workspace:*",

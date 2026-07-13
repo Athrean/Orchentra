@@ -26,6 +26,7 @@ import { githubListIssuesTool, githubGetIssueTool } from './github/issues'
 import { githubListPullsTool, githubGetPullTool } from './github/pulls'
 import { githubSearchIssuesTool } from './github/search'
 import { gitStatusTool, gitDiffTool, gitLogTool } from './tools/git-tools'
+import { browserTools } from './tools/browser-tools'
 
 const BUILTIN_TOOLS: ToolDefinition[] = [
   bashTool,
@@ -51,6 +52,9 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   gitStatusTool,
   gitDiffTool,
   gitLogTool,
+  // Browser verification ops (M2). Lazy over Playwright: registering them pulls
+  // no browser dependency; the engine loads on the first navigate.
+  ...browserTools,
 ]
 
 export class DefaultToolRegistry implements ToolRegistry {

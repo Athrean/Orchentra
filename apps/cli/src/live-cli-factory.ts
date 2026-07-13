@@ -12,6 +12,7 @@ import {
   type ToolRegistry,
 } from '@orchentra/cli-core'
 import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config'
+import { BrowserSessionManager } from '@orchentra/cli-browser'
 import { DefaultToolRegistry, McpManager, DEFAULT_MCP_DEFER_TOKENS } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
@@ -83,6 +84,9 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     planMode: false,
     fileReadHashes: new Map(),
     processSupervisor: new ProcessSupervisor(),
+    // Browser-free until the first navigate — constructing this pulls no
+    // Playwright/Chromium; the first browser op triggers the lazy engine load.
+    browser: new BrowserSessionManager({ cwd: options.cwd }),
   }
 
   // The hook adapter is built before the LiveCli it reports into, so route its
@@ -123,7 +127,9 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     resolvedPermissionMode,
     providerName: initial.providerName,
     async close(): Promise<void> {
-      // Kill any background dev servers before the session ends — no zombies.
+      // Tear down the browser (no zombie Chromium) and any background dev
+      // servers before the session ends — no zombies.
+      await sharedState.browser?.shutdown()
       await sharedState.processSupervisor?.shutdown()
       await cli.persistSession()
       await mcpManager.shutdown()
