@@ -33,12 +33,27 @@ export interface TraceSink {
   finalize(manifest: TraceManifest): void | Promise<void>
 }
 
-export function traceEventsPath(cwd: string, sessionId: string, traceId: string): string {
-  return join(cwd, '.orchentra', 'sessions', sessionId, 'traces', `${traceId}.jsonl`)
+/**
+ * Trace layout per docs/architecture/12-TRACE-SYSTEM.md: one directory per
+ * run under `.orchentra/traces/<run-id>/` holding `events.jsonl` (the full
+ * stream, append-only — traces escape the 256KB session rotation by design),
+ * `manifest.json` (the run record), and `artifacts/` (screenshots, dumps,
+ * diffs; populated from M2 on). The run id is the trace id.
+ */
+export function traceDir(cwd: string, traceId: string): string {
+  return join(cwd, '.orchentra', 'traces', traceId)
 }
 
-export function traceManifestPath(cwd: string, sessionId: string, traceId: string): string {
-  return join(cwd, '.orchentra', 'sessions', sessionId, 'traces', `${traceId}.manifest.json`)
+export function traceEventsPath(cwd: string, traceId: string): string {
+  return join(traceDir(cwd, traceId), 'events.jsonl')
+}
+
+export function traceManifestPath(cwd: string, traceId: string): string {
+  return join(traceDir(cwd, traceId), 'manifest.json')
+}
+
+export function traceArtifactsDir(cwd: string, traceId: string): string {
+  return join(traceDir(cwd, traceId), 'artifacts')
 }
 
 export class FileTraceSink implements TraceSink {
@@ -46,12 +61,11 @@ export class FileTraceSink implements TraceSink {
 
   constructor(
     private readonly cwd: string,
-    private readonly sessionId: string,
     private readonly traceId: string,
   ) {}
 
   async append(event: RuntimeEvent): Promise<void> {
-    const path = traceEventsPath(this.cwd, this.sessionId, this.traceId)
+    const path = traceEventsPath(this.cwd, this.traceId)
     if (!this.dirReady) {
       await mkdir(dirname(path), { recursive: true })
       this.dirReady = true
@@ -60,11 +74,15 @@ export class FileTraceSink implements TraceSink {
   }
 
   async finalize(manifest: TraceManifest): Promise<void> {
-    const path = traceManifestPath(this.cwd, this.sessionId, this.traceId)
+    const path = traceManifestPath(this.cwd, this.traceId)
     if (!this.dirReady) {
       await mkdir(dirname(path), { recursive: true })
       this.dirReady = true
     }
+    // The artifacts directory is part of the documented layout even while
+    // nothing writes into it yet — an empty dir means "no artifacts", which
+    // is distinct from "layout not yet migrated".
+    await mkdir(traceArtifactsDir(this.cwd, this.traceId), { recursive: true })
     await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
   }
 }

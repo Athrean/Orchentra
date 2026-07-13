@@ -250,7 +250,14 @@ export {
 export { compactionNotesPath, renderCompactionNote, appendCompactionNote } from './compaction-notes'
 
 export type { TraceSink, TraceManifest } from './trace'
-export { FileTraceSink, traceEventsPath, traceManifestPath, reconstructTranscript } from './trace'
+export {
+  FileTraceSink,
+  traceDir,
+  traceEventsPath,
+  traceManifestPath,
+  traceArtifactsDir,
+  reconstructTranscript,
+} from './trace'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
 export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'

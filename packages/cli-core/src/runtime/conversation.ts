@@ -91,9 +91,9 @@ export interface ConversationDeps {
   persistCompactionNote?: (path: string, note: string) => Promise<void>
   /**
    * Trace destination for this runtime's runs. Defaults to a FileTraceSink
-   * writing per-run JSONL + manifest under the session directory, so every
-   * run — including sub-agent runs — leaves an auditable trace unless a test
-   * injects a no-op.
+   * writing per-run events.jsonl + manifest.json under
+   * `.orchentra/traces/<run-id>/`, so every run — including sub-agent runs —
+   * leaves an auditable trace unless a test injects a no-op.
    */
   traceSink?: TraceSink
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
@@ -163,7 +163,7 @@ export class ConversationRuntime {
 
     const traceId = this.newId()
     this.trace = {
-      sink: this.deps.traceSink ?? new FileTraceSink(this.config.cwd, this.config.sessionId, traceId),
+      sink: this.deps.traceSink ?? new FileTraceSink(this.config.cwd, traceId),
       traceId,
       startedAt: this.now(),
       eventCounts: {},
