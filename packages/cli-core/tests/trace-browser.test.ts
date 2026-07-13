@@ -153,6 +153,45 @@ describe('trace manifest — browser fields carry real data (M2)', () => {
     expect(m.networkFailures).toEqual([])
   })
 
+  test('a screenshot taken at an assertion point is referenced in the manifest', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'tool-use', call: { id: 't1', name: 'browser_screenshot', input: {} } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [{ kind: 'finish', stopReason: 'end_turn' }],
+    ])
+    const tools = toolsReturning({
+      browser_screenshot: {
+        content: 'screenshot saved',
+        isError: false,
+        artifacts: [{ uri: '/tmp/.orchentra/artifacts/shot-1.png', kind: 'file', action: 'created' }],
+        evidence: [
+          {
+            kind: 'browser-screenshot',
+            summary: 'shot',
+            detail: { path: '/tmp/.orchentra/artifacts/shot-1.png', bytes: 2048 },
+          },
+        ],
+      },
+    })
+    const { sink, manifests } = captureManifest()
+    await run(
+      {
+        provider,
+        tools,
+        systemPrompt: buildSystemPrompt({ staticParts: ['sys'], dynamicParts: [] }),
+        traceSink: sink,
+        persistToolOutput: async () => {},
+      },
+      'screenshot the result',
+    )
+    const m = manifests[0]!
+    // Artifact ref reaches both the deduped file list and the screenshots field.
+    expect(m.screenshots).toEqual(['/tmp/.orchentra/artifacts/shot-1.png'])
+    expect(m.filesChanged.map((a) => a.uri)).toContain('/tmp/.orchentra/artifacts/shot-1.png')
+  })
+
   test('a run with no browser ops leaves the browser fields null', async () => {
     const provider = fakeProvider([
       [
