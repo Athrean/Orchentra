@@ -135,6 +135,19 @@ export interface LoopDetectedEvent {
   count: number
 }
 
+/**
+ * Typed record of a permission-enforcer decision for a tool call. Emitted
+ * only when an enforcer actually ran — never synthesized — so traces show
+ * what was allowed or denied and why.
+ */
+export interface PermissionDecisionEvent {
+  kind: 'permission_decision'
+  tool: string
+  toolCallId: string
+  decision: 'allow' | 'deny'
+  reason?: string
+}
+
 /** Emitted when a failure→resolution memory is auto-captured after a turn. */
 export interface MemorySavedEvent {
   kind: 'memory_saved'
@@ -204,6 +217,7 @@ export type RuntimeEvent =
   | CostWarningEvent
   | ToolOutputBudgetedEvent
   | LoopDetectedEvent
+  | PermissionDecisionEvent
   | MemorySavedEvent
   | HookProgressRuntimeEvent
   | ErrorEvent
