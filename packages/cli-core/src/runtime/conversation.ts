@@ -16,6 +16,7 @@ import { compact, compactWithSummary, shouldCompact, type LlmSummarizer, type To
 import { LoopDetector, type LoopDetectionConfig } from './loop-detector'
 import type { QuirkCounters } from './quirks'
 import { budgetToolOutput } from './tool-output-budget'
+import { SNAPSHOT_CONTENT_MARKER, supersedeSnapshots } from './browser-context'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
 import { appendCompactionNote, compactionNotesPath, renderCompactionNote } from './compaction-notes'
 import { FileTraceSink, type TraceSink, type TraceManifest } from './trace'
@@ -451,6 +452,10 @@ export class ConversationRuntime {
           content: budgeted.content,
           toolCallId: call.id,
         })
+        // Keep only the newest browser snapshot live: a fresh snapshot supersedes
+        // every earlier one down to a stub, so a long browser session holds one
+        // a11y tree in context, not one per observation (MVP exit #3).
+        if (budgeted.content.startsWith(SNAPSHOT_CONTENT_MARKER)) supersedeSnapshots(messages)
         if (budgeted.trimmed) {
           const persist = this.deps.persistToolOutput ?? persistOriginalToolOutput
           await persist(recoveryPath, result.content)

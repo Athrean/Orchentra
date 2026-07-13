@@ -280,6 +280,12 @@ export type {
   BrowserRunSession,
 } from './browser'
 export { browserOpError, isBrowserOpError, renderA11yTree } from './browser'
+export {
+  SNAPSHOT_CONTENT_MARKER,
+  SNAPSHOT_SUPERSEDED_STUB,
+  isLiveSnapshot,
+  supersedeSnapshots,
+} from './browser-context'
 
 export type { TraceEvent, TraceSink, TraceManifest, TranscriptSnapshotEvent } from './trace'
 export {

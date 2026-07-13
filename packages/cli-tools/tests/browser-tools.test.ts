@@ -143,6 +143,8 @@ describe('browser_snapshot', () => {
     }
     const res = await browserSnapshotTool.execute({}, ctxWith(session))
     expect(res.isError).toBe(false)
+    // Leads with the supersession marker so the runtime evicts older snapshots.
+    expect(res.content.startsWith('[browser_snapshot]')).toBe(true)
     expect(res.content).toContain('[e1] textbox "Username"')
     expect(res.content).toContain('[e2] button "Log in"')
     expect(res.content).toContain('console errors since last snapshot (1)')

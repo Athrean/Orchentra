@@ -1,4 +1,5 @@
 import {
+  SNAPSHOT_CONTENT_MARKER,
   isBrowserOpError,
   renderA11yTree,
   type BrowserActionKind,
@@ -117,7 +118,9 @@ export const browserSnapshotTool: ToolDefinition = {
     if (!session) return unavailable()
     try {
       const snap = await session.snapshot()
-      const header = `url: ${snap.url}${snap.title ? `  title: ${snap.title}` : ''}`
+      // Lead with the supersession marker so the runtime evicts older snapshots
+      // (only the latest a11y tree stays live in context — MVP exit #3).
+      const header = `${SNAPSHOT_CONTENT_MARKER} url: ${snap.url}${snap.title ? `  title: ${snap.title}` : ''}`
       const body = renderA11yTree(snap.tree)
       const errLines =
         snap.newConsoleErrors.length > 0
