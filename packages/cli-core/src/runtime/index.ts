@@ -262,6 +262,25 @@ export type {
 } from './process-supervisor'
 export { ProcessSupervisor, sanitizeChildEnv, isSecretEnvName } from './process-supervisor'
 
+export type {
+  A11yNode,
+  ConsoleErrorEntry,
+  FailedRequestEntry,
+  BrowserDiagnostics,
+  BrowserSnapshot,
+  BrowserNavigateParams,
+  BrowserNavigateResult,
+  BrowserActionKind,
+  BrowserActParams,
+  BrowserActResult,
+  BrowserScreenshotParams,
+  BrowserScreenshotResult,
+  BrowserFailureKind,
+  BrowserOpError,
+  BrowserRunSession,
+} from './browser'
+export { browserOpError, isBrowserOpError } from './browser'
+
 export type { TraceEvent, TraceSink, TraceManifest, TranscriptSnapshotEvent } from './trace'
 export {
   FileTraceSink,
