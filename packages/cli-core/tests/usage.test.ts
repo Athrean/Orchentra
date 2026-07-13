@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from '../src/runtime/usage'
+import {
+  pricingForModel,
+  estimateCost,
+  formatUsd,
+  summaryLines,
+  UsageTracker,
+  billedTokens,
+  cachedTokens,
+} from '../src/runtime/usage'
 import { emptyUsage, type UsageTotals } from '../src/runtime/events'
 
 describe('pricingForModel', () => {
@@ -167,6 +175,10 @@ describe('summaryLines', () => {
     expect(lines[0]).toContain('model=claude-sonnet-4-20250514')
     expect(lines[0]).toContain('estimated_cost=$10.9350')
     expect(lines[0]).toContain('total_tokens=1800000')
+    // Billed-vs-cache split: cache reads are the cheap path and never lumped
+    // into the billed figure.
+    expect(lines[0]).toContain('billed=1600000')
+    expect(lines[0]).toContain('cached=200000')
     expect(lines[1]).toContain('input=$3.0000')
     expect(lines[1]).toContain('output=$7.5000')
     expect(lines[1]).toContain('cache_read=$0.0600')
@@ -196,5 +208,22 @@ describe('summaryLines', () => {
 
     expect(lines[0]).not.toContain('model=')
     expect(lines[0]).not.toContain('pricing=')
+  })
+})
+
+describe('billed-vs-cache token split', () => {
+  const usage = {
+    inputTokens: 1000,
+    outputTokens: 500,
+    cacheCreationTokens: 200,
+    cacheReadTokens: 90_000,
+  }
+
+  test('billedTokens excludes cache reads', () => {
+    expect(billedTokens(usage)).toBe(1700)
+  })
+
+  test('cachedTokens is the cache-read count', () => {
+    expect(cachedTokens(usage)).toBe(90_000)
   })
 })
