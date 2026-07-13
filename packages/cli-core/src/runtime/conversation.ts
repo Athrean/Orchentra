@@ -15,6 +15,7 @@ import { LoopDetector, type LoopDetectionConfig } from './loop-detector'
 import type { QuirkCounters } from './quirks'
 import { budgetToolOutput } from './tool-output-budget'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
+import { appendCompactionNote, compactionNotesPath, renderCompactionNote } from './compaction-notes'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
@@ -83,6 +84,8 @@ export interface ConversationDeps {
    * Injectable so tests/hosts can avoid real disk I/O or redirect storage.
    */
   persistToolOutput?: (path: string, content: string) => Promise<void>
+  /** Override for tests; defaults to appending the note to the session's NOTES.md. */
+  persistCompactionNote?: (path: string, note: string) => Promise<void>
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -163,6 +166,13 @@ export class ConversationRuntime {
       const compaction = await this.maybeCompact(messages)
       if (compaction) {
         messages.splice(0, messages.length, ...compaction.messages)
+        // Durable artifact: the summary the model will act on also lands on
+        // disk, so dropped history stays auditable after the run.
+        const persistNote = this.deps.persistCompactionNote ?? appendCompactionNote
+        await persistNote(
+          compactionNotesPath(this.config.cwd, this.config.sessionId),
+          renderCompactionNote(this.now(), compaction),
+        )
         yield* this.emit({
           kind: 'compacted',
           droppedMessageCount: compaction.droppedCount,

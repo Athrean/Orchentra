@@ -50,6 +50,7 @@ function makeDeps(provider: Provider, tools?: ToolRegistry): ConversationDeps {
     systemPrompt: buildSystemPrompt({ staticParts: ['sys'], dynamicParts: [] }),
     // No-op by default so budgeting tests don't hit the real filesystem.
     persistToolOutput: async () => {},
+    persistCompactionNote: async () => {},
   }
 }
 
@@ -105,6 +106,39 @@ describe('ConversationRuntime', () => {
     const compacted = events.find((e): e is Extract<RuntimeEvent, { kind: 'compacted' }> => e.kind === 'compacted')
     expect(compacted).toBeDefined()
     expect(compacted!.summary).toBe('SUMMARIZER-RAN')
+  })
+
+  test('compaction persists a durable note to the session NOTES.md path', async () => {
+    const provider = fakeProvider([
+      [
+        { kind: 'text-delta', delta: 'ok' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const config = makeConfig({ contextWindowTokens: 100, compactionThreshold: 0.1, keepRecentOnCompact: 2 })
+    const notes: Array<{ path: string; note: string }> = []
+    const deps: ConversationDeps = {
+      ...makeDeps(provider),
+      compactionSummarizer: async () => 'SUMMARIZER-RAN',
+      persistCompactionNote: async (path, note) => {
+        notes.push({ path, note })
+      },
+    }
+    const rt = new ConversationRuntime(config, deps)
+    const prior: ChatMessage[] = Array.from({ length: 6 }, (_, i) => ({
+      role: 'user' as const,
+      content: `old message ${i} ${'x'.repeat(80)}`,
+    }))
+
+    for await (const ev of rt.run({ userMessage: 'new task', priorMessages: prior })) {
+      void ev
+    }
+
+    expect(notes.length).toBe(1)
+    expect(notes[0]!.path).toContain('test-session')
+    expect(notes[0]!.path.endsWith('NOTES.md')).toBe(true)
+    expect(notes[0]!.note).toContain('SUMMARIZER-RAN')
+    expect(notes[0]!.note).toContain('## Compaction —')
   })
 
   test('budget exhaustion stops the loop', async () => {

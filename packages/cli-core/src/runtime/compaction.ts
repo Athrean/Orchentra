@@ -73,7 +73,16 @@ interface CompactionPlan {
 function planCompaction(input: CompactionInput): CompactionPlan | null {
   const keep = Math.max(0, input.keepRecent)
   if (input.messages.length <= keep) return null
-  const dropIndex = input.messages.length - keep
+  let dropIndex = input.messages.length - keep
+  // Pair-safe boundary: the retained window must never open on tool results
+  // whose owning assistant tool-call turn was dropped — providers reject the
+  // orphaned tool_result. Walk back to keep the whole pair group; keeping
+  // more is always safe, dropping the results instead would orphan the
+  // assistant's dangling tool calls.
+  while (dropIndex > 0 && input.messages[dropIndex]!.role === 'tool') {
+    dropIndex--
+  }
+  if (dropIndex <= 0) return null
   return { dropped: input.messages.slice(0, dropIndex), recent: input.messages.slice(dropIndex) }
 }
 

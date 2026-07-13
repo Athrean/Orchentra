@@ -236,7 +236,17 @@ export type {
 export { ConfigLoader, defaultConfigHome } from './config'
 
 export type { ModelPricing, UsageCostEstimate, TerseModeUsage, SpineSavings } from './usage'
-export { pricingForModel, estimateCost, formatUsd, summaryLines, UsageTracker } from './usage'
+export {
+  pricingForModel,
+  estimateCost,
+  formatUsd,
+  summaryLines,
+  UsageTracker,
+  billedTokens,
+  cachedTokens,
+} from './usage'
+
+export { compactionNotesPath, renderCompactionNote, appendCompactionNote } from './compaction-notes'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
 export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'
