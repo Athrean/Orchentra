@@ -20,8 +20,8 @@ describe('CLI npm package contract', () => {
     expect(pkg.private).not.toBe(true)
     expect(pkg.publishConfig?.access).toBe('public')
     expect(pkg.bin).toEqual({
-      orchentra: './dist/main.js',
-      otr: './dist/main.js',
+      orchentra: 'dist/main.js',
+      otr: 'dist/main.js',
     })
   })
 
@@ -72,8 +72,8 @@ function writePackageFixture(): string {
       name: '@orchentra/cli',
       version: '0.0.0',
       bin: {
-        orchentra: './dist/main.js',
-        otr: './dist/main.js',
+        orchentra: 'dist/main.js',
+        otr: 'dist/main.js',
       },
       files: ['dist/main.js', 'dist/keytar-*.node', 'README.md'],
     }),

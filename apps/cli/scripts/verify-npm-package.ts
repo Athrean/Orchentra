@@ -11,8 +11,8 @@ interface PackageJson {
 }
 
 const REQUIRED_BINS: Record<string, string> = {
-  orchentra: './dist/main.js',
-  otr: './dist/main.js',
+  orchentra: 'dist/main.js',
+  otr: 'dist/main.js',
 }
 
 const REQUIRED_FILES = ['dist/main.js', 'dist/keytar-*.node', 'README.md']
@@ -23,7 +23,7 @@ export function verifyNpmPackage(packageDir = join(import.meta.dir, '..')): stri
 
   if (pkg.private === true) errors.push('package.json must not be private')
   if (!sameRecord(pkg.bin, REQUIRED_BINS))
-    errors.push('package.json bin must expose orchentra and otr from ./dist/main.js')
+    errors.push('package.json bin must expose orchentra and otr from dist/main.js')
   if (!sameArray(pkg.files, REQUIRED_FILES)) {
     errors.push('package.json files must be exactly: dist/main.js, dist/keytar-*.node, README.md')
   }
