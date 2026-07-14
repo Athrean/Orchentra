@@ -14,6 +14,7 @@
 import { LruCache } from './cache'
 import { isPlainText } from './short-circuit'
 import { normalizeNestedFences } from './normalize-fences'
+import type { CellAlign } from './table'
 
 export interface CodeBlock {
   readonly kind: 'code'
@@ -43,13 +44,77 @@ export interface Quote {
   readonly text: string
 }
 
-export type Block = CodeBlock | Heading | Paragraph | ListBlock | Quote
+export interface TableBlock {
+  readonly kind: 'table'
+  readonly headers: readonly string[]
+  readonly aligns: readonly CellAlign[]
+  readonly rows: readonly (readonly string[])[]
+}
+
+export type Block = CodeBlock | Heading | Paragraph | ListBlock | Quote | TableBlock
 
 const FENCE_RE = /^([`~]{3,})([A-Za-z0-9_+-]*)\s*$/
 const HEADING_RE = /^(#{1,6})\s+(.+?)\s*#*\s*$/
 const ULIST_RE = /^[-*+]\s+(.+)$/
 const OLIST_RE = /^\d+[.)]\s+(.+)$/
 const QUOTE_RE = /^>\s?(.*)$/
+const TABLE_DELIM_CELL_RE = /^:?-{1,}:?$/
+
+// Split one table row into trimmed cells, tolerating optional outer pipes and
+// `\|` escapes. `| a | b |`, `a | b`, and `| a | b` all yield ['a', 'b'].
+function splitTableRow(line: string): string[] {
+  const s = line.trim()
+  const cells: string[] = []
+  let buf = ''
+  const start = s.startsWith('|') ? 1 : 0
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i]
+    if (ch === '\\' && s[i + 1] === '|') {
+      buf += '|'
+      i++
+      continue
+    }
+    if (ch === '|') {
+      cells.push(buf.trim())
+      buf = ''
+      continue
+    }
+    buf += ch
+  }
+  // A trailing pipe leaves an empty buffer we should not emit as a cell.
+  if (buf.trim().length > 0 || !s.endsWith('|')) cells.push(buf.trim())
+  return cells
+}
+
+// A delimiter row is all `---`/`:--`/`--:`/`:-:` cells; returns per-column
+// alignment, or null when any cell is not delimiter-shaped.
+function parseDelimiterRow(cells: readonly string[]): CellAlign[] | null {
+  if (cells.length === 0) return null
+  const aligns: CellAlign[] = []
+  for (const raw of cells) {
+    const c = raw.trim()
+    if (!TABLE_DELIM_CELL_RE.test(c)) return null
+    const left = c.startsWith(':')
+    const right = c.endsWith(':')
+    aligns.push(left && right ? 'center' : right ? 'right' : left ? 'left' : 'left')
+  }
+  return aligns
+}
+
+// True when `lines[i]` is a GFM table header followed by a matching delimiter
+// row. Requires equal column counts so a prose line above a `---` rule (setext
+// heading) is not misread as a table.
+function isTableStart(lines: readonly string[], i: number): boolean {
+  const header = lines[i]
+  const delim = lines[i + 1]
+  if (header === undefined || delim === undefined) return false
+  if (!header.includes('|')) return false
+  const headerCells = splitTableRow(header)
+  if (headerCells.length < 1) return false
+  const delimCells = splitTableRow(delim)
+  if (delimCells.length !== headerCells.length) return false
+  return parseDelimiterRow(delimCells) !== null
+}
 
 interface FenceOpen {
   readonly ch: '`' | '~'
@@ -135,6 +200,25 @@ function lex(input: string): Block[] {
       continue
     }
 
+    // GFM table: header row + delimiter row, then contiguous piped data rows.
+    if (isTableStart(lines, i)) {
+      const headers = splitTableRow(lines[i])
+      const aligns = parseDelimiterRow(splitTableRow(lines[i + 1])) ?? []
+      const cols = headers.length
+      const normAligns: CellAlign[] = Array.from({ length: cols }, (_, c) => aligns[c] ?? 'left')
+      i += 2
+      const rows: string[][] = []
+      while (i < lines.length) {
+        const cur = lines[i]
+        if (cur.trim().length === 0 || !cur.includes('|')) break
+        const cells = splitTableRow(cur)
+        rows.push(Array.from({ length: cols }, (_, c) => cells[c] ?? ''))
+        i++
+      }
+      blocks.push({ kind: 'table', headers, aligns: normAligns, rows })
+      continue
+    }
+
     // Heading
     const heading = HEADING_RE.exec(line)
     if (heading) {
@@ -191,6 +275,7 @@ function lex(input: string): Block[] {
       if (HEADING_RE.test(next)) break
       if (ULIST_RE.test(next) || OLIST_RE.test(next)) break
       if (QUOTE_RE.test(next)) break
+      if (isTableStart(lines, i)) break
       paragraphLines.push(next)
       i++
     }
