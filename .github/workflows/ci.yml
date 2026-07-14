@@ -53,3 +53,103 @@ jobs:
 
       - name: Smoke test packed CLI
         run: bun run --cwd apps/cli test:smoke
+
+  # The regression suite (docs/evals/06-REGRESSION-SUITE.md). Every entry is a
+  # real failure that must never recur, so this is a gate, not a report: the
+  # command exits non-zero when a previously-passing entry fails, and this job
+  # goes red with it. It runs as its own job — parallel to `checks`, with its own
+  # runtime budget — because "the suite is green" is a distinct claim from "the
+  # tests pass", and the release process gates on it separately (step 7).
+  #
+  # Nothing here needs a model or an API key: every grader is binary and
+  # model-free, so the suite behaves the same on CI as on a laptop.
+  regressions:
+    runs-on: ubuntu-latest
+    # Rule 4: the suite stays under 15 minutes. When it grows past that, shard
+    # this job by category (`--category`) — never cut entries to fit.
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # To label a blocked PR (see "Flag release blocker").
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Browser regressions grade by driving the fixture in a real headless
+      # Chromium, through the same lazy Playwright load the product uses. Mirror
+      # that laziness here: install the engine only when the suite actually holds
+      # a browser entry, so a harness-only suite pays nothing for it.
+      - name: Install Chromium (only when the suite has browser entries)
+        run: |
+          if bun run test:regressions --list-categories | grep -qx browser; then
+            bunx playwright install --with-deps chromium
+          else
+            echo "no browser entries in the suite — skipping the engine install"
+          fi
+
+      - name: Regression suite
+        id: gate
+        run: bun run test:regressions --out regression-report.json --summary regression-summary.md
+
+      # Rule 2: quarantine is visible, not silent. The step summary puts the
+      # quarantined entries and their signatures on the run itself — where nobody
+      # has to download an artifact to find out a regression went flaky — and it
+      # renders on green runs too, so a quarantined entry cannot quietly rot.
+      - name: Publish regression summary
+        if: always()
+        run: |
+          if [ -f regression-summary.md ]; then
+            cat regression-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # A previously-passing regression entry that fails is, by definition, a
+      # release blocker (01-EVAL-STRATEGY.md "How regressions block releases").
+      # Labelling the PR feeds the existing gate — RELEASE-CHECKLIST.md's "No
+      # unresolved release:blocker" — instead of inventing a second one that has
+      # to be remembered separately.
+      #
+      # The label keys off the report's releaseBlocked field, not the step's exit
+      # code: a missing suite or a broken invocation also exits non-zero, and
+      # that is a broken pipeline, not a blocked release. CI only ever *sets* the
+      # label; per LABELS.md, clearing it stays with the owner.
+      - name: Flag release blocker
+        if: always() && steps.gate.outcome == 'failure'
+        # The gate is already red; a labelling hiccup (a fork PR's read-only
+        # token) must not masquerade as a second, different failure.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ ! -f regression-report.json ]; then
+            echo "no report written — the suite failed before it could grade; not a release:blocker"
+            exit 0
+          fi
+          if [ "$(jq -r '.releaseBlocked' regression-report.json)" != "true" ]; then
+            echo "gate failed without a blocker — not labelling"
+            exit 0
+          fi
+          jq -r '.blockers[]' regression-report.json | while read -r id; do
+            echo "release:blocker — $id regressed"
+          done
+          gh pr edit "$PR_NUMBER" --add-label release:blocker
+
+      # The report is the evidence the release checklist reads (quarantined
+      # entries, signatures), so keep it even — especially — when the gate fails.
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: regression-report.json
+          if-no-files-found: warn
