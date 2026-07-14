@@ -387,7 +387,7 @@ export function Tui(props: TuiProps): React.ReactElement {
         rows={state.transcript}
         streamingRowId={state.streamingRowId}
         generation={`${state.screenGeneration}:${props.resizeGeneration ?? 0}`}
-        banner={props.banner}
+        banner={state.screenGeneration === 0 ? props.banner : undefined}
       />
       <Box flexDirection="column">
         <ActiveFlowHost

@@ -112,7 +112,10 @@ export async function runTui(opts: RunTuiOptions): Promise<void> {
         mode: opts.mode,
         branch: opts.branch,
         banner: opts.banner,
-        clearScreen: (): void => instanceRef.current?.clear(),
+        clearScreen: (): void => {
+          process.stdout.write(ERASE_VIEWPORT)
+          instanceRef.current?.clear()
+        },
         resizeGeneration,
       }),
     )
