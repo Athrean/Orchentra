@@ -30,6 +30,22 @@ async function main(argv: string[]): Promise<number> {
       return runUpdate({ dryRun: action.dryRun, tag: action.tag })
     }
 
+    case 'eval': {
+      if (action.against) {
+        const { runEvalDiffCommand } = await import('./commands/run-eval-diff')
+        return runEvalDiffCommand({
+          corpus: action.corpus,
+          id: action.id,
+          model: action.model,
+          k: action.k,
+          out: action.out,
+          against: action.against,
+        })
+      }
+      const { runEvalCommand } = await import('./commands/run-eval')
+      return runEvalCommand({ corpus: action.corpus, id: action.id, model: action.model, k: action.k, out: action.out })
+    }
+
     case 'prompt': {
       const { runRepl } = await import('./repl')
       return runRepl({
