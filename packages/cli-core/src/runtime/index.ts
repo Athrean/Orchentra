@@ -17,6 +17,9 @@ export type {
   HookProgressRuntimeEvent,
   ErrorEvent,
   DoneEvent,
+  RunStateEvent,
+  GateDecisionEvent,
+  RecoveryDecisionEvent,
   SpanAttributeValue,
   SpanStartEvent,
   SpanEndEvent,
@@ -177,6 +180,38 @@ export { budgetToolOutput } from './tool-output-budget'
 
 export type { ConversationConfig, ConversationDeps, RunInput } from './conversation'
 export { ConversationRuntime } from './conversation'
+
+export type {
+  HarnessState,
+  VerificationObligation,
+  OwnedRunResources,
+  GateTrial,
+  GateDecisionRecord,
+  RunRetryCounters,
+  RunState,
+} from './run-state'
+export {
+  createRunState,
+  isVerifiableRun,
+  transitionRunState,
+  recordToolResult,
+  recordGateDecision,
+  incrementRetry,
+  restoreRunState,
+} from './run-state'
+export type {
+  ReplayTrialResult,
+  CompletionReplayExecutor,
+  CompletionPolicyOptions,
+  AssertionResult,
+} from './completion-policy'
+export { CompletionPolicy } from './completion-policy'
+export type { QuarantineRecord } from './quarantine'
+export { quarantineRun } from './quarantine'
+export type { EmittedSpec } from './trace-to-spec'
+export { emitTraceSpec, traceSpecPath } from './trace-to-spec'
+export type { RecoveryAction, RecoveryDecision } from './recovery'
+export { classifyRecovery } from './recovery'
 
 export type {
   LaneEventName,

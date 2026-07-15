@@ -22,6 +22,21 @@ import { appendCompactionNote, compactionNotesPath, renderCompactionNote } from 
 import { FileTraceSink, type TraceSink, type TraceManifest, type TestResultEntry } from './trace'
 import type { ConsoleErrorEntry, FailedRequestEntry } from './browser'
 import { billedTokens, cachedTokens, estimatedCostUsd } from './usage'
+import { CompletionPolicy } from './completion-policy'
+import {
+  createRunState,
+  incrementRetry,
+  isVerifiableRun,
+  recordGateDecision,
+  recordToolResult,
+  restoreRunState,
+  transitionRunState,
+  type GateDecisionRecord,
+  type RunState,
+} from './run-state'
+import { quarantineRun } from './quarantine'
+import { emitTraceSpec as emitTraceSpecFromManifest, traceSpecPath, type EmittedSpec } from './trace-to-spec'
+import { classifyRecovery } from './recovery'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
@@ -103,6 +118,16 @@ export interface ConversationDeps {
    * leaves an auditable trace unless a test injects a no-op.
    */
   traceSink?: TraceSink
+  /**
+   * Optional EMIT adapter for hosts that provide their own trace sink. Without
+   * it, the default FileTraceSink emits a spec only after its manifest seals.
+   */
+  emitTraceSpec?: (input: {
+    readonly cwd: string
+    readonly traceId: string
+    readonly state: RunState
+    readonly decision: GateDecisionRecord
+  }) => Promise<EmittedSpec>
   onEvent?: (event: RuntimeEvent) => void | Promise<void>
   signal?: AbortSignal
   clock?: () => string
@@ -129,6 +154,12 @@ export interface RunInput {
   priorMessages?: ChatMessage[]
   /** Compact prior context before this turn, regardless of threshold. */
   forceCompaction?: boolean
+  /** Enables evidence-gated completion for this autonomous objective. */
+  completionPolicy?: CompletionPolicy
+  /** Last durable state from a prior interrupted turn. */
+  runState?: RunState
+  /** Marks the provider turn as continuation rather than a new objective. */
+  resume?: boolean
 }
 
 interface ActiveTrace {
@@ -156,6 +187,8 @@ interface ActiveTrace {
   browserNetworkSeen: Set<string>
   screenshots: string[]
   testResults: TestResultEntry[]
+  gateDecisions: GateDecisionRecord[]
+  pendingEmission?: { state: RunState; decision: GateDecisionRecord }
 }
 
 function versionHash(content: string): string {
@@ -229,6 +262,14 @@ export class ConversationRuntime {
       browserNetworkSeen: new Set(),
       screenshots: [],
       testResults: [],
+      gateDecisions: [],
+    }
+    const completionPolicy = input.completionPolicy
+    let runState =
+      restoreRunState(input.runState) ?? createRunState(input.userMessage, completionPolicy?.obligations, this.now())
+    // A host may restore a pre-M4 state then supply the policy on resume.
+    if (completionPolicy && !isVerifiableRun(runState)) {
+      runState = createRunState(runState.goal, completionPolicy.obligations, this.now())
     }
     if (input.forceCompaction) {
       // Explicit compaction belongs to the runtime too: the same boundary is
@@ -258,6 +299,9 @@ export class ConversationRuntime {
     // themselves, so it is appended to the trace without entering the event
     // stream — reconstruction needs it, UIs must not see it twice.
     await this.trace.sink.append({ kind: 'user_message', content: input.userMessage })
+    // Keep the user message as the first trace record for backwards-compatible
+    // transcript reconstruction; RunState follows as the durable checkpoint.
+    yield* this.emit({ kind: 'run_state', state: runState })
 
     while (true) {
       if (this.deps.signal?.aborted) {
@@ -299,6 +343,8 @@ export class ConversationRuntime {
         })
       }
 
+      runState = transitionRunState(runState, 'PLAN', this.now())
+      yield* this.emit({ kind: 'run_state', state: runState })
       budget.tickStep()
       const stepSpanId = this.newId()
       yield* this.emit({
@@ -408,17 +454,39 @@ export class ConversationRuntime {
           })
           return
         }
-        yield* this.emit({
-          kind: 'done',
-          reason: 'stop',
-          steps: budget.currentSteps,
-          usage: budget.currentUsage,
-        })
+        const gate =
+          completionPolicy && isVerifiableRun(runState)
+            ? await this.runCompletionGate(completionPolicy, runState)
+            : null
+        if (gate) {
+          runState = gate.state
+          for (const event of gate.events) yield* this.emit(event)
+          if (gate.retry) {
+            messages.push({ role: 'user', content: gate.retry })
+            continue
+          }
+          if (gate.doneReason !== 'stop') {
+            yield* this.emit({
+              kind: 'done',
+              reason: gate.doneReason,
+              steps: budget.currentSteps,
+              usage: budget.currentUsage,
+            })
+            return
+          }
+        }
+        runState = transitionRunState(runState, 'DONE', this.now())
+        yield* this.emit({ kind: 'run_state', state: runState })
+        yield* this.emit({ kind: 'done', reason: 'stop', steps: budget.currentSteps, usage: budget.currentUsage })
         return
       }
 
       for (let callIndex = 0; callIndex < turn.toolCalls.length; callIndex++) {
         const call = turn.toolCalls[callIndex]!
+        if (runState.state !== 'EXECUTE') {
+          runState = transitionRunState(runState, 'EXECUTE', this.now())
+          yield* this.emit({ kind: 'run_state', state: runState })
+        }
         const check = loopDetector.record(call)
         if (check.looping) {
           // Break the loop: seal history with error results for this and any
@@ -488,6 +556,13 @@ export class ConversationRuntime {
           })
         }
         yield* this.emit({ kind: 'tool_result', result })
+        runState = recordToolResult(runState, result, this.now())
+        yield* this.emit({ kind: 'run_state', state: runState })
+        if (result.isError) {
+          const recovery = classifyRecovery({ toolName: call.name, message: result.content })
+          if (recovery.action !== 'reraise') runState = incrementRetry(runState, recovery.failureClass, this.now())
+          yield* this.emit({ kind: 'recovery_decision', decision: recovery })
+        }
         const endAttrs: Record<string, SpanAttributeValue> = { tool: call.name, tool_call_id: call.id }
         const end: RuntimeEvent = {
           kind: 'span_end',
@@ -698,6 +773,83 @@ export class ConversationRuntime {
     }
   }
 
+  /**
+   * ASSERT → GATE portion of the harness diagram. A failed assertion/gate
+   * injects concrete feedback for at most two re-plans; a partial pass^k is a
+   * flake and therefore terminally quarantined rather than silently retried.
+   */
+  private async runCompletionGate(
+    policy: CompletionPolicy,
+    state: RunState,
+  ): Promise<{ state: RunState; events: RuntimeEvent[]; retry?: string; doneReason: DoneReason }> {
+    const events: RuntimeEvent[] = []
+    let next = transitionRunState(state, 'OBSERVE', this.now())
+    events.push({ kind: 'run_state', state: next })
+    next = transitionRunState(next, 'ASSERT', this.now())
+    events.push({ kind: 'run_state', state: next })
+    next = transitionRunState(next, 'GATE', this.now())
+    events.push({ kind: 'run_state', state: next })
+
+    let decision = await policy.decide(next, this.now())
+    const passes = decision.trials.filter((trial) => trial.passed).length
+    if (decision.outcome === 'gate_failed' && passes > 0 && passes < policy.k) {
+      decision = {
+        ...decision,
+        outcome: 'quarantined',
+        summary: `${passes}/${policy.k} replay trials passed; quarantined as flaky`,
+      }
+    }
+    next = recordGateDecision(next, decision)
+    events.push({ kind: 'gate_decision', decision })
+
+    if (decision.outcome === 'pass') {
+      next = transitionRunState(next, 'EMIT', this.now())
+      events.push({ kind: 'run_state', state: next })
+      // A custom sink may not have a filesystem manifest. It can opt in with
+      // its own emitter; otherwise preserve the successful gate without
+      // fabricating an artifact that was never written.
+      if (!this.deps.traceSink || this.deps.emitTraceSpec) {
+        const traceId = this.trace?.traceId ?? this.lastTraceIdValue ?? this.config.sessionId
+        const emittedPath = traceSpecPath(this.config.cwd, traceId)
+        if (this.trace) this.trace.pendingEmission = { state: next, decision }
+        next = {
+          ...next,
+          artifacts: [...next.artifacts, { uri: emittedPath, kind: 'file', action: 'created' }],
+          updatedAt: this.now(),
+        }
+      }
+      events.push({ kind: 'run_state', state: next })
+      return { state: next, events, doneReason: 'stop' }
+    }
+
+    if (decision.outcome === 'quarantined') {
+      next = transitionRunState(next, 'QUARANTINE', this.now())
+      const quarantined = await quarantineRun(this.config.cwd, next, decision)
+      next = {
+        ...next,
+        artifacts: [...next.artifacts, { uri: quarantined.path, kind: 'file', action: 'created' }],
+        updatedAt: this.now(),
+      }
+      events.push({ kind: 'run_state', state: next })
+      return { state: next, events, doneReason: 'quarantined' }
+    }
+
+    const retryKind = decision.outcome === 'assert_failed' ? 'assertion' : 'gate'
+    next = incrementRetry(next, retryKind, this.now())
+    const retries = retryKind === 'assertion' ? next.retryCounters.assertion : next.retryCounters.gate
+    if (retries <= policy.maxRetries) {
+      next = transitionRunState(next, 'PLAN', this.now())
+      events.push({ kind: 'run_state', state: next })
+      return {
+        state: next,
+        events,
+        retry: `Completion ${retryKind} failed (${decision.summary}). Re-plan, execute missing verification, then assert again. Retry ${retries}/${policy.maxRetries}.`,
+        doneReason: 'gate_failed',
+      }
+    }
+    return { state: next, events, doneReason: 'gate_failed' }
+  }
+
   private async maybeCompact(messages: ChatMessage[], forced = false): Promise<CompactedOutput | null> {
     const { contextWindowTokens, compactionThreshold, keepRecentOnCompact } = this.config
     if (!forced) {
@@ -740,6 +892,8 @@ export class ConversationRuntime {
       )
     } else if (event.kind === 'compacted') {
       trace.compactions.push({ droppedMessageCount: event.droppedMessageCount, tokensSaved: event.tokensSaved })
+    } else if (event.kind === 'gate_decision') {
+      trace.gateDecisions.push(event.decision)
     } else if (event.kind === 'tool_result') {
       for (const artifact of event.result.artifacts ?? []) {
         const seen = trace.filesChanged.some((a) => a.uri === artifact.uri && a.action === artifact.action)
@@ -822,6 +976,15 @@ export class ConversationRuntime {
       await this.trace.sink.append(event)
       if (event.kind === 'done') {
         await this.trace.sink.finalize(this.buildManifest(this.trace, event.reason, event.steps, event.usage))
+        if (this.trace.pendingEmission) {
+          const emitSpec = this.deps.emitTraceSpec ?? emitTraceSpecFromManifest
+          await emitSpec({
+            cwd: this.config.cwd,
+            traceId: this.trace.traceId,
+            state: this.trace.pendingEmission.state,
+            decision: this.trace.pendingEmission.decision,
+          })
+        }
         this.trace = null
       }
     }
@@ -868,7 +1031,7 @@ export class ConversationRuntime {
       consoleErrors: trace.browserActive ? trace.browserConsoleErrors : null,
       networkFailures: trace.browserActive ? trace.browserNetworkFailures : null,
       testResults: trace.testResults.length > 0 ? trace.testResults : null,
-      gateDecisions: null,
+      gateDecisions: trace.gateDecisions.length > 0 ? trace.gateDecisions : null,
       graderResult: null,
       failureCategory: reason === 'stop' ? null : reason,
     }

@@ -175,6 +175,8 @@ export interface SessionControl {
    * provider context can be reconstructed from persisted events.
    */
   resumeSession?(path: string): Promise<SessionResumeResult>
+  /** Continue a persisted autonomous RunState after a successful resumeSession. */
+  resumeAutonomousRun?(): Promise<{ readonly ok: boolean; readonly reason: import('./events').DoneReason } | null>
   /** Clone the active session file and switch future writes to the cloned session. */
   forkSession?(): Promise<SessionForkResult>
   forceCompact(): void

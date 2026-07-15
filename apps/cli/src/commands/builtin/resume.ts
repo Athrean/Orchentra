@@ -10,7 +10,7 @@ export class ResumeCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'resume',
     aliases: [],
-    summary: 'Show a previous session summary',
+    summary: 'Restore a session; continue an interrupted autonomous run',
     argumentHint: '[<id>|latest|cross:<id>|cross:latest]',
   }
 
@@ -65,6 +65,7 @@ export class ResumeCommand implements CommandHandler {
 
     if (ctx.session.resumeSession) {
       const result = await ctx.session.resumeSession(sessionPath)
+      const continuation = await ctx.session.resumeAutonomousRun?.()
       if (ctx.setCwd && result.cwd !== ctx.cwd) ctx.setCwd(result.cwd)
       if (ctx.ui) {
         ctx.ui({
@@ -92,6 +93,13 @@ export class ResumeCommand implements CommandHandler {
             text: 'Historical session lacks persisted user prompts; resumed context is partial.',
           })
         }
+        if (continuation) {
+          ctx.ui({
+            kind: 'note',
+            tone: continuation.ok ? 'info' : 'warn',
+            text: `Autonomous run resumed: ${continuation.reason}.`,
+          })
+        }
       } else {
         process.stdout.write(`Resumed session: ${target.file}${tag ? ` (${tag})` : ''}\n`)
         process.stdout.write(
@@ -100,6 +108,7 @@ export class ResumeCommand implements CommandHandler {
         if (!result.contextComplete) {
           process.stdout.write('Historical session lacks persisted user prompts; resumed context is partial.\n')
         }
+        if (continuation) process.stdout.write(`Autonomous run resumed: ${continuation.reason}\n`)
       }
       return true
     }

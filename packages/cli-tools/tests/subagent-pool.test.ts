@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { runSubagentPool } from '../src/tools/subagent-pool'
+import { SubagentReplayExecutor } from '../src/tools/gate-replay'
+import { createRunState } from '@orchentra/cli-core'
 
 describe('runSubagentPool', () => {
   test('runs every task and returns values in task order with zero requeues', async () => {
@@ -68,5 +70,25 @@ describe('runSubagentPool', () => {
     })
     expect(state.max).toBeLessThanOrEqual(2)
     expect(results.map((r) => r.value)).toEqual(['ok:a', 'ok:b', 'ok:c', 'ok:d', 'ok:e', 'ok:f'])
+  })
+})
+
+describe('SubagentReplayExecutor', () => {
+  test('fans k replay trials through the bounded sub-agent pool', async () => {
+    const seen: number[] = []
+    const executor = new SubagentReplayExecutor({
+      limit: 2,
+      runTrial: async (_state, index) => {
+        seen.push(index)
+        return { passed: index !== 2, summary: `trial ${index}` }
+      },
+    })
+    const results = await executor.replay({ state: createRunState('replay'), k: 3 })
+    expect(results).toEqual([
+      { passed: true, summary: 'trial 1' },
+      { passed: false, summary: 'trial 2' },
+      { passed: true, summary: 'trial 3' },
+    ])
+    expect(seen.sort()).toEqual([1, 2, 3])
   })
 })

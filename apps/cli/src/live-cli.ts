@@ -38,6 +38,7 @@ import type {
   UndoFileEditResult,
   UndoFileEditsResult,
   UsageTotals,
+  RunState,
 } from '@orchentra/cli-core'
 import {
   UsageTracker,
@@ -66,6 +67,8 @@ import {
   replaySession,
   SessionWriter,
   QuirkCounters,
+  CompletionPolicy,
+  restoreRunState,
 } from '@orchentra/cli-core'
 import type {
   AskUser as ToolAskUser,
@@ -78,7 +81,7 @@ import type {
   StoredPermissionRule,
   TerseModeUsage,
 } from '@orchentra/cli-core'
-import { isMcpToolName } from '@orchentra/cli-tools'
+import { isMcpToolName, SubagentReplayExecutor, resolveSubagentRole, restrictRegistry } from '@orchentra/cli-tools'
 import {
   Spinner,
   renderToolCall,
@@ -103,6 +106,15 @@ export type ModelResolver = (raw: string) => { model: string; provider: Provider
 export interface TurnRunResult {
   readonly ok: boolean
   readonly reason: DoneReason
+}
+
+export interface TurnRunOptions {
+  /** One-shot/autonomous path: completion needs executable evidence and a gate decision. */
+  readonly verify?: boolean
+  /** Explicit policy wins over the default one-shot policy. */
+  readonly completionPolicy?: CompletionPolicy
+  /** Continue a persisted autonomous objective after `/resume`. */
+  readonly resume?: boolean
 }
 
 export type RuntimeEventSink = (event: RuntimeEvent) => void
@@ -159,6 +171,8 @@ export class LiveCli implements SessionControl {
   private readonly permissionStore: PermissionStore
   private startupNotices: string[] = []
   private goal: SessionGoal | null = null
+  /** Last emitted autonomous checkpoint; session events restore this after interruption. */
+  private runState: RunState | null = null
   private pendingFileUndoSnapshots = new Map<string, FileUndoSnapshot>()
   private currentTurnFileUndo: FileUndoSnapshot[] | null = null
   private lastTurnFileUndo: FileUndoSnapshot[] = []
@@ -465,6 +479,7 @@ export class LiveCli implements SessionControl {
 
   clearHistory(): void {
     this.messages = []
+    this.runState = null
     this.pendingFileUndoSnapshots.clear()
     this.currentTurnFileUndo = null
     this.lastTurnFileUndo = []
@@ -479,6 +494,7 @@ export class LiveCli implements SessionControl {
     // (model, permission mode, effort, terse mode) intentionally survive.
     this.tracker = new UsageTracker()
     this.goal = null
+    this.runState = null
     // Per-conversation scratch state resets too. Background tasks (taskStore)
     // and the user-toggled plan mode deliberately survive, matching how
     // preferences and running work outlive /clear in Claude Code.
@@ -523,6 +539,7 @@ export class LiveCli implements SessionControl {
     this.setModel(nextModel)
     this.sessionId = nextId
     this.messages = hydrated.messages
+    this.runState = restoreLatestRunState(records)
     this.tracker = hydrated.tracker
     this.runtime = null
     this.pendingFileUndoSnapshots.clear()
@@ -545,6 +562,14 @@ export class LiveCli implements SessionControl {
       toolCalls: hydrated.toolCalls,
       contextComplete: hydrated.contextComplete,
     }
+  }
+
+  /** Continue an interrupted verifiable run; ordinary transcript resumes stay view-only. */
+  async resumeAutonomousRun(): Promise<TurnRunResult | null> {
+    if (!this.runState || this.runState.verificationObligations.length === 0) return null
+    if (this.runState.state === 'DONE' || this.runState.state === 'QUARANTINE') return null
+    const policy = this.createCompletionPolicy(this.runState.verificationObligations)
+    return this.runTurn(renderResumeInstruction(this.runState), { completionPolicy: policy, resume: true })
   }
 
   async forkSession(): Promise<SessionForkResult> {
@@ -698,7 +723,7 @@ export class LiveCli implements SessionControl {
     }
   }
 
-  async runTurn(input: string): Promise<TurnRunResult> {
+  async runTurn(input: string, options: TurnRunOptions = {}): Promise<TurnRunResult> {
     const sink = this.eventSink
     const forceCompaction = this.forceCompactFlag
     this.forceCompactFlag = false
@@ -855,10 +880,14 @@ export class LiveCli implements SessionControl {
     let doneReason: DoneReason | undefined
 
     try {
+      const completionPolicy = options.completionPolicy ?? (options.verify ? this.createCompletionPolicy() : undefined)
       for await (const event of this.runtime.run({
         userMessage: input,
         priorMessages: this.messages,
         forceCompaction,
+        completionPolicy,
+        runState: options.resume ? (this.runState ?? undefined) : undefined,
+        resume: options.resume,
       })) {
         await this.handleEvent(event)
         if (event.kind === 'text') {
@@ -889,7 +918,7 @@ export class LiveCli implements SessionControl {
         await this.captureMemory(input, assistantText, sink)
       }
       if (sink) {
-        sink({ kind: 'done', reason: 'stop', steps, usage: lastUsage })
+        sink({ kind: 'done', reason: doneReason ?? 'error', steps, usage: lastUsage })
       } else {
         this.spinner.stop()
         process.stdout.write(renderDoneLine(steps, lastUsage, this.model) + '\n')
@@ -913,6 +942,7 @@ export class LiveCli implements SessionControl {
   }
 
   private async handleEvent(event: RuntimeEvent): Promise<void> {
+    if (event.kind === 'run_state') this.runState = event.state
     if (event.kind === 'tool_use') {
       await this.captureFileUndoSnapshot(event.call)
     }
@@ -955,6 +985,78 @@ export class LiveCli implements SessionControl {
 
     if (this.session) {
       await this.session.append(event)
+    }
+  }
+
+  /** k=3 reviewers run in the existing bounded pool, without write capability. */
+  private createCompletionPolicy(obligations = defaultVerificationObligations()): CompletionPolicy {
+    return new CompletionPolicy({
+      obligations,
+      k: 3,
+      maxRetries: 2,
+      replay: new SubagentReplayExecutor({
+        runTrial: (state, index) => this.runReplayTrial(state, index),
+      }),
+    })
+  }
+
+  private async runReplayTrial(
+    state: RunState,
+    index: number,
+  ): Promise<{ passed: boolean; summary: string; traceId?: string }> {
+    const role = resolveSubagentRole('reviewer').role
+    if (!role) return { passed: false, summary: 'reviewer role unavailable' }
+    const runtime = new ConversationRuntime(
+      {
+        model: this.model,
+        maxOutputTokens: 2048,
+        contextWindowTokens: 200_000,
+        compactionThreshold: this.compactionThreshold,
+        keepRecentOnCompact: this.keepRecentOnCompact,
+        budget: { maxSteps: 10, maxTokens: 50_000, model: this.model },
+        sessionId: this.sessionId,
+        cwd: this.cwd,
+        effort: this.effort,
+        providerName: this.providerName,
+        harnessVersion: CLI_VERSION,
+      },
+      {
+        provider: this.provider,
+        tools: restrictRegistry(this.tools, role),
+        systemPrompt: buildSystemPrompt({
+          staticParts: [
+            role.focus,
+            'Independently replay verification for the completed objective. Read and run checks only. Never edit. End only after reporting concrete evidence.',
+          ],
+          dynamicParts: [],
+        }),
+        sharedState: this.sharedState,
+        subagentDepth: 1,
+      },
+    )
+    const evidenceKinds = new Set<string>()
+    let reason: DoneReason = 'error'
+    for await (const event of runtime.run({
+      userMessage: `Replay trial ${index}/3 for objective: ${state.goal}\nRequired evidence: ${state.verificationObligations.map((item) => item.description).join('; ')}`,
+    })) {
+      if (event.kind === 'tool_result' && !event.result.isError) {
+        for (const item of event.result.evidence ?? []) evidenceKinds.add(item.kind)
+      } else if (event.kind === 'usage') {
+        this.runBudget?.addUsage(event.turn)
+      } else if (event.kind === 'done') {
+        reason = event.reason
+      }
+    }
+    const missing = state.verificationObligations
+      .filter((obligation) => !obligation.evidenceKinds.every((kind) => evidenceKinds.has(kind)))
+      .map((obligation) => obligation.id)
+    const passed = reason === 'stop' && missing.length === 0
+    return {
+      passed,
+      summary: passed
+        ? `reviewer replay ${index} passed`
+        : `reviewer replay ${index} missing ${missing.join(', ') || reason}`,
+      traceId: runtime.lastTraceId ?? undefined,
     }
   }
 
@@ -1074,6 +1176,32 @@ function hydrateSessionRecords(
     toolCalls,
     contextComplete: userMessages > 0,
   }
+}
+
+function restoreLatestRunState(records: readonly SessionRecord[]): RunState | null {
+  for (let index = records.length - 1; index >= 0; index -= 1) {
+    const event = records[index]!.event
+    if (event.kind !== 'run_state') continue
+    const restored = restoreRunState(event.state)
+    if (restored) return restored
+  }
+  return null
+}
+
+function defaultVerificationObligations(): readonly RunState['verificationObligations'][number][] {
+  return [
+    {
+      id: 'executable-verification',
+      description: 'run a relevant command and collect its exit status',
+      evidenceKinds: ['exit-status'],
+    },
+  ]
+}
+
+function renderResumeInstruction(state: RunState): string {
+  const retries = `assert=${state.retryCounters.assertion}, gate=${state.retryCounters.gate}`
+  const obligations = state.verificationObligations.map((item) => item.description).join('; ')
+  return `Resume autonomous objective: ${state.goal}\nCheckpoint: ${state.state}; retries ${retries}.\nRequired verification: ${obligations}\nContinue from this checkpoint; do not repeat completed destructive work.`
 }
 
 async function askUserHeadless(request: string | AskUserRequest): Promise<string> {

@@ -203,4 +203,38 @@ describe('ResumeCommand workspace scope', () => {
     expect(cards[0]!.title).toBe('Resumed Session')
     expect(cards[0]!.subtitle).toContain(id)
   })
+
+  test('continues an interrupted autonomous RunState after hydrating the session', async () => {
+    const wsA = '/Users/foo/repo-a'
+    const id = 'm4resume'
+    writeSession(join(sessionsRoot(), fingerprintWorkspace(wsA)), id, [
+      { event: { kind: 'user_message', content: 'fix it' } },
+      { event: { kind: 'run_state', state: 'EXECUTE' } },
+    ])
+
+    let continuations = 0
+    const session: SessionControl = {
+      ...makeSession(),
+      resumeSession: async (path) => ({
+        sessionId: id,
+        path,
+        cwd: wsA,
+        model: 'test-model',
+        events: 2,
+        messages: 1,
+        toolCalls: 0,
+        contextComplete: true,
+      }),
+      resumeAutonomousRun: async () => {
+        continuations++
+        return { ok: true, reason: 'stop' }
+      },
+    }
+    const { ctx, events } = makeCtxWithSession(wsA, session)
+
+    await new ResumeCommand().execute([id], ctx)
+
+    expect(continuations).toBe(1)
+    expect(notes(events)).toContain('Autonomous run resumed: stop.')
+  })
 })
