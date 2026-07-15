@@ -13,6 +13,7 @@
     "format": "git ls-files -co --exclude-standard -z -- '*.ts' '*.tsx' '*.md' '*.json' '*.yml' '*.yaml' | xargs -0 prettier --write",
     "test": "bun run test:precommit",
     "test:precommit": "bun test packages/cli-core/tests packages/cli-api/tests packages/cli-browser/tests packages/cli-tools/tests apps/cli/tests",
+    "test:regressions": "bun run apps/cli/src/main.ts regressions",
     "typecheck": "turbo run typecheck",
     "prepare": "husky"
   },
