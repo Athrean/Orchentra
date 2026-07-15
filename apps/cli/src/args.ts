@@ -1,4 +1,4 @@
-import type { PermissionMode, RegressionCategory } from '@orchentra/cli-core'
+import type { PermissionMode } from '@orchentra/cli-core'
 import { getDefaultModel } from './session-config'
 import { DEFAULT_MODEL_ID } from './model-catalog'
 
@@ -25,17 +25,6 @@ export type CliAction =
   | { kind: 'reauth' }
   | { kind: 'auth-status' }
   | { kind: 'update'; dryRun: boolean; tag: UpdateTag }
-  | { kind: 'eval'; corpus?: string; id?: string; model: string; k?: number; out?: string; against?: string }
-  | {
-      kind: 'regressions'
-      suite?: string
-      id?: string
-      category?: RegressionCategory
-      k?: number
-      out?: string
-      summary?: string
-      listCategories?: boolean
-    }
 
 const VALID_PERMISSION_MODES: PermissionMode[] = [
   'read-only',
@@ -74,14 +63,6 @@ export function parseArgs(argv: string[]): CliAction {
 
   if (first === 'doctor') {
     return { kind: 'doctor' }
-  }
-
-  if (first === 'eval') {
-    return parseEvalArgs(args.slice(1))
-  }
-
-  if (first === 'regressions') {
-    return parseRegressionsArgs(args.slice(1))
   }
 
   if (first === 'mcp') {
@@ -169,8 +150,6 @@ USAGE
   orchentra reauth                        Re-run the first-run LLM provider setup
   orchentra whoami                        Show signed-in providers and credential sources
   orchentra update [--tag <tag>]           Self-update from npm (alpha|beta|latest)
-  orchentra eval [--corpus <dir>|--id <id>] Run the eval corpus → scoreboard JSON
-  orchentra regressions [--id <id>]       Run the regression suite → report JSON (exit 1 on a blocker)
   orchentra --version                     Print version
 
 FLAGS
@@ -179,15 +158,6 @@ FLAGS
       --permission-mode <mode>        Permission mode: read-only, workspace-write, danger-full-access
       --dangerously-skip-permissions  Shortcut for --permission-mode allow
       --resume <path>                 Resume a previous session
-      --corpus <dir>                  eval: corpus directory (default evals/)
-      --id <id>                       eval: run a single eval by id
-      --k <n>                         eval/regressions: trials per entry (overrides meta.k)
-      --out <path>                    eval/regressions: write the JSON to a file
-      --against <bin>                 eval: second harness build → diff scoreboards
-      --summary <path>                regressions: write the markdown quarantine/blocker summary
-      --suite <dir>                   regressions: suite directory (default evals/regressions/)
-      --category <c>                  regressions: run one shard only (harness|browser)
-      --list-categories               regressions: print the suite's categories and exit
   -h, --help                          Show this help
   -V, --version                       Print version
 `
@@ -246,85 +216,6 @@ function parseUpdateArgs(rest: string[]): CliAction {
   }
 
   return { kind: 'update', dryRun, tag }
-}
-
-function parseEvalArgs(rest: string[]): CliAction {
-  let corpus: string | undefined
-  let id: string | undefined
-  let model = defaultModel()
-  let k: number | undefined
-  let out: string | undefined
-  let against: string | undefined
-
-  for (let i = 0; i < rest.length; i++) {
-    const arg = rest[i]
-    const inline = (name: string): string | undefined =>
-      arg.startsWith(`${name}=`) ? arg.slice(name.length + 1) : undefined
-
-    if (arg === '--corpus') corpus = rest[++i]
-    else if (inline('--corpus') !== undefined) corpus = inline('--corpus')
-    else if (arg === '--id') id = rest[++i]
-    else if (inline('--id') !== undefined) id = inline('--id')
-    else if (arg === '-m' || arg === '--model') model = rest[++i] ?? model
-    else if (inline('--model') !== undefined) model = inline('--model') as string
-    else if (arg === '--k') k = parsePositiveInt('--k', rest[++i])
-    else if (inline('--k') !== undefined) k = parsePositiveInt('--k', inline('--k'))
-    else if (arg === '--out') out = rest[++i]
-    else if (inline('--out') !== undefined) out = inline('--out')
-    else if (arg === '--against') against = rest[++i]
-    else if (inline('--against') !== undefined) against = inline('--against')
-    else throw new Error(`eval: unknown argument: ${arg}`)
-  }
-
-  return { kind: 'eval', corpus, id, model, k, out, against }
-}
-
-const REGRESSION_CATEGORIES: RegressionCategory[] = ['harness', 'browser']
-
-function parseRegressionsArgs(rest: string[]): CliAction {
-  let suite: string | undefined
-  let id: string | undefined
-  let category: RegressionCategory | undefined
-  let k: number | undefined
-  let out: string | undefined
-  let summary: string | undefined
-  let listCategories = false
-
-  for (let i = 0; i < rest.length; i++) {
-    const arg = rest[i]
-    const inline = (name: string): string | undefined =>
-      arg.startsWith(`${name}=`) ? arg.slice(name.length + 1) : undefined
-
-    if (arg === '--suite') suite = rest[++i]
-    else if (inline('--suite') !== undefined) suite = inline('--suite')
-    else if (arg === '--id') id = rest[++i]
-    else if (inline('--id') !== undefined) id = inline('--id')
-    else if (arg === '--category') category = parseRegressionCategory(rest[++i])
-    else if (inline('--category') !== undefined) category = parseRegressionCategory(inline('--category'))
-    else if (arg === '--k') k = parsePositiveInt('--k', rest[++i])
-    else if (inline('--k') !== undefined) k = parsePositiveInt('--k', inline('--k'))
-    else if (arg === '--out') out = rest[++i]
-    else if (inline('--out') !== undefined) out = inline('--out')
-    else if (arg === '--summary') summary = rest[++i]
-    else if (inline('--summary') !== undefined) summary = inline('--summary')
-    else if (arg === '--list-categories') listCategories = true
-    else throw new Error(`regressions: unknown argument: ${arg}`)
-  }
-
-  return { kind: 'regressions', suite, id, category, k, out, summary, listCategories }
-}
-
-function parseRegressionCategory(value: string | undefined): RegressionCategory {
-  if (!value || !REGRESSION_CATEGORIES.includes(value as RegressionCategory)) {
-    throw new Error(`regressions: invalid category: ${value ?? ''}. valid: ${REGRESSION_CATEGORIES.join(', ')}`)
-  }
-  return value as RegressionCategory
-}
-
-function parsePositiveInt(flag: string, value: string | undefined): number {
-  const n = Number(value)
-  if (!Number.isInteger(n) || n < 1) throw new Error(`${flag}: expected a positive integer, got '${value ?? ''}'`)
-  return n
 }
 
 function parseUpdateTag(value: string): UpdateTag {

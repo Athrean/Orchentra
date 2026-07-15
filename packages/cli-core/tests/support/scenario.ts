@@ -2,7 +2,7 @@
 // with a scripted provider (no network) and reports the run's aggregated outcome.
 // Unlike a plain transcript fixture, scenarios also carry a *cost budget*
 // (tokensMax / cacheHitMin) so the suite gates spend, not just behavior — see
-// docs/CLI_UPGRADES.md H1.
+// Deterministic scenario support.
 import { ConversationRuntime, type ConversationConfig, type ConversationDeps } from '../../src/runtime/conversation'
 import type { Provider, ProviderRequest, ProviderStreamEvent } from '../../src/runtime/provider'
 import type { ToolRegistry, ToolResult } from '../../src/runtime/tools'

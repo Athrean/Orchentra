@@ -3,8 +3,8 @@
  *   top → apiKeyPicker → apiKeyInput (API key)
  *   top → thirdPartyPicker (docs links)
  *
- * Orchentra does not ship subscription-OAuth sign-in for any provider (see
- * docs/current/canonical.md) — API key + third-party platforms only.
+ * Orchentra does not ship subscription-OAuth sign-in for any provider — API
+ * key and third-party platforms only.
  *
  * Lives outside Ink so the same transitions can power the shell-verb
  * picker in a follow-up. All side effects (browser open, keychain save)

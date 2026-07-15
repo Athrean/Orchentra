@@ -149,7 +149,6 @@ Orchentra/
 │   ├── cli-tools/           # built-in tools + MCP client
 │   ├── config-eslint/
 │   └── config-typescript/
-├── docs/                     # product, architecture, planning, releases, operations
 └── README.md
 ```
 

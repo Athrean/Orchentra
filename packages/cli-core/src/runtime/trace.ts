@@ -44,7 +44,6 @@ export type TraceEvent = RuntimeEvent | TranscriptSnapshotEvent
  * proven by {@link reconstructTranscript}), and the manifest is where honest
  * accounting (usage split, cost, quirk counters) becomes visible per task.
  *
- * Field list follows docs/architecture/12-TRACE-SYSTEM.md "Manifest fields".
  * Fields the harness cannot produce yet are typed `null` — a stub is an
  * explicit "not yet", never fabricated data: browser fields land with M2,
  * gate decisions with M4, grader results with M3, and retries when the
@@ -112,8 +111,7 @@ export interface TraceSink {
 }
 
 /**
- * Trace layout per docs/architecture/12-TRACE-SYSTEM.md: one directory per
- * run under `.orchentra/traces/<run-id>/` holding `events.jsonl` (the full
+ * One directory per run under `.orchentra/traces/<run-id>/` holds `events.jsonl` (the full
  * stream, append-only — traces escape the 256KB session rotation by design),
  * `manifest.json` (the run record), and `artifacts/` (screenshots, dumps,
  * diffs; populated from M2 on). The run id is the trace id.

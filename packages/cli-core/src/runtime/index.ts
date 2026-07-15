@@ -169,8 +169,8 @@ export { buildSystemPrompt } from './system-prompt'
 
 export type { SessionMeta, SessionRecord, SessionWriterOptions } from './session'
 export { SessionWriter, replaySession, resolveSessionPath, defaultSessionDir } from './session'
-export type { RetrievedToolOutput } from './session-retrieval'
-export { SessionRetrieval, SessionRetrievalError } from './session-retrieval'
+export type { RetrievedToolOutput } from './session-history'
+export { SessionRetrieval, SessionRetrievalError } from './session-history'
 
 export type { CompactionInput, CompactionResult, TokenEstimator, LlmSummarizer } from './compaction'
 export { shouldCompact, compact, compactWithSummary, estimateMessagesTokens, defaultEstimator } from './compaction'

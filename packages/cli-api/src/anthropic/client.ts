@@ -42,8 +42,8 @@ export class AnthropicProvider implements Provider {
     this.explicitApiKey = config.apiKey
   }
 
-  // Console API key only — Orchentra does not ship subscription-OAuth
-  // sign-in for any provider (see docs/current/canonical.md).
+  // Console API key only — Orchentra does not ship subscription-OAuth sign-in
+  // for any provider.
   private resolveAuthHeaders(): AuthHeaders {
     const apiKey = this.explicitApiKey ?? process.env['ANTHROPIC_API_KEY']
     return apiKey ? { 'x-api-key': apiKey, authSource: 'api_key' } : { authSource: 'api_key' }
