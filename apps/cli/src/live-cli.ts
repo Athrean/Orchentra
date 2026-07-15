@@ -1004,8 +1004,12 @@ export class LiveCli implements SessionControl {
     state: RunState,
     index: number,
   ): Promise<{ passed: boolean; summary: string; traceId?: string }> {
+    if (this.runBudget?.snapshot().exhausted) {
+      return { passed: false, summary: `reviewer replay ${index} skipped: parent budget exhausted` }
+    }
     const role = resolveSubagentRole('reviewer').role
     if (!role) return { passed: false, summary: 'reviewer role unavailable' }
+    const abort = new AbortController()
     const runtime = new ConversationRuntime(
       {
         model: this.model,
@@ -1032,6 +1036,7 @@ export class LiveCli implements SessionControl {
         }),
         sharedState: this.sharedState,
         subagentDepth: 1,
+        signal: abort.signal,
       },
     )
     const evidenceKinds = new Set<string>()
@@ -1043,6 +1048,7 @@ export class LiveCli implements SessionControl {
         for (const item of event.result.evidence ?? []) evidenceKinds.add(item.kind)
       } else if (event.kind === 'usage') {
         this.runBudget?.addUsage(event.turn)
+        if (this.runBudget?.snapshot().exhausted) abort.abort()
       } else if (event.kind === 'done') {
         reason = event.reason
       }
