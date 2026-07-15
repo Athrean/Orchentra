@@ -1,0 +1,25 @@
+apps/web/app/components/landing/pixel-field-engine.ts
+  s_a2dba4a7f432de::t_d72e4571e39349 42-43,50-51,57-63,85,89-90,99-101,103-104,107-110,113,172,175-176,184-198,386,394,396-398,473-474,477-481,483-484,530,534
+apps/web/app/components/landing/pixel-field.tsx
+  s_a2dba4a7f432de::t_885f66c58a3f61 100-102
+apps/web/app/components/landing/ui.tsx
+  s_a2dba4a7f432de::t_e78dd0aebe348e 19-20,22-28
+apps/web/app/styles/carousels.css
+  s_a2dba4a7f432de::t_1f9d41bd196f24 32-34,38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8d3ee58a8bf251e62260d41a1ac79d9d39f9e69a",
+  "prompts": {},
+  "sessions": {
+    "s_a2dba4a7f432de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22478c2a-a1c1-403a-85b9-3775b426ef6e",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
