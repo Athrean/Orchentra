@@ -1,10 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { HarnessRunner, HarnessTrialInput, ScoreboardDiff, TrialMetrics } from '@orchentra/cli-core'
 import { runEvalDiffCommand } from '../src/commands/run-eval-diff'
-
-const CORPUS = resolve(import.meta.dir, '..', '..', '..', 'evals')
 
 const zeroMetrics: TrialMetrics = {
   billedTokens: 50,
@@ -28,6 +27,29 @@ const fixedBuild: HarnessRunner = async (input: HarnessTrialInput) => {
   return zeroMetrics
 }
 
+async function makeCorpus(): Promise<string> {
+  const corpus = await mkdtemp(join(tmpdir(), 'orchentra-eval-diff-'))
+  const dir = join(corpus, 'coding-bugfix-off-by-one')
+  await mkdir(join(dir, 'fixture'), { recursive: true })
+  await mkdir(join(corpus, 'lib'))
+  await writeFile(join(dir, 'task.md'), 'repair pagination\n')
+  await writeFile(
+    join(dir, 'meta.json'),
+    JSON.stringify({
+      id: 'coding-bugfix-off-by-one',
+      category: 'coding',
+      type: 'fixture',
+      grader: 'test',
+      k: 1,
+      timeoutSec: 10,
+      versionAdded: 'test',
+    }),
+  )
+  await writeFile(join(dir, 'fixture', 'pagination.js'), 'export const pageCount = () => Math.floor(1)\n')
+  await writeFile(join(dir, 'grade.sh'), '#!/usr/bin/env bash\ngrep -q "Math.ceil" fixture/pagination.js\n')
+  return corpus
+}
+
 function capture(): { text: () => string; sink: (t: string) => void } {
   let buf = ''
   return { text: () => buf, sink: (t) => (buf += t) }
@@ -35,28 +57,33 @@ function capture(): { text: () => string; sink: (t: string) => void } {
 
 describe('orchentra eval --against → scoreboard diff (version-diff mode)', () => {
   test('build B fixes an eval build A fails → the diff records it as a fix', async () => {
-    const out = capture()
-    const code = await runEvalDiffCommand({
-      corpus: CORPUS,
-      id: 'coding-bugfix-off-by-one',
-      model: 'm',
-      k: 1,
-      against: 'build-B',
-      harnessBefore: brokenBuild,
-      harnessAfter: fixedBuild,
-      stdout: out.sink,
-      stderr: () => {},
-    })
-    expect(code).toBe(0)
+    const corpus = await makeCorpus()
+    try {
+      const out = capture()
+      const code = await runEvalDiffCommand({
+        corpus,
+        id: 'coding-bugfix-off-by-one',
+        model: 'm',
+        k: 1,
+        against: 'build-B',
+        harnessBefore: brokenBuild,
+        harnessAfter: fixedBuild,
+        stdout: out.sink,
+        stderr: () => {},
+      })
+      expect(code).toBe(0)
 
-    const diff = JSON.parse(out.text()) as ScoreboardDiff
-    expect(diff.after).toBe('build-B')
-    expect(diff.fixes).toContain('coding-bugfix-off-by-one')
-    expect(diff.regressions).toEqual([])
-    expect(diff.passHatKRateDelta).toBeCloseTo(1, 10)
-    const delta = diff.evals.find((e) => e.id === 'coding-bugfix-off-by-one')
-    expect(delta?.passHatKBefore).toBe(false)
-    expect(delta?.passHatKAfter).toBe(true)
+      const diff = JSON.parse(out.text()) as ScoreboardDiff
+      expect(diff.after).toBe('build-B')
+      expect(diff.fixes).toContain('coding-bugfix-off-by-one')
+      expect(diff.regressions).toEqual([])
+      expect(diff.passHatKRateDelta).toBeCloseTo(1, 10)
+      const delta = diff.evals.find((e) => e.id === 'coding-bugfix-off-by-one')
+      expect(delta?.passHatKBefore).toBe(false)
+      expect(delta?.passHatKAfter).toBe(true)
+    } finally {
+      await rm(corpus, { recursive: true, force: true })
+    }
   }, 30000)
 
   test('missing corpus → exit 1', async () => {

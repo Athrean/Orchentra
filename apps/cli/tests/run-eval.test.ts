@@ -1,14 +1,31 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import type { EvalMeta, GradeResult, HarnessRunner, Scoreboard } from '@orchentra/cli-core'
 import { parseArgs } from '../src/args'
 import { runEvalCommand } from '../src/commands/run-eval'
 
-const CORPUS = resolve(import.meta.dir, '..', '..', '..', 'evals')
-
 const argv = (...rest: string[]): string[] => ['bun', 'orchentra', ...rest]
+
+/** A disposable corpus keeps public CI independent of the private local corpus. */
+async function makeCorpus(): Promise<string> {
+  const corpus = await mkdtemp(join(tmpdir(), 'orchentra-eval-corpus-'))
+  await mkdir(join(corpus, 'lib'))
+  for (const category of ['coding', 'browser'] as const) {
+    for (let n = 1; n <= 10; n++) {
+      const id = `${category}-fixture-${n}`
+      const dir = join(corpus, id)
+      await mkdir(join(dir, 'fixture'), { recursive: true })
+      await writeFile(join(dir, 'task.md'), `solve ${id}\n`)
+      await writeFile(
+        join(dir, 'meta.json'),
+        JSON.stringify({ id, category, type: 'fixture', grader: 'test', k: 1, timeoutSec: 10, versionAdded: 'test' }),
+      )
+    }
+  }
+  return corpus
+}
 
 // Deterministic seams so the command runs the whole real corpus fast, with no
 // live model and no browser engine: the harness is a no-op with fixed metrics,
@@ -56,51 +73,54 @@ describe('parseArgs: eval', () => {
 
 describe('orchentra eval → scoreboard (v0.6.0 exit criterion)', () => {
   test('one command emits a scoreboard with pass@1/pass^k/cost-per-success for all 20 tasks', async () => {
-    const out = capture()
-    const code = await runEvalCommand({
-      corpus: CORPUS,
-      model: 'test-model',
-      k: 1,
-      harness: fakeHarness,
-      grade: codingPasses,
-      stdout: out.sink,
-      stderr: () => {},
-    })
-    expect(code).toBe(0)
+    const corpus = await makeCorpus()
+    try {
+      const out = capture()
+      const code = await runEvalCommand({
+        corpus,
+        model: 'test-model',
+        k: 1,
+        harness: fakeHarness,
+        grade: codingPasses,
+        stdout: out.sink,
+        stderr: () => {},
+      })
+      expect(code).toBe(0)
 
-    const board = JSON.parse(out.text()) as Scoreboard
-    expect(board.version).toBe(1)
-    expect(board.model).toBe('test-model')
-    expect(board.evals).toHaveLength(20)
-    expect(board.summary.total).toBe(20)
+      const board = JSON.parse(out.text()) as Scoreboard
+      expect(board.version).toBe(1)
+      expect(board.model).toBe('test-model')
+      expect(board.evals).toHaveLength(20)
+      expect(board.summary.total).toBe(20)
 
-    // every entry carries the exit-criterion metrics
-    for (const e of board.evals) {
-      expect(typeof e.passAt1).toBe('boolean')
-      expect(typeof e.passHatK).toBe('boolean')
-      expect(e.costPerSuccessUsd === null || typeof e.costPerSuccessUsd === 'number').toBe(true)
+      // Every entry carries the scoreboard metrics; the fixture keeps the
+      // original 10 coding + 10 browser discrimination without publishing data.
+      for (const e of board.evals) {
+        expect(typeof e.passAt1).toBe('boolean')
+        expect(typeof e.passHatK).toBe('boolean')
+        expect(e.costPerSuccessUsd === null || typeof e.costPerSuccessUsd === 'number').toBe(true)
+      }
+      const coding = board.evals.filter((e) => e.category === 'coding')
+      const browser = board.evals.filter((e) => e.category === 'browser')
+      expect(coding).toHaveLength(10)
+      expect(browser).toHaveLength(10)
+      expect(coding.every((e) => e.passHatK)).toBe(true)
+      expect(browser.every((e) => !e.passHatK)).toBe(true)
+      expect(board.summary.passAt1Rate).toBeCloseTo(0.5, 10)
+      expect(coding.every((e) => typeof e.costPerSuccessUsd === 'number')).toBe(true)
+      expect(browser.every((e) => e.costPerSuccessUsd === null)).toBe(true)
+    } finally {
+      await rm(corpus, { recursive: true, force: true })
     }
-
-    // discrimination: coding passes, browser fails (10 + 10)
-    const coding = board.evals.filter((e) => e.category === 'coding')
-    const browser = board.evals.filter((e) => e.category === 'browser')
-    expect(coding).toHaveLength(10)
-    expect(browser).toHaveLength(10)
-    expect(coding.every((e) => e.passHatK)).toBe(true)
-    expect(browser.every((e) => !e.passHatK)).toBe(true)
-    expect(board.summary.passAt1Rate).toBeCloseTo(0.5, 10)
-    // coding evals have a cost/success; browser (0 successes) are null
-    expect(coding.every((e) => typeof e.costPerSuccessUsd === 'number')).toBe(true)
-    expect(browser.every((e) => e.costPerSuccessUsd === null)).toBe(true)
   }, 20000)
 
   test('--id runs a single eval; --out writes the scoreboard to disk', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'eval-out-'))
+    const corpus = await makeCorpus()
     try {
-      const outPath = join(dir, 'sb.json')
+      const outPath = join(corpus, 'sb.json')
       const code = await runEvalCommand({
-        corpus: CORPUS,
-        id: 'coding-bugfix-off-by-one',
+        corpus,
+        id: 'coding-fixture-1',
         model: 'm',
         k: 1,
         out: outPath,
@@ -111,9 +131,9 @@ describe('orchentra eval → scoreboard (v0.6.0 exit criterion)', () => {
       expect(code).toBe(0)
       const board = JSON.parse(await readFile(outPath, 'utf8')) as Scoreboard
       expect(board.evals).toHaveLength(1)
-      expect(board.evals[0]?.id).toBe('coding-bugfix-off-by-one')
+      expect(board.evals[0]?.id).toBe('coding-fixture-1')
     } finally {
-      await rm(dir, { recursive: true, force: true })
+      await rm(corpus, { recursive: true, force: true })
     }
   }, 20000)
 

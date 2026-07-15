@@ -1,12 +1,43 @@
-import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { afterAll, describe, expect, test } from 'bun:test'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import type { GradeResult, RegressionReport } from '@orchentra/cli-core'
 import { parseArgs } from '../src/args'
 import { runRegressionsCommand, type RunRegressionsArgs } from '../src/commands/run-regressions'
 
-const SUITE = resolve(import.meta.dir, '..', '..', '..', 'evals', 'regressions')
+function makeSuite(): string {
+  const suite = mkdtempSync(join(tmpdir(), 'orchentra-regressions-'))
+  for (const id of ['reg-one-shot-exit-code', 'reg-compaction-pair-safe']) {
+    const dir = join(suite, id)
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'meta.json'),
+      JSON.stringify({
+        id,
+        category: 'harness',
+        grader: 'test',
+        k: 3,
+        timeoutSec: 10,
+        versionAdded: 'test',
+        regression: {
+          failureMode: 'fixture',
+          originalVersion: 'test',
+          fixedVersion: 'test',
+          fixedBy: 'test',
+          expectedResult: 'grader passes',
+          status: 'passing',
+          traceOrigin: 'synthetic-reconstruction',
+        },
+      }),
+    )
+    writeFileSync(join(dir, 'grade.sh'), '#!/usr/bin/env bash\nexit 0\n')
+  }
+  return suite
+}
+
+const SUITE = makeSuite()
+afterAll(() => rmSync(SUITE, { recursive: true, force: true }))
 
 const argv = (...args: string[]): string[] => ['bun', 'orchentra', ...args]
 
@@ -81,7 +112,7 @@ describe('orchentra regressions', () => {
     expect(report.version).toBe(1)
     expect(report.releaseBlocked).toBe(false)
     expect(report.blockers).toEqual([])
-    expect(report.entries.length).toBeGreaterThanOrEqual(4)
+    expect(report.entries).toHaveLength(2)
     expect(io.err).toContain('no release blockers')
   })
 
@@ -155,7 +186,7 @@ describe('orchentra regressions', () => {
       expect(code).toBe(0)
       expect(io.out).toBe('')
       const report = JSON.parse(await Bun.file(outPath).text()) as RegressionReport
-      expect(report.entries.length).toBeGreaterThanOrEqual(4)
+      expect(report.entries).toHaveLength(2)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -238,13 +269,14 @@ describe('orchentra regressions', () => {
     expect(io.err).toContain('suite not found')
   })
 
-  test('the real suite passes against this build', async () => {
+  test('a self-contained on-disk suite passes through the real grader', async () => {
     const io = capture()
     const code = await runRegressionsCommand({ suite: SUITE, k: 1, ...io.args })
 
     expect(code).toBe(0)
     const report = JSON.parse(io.out) as RegressionReport
     expect(report.releaseBlocked).toBe(false)
+    expect(report.entries).toHaveLength(2)
     for (const entry of report.entries) expect(entry.observedStatus).toBe('passing')
   }, 120000)
 })
