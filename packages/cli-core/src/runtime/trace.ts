@@ -4,6 +4,7 @@ import type { RuntimeEvent, UsageTotals, DoneReason, ToolCall, ToolArtifact } fr
 import type { ChatMessage } from './provider'
 import type { QuirkKind } from './quirks'
 import type { ConsoleErrorEntry, FailedRequestEntry } from './browser'
+import type { GateDecisionRecord } from './run-state'
 import { redactSecrets } from '../memory/failure-signature'
 
 /** Browser session summary for the manifest — populated once browser ops run. */
@@ -97,8 +98,8 @@ export interface TraceManifest {
   consoleErrors: ConsoleErrorEntry[] | null
   networkFailures: FailedRequestEntry[] | null
   testResults: TestResultEntry[] | null
-  /** M4 placeholder — no completion gate exists yet. */
-  gateDecisions: null
+  /** M4 completion decisions; null only for a non-verifiable run. */
+  gateDecisions: readonly GateDecisionRecord[] | null
   /** M3 placeholder — no eval grader exists yet. */
   graderResult: null
   /** doneReason when the run did not end cleanly; null on 'stop'. */

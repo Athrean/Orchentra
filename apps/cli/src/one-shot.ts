@@ -1,7 +1,7 @@
 import type { TurnRunResult } from './live-cli'
 
 export interface OneShotCli {
-  runTurn(input: string): Promise<TurnRunResult>
+  runTurn(input: string, options?: { verify?: boolean }): Promise<TurnRunResult>
 }
 
 /**
@@ -11,7 +11,9 @@ export interface OneShotCli {
  */
 export async function runOneShot(cli: OneShotCli, prompt: string, close: () => Promise<void>): Promise<number> {
   try {
-    const result = await cli.runTurn(prompt)
+    // One-shot is automation. Its zero exit means the completion gate passed,
+    // never merely that the model returned `end_turn`.
+    const result = await cli.runTurn(prompt, { verify: true })
     return result.ok ? 0 : 1
   } finally {
     await close()

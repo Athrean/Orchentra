@@ -48,7 +48,15 @@ export interface ToolResultPayload {
 }
 
 export type DoneReason =
-  'stop' | 'budget_exhausted' | 'aborted' | 'error' | 'max_steps' | 'cost_exhausted' | 'loop_detected'
+  | 'stop'
+  | 'budget_exhausted'
+  | 'aborted'
+  | 'error'
+  | 'max_steps'
+  | 'cost_exhausted'
+  | 'loop_detected'
+  | 'gate_failed'
+  | 'quarantined'
 
 export interface TextEvent {
   kind: 'text'
@@ -179,6 +187,24 @@ export interface DoneEvent {
   usage: UsageTotals
 }
 
+/** Durable checkpoint of autonomous state, written to session + trace for resume. */
+export interface RunStateEvent {
+  kind: 'run_state'
+  state: import('./run-state').RunState
+}
+
+/** Auditable post-work verdict. Every verifiable terminal run has one. */
+export interface GateDecisionEvent {
+  kind: 'gate_decision'
+  decision: import('./run-state').GateDecisionRecord
+}
+
+/** Retry/re-plan/reraise result from established lane/startup failure classes. */
+export interface RecoveryDecisionEvent {
+  kind: 'recovery_decision'
+  decision: import('./recovery').RecoveryDecision
+}
+
 export type SpanAttributeValue = string | number | boolean
 
 export interface SpanStartEvent {
@@ -216,6 +242,9 @@ export type RuntimeEvent =
   | HookProgressRuntimeEvent
   | ErrorEvent
   | DoneEvent
+  | RunStateEvent
+  | GateDecisionEvent
+  | RecoveryDecisionEvent
   | SpanStartEvent
   | SpanEndEvent
 
