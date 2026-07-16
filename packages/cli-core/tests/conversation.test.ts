@@ -1084,3 +1084,49 @@ describe('tracing', () => {
     expect(result).toMatchObject({ kind: 'tool_result', result: { content: 'contents', isError: false } })
   })
 })
+
+describe('mid-run steering', () => {
+  test('a steered instruction joins as a user message before the next provider call', async () => {
+    const captured: ChatMessage[][] = []
+    let callIndex = 0
+    const responses: ProviderStreamEvent[][] = [
+      [
+        { kind: 'tool-use', call: { id: 'tc1', name: 'ping', input: {} } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'steered-ok' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ]
+    const provider: Provider = {
+      async *stream(req) {
+        captured.push(req.messages.map((m) => ({ ...m })))
+        const resp = responses[callIndex++] ?? []
+        for (const ev of resp) yield ev
+      },
+    }
+    const rt = new ConversationRuntime(
+      makeConfig(),
+      makeDeps(provider, {
+        list: () => [{ name: 'ping', description: 'ping', inputSchema: {} }],
+        has: (n) => n === 'ping',
+        execute: async (): Promise<ToolResult> => {
+          // Steering arrives while a tool is executing — the realistic
+          // mid-run injection point for a backgrounded child.
+          rt.steer('focus only on the failing test')
+          return { content: 'pong', isError: false }
+        },
+      }),
+    )
+    const events = await collect(rt, 'do the task')
+
+    // The instruction was drained at the step boundary into the second call.
+    const second = captured[1]!
+    expect(second.some((m) => m.role === 'user' && m.content === 'focus only on the failing test')).toBe(true)
+    // The first call predates the steering.
+    expect(captured[0]!.some((m) => m.content === 'focus only on the failing test')).toBe(false)
+    // Emitted for transcript fidelity.
+    expect(events.some((e) => e.kind === 'user_message' && e.content === 'focus only on the failing test')).toBe(true)
+  })
+})

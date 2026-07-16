@@ -284,6 +284,7 @@ export type { ModelPricing, UsageCostEstimate, TerseModeUsage, SpineSavings } fr
 export {
   pricingForModel,
   estimateCost,
+  estimatedCostUsd,
   formatUsd,
   summaryLines,
   UsageTracker,

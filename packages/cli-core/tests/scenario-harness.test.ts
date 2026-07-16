@@ -262,7 +262,9 @@ describe('scenario harness', () => {
     expect(requests[1]?.messages).toEqual([{ role: 'user', content: 'inspect api package' }])
     expect(requests[2]?.messages).toEqual([{ role: 'user', content: 'inspect cli package' }])
     expect(maxActiveSubagentTurns).toBe(2)
-    expect(toolResult(result.events, 'agent-tasks')?.content).toBe('[task 1] api ok\n\n[task 2] cli ok')
+    const fanoutContent = toolResult(result.events, 'agent-tasks')?.content
+    expect(fanoutContent).toContain('[task 1] api ok\n\n[task 2] cli ok')
+    expect(fanoutContent).toContain('[fan-out] 2/2 succeeded')
   })
 
   test('agent scenario: nested delegation refuses once recursion depth reaches the cap', async () => {

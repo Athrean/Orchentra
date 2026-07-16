@@ -20,6 +20,7 @@ import { webSearchTool } from './tools/web-search-tool'
 import { askUserTool } from './tools/ask-user-tool'
 import { todoWriteTool } from './tools/todo-write-tool'
 import { agentTool } from './tools/agent-tool'
+import { agentControlTool } from './tools/subagent-lifecycle'
 import { notebookEditTool } from './tools/notebook-edit-tool'
 import { enterPlanModeTool, exitPlanModeTool } from './tools/plan-mode-tool'
 import { githubListIssuesTool, githubGetIssueTool } from './github/issues'
@@ -41,6 +42,7 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   askUserTool,
   todoWriteTool,
   agentTool,
+  agentControlTool,
   notebookEditTool,
   enterPlanModeTool,
   exitPlanModeTool,

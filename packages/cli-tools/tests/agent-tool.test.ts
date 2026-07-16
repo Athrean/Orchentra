@@ -469,3 +469,49 @@ describe('agentTool recursion cap', () => {
     expect(depthLog).toEqual([2])
   })
 })
+
+// Fails hard (non-rate-limit) for the listed prompts; succeeds otherwise.
+function partialFailureProvider(failing: string[]): Provider {
+  return {
+    async *stream(req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+      const prompt = typeof req.messages[0]?.content === 'string' ? req.messages[0].content : ''
+      if (failing.includes(prompt)) throw new Error(`provider crashed on: ${prompt}`)
+      yield { kind: 'text-delta', delta: `ok:${prompt}` }
+      yield {
+        kind: 'usage',
+        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      }
+      yield { kind: 'finish', stopReason: 'end_turn' }
+    },
+  }
+}
+
+describe('agentTool fan-out partial failure (M6 exit criterion)', () => {
+  test('2 of 3 children failing does not corrupt the parent run', async () => {
+    const budget = new RuntimeBudget({ maxSteps: 10, maxTokens: 100000 })
+    const result = await agentTool.execute(
+      { tasks: ['good task', 'bad one', 'bad two'] },
+      baseCtx({ provider: partialFailureProvider(['bad one', 'bad two']), budget }),
+    )
+
+    // The batch reports failure but every per-task outcome is preserved in order.
+    expect(result.isError).toBe(true)
+    expect(result.content).toContain('[task 1] ok:good task')
+    expect(result.content).toContain('[task 2] agent error: provider crashed on: bad one')
+    expect(result.content).toContain('[task 3] agent error: provider crashed on: bad two')
+    expect(result.content).toContain('[fan-out] 1/3 succeeded')
+
+    const fanout = (result.data as { fanout: { tasks: number; succeeded: number; failed: number; costUsd: number } })
+      .fanout
+    expect(fanout.tasks).toBe(3)
+    expect(fanout.succeeded).toBe(1)
+    expect(fanout.failed).toBe(2)
+    expect(typeof fanout.costUsd).toBe('number')
+
+    // Parent budget accounted exactly the successful child's spend — the
+    // failures neither corrupted the totals nor exhausted the budget.
+    expect(budget.currentUsage.inputTokens).toBe(10)
+    expect(budget.currentUsage.outputTokens).toBe(5)
+    expect(budget.snapshot().exhausted).toBe(false)
+  })
+})
