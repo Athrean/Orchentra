@@ -1,0 +1,23 @@
+apps/cli/scripts/pack-smoke.sh
+  s_1452a61c7ce982::t_18b140e98e16b0 3,22
+apps/cli/src/commands/run-update.ts
+  s_1452a61c7ce982::t_19a89937921d37 23
+apps/cli/tests/run-update.test.ts
+  s_1452a61c7ce982::t_cd55199e405322 2-3,24,37-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e26ce5fa2a5f636f26ab53903eb6d01e0e3b77b2",
+  "prompts": {},
+  "sessions": {
+    "s_1452a61c7ce982": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d5fa55-3a79-4965-9536-bca61287bf91",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
