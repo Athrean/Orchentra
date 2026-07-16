@@ -57,6 +57,8 @@ import {
   findDuplicateReads,
   prepareMemoryContext,
   captureMemoryFromTurn,
+  activeProfileMode,
+  profileFor,
   spinePrompt,
   PatternStore,
   embedText,
@@ -806,6 +808,9 @@ export class LiveCli implements SessionControl {
           'or github_search_issues. Never use web_fetch on github.com — it returns raw HTML and ' +
           'fails on private repos. Pass repos as "owner/repo" or the full URL; the tools parse both.',
         spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'runtime agent' }),
+        // Per-family specialization (M5): empty string for every family until
+        // a counter-justified profile ships a fragment.
+        profileFor(this.model, activeProfileMode()).systemPromptFragment ?? '',
       ],
       dynamicParts,
     })

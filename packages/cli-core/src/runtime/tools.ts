@@ -160,4 +160,6 @@ export interface ToolRegistry {
   has(name: string): boolean
   execute(name: string, args: unknown, ctx: ToolContext): Promise<ToolResult>
   register(tool: ToolDefinition): void
+  /** Remove a tool (model-profile dialect swaps). Optional for compat. */
+  unregister?(name: string): void
 }

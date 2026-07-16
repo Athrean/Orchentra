@@ -30,6 +30,14 @@ export interface ProfileDivergence {
   evidence: string
 }
 
+/**
+ * Editing contract exposed to the model. 'replace' is the generic
+ * old_string/new_string edit_file tool; 'unified-diff' swaps it for
+ * apply_patch (unified-diff hunks) — for families whose counters show they
+ * fumble the replace contract.
+ */
+export type EditDialect = 'replace' | 'unified-diff'
+
 export interface ModelProfile {
   /** Model family (claude, gpt, gemini, …) — the specialization key. */
   readonly family: string
@@ -39,6 +47,15 @@ export interface ModelProfile {
   readonly provider: ProviderName
   /** Counter-backed deviations from generic behavior. Empty = generic. */
   readonly divergences: readonly ProfileDivergence[]
+  // ── Specializations. Each set field is a divergence and must be justified
+  // by a divergences entry with the matching field name, or the registry
+  // fails validateProfileDivergences. Generic mode strips them all.
+  /** Editing contract (divergence field: 'editDialect'). */
+  readonly editDialect?: EditDialect
+  /** Per-tool description overrides (divergence field: 'toolDescriptions'). */
+  readonly toolDescriptions?: Readonly<Record<string, string>>
+  /** Extra system-prompt text (divergence field: 'systemPromptFragment'). */
+  readonly systemPromptFragment?: string
 }
 
 /** Fallback when nothing matches — mirrors the old default-to-Anthropic route. */
@@ -95,7 +112,15 @@ export function profileFor(
 ): ModelProfile {
   const trimmed = model.trim()
   const matched = profiles.find((p) => p.match.some((re) => re.test(trimmed))) ?? GENERIC_PROFILE
-  return mode === 'generic' && matched.divergences.length > 0 ? { ...matched, divergences: [] } : matched
+  if (mode === 'profiled') return matched
+  // Generic mode: plumbing only — family and route survive, every
+  // specialization and its justification records are stripped.
+  return {
+    family: matched.family,
+    match: matched.match,
+    provider: matched.provider,
+    divergences: [],
+  }
 }
 
 /**
@@ -110,6 +135,17 @@ export function validateProfileDivergences(
 ): string[] {
   const violations: string[] = []
   for (const profile of profiles) {
+    const justified = new Set(profile.divergences.map((d) => d.field))
+    const specialized: Array<[string, boolean]> = [
+      ['editDialect', profile.editDialect !== undefined],
+      ['toolDescriptions', Object.keys(profile.toolDescriptions ?? {}).length > 0],
+      ['systemPromptFragment', Boolean(profile.systemPromptFragment)],
+    ]
+    for (const [field, isSet] of specialized) {
+      if (isSet && !justified.has(field)) {
+        violations.push(`${profile.family}.${field}: specialization set without a counter-backed divergence entry`)
+      }
+    }
     for (const d of profile.divergences) {
       if (!d.evidence.trim()) {
         violations.push(`${profile.family}.${d.field}: divergence has no evidence reference`)
