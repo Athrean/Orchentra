@@ -1,0 +1,43 @@
+packages/cli-tools/src/file-ops.ts
+  s_1452a61c7ce982::t_4f7386726d81ec 329-457
+packages/cli-tools/tests/apply-patch.test.ts
+  s_1452a61c7ce982::t_f60d7b685b8fdf 1-158
+apps/cli/src/live-cli-factory.ts
+  s_1452a61c7ce982::t_31f09ab4d5db38 7,10,17,50,58-62,146
+apps/cli/src/live-cli.ts
+  s_1452a61c7ce982::t_93b0fbf994c4f9 60-61,811-813
+packages/cli-core/src/runtime/index.ts
+  s_1452a61c7ce982::t_1c70ce34cf266f 153
+packages/cli-core/src/runtime/model-profile.ts
+  s_1452a61c7ce982::t_fecb7831cdd2b7 33-40,50-58,115-123,138-148
+packages/cli-core/src/runtime/tools.ts
+  s_1452a61c7ce982::t_a03f318ec93d87 163-164
+packages/cli-core/tests/model-profile.test.ts
+  s_1452a61c7ce982::t_29e96da01b944d 115-161
+packages/cli-tools/src/index.ts
+  s_1452a61c7ce982::t_1a4080086da7fb 56-57
+packages/cli-tools/src/profile-tools.ts
+  s_1452a61c7ce982::t_e30c71597f55e8 1-21
+packages/cli-tools/src/tool-registry.ts
+  s_1452a61c7ce982::t_901dffdc5d2c36 123-147
+packages/cli-tools/src/tools/file-patch-tool.ts
+  s_1452a61c7ce982::t_0dc937d5fab48e 1-56
+packages/cli-tools/tests/profile-tools.test.ts
+  s_1452a61c7ce982::t_2d9d1632539511 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a270f3f2dfd2bd61fd9e95ea13790c2aedd46d29",
+  "prompts": {},
+  "sessions": {
+    "s_1452a61c7ce982": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d5fa55-3a79-4965-9536-bca61287bf91",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
