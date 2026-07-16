@@ -1,0 +1,37 @@
+apps/cli/src/args.ts
+  s_1452a61c7ce982::t_b8736205659c13 28-37,196,268,287,291
+apps/cli/src/commands/run-eval.ts
+  s_1452a61c7ce982::t_452f5fb2451693 79-80,82,88
+packages/cli-core/src/runtime/model-profile.ts
+  s_1452a61c7ce982::t_4c04dd508127ec 1-134
+apps/cli/src/commands/run-eval-diff.ts
+  s_1452a61c7ce982::t_94df69eadeeadf 16,69-120,122-141
+apps/cli/src/main.ts
+  s_1452a61c7ce982::t_eb438f1e8efe66 34-43
+apps/cli/src/provider-factory.ts
+  s_1452a61c7ce982::t_90610cb7ae8c17 1,42-44,46
+apps/cli/tests/run-eval-diff.test.ts
+  s_1452a61c7ce982::t_5cc11bf9a63120 6,101-142
+apps/cli/tests/run-eval.test.ts
+  s_1452a61c7ce982::t_7f6aaa209bc380 62,66
+packages/cli-core/src/runtime/index.ts
+  s_1452a61c7ce982::t_eb4e0714d2b9a4 144-153
+packages/cli-core/tests/model-profile.test.ts
+  s_1452a61c7ce982::t_7ee226282b66aa 2-10,12-117,124,127,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ee4d5cc1d142de1719f18f04fe2a405bc116c641",
+  "prompts": {},
+  "sessions": {
+    "s_1452a61c7ce982": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d5fa55-3a79-4965-9536-bca61287bf91",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
