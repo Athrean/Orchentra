@@ -1,0 +1,35 @@
+apps/web/app/components/landing/crew.tsx
+  s_162cf1100109d6::t_ea25bc2cbd1cf6 4
+apps/web/app/components/landing/hero.tsx
+  s_162cf1100109d6::t_e704d44d76d117 5
+apps/web/app/components/landing/install-footer.tsx
+  s_162cf1100109d6::t_bee569471deb74 3-4
+apps/web/app/components/landing/motion.tsx
+  s_162cf1100109d6::t_da84f429be00f9 1,3
+apps/web/app/components/landing/ui.tsx
+  s_162cf1100109d6::t_68b92f75b92602 4
+apps/web/app/components/landing/editorial.tsx
+  s_162cf1100109d6::t_161b3b02c595f5 3-4
+apps/web/app/components/landing/field-zone.tsx
+  s_162cf1100109d6::t_77e6de6940eca0 2
+apps/web/app/components/landing/motion-presets.ts
+  s_162cf1100109d6::t_00dce971c373b1 1-33
+apps/web/app/components/landing/process.tsx
+  s_162cf1100109d6::t_1d93c54107c654 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "eb415256f0d22a3aed2bc0621676021b1680f635",
+  "prompts": {},
+  "sessions": {
+    "s_162cf1100109d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "285675cf-d3af-46b0-b3eb-23e04fcddda3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
