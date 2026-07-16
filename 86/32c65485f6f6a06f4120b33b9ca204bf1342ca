@@ -1,0 +1,27 @@
+packages/cli-tools/src/index.ts
+  s_1452a61c7ce982::t_9c7bdeea78741a 73-83
+packages/cli-tools/src/tools/agent-tool.ts
+  s_1452a61c7ce982::t_f77c5b59333fe1 6,8,15-24,33,53,76-81,131-138,187-327,344-345,353,418,420,426-427,472-481,488
+packages/cli-tools/src/tools/worktree-writers.ts
+  s_1452a61c7ce982::t_73434c55c78ac0 1-162
+packages/cli-tools/tests/worktree-batch.test.ts
+  s_1452a61c7ce982::t_c48d908d82fe9f 1-249
+packages/cli-tools/tests/worktree-writers.test.ts
+  s_1452a61c7ce982::t_6e37f584369fc7 1-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8632c65485f6f6a06f4120b33b9ca204bf1342ca",
+  "prompts": {},
+  "sessions": {
+    "s_1452a61c7ce982": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d5fa55-3a79-4965-9536-bca61287bf91",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
