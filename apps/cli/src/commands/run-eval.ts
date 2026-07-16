@@ -76,15 +76,16 @@ export async function runEvalCommand(args: RunEvalArgs): Promise<number> {
  * so it edits files in place, then read the run's trace manifest for metrics.
  * Needs a configured model+credentials; without them the subprocess errors, no
  * manifest is written, and the trial scores as an errored run — honest, never
- * fabricated. Point the binary elsewhere for version-diff runs.
+ * fabricated. Point the binary elsewhere for version-diff runs, or pass `env`
+ * overrides for same-binary A/B runs (profiled vs generic model profiles).
  */
-export function subprocessHarness(binEntry = process.argv[1] ?? ''): HarnessRunner {
+export function subprocessHarness(binEntry = process.argv[1] ?? '', env?: Record<string, string>): HarnessRunner {
   return ({ taskPrompt, workdir, model }) =>
     new Promise<TrialMetrics>((resolvePromise) => {
       const child = spawn(
         process.execPath,
         [binEntry, '-p', taskPrompt, '-m', model, '--permission-mode', 'workspace-write'],
-        { cwd: workdir, stdio: 'ignore' },
+        { cwd: workdir, stdio: 'ignore', env: env ? { ...process.env, ...env } : undefined },
       )
       child.on('close', () => resolvePromise(readTrialMetrics(workdir)))
       child.on('error', () => resolvePromise(erroredMetrics()))

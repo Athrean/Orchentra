@@ -59,9 +59,11 @@ describe('parseArgs: eval', () => {
       k: 5,
       out: 'sb.json',
       against: undefined,
+      abProfiles: false,
     })
     const inline = parseArgs(argv('eval', '--corpus=evals/', '--id=coding-bugfix-off-by-one', '--model=m'))
     expect(inline).toMatchObject({ kind: 'eval', corpus: 'evals/', id: 'coding-bugfix-off-by-one', model: 'm' })
+    expect(parseArgs(argv('eval', '--ab-profiles'))).toMatchObject({ kind: 'eval', abProfiles: true })
   })
 
   test('rejects unknown args and non-positive k', () => {

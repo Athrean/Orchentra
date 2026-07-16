@@ -31,6 +31,16 @@ async function main(argv: string[]): Promise<number> {
     }
 
     case 'eval': {
+      if (action.abProfiles) {
+        const { runEvalProfilesAbCommand } = await import('./commands/run-eval-diff')
+        return runEvalProfilesAbCommand({
+          corpus: action.corpus,
+          id: action.id,
+          model: action.model,
+          k: action.k,
+          out: action.out,
+        })
+      }
       if (action.against) {
         const { runEvalDiffCommand } = await import('./commands/run-eval-diff')
         return runEvalDiffCommand({

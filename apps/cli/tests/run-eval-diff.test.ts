@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { HarnessRunner, HarnessTrialInput, ScoreboardDiff, TrialMetrics } from '@orchentra/cli-core'
-import { runEvalDiffCommand } from '../src/commands/run-eval-diff'
+import { runEvalDiffCommand, runEvalProfilesAbCommand } from '../src/commands/run-eval-diff'
 
 const zeroMetrics: TrialMetrics = {
   billedTokens: 50,
@@ -93,6 +93,48 @@ describe('orchentra eval --against → scoreboard diff (version-diff mode)', () 
       against: 'b',
       harnessBefore: brokenBuild,
       harnessAfter: fixedBuild,
+      stderr: () => {},
+    })
+    expect(code).toBe(1)
+  })
+})
+
+describe('orchentra eval --ab-profiles → generic vs profiled diff (M5 A/B harness)', () => {
+  test('same corpus/model/k both ways; the diff labels the two profile modes', async () => {
+    const corpus = await makeCorpus()
+    try {
+      const out = capture()
+      const code = await runEvalProfilesAbCommand({
+        corpus,
+        id: 'coding-bugfix-off-by-one',
+        model: 'm',
+        k: 1,
+        harnessGeneric: brokenBuild,
+        harnessProfiled: fixedBuild,
+        stdout: out.sink,
+        stderr: () => {},
+      })
+      expect(code).toBe(0)
+
+      const diff = JSON.parse(out.text()) as ScoreboardDiff
+      expect(diff.before).toEndWith('#generic')
+      expect(diff.after).toEndWith('#profiled')
+      expect(diff.model).toBe('m')
+      // The scoreboard diff is the justification artifact: a profiled win
+      // shows up as a fix on the same corpus, same k.
+      expect(diff.fixes).toContain('coding-bugfix-off-by-one')
+      expect(diff.regressions).toEqual([])
+    } finally {
+      await rm(corpus, { recursive: true, force: true })
+    }
+  }, 30000)
+
+  test('missing corpus → exit 1', async () => {
+    const code = await runEvalProfilesAbCommand({
+      corpus: '/nonexistent/xyz',
+      model: 'm',
+      harnessGeneric: brokenBuild,
+      harnessProfiled: fixedBuild,
       stderr: () => {},
     })
     expect(code).toBe(1)

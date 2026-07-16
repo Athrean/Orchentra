@@ -25,7 +25,16 @@ export type CliAction =
   | { kind: 'reauth' }
   | { kind: 'auth-status' }
   | { kind: 'update'; dryRun: boolean; tag: UpdateTag }
-  | { kind: 'eval'; corpus?: string; id?: string; model: string; k?: number; out?: string; against?: string }
+  | {
+      kind: 'eval'
+      corpus?: string
+      id?: string
+      model: string
+      k?: number
+      out?: string
+      against?: string
+      abProfiles?: boolean
+    }
   | {
       kind: 'regressions'
       suite?: string
@@ -184,6 +193,7 @@ FLAGS
       --k <n>                         eval/regressions: trials per entry (overrides meta.k)
       --out <path>                    eval/regressions: write the JSON to a file
       --against <bin>                 eval: second harness build → diff scoreboards
+      --ab-profiles                   eval: A/B generic vs profiled model profiles → diff scoreboards
       --summary <path>                regressions: write the markdown quarantine/blocker summary
       --suite <dir>                   regressions: suite directory (default evals/regressions/)
       --category <c>                  regressions: run one shard only (harness|browser)
@@ -255,6 +265,7 @@ function parseEvalArgs(rest: string[]): CliAction {
   let k: number | undefined
   let out: string | undefined
   let against: string | undefined
+  let abProfiles = false
 
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]
@@ -273,10 +284,11 @@ function parseEvalArgs(rest: string[]): CliAction {
     else if (inline('--out') !== undefined) out = inline('--out')
     else if (arg === '--against') against = rest[++i]
     else if (inline('--against') !== undefined) against = inline('--against')
+    else if (arg === '--ab-profiles') abProfiles = true
     else throw new Error(`eval: unknown argument: ${arg}`)
   }
 
-  return { kind: 'eval', corpus, id, model, k, out, against }
+  return { kind: 'eval', corpus, id, model, k, out, against, abProfiles }
 }
 
 const REGRESSION_CATEGORIES: RegressionCategory[] = ['harness', 'browser']
