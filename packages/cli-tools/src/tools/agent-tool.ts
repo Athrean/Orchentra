@@ -4,14 +4,15 @@ import {
   type ToolContext,
   type DoneReason,
   type GateDecisionRecord,
-  type Provider,
+  type UsageTotals,
   CompletionPolicy,
-  ConversationRuntime,
-  buildSystemPrompt,
+  addUsage,
+  emptyUsage,
 } from '@orchentra/cli-core'
-import { isRateLimitError } from '@orchentra/cli-api'
 import { runSubagentPool } from './subagent-pool'
 import { resolveSubagentRole, restrictRegistry, type SubagentRole } from './subagent-roles'
+import { runSubagent, type SubagentRunOutcome } from './subagent-run'
+import { spawnBackgroundChild } from './subagent-lifecycle'
 import {
   addWorktree,
   applySliceDiff,
@@ -31,10 +32,9 @@ interface AgentInput {
   justification?: string
   agentType?: string
   isolation?: string
+  background?: boolean
 }
 
-const MAX_ITERATIONS_PER_SUBAGENT = 10
-const SUBAGENT_MAX_OUTPUT_TOKENS = 4096
 // A sub-agent may itself delegate to `agent`, but only so deep. The root runs
 // at depth 0; its sub-agents at 1; theirs at 2. A context already at this depth
 // refuses to spawn, capping the nesting tree at two levels below the root.
@@ -78,6 +78,11 @@ export const agentTool: ToolDefinition = {
         enum: ['worktree'],
         description:
           'Pass "worktree" when parallel tasks write code: each task runs in its own git worktree at HEAD, is gated on verification evidence, and only disjoint gated slices merge back into the parent tree. Requires a git repository.',
+      },
+      background: {
+        type: 'boolean',
+        description:
+          'Spawn the sub-agent(s) in the background and return their agent ids immediately instead of blocking. Manage them with the agent_control tool (steer/wait/resume/status). Not combinable with isolation.',
       },
     },
     additionalProperties: false,
@@ -129,6 +134,20 @@ export const agentTool: ToolDefinition = {
     // execute surfaces.
     const childCtx: ToolContext = { ...ctx, subagentDepth: depth + 1, tools: restrictRegistry(ctx.tools, role) }
 
+    if (input.background) {
+      if (input.isolation !== undefined) {
+        return { content: 'error: background and isolation cannot be combined', isError: true }
+      }
+      const ids = tasks.map((task) => spawnBackgroundChild(task, model, childCtx, role).id)
+      return {
+        content:
+          `Spawned ${ids.length} background agent(s): ${ids.join(', ')}. ` +
+          'Use agent_control (steer/wait/resume/status) to manage them.',
+        isError: false,
+        data: { agentIds: ids },
+      }
+    }
+
     if (input.isolation === 'worktree') {
       return runWorktreeBatch(tasks, model, childCtx, role)
     }
@@ -163,25 +182,45 @@ export const agentTool: ToolDefinition = {
       },
     }))
     const data = {
-      tasks: results.map((r) => ({
-        doneReason: r.doneReason,
-        toolCalls: r.toolCalls,
-        isError: r.isError,
-        traceId: r.traceId,
-      })),
+      tasks: taskSummaries(results),
+      fanout: fanoutSummary(results),
     }
 
     if (results.length === 1) {
       return { content: results[0].text, isError: results[0].isError, data, evidence }
     }
 
+    const summary = data.fanout
     return {
-      content: results.map((r, i) => `[task ${i + 1}] ${r.text}`).join('\n\n'),
+      content:
+        results.map((r, i) => `[task ${i + 1}] ${r.text}`).join('\n\n') +
+        `\n\n[fan-out] ${summary.succeeded}/${summary.tasks} succeeded; est. cost $${summary.costUsd.toFixed(4)}`,
       isError: results.some((r) => r.isError),
       data,
       evidence,
     }
   },
+}
+
+/**
+ * Fan-out aggregation (M6): partial failures are per-task classified results,
+ * never a parent crash, and every batch accounts its own token/dollar spend.
+ */
+function fanoutSummary(results: SubagentRunOutcome[]): {
+  tasks: number
+  succeeded: number
+  failed: number
+  usage: UsageTotals
+  costUsd: number
+} {
+  let usage = emptyUsage()
+  let costUsd = 0
+  for (const r of results) {
+    usage = addUsage(usage, r.usage)
+    costUsd += r.costUsd
+  }
+  const failed = results.filter((r) => r.isError).length
+  return { tasks: results.length, succeeded: results.length - failed, failed, usage, costUsd }
 }
 
 /**
@@ -231,7 +270,7 @@ async function runWorktreeBatch(
         run: (key) => {
           const slice = slices[Number(key)]!
           const sliceCtx: ToolContext = { ...childCtx, cwd: slice.dir, workspaceRoots: [slice.dir] }
-          return runSubagent(tasks[Number(key)]!, model, sliceCtx, role, policy)
+          return runSubagent(tasks[Number(key)]!, model, sliceCtx, role, { completionPolicy: policy })
         },
         shouldRequeue: (r) => r.rateLimited === true && !childCtx.budget?.snapshot().exhausted,
       },
@@ -289,7 +328,11 @@ async function runWorktreeBatch(
     return {
       content: lines.join('\n\n'),
       isError: results.some((r) => r.isError),
-      data: { tasks: taskSummaries(results), slices: sliceSummaries(results, files, merged) },
+      data: {
+        tasks: taskSummaries(results),
+        slices: sliceSummaries(results, files, merged),
+        fanout: fanoutSummary(results),
+      },
       evidence,
     }
   } catch (e) {
@@ -331,169 +374,4 @@ function resolveTasks(input: AgentInput): string[] {
     : []
   if (fromTasks.length > 0) return fromTasks
   return input?.prompt ? [input.prompt] : []
-}
-
-interface SubagentRunOutcome {
-  text: string
-  isError: boolean
-  rateLimited?: boolean
-  doneReason?: DoneReason
-  toolCalls?: number
-  /** Trace id of the child run, linking its trace dir from the parent manifest. */
-  traceId?: string
-  /** Completion-gate decision when the child ran under a CompletionPolicy. */
-  gate?: GateDecisionRecord
-}
-
-async function runSubagent(
-  prompt: string,
-  model: string,
-  ctx: ToolContext,
-  role: SubagentRole,
-  completionPolicy?: CompletionPolicy,
-): Promise<SubagentRunOutcome> {
-  // The runtime reports stream failures as message strings, so wrap the
-  // provider to keep the thrown error's type for rate-limit classification.
-  let thrown: unknown
-  const provider: Provider = {
-    stream(request) {
-      const source = ctx.provider!
-      return (async function* () {
-        try {
-          yield* source.stream(request)
-        } catch (err) {
-          thrown = err
-          throw err
-        }
-      })()
-    },
-  }
-
-  try {
-    const abort = new AbortController()
-    const runtime = new ConversationRuntime(
-      {
-        model,
-        maxOutputTokens: SUBAGENT_MAX_OUTPUT_TOKENS,
-        contextWindowTokens: 200_000,
-        compactionThreshold: 0.8,
-        keepRecentOnCompact: 6,
-        budget: { maxSteps: MAX_ITERATIONS_PER_SUBAGENT, maxTokens: 200_000, model },
-        sessionId: ctx.sessionId,
-        cwd: ctx.cwd,
-        providerName: ctx.providerName,
-        harnessVersion: ctx.harnessVersion,
-      },
-      {
-        provider,
-        tools: ctx.tools!,
-        systemPrompt: buildSystemPrompt({
-          staticParts: [
-            role.focus,
-            ctx.spinePrompt ?? '',
-            'Complete the delegated scope only. Do not push or perform destructive git operations.',
-          ],
-          dynamicParts: [],
-        }),
-        sharedState: ctx.sharedState,
-        askUser: ctx.askUser,
-        permissionMode: ctx.permissionMode,
-        spinePrompt: ctx.spinePrompt,
-        workspaceRoots: ctx.workspaceRoots,
-        subagentDepth: ctx.subagentDepth,
-        quirks: ctx.quirks,
-        // Only when the host injected one (tests route sub-agents to a no-op
-        // sink). Unset in production so each sub-agent builds its own on-disk
-        // trace dir and lastTraceId links back into the parent manifest.
-        ...(ctx.traceSink ? { traceSink: ctx.traceSink } : {}),
-        signal: abort.signal,
-      },
-    )
-
-    let buf = ''
-    let resultText = ''
-    let toolCallsDone = 0
-    let doneReason: DoneReason = 'stop'
-    let errorMessage = ''
-    let gate: GateDecisionRecord | undefined
-
-    for await (const ev of runtime.run({ userMessage: prompt, completionPolicy })) {
-      if (ev.kind === 'text') {
-        buf += ev.delta
-      } else if (ev.kind === 'tool_result') {
-        toolCallsDone++
-        buf = ''
-      } else if (ev.kind === 'gate_decision') {
-        gate = ev.decision
-      } else if (ev.kind === 'usage') {
-        // Children draw the parent's live budget: spend lands as it happens,
-        // and an exhausted parent aborts the child mid-run. Skip the abort
-        // when the turn already failed — aborting here would relabel a
-        // provider error (e.g. a 429 the pool wants to classify) as 'aborted'.
-        ctx.budget?.addUsage(ev.turn)
-        if (!errorMessage && ctx.budget?.snapshot().exhausted) abort.abort()
-      } else if (ev.kind === 'error') {
-        errorMessage = ev.message
-      } else if (ev.kind === 'done') {
-        doneReason = ev.reason
-      }
-    }
-    if (buf) resultText = buf
-    const traceId = runtime.lastTraceId ?? undefined
-
-    if (doneReason === 'error') {
-      return {
-        text: `agent error: ${errorMessage || 'provider stream failed'}`,
-        isError: true,
-        rateLimited: isRateLimitError(thrown),
-        doneReason,
-        toolCalls: toolCallsDone,
-        traceId,
-      }
-    }
-    if (doneReason === 'loop_detected') {
-      return {
-        text: resultText || `Sub-agent stopped: repeated tool-call loop detected after ${toolCallsDone} tool call(s).`,
-        isError: true,
-        doneReason,
-        toolCalls: toolCallsDone,
-        traceId,
-      }
-    }
-    if (doneReason === 'aborted') {
-      return {
-        text: resultText || `Sub-agent stopped: parent budget exhausted after ${toolCallsDone} tool call(s).`,
-        isError: false,
-        doneReason,
-        toolCalls: toolCallsDone,
-        traceId,
-      }
-    }
-    if (doneReason === 'gate_failed' || doneReason === 'quarantined') {
-      return {
-        text: resultText || `Sub-agent failed its completion gate: ${gate?.summary ?? doneReason}`,
-        isError: true,
-        doneReason,
-        toolCalls: toolCallsDone,
-        traceId,
-        gate,
-      }
-    }
-    return {
-      text: resultText || `Sub-agent completed (${toolCallsDone} tool call(s)).`,
-      isError: false,
-      doneReason,
-      toolCalls: toolCallsDone,
-      traceId,
-      gate,
-    }
-  } catch (e) {
-    return {
-      text: `agent error: ${(e as Error).message}`,
-      isError: true,
-      rateLimited: isRateLimitError(e),
-      doneReason: 'error',
-      toolCalls: 0,
-    }
-  }
 }

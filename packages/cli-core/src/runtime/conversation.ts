@@ -201,6 +201,7 @@ export class ConversationRuntime {
   // A runtime never runs concurrently with itself, so one slot suffices.
   private trace: ActiveTrace | null = null
   private lastTraceIdValue: string | null = null
+  private pendingSteering: string[] = []
 
   constructor(
     private readonly config: ConversationConfig,
@@ -209,6 +210,17 @@ export class ConversationRuntime {
 
   run(input: RunInput): AsyncIterable<RuntimeEvent> {
     return this.loop(input)
+  }
+
+  /**
+   * Queue an instruction for a running loop (mid-run steering). It joins the
+   * conversation as a user message at the next step boundary — before the
+   * next provider call — so the model sees it without the run being aborted.
+   * Safe to call from outside the consuming iterator (e.g. a host steering a
+   * backgrounded sub-agent).
+   */
+  steer(instruction: string): void {
+    this.pendingSteering.push(instruction)
   }
 
   /**
@@ -323,6 +335,15 @@ export class ConversationRuntime {
           usage: pre.usage,
         })
         return
+      }
+
+      // Steering instructions land at the step boundary: ahead of compaction
+      // (so they are budgeted like any other history) and ahead of the next
+      // provider call (so the model acts on them this step). Emitted as
+      // user_message events for transcript fidelity.
+      for (const instruction of this.pendingSteering.splice(0)) {
+        messages.push({ role: 'user', content: instruction })
+        yield* this.emit({ kind: 'user_message', content: instruction })
       }
 
       const compaction = await this.maybeCompact(messages)

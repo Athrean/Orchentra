@@ -70,6 +70,14 @@ export { webSearchTool } from './tools/web-search-tool'
 export { askUserTool } from './tools/ask-user-tool'
 export { todoWriteTool } from './tools/todo-write-tool'
 export { agentTool } from './tools/agent-tool'
+export { runSubagent, type SubagentRunOutcome, type SubagentRunOptions } from './tools/subagent-run'
+export {
+  agentControlTool,
+  spawnBackgroundChild,
+  resetChildRegistryForTests,
+  type ChildStatus,
+  type ChildTranscript,
+} from './tools/subagent-lifecycle'
 export {
   addWorktree,
   applySliceDiff,
