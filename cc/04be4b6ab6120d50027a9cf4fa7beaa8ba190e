@@ -1,0 +1,21 @@
+apps/cli/package.json
+  s_1452a61c7ce982::t_ad3e25c1624b24 3
+apps/cli/src/version.ts
+  s_1452a61c7ce982::t_d263484180b48b 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cc04be4b6ab6120d50027a9cf4fa7beaa8ba190e",
+  "prompts": {},
+  "sessions": {
+    "s_1452a61c7ce982": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d5fa55-3a79-4965-9536-bca61287bf91",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
