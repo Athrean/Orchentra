@@ -4,16 +4,17 @@ import {
   InMemoryTaskStore,
   ProcessSupervisor,
   SessionWriter,
+  activeProfileMode,
   defaultEstimator,
   isKnownModel,
+  profileFor,
   type PermissionMode,
   type Provider,
   type SharedToolState,
-  type ToolRegistry,
 } from '@orchentra/cli-core'
 import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config'
 import { BrowserSessionManager } from '@orchentra/cli-browser'
-import { DefaultToolRegistry, McpManager, DEFAULT_MCP_DEFER_TOKENS } from '@orchentra/cli-tools'
+import { DefaultToolRegistry, McpManager, DEFAULT_MCP_DEFER_TOKENS, applyModelProfile } from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
 import type { HookProgressUpdate } from './hooks/types'
@@ -46,6 +47,7 @@ export interface CliContext {
 export async function createCliContext(options: CliContextOptions): Promise<CliContext> {
   const config = ConfigLoader.defaultFor(options.cwd).load()
   const userAliases = config.featureConfig.aliases as Record<string, string> | undefined
+  const tools = buildToolRegistry()
   const resolveModel: ModelResolver = (raw: string) => {
     const model = resolveModelAlias(raw, userAliases)
     if (!isKnownModel(model)) {
@@ -53,6 +55,11 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
         `[orchentra] warn: model '${model}' is not in the known-model list. Provider will still try to call it, but typos here usually surface as opaque API errors. Aliases: ${builtinModelAliases().join(', ')}.\n`,
       )
     }
+    // Every model resolution (startup and mid-session /model switches) keeps
+    // the registry in sync with the active profile's edit dialect and
+    // vocabulary. ORCHENTRA_MODEL_PROFILES=generic (the eval A/B toggle)
+    // strips specializations while keeping provider routing.
+    applyModelProfile(tools, profileFor(model, activeProfileMode()))
     return { model, ...createProvider(model) }
   }
 
@@ -61,7 +68,6 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   const resolvedPermissionMode = config.featureConfig.permissionMode ?? options.permissionMode
   const resolvedTerseMode = getActiveTerseMode() ?? config.featureConfig.terseMode
 
-  const tools = buildToolRegistry()
   const rawMcp = (config.merged as Record<string, unknown>).mcp
   const mcpManager = McpManager.fromRaw(rawMcp, {
     onLog: (level, message) => {
@@ -137,6 +143,6 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   }
 }
 
-function buildToolRegistry(): ToolRegistry {
+function buildToolRegistry(): DefaultToolRegistry {
   return new DefaultToolRegistry()
 }

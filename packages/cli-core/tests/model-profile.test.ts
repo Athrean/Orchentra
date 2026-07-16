@@ -112,6 +112,53 @@ describe('validateProfileDivergences — the counter-justification bar', () => {
   test('the shipped registry passes the bar against an empty snapshot', () => {
     expect(validateProfileDivergences(MODEL_PROFILES, {})).toEqual([])
   })
+
+  test('a specialization without a matching divergence entry is rejected', () => {
+    const unjustified: ModelProfile = {
+      family: 'gpt',
+      match: [/^gpt/i],
+      provider: 'openai',
+      divergences: [],
+      editDialect: 'unified-diff',
+      systemPromptFragment: 'Prefer patches.',
+    }
+    const violations = validateProfileDivergences([unjustified], { 'gpt-5.5': { malformed_args: 9 } })
+    expect(violations).toHaveLength(2)
+    expect(violations[0]).toContain('editDialect')
+    expect(violations[1]).toContain('systemPromptFragment')
+  })
+
+  test('a counter-backed divergence entry justifies its specialization field', () => {
+    const justified: ModelProfile = {
+      family: 'gpt',
+      match: [/^gpt/i],
+      provider: 'openai',
+      divergences: [
+        { field: 'editDialect', quirk: 'malformed_args', observedCount: 9, evidence: 'scoreboards/ab-gpt.json' },
+      ],
+      editDialect: 'unified-diff',
+    }
+    expect(validateProfileDivergences([justified], { 'gpt-5.5': { malformed_args: 9 } })).toEqual([])
+  })
+
+  test('generic mode strips specializations along with divergences', () => {
+    const specialized: ModelProfile = {
+      family: 'gpt',
+      match: [/^gpt/i],
+      provider: 'openai',
+      divergences: [
+        { field: 'editDialect', quirk: 'malformed_args', observedCount: 9, evidence: 'scoreboards/ab-gpt.json' },
+      ],
+      editDialect: 'unified-diff',
+      toolDescriptions: { read_file: 'x' },
+      systemPromptFragment: 'y',
+    }
+    const generic = profileFor('gpt-5.5', 'generic', [specialized])
+    expect(generic.editDialect).toBeUndefined()
+    expect(generic.toolDescriptions).toBeUndefined()
+    expect(generic.systemPromptFragment).toBeUndefined()
+    expect(generic.provider).toBe('openai')
+  })
 })
 
 describe('isKnownModel (folded in from model-availability)', () => {

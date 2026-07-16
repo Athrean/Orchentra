@@ -326,6 +326,135 @@ export async function editFile(
   }
 }
 
+// ── Unified-diff editing (M5 edit dialect) ──────────────────────────────────
+
+export interface ApplyPatchOutput {
+  filePath: string
+  originalFile: string
+  updatedFile: string
+  structuredPatch: StructuredPatchHunk[]
+  hunksApplied: number
+}
+
+interface ParsedHunk {
+  oldStart: number
+  /** Context + deletion lines — what must exist in the file. */
+  oldLines: string[]
+  /** Context + addition lines — what replaces them. */
+  newLines: string[]
+}
+
+const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@/
+
+/**
+ * Parse and apply a unified diff to `original`. File headers (---/+++) are
+ * tolerated and ignored; hunks locate by exact line match at the declared
+ * position first, then by unique whole-file search (line-drift tolerant,
+ * never fuzzy on content). Ambiguous or missing hunks throw — a wrong guess
+ * writes a wrong file.
+ */
+export function applyUnifiedPatch(original: string, patch: string): { updated: string; hunksApplied: number } {
+  const hunks = parseUnifiedPatch(patch)
+  if (hunks.length === 0) throw new Error('patch contains no hunks (expected @@ -a,b +c,d @@ sections)')
+
+  let lines = original.split('\n')
+  let drift = 0
+  for (let i = 0; i < hunks.length; i++) {
+    const hunk = hunks[i]
+    const at = locateHunk(lines, hunk, hunk.oldStart - 1 + drift, i + 1)
+    lines = [...lines.slice(0, at), ...hunk.newLines, ...lines.slice(at + hunk.oldLines.length)]
+    drift += hunk.newLines.length - hunk.oldLines.length + (at - (hunk.oldStart - 1 + drift))
+  }
+  return { updated: lines.join('\n'), hunksApplied: hunks.length }
+}
+
+function parseUnifiedPatch(patch: string): ParsedHunk[] {
+  const hunks: ParsedHunk[] = []
+  let current: ParsedHunk | null = null
+  for (const raw of patch.split('\n')) {
+    const header = HUNK_HEADER.exec(raw)
+    if (header) {
+      current = { oldStart: Number(header[1]), oldLines: [], newLines: [] }
+      hunks.push(current)
+      continue
+    }
+    if (!current) {
+      // Preamble: ---/+++/diff/index headers or blank lines before the first hunk.
+      if (raw === '' || /^(---|\+\+\+|diff |index )/.test(raw)) continue
+      throw new Error(`unexpected line before first hunk header: ${JSON.stringify(raw)}`)
+    }
+    if (raw.startsWith('\\')) continue // "\ No newline at end of file"
+    if (raw.startsWith('-')) current.oldLines.push(raw.slice(1))
+    else if (raw.startsWith('+')) current.newLines.push(raw.slice(1))
+    else {
+      // Context — tolerate a completely empty line as empty context (some
+      // models drop the leading space on blank context lines).
+      const text = raw.startsWith(' ') ? raw.slice(1) : raw
+      if (raw !== '' && !raw.startsWith(' ')) {
+        throw new Error(`invalid patch line (expected ' ', '-', '+', or '@@'): ${JSON.stringify(raw)}`)
+      }
+      current.oldLines.push(text)
+      current.newLines.push(text)
+    }
+  }
+  return hunks.filter((h) => h.oldLines.length > 0 || h.newLines.length > 0)
+}
+
+function locateHunk(lines: string[], hunk: ParsedHunk, expectedAt: number, ordinal: number): number {
+  if (hunk.oldLines.length === 0) {
+    // Pure insertion with no context: only unambiguous into an empty file.
+    if (lines.length === 1 && lines[0] === '') return 0
+    throw new Error(`hunk #${ordinal} has no context or deletion lines — add context so it anchors uniquely`)
+  }
+  const matchesAt = (at: number): boolean =>
+    at >= 0 && at + hunk.oldLines.length <= lines.length && hunk.oldLines.every((l, i) => lines[at + i] === l)
+
+  if (matchesAt(expectedAt)) return expectedAt
+  const candidates: number[] = []
+  for (let at = 0; at + hunk.oldLines.length <= lines.length; at++) {
+    if (matchesAt(at)) candidates.push(at)
+  }
+  if (candidates.length === 1) return candidates[0]
+  if (candidates.length === 0) {
+    throw new Error(
+      `hunk #${ordinal} does not apply: its context/deletion lines were not found — re-read the file and regenerate the patch`,
+    )
+  }
+  throw new Error(`hunk #${ordinal} matches ${candidates.length} locations — add surrounding context to disambiguate`)
+}
+
+/** Workspace-guarded unified-diff edit: boundary checks, stale-read hash guard, atomic write. */
+export async function patchFileInWorkspace(
+  filePath: string,
+  patch: string,
+  workspaceRoot: string,
+  readHashes?: Map<string, string>,
+): Promise<ApplyPatchOutput> {
+  const absolutePath = resolveWorkspacePath(filePath, workspaceRoot)
+  validateWorkspaceBoundary(absolutePath, workspaceRoot)
+  validateFilesystemBoundary(absolutePath, workspaceRoot)
+
+  const originalFile = await Bun.file(normalizePath(absolutePath)).text()
+  const expectedHash = readHashes?.get(normalizePath(absolutePath))
+  if (expectedHash !== undefined && contentHash(originalFile) !== expectedHash) {
+    throw new Error(`stale read: ${absolutePath} changed since it was last read — re-read the file and retry the patch`)
+  }
+
+  const { updated, hunksApplied } = applyUnifiedPatch(originalFile, patch)
+  if (updated === originalFile) throw new Error('patch is a no-op: the file already matches the patched content')
+  const canonical = normalizePath(absolutePath)
+  await atomicWrite(canonical, updated)
+  readHashes?.set(canonical, contentHash(updated))
+
+  return {
+    filePath: canonical,
+    originalFile,
+    updatedFile: updated,
+    structuredPatch: makePatch(originalFile, updated),
+    hunksApplied,
+  }
+}
+
 function expandBraces(pattern: string): string[] {
   const openIdx = pattern.indexOf('{')
   if (openIdx === -1) return [pattern]

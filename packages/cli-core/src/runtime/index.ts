@@ -150,7 +150,7 @@ export {
   profileFor,
   validateProfileDivergences,
 } from './model-profile'
-export type { ModelProfile, ProfileDivergence, ProfileMode, ProviderName } from './model-profile'
+export type { EditDialect, ModelProfile, ProfileDivergence, ProfileMode, ProviderName } from './model-profile'
 
 export {
   parseFrontmatter,

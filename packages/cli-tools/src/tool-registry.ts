@@ -120,6 +120,31 @@ export class DefaultToolRegistry implements ToolRegistry {
   register(tool: ToolDefinition): void {
     this.tools.set(tool.name, tool)
   }
+
+  unregister(name: string): void {
+    this.tools.delete(name)
+  }
+
+  /**
+   * Replace tool descriptions per the active model profile (M5 vocabulary
+   * specialization). Reversible: each call first restores every previously
+   * overridden description, so the registry always reflects exactly the
+   * current profile — including after a mid-session model switch.
+   */
+  overrideDescriptions(overrides: Readonly<Record<string, string>>): void {
+    for (const [name, def] of Array.from(this.pristine)) {
+      if (this.tools.has(name)) this.tools.set(name, def)
+    }
+    this.pristine.clear()
+    for (const [name, description] of Object.entries(overrides)) {
+      const def = this.tools.get(name)
+      if (!def) continue
+      this.pristine.set(name, def)
+      this.tools.set(name, { ...def, description })
+    }
+  }
+
+  private readonly pristine = new Map<string, ToolDefinition>()
 }
 
 export { BUILTIN_TOOLS }
