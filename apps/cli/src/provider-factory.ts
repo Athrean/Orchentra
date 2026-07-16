@@ -1,4 +1,4 @@
-import type { EffortTier, Provider } from '@orchentra/cli-core'
+import { profileFor, type EffortTier, type Provider, type ProviderName } from '@orchentra/cli-core'
 import {
   AnthropicProvider,
   DASHSCOPE_CONFIG,
@@ -39,8 +39,11 @@ export function resolveModelAlias(input: string, userAliases?: Record<string, st
   return input
 }
 
+// Provider routing resolves through the ModelProfile registry (M5) — the old
+// resolveProviderName/isOpenRouterModelId string sniffing retired into
+// cli-core's MODEL_PROFILES. This switch only maps route → constructor.
 export function createProvider(model: string): CreatedProvider {
-  const providerName = resolveProviderName(model)
+  const providerName: ProviderName = profileFor(model).provider
   switch (providerName) {
     case 'openai':
       return { providerName, provider: new OpenAiCompatProvider(OPENAI_CONFIG) }
@@ -57,33 +60,6 @@ export function createProvider(model: string): CreatedProvider {
     case 'anthropic':
       return { providerName, provider: new AnthropicProvider() }
   }
-}
-
-export function resolveProviderName(
-  model: string,
-): 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'anthropic' | 'local' {
-  const lower = model.toLowerCase()
-  if (lower.startsWith('ollama/')) return 'local'
-  if (isOpenRouterModelId(lower)) return 'openrouter'
-  if (lower.startsWith('gpt') || lower.includes('openai')) return 'openai'
-  if (lower.startsWith('grok') || lower.includes('xai')) return 'xai'
-  if (lower.includes('qwen') || lower.includes('dashscope')) return 'dashscope'
-  if (lower.startsWith('gemini') || lower.includes('google')) return 'gemini'
-  return 'anthropic'
-}
-
-function isOpenRouterModelId(model: string): boolean {
-  return (
-    model.startsWith('openai/') ||
-    model.startsWith('anthropic/') ||
-    model.startsWith('google/') ||
-    model.startsWith('x-ai/') ||
-    model.startsWith('mistralai/') ||
-    model.startsWith('deepseek/') ||
-    model.startsWith('qwen/') ||
-    model.startsWith('z-ai/') ||
-    model.startsWith('zhipu/')
-  )
 }
 
 export function thinkingTokenBudgetForEffort(effort: EffortTier): number {

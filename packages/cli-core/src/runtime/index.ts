@@ -141,7 +141,16 @@ export { rewindBoundary, countUserTurns, lineDiffStats } from './rewind'
 export { groupToolSources, findDuplicateReads } from './context-breakdown'
 export type { ContextBreakdown, ContextToolSource, DuplicateFileRead } from './context-breakdown'
 
-export { isKnownModel } from './model-availability'
+export {
+  GENERIC_PROFILE,
+  MODEL_PROFILES,
+  PROFILE_MODE_ENV,
+  activeProfileMode,
+  isKnownModel,
+  profileFor,
+  validateProfileDivergences,
+} from './model-profile'
+export type { ModelProfile, ProfileDivergence, ProfileMode, ProviderName } from './model-profile'
 
 export {
   parseFrontmatter,
