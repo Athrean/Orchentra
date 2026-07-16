@@ -20,7 +20,7 @@ interface WritableSink {
   write(chunk: string): void
 }
 
-const PACKAGE_NAME = '@orchentra/cli'
+const PACKAGE_NAME = '@athreanlab/orchentra'
 
 export function runUpdate(opts: UpdateOptions): number {
   const spec = `${PACKAGE_NAME}@${opts.tag}`
