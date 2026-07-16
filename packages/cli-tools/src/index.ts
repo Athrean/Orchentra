@@ -70,6 +70,17 @@ export { webSearchTool } from './tools/web-search-tool'
 export { askUserTool } from './tools/ask-user-tool'
 export { todoWriteTool } from './tools/todo-write-tool'
 export { agentTool } from './tools/agent-tool'
+export {
+  addWorktree,
+  applySliceDiff,
+  findOverlaps,
+  removeWorktree,
+  resolveRepoRoot,
+  sliceDiff,
+  sliceFiles,
+  type SliceOverlap,
+  type WorktreeSlice,
+} from './tools/worktree-writers'
 export { SubagentReplayExecutor, type SubagentReplayOptions } from './tools/gate-replay'
 export { resolveSubagentRole, restrictRegistry, type SubagentRole } from './tools/subagent-roles'
 export { notebookEditTool } from './tools/notebook-edit-tool'

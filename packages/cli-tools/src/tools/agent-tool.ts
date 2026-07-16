@@ -3,13 +3,25 @@ import {
   type ToolResult,
   type ToolContext,
   type DoneReason,
+  type GateDecisionRecord,
   type Provider,
+  CompletionPolicy,
   ConversationRuntime,
   buildSystemPrompt,
 } from '@orchentra/cli-core'
 import { isRateLimitError } from '@orchentra/cli-api'
 import { runSubagentPool } from './subagent-pool'
 import { resolveSubagentRole, restrictRegistry, type SubagentRole } from './subagent-roles'
+import {
+  addWorktree,
+  applySliceDiff,
+  findOverlaps,
+  removeWorktree,
+  resolveRepoRoot,
+  sliceDiff,
+  sliceFiles,
+  type WorktreeSlice,
+} from './worktree-writers'
 
 interface AgentInput {
   prompt?: string
@@ -18,6 +30,7 @@ interface AgentInput {
   description?: string
   justification?: string
   agentType?: string
+  isolation?: string
 }
 
 const MAX_ITERATIONS_PER_SUBAGENT = 10
@@ -37,7 +50,7 @@ const SPAWN_JUSTIFICATION_THRESHOLD = 4
 
 export const agentTool: ToolDefinition = {
   name: 'agent',
-  description: `Spawn sub-agent(s) to perform a task. Each sub-agent runs a nested conversation loop with the same tools and spine, and its spend counts against the parent budget. Pass "tasks" (an array of independent task prompts) to fan out concurrent sub-agents instead of running one at a time, capped at ${MAX_CONCURRENT_SUBAGENTS} running at once. Beyond ${SPAWN_JUSTIFICATION_THRESHOLD} tasks, pass "justification" explaining why parallel fan-out is warranted.`,
+  description: `Spawn sub-agent(s) to perform a task. Each sub-agent runs a nested conversation loop with the same tools and spine, and its spend counts against the parent budget. Pass "tasks" (an array of independent task prompts) to fan out concurrent sub-agents instead of running one at a time, capped at ${MAX_CONCURRENT_SUBAGENTS} running at once. Beyond ${SPAWN_JUSTIFICATION_THRESHOLD} tasks, pass "justification" explaining why parallel fan-out is warranted. When parallel tasks write code, pass isolation "worktree" so each slice runs in its own git worktree and only gated, non-overlapping slices merge back.`,
   level: 'admin',
   inputSchema: {
     type: 'object',
@@ -59,6 +72,12 @@ export const agentTool: ToolDefinition = {
         enum: ['explorer', 'reviewer', 'builder'],
         description:
           'Optional specialist role for the sub-agent(s): "explorer" searches/reads only (no writes), "reviewer" verifies by running checks (read + command execution, no edits), "builder" implements with the full toolset. Omit for a generic sub-agent. Applies to every task in a "tasks" batch.',
+      },
+      isolation: {
+        type: 'string',
+        enum: ['worktree'],
+        description:
+          'Pass "worktree" when parallel tasks write code: each task runs in its own git worktree at HEAD, is gated on verification evidence, and only disjoint gated slices merge back into the parent tree. Requires a git repository.',
       },
     },
     additionalProperties: false,
@@ -109,6 +128,14 @@ export const agentTool: ToolDefinition = {
     // role-capped child gets a narrowed registry on both the advertised and
     // execute surfaces.
     const childCtx: ToolContext = { ...ctx, subagentDepth: depth + 1, tools: restrictRegistry(ctx.tools, role) }
+
+    if (input.isolation === 'worktree') {
+      return runWorktreeBatch(tasks, model, childCtx, role)
+    }
+    if (input.isolation !== undefined) {
+      return { content: `error: unknown isolation "${input.isolation}"; only "worktree" is supported`, isError: true }
+    }
+
     const pooled = await runSubagentPool(tasks, {
       limit: MAX_CONCURRENT_SUBAGENTS,
       run: (task) => runSubagent(task, model, childCtx, role),
@@ -157,6 +184,147 @@ export const agentTool: ToolDefinition = {
   },
 }
 
+/**
+ * M6 phase-1: parallel write-capable children run in isolated git worktrees
+ * at the parent's HEAD, so concurrent slices never edit a shared tree. Every
+ * child is gated through the CompletionPolicy before its slice is considered
+ * mergeable, and overlapping file ownership fails the whole batch loudly
+ * instead of silently racing.
+ */
+async function runWorktreeBatch(
+  tasks: string[],
+  model: string,
+  childCtx: ToolContext,
+  role: SubagentRole,
+): Promise<ToolResult> {
+  const repoRoot = await resolveRepoRoot(childCtx.cwd)
+  if (!repoRoot) {
+    return { content: 'error: isolation "worktree" requires running inside a git repository', isError: true }
+  }
+  // Same default evidence bar as the top-level completion gate. k=1 with the
+  // deterministic replay: per-slice reviewer replay would multiply model
+  // spend by every parallel child; the host's own gate still replays the
+  // integrated result.
+  const policy = new CompletionPolicy({
+    obligations: [
+      {
+        id: 'executable-verification',
+        description: 'run a relevant command and collect its exit status',
+        evidenceKinds: ['exit-status'],
+      },
+    ],
+    k: 1,
+    maxRetries: 2,
+  })
+
+  const slices: WorktreeSlice[] = []
+  try {
+    // Sequential adds: git serializes worktree bookkeeping per repo.
+    for (let i = 0; i < tasks.length; i++) slices.push(await addWorktree(repoRoot))
+
+    // Pool over index keys, not prompts: duplicate prompts must still map to
+    // distinct worktrees.
+    const pooled = await runSubagentPool(
+      tasks.map((_, index) => String(index)),
+      {
+        limit: MAX_CONCURRENT_SUBAGENTS,
+        run: (key) => {
+          const slice = slices[Number(key)]!
+          const sliceCtx: ToolContext = { ...childCtx, cwd: slice.dir, workspaceRoots: [slice.dir] }
+          return runSubagent(tasks[Number(key)]!, model, sliceCtx, role, policy)
+        },
+        shouldRequeue: (r) => r.rateLimited === true && !childCtx.budget?.snapshot().exhausted,
+      },
+    )
+    const results = pooled.map((p) => p.value)
+    const files = await Promise.all(slices.map((slice) => sliceFiles(slice.dir)))
+
+    const overlaps = findOverlaps(files)
+    if (overlaps.length > 0) {
+      const detail = overlaps
+        .map((o) => `tasks ${o.tasks[0]} and ${o.tasks[1]} both touched: ${o.files.join(', ')}`)
+        .join('; ')
+      return {
+        content: `error: overlapping slice ownership — ${detail}. Nothing merged; split the tasks so each file has exactly one owner.`,
+        isError: true,
+        data: {
+          tasks: taskSummaries(results),
+          slices: sliceSummaries(results, files, new Array(files.length).fill(false)),
+        },
+      }
+    }
+
+    const merged: boolean[] = []
+    for (let i = 0; i < results.length; i++) {
+      const gatedPass = results[i]!.doneReason === 'stop' && !results[i]!.isError
+      if (!gatedPass || files[i]!.length === 0) {
+        merged.push(false)
+        continue
+      }
+      await applySliceDiff(repoRoot, await sliceDiff(slices[i]!.dir))
+      merged.push(true)
+    }
+
+    const lines = results.map((r, i) => {
+      const status = merged[i]
+        ? `merged ${files[i]!.length} file(s): ${files[i]!.join(', ')}`
+        : r.isError
+          ? `not merged (${r.doneReason ?? 'error'})`
+          : 'no file changes'
+      return `[task ${i + 1}] ${r.text}\n[slice ${i + 1}] gate: ${r.gate?.outcome ?? 'not-run'}; ${status}`
+    })
+    const evidence = results.map((r, i) => ({
+      kind: 'subagent',
+      summary: `slice ${i + 1}: ${r.doneReason ?? 'stop'}, gate ${r.gate?.outcome ?? 'not-run'}, ${merged[i] ? 'merged' : 'not merged'}`,
+      detail: {
+        doneReason: r.doneReason,
+        toolCalls: r.toolCalls,
+        isError: r.isError,
+        role: role.name,
+        traceId: r.traceId,
+        files: files[i],
+        merged: merged[i],
+      },
+    }))
+    return {
+      content: lines.join('\n\n'),
+      isError: results.some((r) => r.isError),
+      data: { tasks: taskSummaries(results), slices: sliceSummaries(results, files, merged) },
+      evidence,
+    }
+  } catch (e) {
+    return { content: `worktree batch error: ${(e as Error).message}`, isError: true }
+  } finally {
+    await Promise.all(slices.map((slice) => removeWorktree(repoRoot, slice.dir).catch(() => {})))
+  }
+}
+
+interface TaskSummary {
+  doneReason?: DoneReason
+  toolCalls?: number
+  isError: boolean
+  traceId?: string
+}
+
+interface SliceSummary {
+  files?: string[]
+  gate: GateDecisionRecord | null
+  merged: boolean
+}
+
+function taskSummaries(results: SubagentRunOutcome[]): TaskSummary[] {
+  return results.map((r) => ({
+    doneReason: r.doneReason,
+    toolCalls: r.toolCalls,
+    isError: r.isError,
+    traceId: r.traceId,
+  }))
+}
+
+function sliceSummaries(results: SubagentRunOutcome[], files: string[][], merged: boolean[]): SliceSummary[] {
+  return results.map((r, i) => ({ files: files[i], gate: r.gate ?? null, merged: merged[i] ?? false }))
+}
+
 function resolveTasks(input: AgentInput): string[] {
   const fromTasks = Array.isArray(input?.tasks)
     ? input.tasks.filter((t): t is string => typeof t === 'string' && t.length > 0)
@@ -173,6 +341,8 @@ interface SubagentRunOutcome {
   toolCalls?: number
   /** Trace id of the child run, linking its trace dir from the parent manifest. */
   traceId?: string
+  /** Completion-gate decision when the child ran under a CompletionPolicy. */
+  gate?: GateDecisionRecord
 }
 
 async function runSubagent(
@@ -180,6 +350,7 @@ async function runSubagent(
   model: string,
   ctx: ToolContext,
   role: SubagentRole,
+  completionPolicy?: CompletionPolicy,
 ): Promise<SubagentRunOutcome> {
   // The runtime reports stream failures as message strings, so wrap the
   // provider to keep the thrown error's type for rate-limit classification.
@@ -244,13 +415,16 @@ async function runSubagent(
     let toolCallsDone = 0
     let doneReason: DoneReason = 'stop'
     let errorMessage = ''
+    let gate: GateDecisionRecord | undefined
 
-    for await (const ev of runtime.run({ userMessage: prompt })) {
+    for await (const ev of runtime.run({ userMessage: prompt, completionPolicy })) {
       if (ev.kind === 'text') {
         buf += ev.delta
       } else if (ev.kind === 'tool_result') {
         toolCallsDone++
         buf = ''
+      } else if (ev.kind === 'gate_decision') {
+        gate = ev.decision
       } else if (ev.kind === 'usage') {
         // Children draw the parent's live budget: spend lands as it happens,
         // and an exhausted parent aborts the child mid-run. Skip the abort
@@ -295,12 +469,23 @@ async function runSubagent(
         traceId,
       }
     }
+    if (doneReason === 'gate_failed' || doneReason === 'quarantined') {
+      return {
+        text: resultText || `Sub-agent failed its completion gate: ${gate?.summary ?? doneReason}`,
+        isError: true,
+        doneReason,
+        toolCalls: toolCallsDone,
+        traceId,
+        gate,
+      }
+    }
     return {
       text: resultText || `Sub-agent completed (${toolCallsDone} tool call(s)).`,
       isError: false,
       doneReason,
       toolCalls: toolCallsDone,
       traceId,
+      gate,
     }
   } catch (e) {
     return {
