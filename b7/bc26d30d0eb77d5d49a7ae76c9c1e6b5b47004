@@ -1,0 +1,39 @@
+apps/web/app/components/landing/crew.tsx
+  s_fa8fc48ebb369e::t_86c282d532a40d 4,10-11,16-17
+apps/web/app/components/landing/editorial.tsx
+  s_fa8fc48ebb369e::t_097d4f6b57fcdf 3,130
+apps/web/app/components/landing/field-zone.tsx
+  s_fa8fc48ebb369e::t_3b014fc1202bd5 2,30,44
+apps/web/app/components/landing/hero.tsx
+  s_fa8fc48ebb369e::t_f384c74ab244e7 5,15
+apps/web/app/components/landing/install-footer.tsx
+  s_fa8fc48ebb369e::t_5e5699171a0793 3,92,107
+apps/web/app/components/landing/motion.tsx
+  s_fa8fc48ebb369e::t_d6540eca4542c6 3-4,7-9,12-16,19,21-22,29-30,61,63-64
+apps/web/app/components/landing/pixel-field-engine.ts
+  s_fa8fc48ebb369e::t_179563f9316eb7 42-43,50-51,57-63,85,89-90,99-101,103-104,107-110,113,172,175-176,184-198,386,394,396-398,473-474,477-481,483-484,530,534
+apps/web/app/components/landing/pixel-field.tsx
+  s_fa8fc48ebb369e::t_29c8c44debb6f5 100-102
+apps/web/app/components/landing/process.tsx
+  s_fa8fc48ebb369e::t_17c49f25dde842 4,56,67
+apps/web/app/components/landing/ui.tsx
+  s_fa8fc48ebb369e::t_a070fb46fc0a29 19-20,22-28
+apps/web/app/styles/carousels.css
+  s_fa8fc48ebb369e::t_dae685e487a622 32-34,38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b7bc26d30d0eb77d5d49a7ae76c9c1e6b5b47004",
+  "prompts": {},
+  "sessions": {
+    "s_fa8fc48ebb369e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6926-b1b8-7623-b529-94ad9a6f3433",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
