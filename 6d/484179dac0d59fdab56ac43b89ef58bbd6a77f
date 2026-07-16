@@ -1,0 +1,39 @@
+packages/cli-core/src/runtime/conversation.ts
+  s_1452a61c7ce982::t_83b6c3bb401683 204,215-225,340-348
+packages/cli-core/src/runtime/index.ts
+  s_1452a61c7ce982::t_cd671547b7b6ee 287
+packages/cli-core/tests/conversation.test.ts
+  s_1452a61c7ce982::t_d1ea10c3c750f8 1087-1132
+packages/cli-core/tests/scenario-harness.test.ts
+  s_1452a61c7ce982::t_30880b20f839ed 265-267
+packages/cli-tools/src/index.ts
+  s_1452a61c7ce982::t_066f502b303b5b 73-80
+packages/cli-tools/src/tool-registry.ts
+  s_1452a61c7ce982::t_d28181d4f35330 23,45
+packages/cli-tools/src/tools/agent-tool.ts
+  s_1452a61c7ce982::t_cbd6ed2f7f050c 7,9-10,14-15,35,82-86,137-150,185-186,193,195-197,205-225,273,331-335
+packages/cli-tools/src/tools/subagent-lifecycle.ts
+  s_1452a61c7ce982::t_91a2f699c3846b 1-324
+packages/cli-tools/src/tools/subagent-run.ts
+  s_1452a61c7ce982::t_964afad4d4a582 1-226
+packages/cli-tools/tests/agent-tool.test.ts
+  s_1452a61c7ce982::t_0a6aadfdc9bfff 472-517
+packages/cli-tools/tests/subagent-lifecycle.test.ts
+  s_1452a61c7ce982::t_ad4e244b1ca8af 1-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6d484179dac0d59fdab56ac43b89ef58bbd6a77f",
+  "prompts": {},
+  "sessions": {
+    "s_1452a61c7ce982": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d5fa55-3a79-4965-9536-bca61287bf91",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
