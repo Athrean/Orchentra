@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Smoke test for the packed @orchentra/cli npm artifact.
+# Smoke test for the packed @athreanlab/orchentra npm artifact.
 #
 # Packs the package (prepack runs build + package:verify), installs the
 # tarball into a throwaway directory, and asserts the orchentra/otr bins
@@ -19,7 +19,7 @@ PKG_VERSION="$(bun -e "console.log(require('./package.json').version)")"
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 
-echo ">> packing @orchentra/cli@${PKG_VERSION}"
+echo ">> packing @athreanlab/orchentra@${PKG_VERSION}"
 TARBALL="${WORK}/$(npm pack --pack-destination "${WORK}" | tail -n1)"
 
 echo ">> installing $(basename "${TARBALL}") into ${WORK}/install"
