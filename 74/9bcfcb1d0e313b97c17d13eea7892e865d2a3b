@@ -1,0 +1,19 @@
+apps/web/app/layout.tsx
+  s_2013e9e2bfc2e9::t_c9c42030ba9351 6,8,10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "749bcfcb1d0e313b97c17d13eea7892e865d2a3b",
+  "prompts": {},
+  "sessions": {
+    "s_2013e9e2bfc2e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fb7-1e75-77b2-b400-731b668a7fc1",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
