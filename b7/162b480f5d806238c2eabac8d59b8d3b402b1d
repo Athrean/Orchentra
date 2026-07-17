@@ -1,0 +1,21 @@
+apps/web/app/components/landing/product-demo.tsx
+  s_8d4ab4dbd0e223::t_63415877d3898a 3-4,18-21,38-63,89-91
+apps/web/app/styles/landing.css
+  s_8d4ab4dbd0e223::t_06a76ac1504204 385-389,391-392,396-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b7162b480f5d806238c2eabac8d59b8d3b402b1d",
+  "prompts": {},
+  "sessions": {
+    "s_8d4ab4dbd0e223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9efbabc5-2168-425c-a817-bc00471d6213",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
