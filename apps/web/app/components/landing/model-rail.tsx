@@ -57,8 +57,17 @@ function ModelProfileCell({ profile }: { profile: ModelProfile }): React.ReactNo
           exit={{ opacity: 0, y: -4, filter: 'blur(2px)' }}
           transition={{ duration: 0.15, ease: 'easeInOut' }}
         >
-          <span className="model-profile-mark" aria-hidden="true">
-            <Image src={profile.icon} alt="" width={26} height={26} />
+          <span className="model-profile-mark" data-icon-mode={profile.icon.mode} aria-hidden="true">
+            <Image
+              className={profile.icon.dark ? 'model-profile-icon-light' : undefined}
+              src={profile.icon.light}
+              alt=""
+              width={32}
+              height={32}
+            />
+            {profile.icon.dark ? (
+              <Image className="model-profile-icon-dark" src={profile.icon.dark} alt="" width={32} height={32} />
+            ) : null}
           </span>
           <strong>{label}</strong>
         </m.span>

@@ -7,6 +7,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .profile-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .specialist-card:nth-child(3) {
     border-left: 0;
   }
@@ -182,13 +186,13 @@
   }
 
   .model-profile-mark {
-    width: 34px;
-    height: 34px;
+    width: 28px;
+    height: 28px;
   }
 
   .model-profile-mark img {
-    width: 21px;
-    height: 21px;
+    width: 28px;
+    height: 28px;
   }
 
   .run-window {
