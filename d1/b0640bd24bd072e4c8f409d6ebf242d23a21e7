@@ -1,0 +1,21 @@
+apps/web/app/components/landing/landing-page.tsx
+  s_8d4ab4dbd0e223::t_fa481ccf1531a9 3-4,67-78,83,114-115,124-126,174-175,186-188,198-199,216-217,235-236,263-265,308-310,325,332-334,349-351,355-380,386-388,395-401,407-409
+apps/web/app/styles/landing.css
+  s_8d4ab4dbd0e223::t_7013e8dea1bca8 69-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d1b0640bd24bd072e4c8f409d6ebf242d23a21e7",
+  "prompts": {},
+  "sessions": {
+    "s_8d4ab4dbd0e223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9efbabc5-2168-425c-a817-bc00471d6213",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
