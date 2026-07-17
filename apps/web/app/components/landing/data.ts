@@ -6,7 +6,38 @@ export const SECURITY_URL = `${GITHUB_URL}/security`
 export const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
 export const INSTALL_COMMAND = 'npm install -g @athreanlab/orchentra'
 
-export const modelProfiles = ['Anthropic', 'OpenAI / Codex', 'Gemini', 'OpenRouter', 'Open-compatible'] as const
+export const modelProfiles = [
+  {
+    id: 'anthropic',
+    provider: 'Anthropic',
+    icon: '/labs/anthropic.svg',
+    models: ['Claude Opus', 'Claude Sonnet', 'Claude Haiku'],
+  },
+  {
+    id: 'openai',
+    provider: 'OpenAI',
+    icon: '/labs/openai.svg',
+    models: ['GPT-5', 'GPT-4o', 'o-series'],
+  },
+  {
+    id: 'gemini',
+    provider: 'Google Gemini',
+    icon: '/labs/gemini.svg',
+    models: ['Gemini 3.5 Flash', 'Gemini 3.1 Pro', 'Gemini Flash-Lite'],
+  },
+  {
+    id: 'openrouter',
+    provider: 'OpenRouter',
+    icon: '/labs/openrouter.svg',
+    models: ['Claude', 'GPT', 'Gemini', 'Grok', 'Mistral', 'DeepSeek', 'Qwen', 'GLM'],
+  },
+  {
+    id: 'local',
+    provider: 'Ollama / local',
+    icon: '/labs/ollama.svg',
+    models: ['Llama', 'Qwen Coder', 'DeepSeek', 'GPT-OSS'],
+  },
+] as const
 
 export const specialists = [
   {
