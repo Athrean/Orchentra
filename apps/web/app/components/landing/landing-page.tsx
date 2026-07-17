@@ -9,9 +9,12 @@ import { BenefitGrid, CapabilityGrid, FaqSection, ProofMosaic, SiteRail, Workflo
 export function LandingPage(): React.ReactNode {
   return (
     <MotionProvider>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <SiteRail />
       <div className="page-canvas">
-        <main>
+        <main id="main-content">
           <Hero />
           <BenefitGrid />
           <SpecialistCarousel />
