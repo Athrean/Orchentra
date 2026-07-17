@@ -1,31 +1,35 @@
 import { m } from 'framer-motion'
-import { GITHUB_URL, INSTALL_COMMAND, ISSUES_URL, README_URL, RELEASES_URL, SECURITY_URL } from './data'
+import { GITHUB_URL, INSTALL_COMMAND, ISSUES_URL, LICENSE_URL, README_URL, RELEASES_URL, SECURITY_URL } from './data'
 import { Reveal, softSpring, stagger } from './motion'
-import { FooterPixelField } from './pixel-field'
 import { CopyCommand, Logo } from './ui'
 
 export function InstallCTA(): React.ReactNode {
   return (
-    <section className="install-cta" id="install" aria-labelledby="install-title">
-      <Reveal className="narrow-wrap">
-        <p className="cta-kicker">CLI-first · BYOK · local sessions</p>
-        <h2 id="install-title" className="pixel-type">
-          Put the crew in your terminal.
-        </h2>
-        <m.a
-          className="pixel-button pixel-button--large"
-          href={GITHUB_URL}
-          whileHover={{ y: -4, scale: 1.015 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          Install Orchentra <span aria-hidden="true">↗</span>
-        </m.a>
-        <p className="cta-copy">
-          No hosted workspace. No application database. Orchentra works against the checkout you already trust and hands
-          the result back through git.
-        </p>
-        <CopyCommand command={INSTALL_COMMAND} />
-      </Reveal>
+    <section className="install-cta section-pad" id="install" aria-labelledby="install-title">
+      <div className="section-frame install-grid">
+        <Reveal className="install-panel">
+          <p className="eyebrow">Start in the terminal</p>
+          <h2 id="install-title">Put proof inside the coding loop.</h2>
+          <p>
+            One global install. Your provider keys. Your repository. No hosted control plane between the work and you.
+          </p>
+          <div className="install-art" aria-hidden="true">
+            <span>READ</span>
+            <span>BUILD</span>
+            <span>RUN</span>
+            <strong>PROVE</strong>
+          </div>
+        </Reveal>
+        <Reveal className="install-action" delay={0.08}>
+          <span className="install-index">01 / INSTALL</span>
+          <h3>Install Orchentra globally.</h3>
+          <CopyCommand command={INSTALL_COMMAND} />
+          <p>Then run Orchentra from the repository you want the crew to understand.</p>
+          <a className="button button--dark" href={GITHUB_URL}>
+            Read the setup guide ↗
+          </a>
+        </Reveal>
+      </div>
     </section>
   )
 }
@@ -33,41 +37,39 @@ export function InstallCTA(): React.ReactNode {
 export function Footer(): React.ReactNode {
   return (
     <footer className="brand-footer" id="footer">
-      <FooterPixelField />
-
-      <div className="content-wrap footer-top">
+      <div className="section-frame footer-grid">
         <Reveal className="footer-statement">
           <div className="footer-brand">
-            <Logo size={42} light />
+            <Logo size={34} />
             <span>Orchentra</span>
           </div>
-          <h2 className="pixel-type">One crew. Every repo.</h2>
-          <p>Plan with intent. Build the minimum. Let the checks speak.</p>
+          <h2>Built where your code lives.</h2>
+          <p>Orchentra, the model-aware coding harness from Athrean Lab.</p>
         </Reveal>
 
         <m.div
           className="footer-links"
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
+          viewport={{ once: true, amount: 0.18 }}
           variants={stagger}
         >
           <FooterColumn
             title="Product"
             links={[
+              ['Why Orchentra', '#why'],
               ['Crew', '#crew'],
-              ['Agent spine', '#spine'],
-              ['Workflow', '#workflow'],
+              ['Capabilities', '#capabilities'],
               ['Install', '#install'],
             ]}
           />
           <FooterColumn
-            title="Agents"
+            title="Workflow"
             links={[
-              ['/plan', '#crew'],
-              ['/build', '#crew'],
-              ['/review', '#crew'],
-              ['Subagents', '#agents'],
+              ['Inspect', '#workflow'],
+              ['Decide', '#workflow'],
+              ['Execute', '#workflow'],
+              ['Prove', '#workflow'],
             ]}
           />
           <FooterColumn
@@ -77,26 +79,33 @@ export function Footer(): React.ReactNode {
               ['README', README_URL],
               ['Releases', RELEASES_URL],
               ['Issues', ISSUES_URL],
+            ]}
+          />
+          <FooterColumn
+            title="Trust"
+            links={[
               ['Security', SECURITY_URL],
+              ['Apache-2.0 license', LICENSE_URL],
+              ['Questions', '#faq'],
             ]}
           />
         </m.div>
       </div>
 
       <m.div
-        className="footer-wordmark pixel-type"
+        className="footer-wordmark"
         aria-hidden="true"
-        initial={{ opacity: 0, y: 36 }}
+        initial={{ opacity: 0, y: 28 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.35 }}
-        transition={{ ...softSpring, delay: 0.1 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ ...softSpring, delay: 0.08 }}
       >
         ORCHENTRA
       </m.div>
 
-      <div className="content-wrap footer-bottom">
-        <span>© {new Date().getFullYear()} Orchentra</span>
-        <span>CLI-only · zero DB · your provider keys</span>
+      <div className="section-frame footer-bottom">
+        <span>© {new Date().getFullYear()} Orchentra by Athrean Lab</span>
+        <span>CLI-first · BYOK · zero DB · no telemetry</span>
       </div>
     </footer>
   )
@@ -104,14 +113,12 @@ export function Footer(): React.ReactNode {
 
 function FooterColumn({ title, links }: { title: string; links: ReadonlyArray<readonly [string, string]> }) {
   return (
-    <m.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: softSpring } }}>
+    <m.div variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: softSpring } }}>
       <h3>{title}</h3>
       <ul>
         {links.map(([label, href]) => (
           <li key={label}>
-            <m.a href={href} whileHover={{ x: 3 }}>
-              {label}
-            </m.a>
+            <a href={href}>{label}</a>
           </li>
         ))}
       </ul>

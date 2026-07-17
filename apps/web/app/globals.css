@@ -1,10 +1,8 @@
-@import 'tailwindcss';
 @import './styles/base.css';
 @import './styles/hero.css';
 @import './styles/carousels.css';
 @import './styles/editorial.css';
 @import './styles/process.css';
-@import './styles/agents.css';
 @import './styles/cta.css';
 @import './styles/footer.css';
 @import './styles/responsive.css';
