@@ -1,0 +1,21 @@
+apps/web/app/components/landing/landing-page.tsx
+  s_2013e9e2bfc2e9::t_09efdb5c6a8aed 12-14,17
+apps/web/app/styles/base.css
+  s_2013e9e2bfc2e9::t_1d8c80314ce048 82-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0af19a69856c621aa7ca3a5d66c5f4f2c60b3a2d",
+  "prompts": {},
+  "sessions": {
+    "s_2013e9e2bfc2e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fb7-1e75-77b2-b400-731b668a7fc1",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
