@@ -1,4 +1,4 @@
-import { m, type Variants } from 'framer-motion'
+import { m, useReducedMotion, type Variants } from 'framer-motion'
 import { GITHUB_URL } from './data'
 import { revealItem, softSpring } from './motion'
 
@@ -20,6 +20,8 @@ const lanes = [
 ] as const
 
 export function Hero(): React.ReactNode {
+  const reduceMotion = useReducedMotion()
+
   return (
     <m.section
       className="hero"
@@ -77,14 +79,18 @@ export function Hero(): React.ReactNode {
               width="10"
               height="10"
               initial={{ x: 73, y: 77 }}
-              animate={{ x: [73, 345, 707, 1075], y: [77, 77, 225, 225] }}
-              transition={{
-                duration: 4.6,
-                times: [0, 0.34, 0.72, 1],
-                repeat: Infinity,
-                repeatDelay: 1.4,
-                ease: 'linear',
-              }}
+              animate={reduceMotion ? { x: 707, y: 225 } : { x: [73, 345, 707, 1075], y: [77, 77, 225, 225] }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : {
+                      duration: 4.6,
+                      times: [0, 0.34, 0.72, 1],
+                      repeat: Infinity,
+                      repeatDelay: 1.4,
+                      ease: 'linear',
+                    }
+              }
             />
           </svg>
           <div className="score-mobile-output" aria-hidden="true">
