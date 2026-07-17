@@ -10,32 +10,72 @@ export const modelProfiles = [
   {
     id: 'anthropic',
     provider: 'Anthropic',
-    icon: '/labs/anthropic.svg',
+    icon: {
+      light: '/labs/claude.svg',
+      dark: null,
+      mode: 'color',
+    },
     models: ['Claude Opus', 'Claude Sonnet', 'Claude Haiku'],
   },
   {
     id: 'openai',
     provider: 'OpenAI',
-    icon: '/labs/openai.svg',
+    icon: {
+      light: '/labs/chatgpt.svg',
+      dark: null,
+      mode: 'mono',
+    },
     models: ['GPT-5', 'GPT-4o', 'o-series'],
   },
   {
-    id: 'gemini',
-    provider: 'Google Gemini',
-    icon: '/labs/gemini.svg',
-    models: ['Gemini 3.5 Flash', 'Gemini 3.1 Pro', 'Gemini Flash-Lite'],
+    id: 'xai',
+    provider: 'xAI',
+    icon: {
+      light: '/labs/grok.svg',
+      dark: null,
+      mode: 'mono',
+    },
+    models: ['Grok 4', 'Grok 3', 'Grok 3 Mini'],
   },
   {
-    id: 'openrouter',
-    provider: 'OpenRouter',
-    icon: '/labs/openrouter.svg',
-    models: ['Claude', 'GPT', 'Gemini', 'Grok', 'Mistral', 'DeepSeek', 'Qwen', 'GLM'],
+    id: 'google',
+    provider: 'Google',
+    icon: {
+      light: '/labs/gemini.svg',
+      dark: null,
+      mode: 'color',
+    },
+    models: ['Gemini Pro', 'Gemini Flash', 'Gemini Flash-Lite'],
   },
   {
-    id: 'local',
-    provider: 'Ollama / local',
-    icon: '/labs/ollama.svg',
-    models: ['Llama', 'Qwen Coder', 'DeepSeek', 'GPT-OSS'],
+    id: 'moonshot',
+    provider: 'Moonshot AI',
+    icon: {
+      light: '/labs/kimi.svg',
+      dark: '/labs/kimi-dark.svg',
+      mode: 'adaptive',
+    },
+    models: ['Kimi K2', 'Kimi K2 Thinking', 'Kimi K1.5'],
+  },
+  {
+    id: 'alibaba',
+    provider: 'Alibaba',
+    icon: {
+      light: '/labs/qwen.svg',
+      dark: null,
+      mode: 'color',
+    },
+    models: ['Qwen3', 'Qwen3-Coder', 'QwQ'],
+  },
+  {
+    id: 'deepseek',
+    provider: 'DeepSeek',
+    icon: {
+      light: '/labs/deepseek.svg',
+      dark: null,
+      mode: 'color',
+    },
+    models: ['DeepSeek V3', 'DeepSeek R1', 'DeepSeek Coder'],
   },
 ] as const
 

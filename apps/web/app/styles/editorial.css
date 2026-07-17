@@ -39,7 +39,7 @@
 
 .profile-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
   width: 100%;
   max-width: var(--max-width);
@@ -105,18 +105,34 @@
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   color: var(--ink);
-  background: var(--canvas);
-  border: 1px solid var(--line);
 }
 
 .model-profile-mark img {
   display: block;
-  width: 24px;
-  height: 24px;
-  filter: var(--logo-filter);
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.model-profile-mark img.model-profile-icon-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .model-profile-mark[data-icon-mode='mono'] img {
+    filter: invert(1);
+  }
+
+  .model-profile-mark img.model-profile-icon-light {
+    display: none;
+  }
+
+  .model-profile-mark img.model-profile-icon-dark {
+    display: block;
+  }
 }
 
 .model-profile-swap strong {
