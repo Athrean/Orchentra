@@ -43,12 +43,8 @@
   }
 
   .hero-field {
-    min-height: 590px;
+    min-height: 520px;
     padding-inline: 32px;
-  }
-
-  .hero-trace {
-    margin-top: 46px;
   }
 
   .paired-feature-grid,
@@ -129,41 +125,21 @@
     font-size: 10px;
   }
 
-  .hero .section-frame {
-    padding-bottom: var(--page-gutter);
+  .hero-field {
+    min-height: 500px;
+    padding: 48px 20px;
   }
 
-  .hero-field {
-    min-height: 610px;
-    padding: 68px 20px 24px;
+  .hero-background {
+    object-position: 52% center;
   }
 
   .hero h1 {
-    font-size: clamp(43px, 13vw, 59px);
+    font-size: clamp(40px, 11.5vw, 50px);
   }
 
   .hero-intro {
     font-size: 13px;
-  }
-
-  .hero-trace {
-    height: 224px;
-    margin-top: 44px;
-  }
-
-  .hero-trace-head span:last-child {
-    display: none;
-  }
-
-  .hero-trace svg {
-    width: 156%;
-    max-width: none;
-    margin-top: 7px;
-    margin-left: -27%;
-  }
-
-  .trace-result {
-    display: none;
   }
 
   .centered-intro {
