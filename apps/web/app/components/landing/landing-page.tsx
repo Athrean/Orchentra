@@ -4,7 +4,7 @@ import { SpecialistCarousel } from './crew'
 import { Hero } from './hero'
 import { Footer, InstallCTA } from './install-footer'
 import { MotionProvider } from './motion'
-import { BenefitGrid, CapabilityGrid, FaqSection, ProofMosaic, SiteRail, WorkflowSection } from './sections'
+import { MetricsSection, QuickstartSection, ReasonGrid, RunSection, SiteHeader, WorkflowSection } from './sections'
 
 export function LandingPage(): React.ReactNode {
   return (
@@ -12,20 +12,18 @@ export function LandingPage(): React.ReactNode {
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <SiteRail />
-      <div className="page-canvas">
-        <main id="main-content">
-          <Hero />
-          <BenefitGrid />
-          <SpecialistCarousel />
-          <ProofMosaic />
-          <WorkflowSection />
-          <CapabilityGrid />
-          <InstallCTA />
-          <FaqSection />
-        </main>
-        <Footer />
-      </div>
+      <SiteHeader />
+      <main id="main-content">
+        <Hero />
+        <QuickstartSection />
+        <RunSection />
+        <ReasonGrid />
+        <SpecialistCarousel />
+        <WorkflowSection />
+        <MetricsSection />
+        <InstallCTA />
+      </main>
+      <Footer />
     </MotionProvider>
   )
 }

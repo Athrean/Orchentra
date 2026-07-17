@@ -4,19 +4,19 @@ import { revealItem, softSpring } from './motion'
 
 const heroSequence: Variants = {
   hidden: {},
-  visible: { transition: { delayChildren: 0.06, staggerChildren: 0.1 } },
+  visible: { transition: { delayChildren: 0.05, staggerChildren: 0.09 } },
 }
 
 const titleLine: Variants = {
-  hidden: { y: '108%' },
+  hidden: { y: '110%' },
   visible: { y: 0, transition: { ...softSpring, stiffness: 120, damping: 20 } },
 }
 
 const lanes = [
-  { role: 'EXPLORE', path: 'M78 82 H350 L712 230 H1080', y: 82 },
-  { role: 'PLAN', path: 'M78 180 H410 L712 230 H1080', y: 180 },
-  { role: 'BUILD', path: 'M78 280 H410 L712 230 H1080', y: 280 },
-  { role: 'VERIFY', path: 'M78 378 H350 L712 230 H1080', y: 378 },
+  { label: 'INSPECT', y: 74, delay: 0 },
+  { label: 'PLAN', y: 132, delay: 0.18 },
+  { label: 'BUILD', y: 190, delay: 0.36 },
+  { label: 'VERIFY', y: 248, delay: 0.54 },
 ] as const
 
 export function Hero(): React.ReactNode {
@@ -32,93 +32,80 @@ export function Hero(): React.ReactNode {
       variants={heroSequence}
     >
       <div className="section-frame">
-        <m.p className="eyebrow hero-eyebrow" variants={revealItem}>
-          Model-aware coding harness · Local execution · Verifiable completion
-        </m.p>
-        <m.h1 id="hero-title" variants={heroSequence}>
-          <span>
-            <m.span variants={titleLine}>The coding loop,</m.span>
-          </span>
-          <span>
-            <m.span variants={titleLine}>closed.</m.span>
-          </span>
-        </m.h1>
+        <div className="hero-field">
+          <m.p className="hero-note" variants={revealItem}>
+            Local-first coding orchestration · Open source
+          </m.p>
+          <m.h1 id="hero-title" variants={heroSequence}>
+            <span>
+              <m.span variants={titleLine}>Give every coding run</m.span>
+            </span>
+            <span>
+              <m.span variants={titleLine}>a finish line.</m.span>
+            </span>
+          </m.h1>
+          <m.p className="hero-intro" variants={revealItem}>
+            Orchentra plans the work, coordinates specialist agents, runs the real checks, and returns the evidence
+            behind the result.
+          </m.p>
+          <m.div className="button-row hero-actions" variants={revealItem}>
+            <a className="button button--hero" href="#install">
+              Install Orchentra
+            </a>
+            <a className="button button--ghost" href={GITHUB_URL}>
+              View source ↗
+            </a>
+          </m.div>
 
-        <m.div className="score-stage" variants={revealItem}>
-          <div className="score-topline">
-            <span>ORCHESTRATION SCORE / LIVE CONTRACT</span>
-            <span>INSPECT → EXECUTE → PROVE</span>
-          </div>
-          <svg viewBox="0 0 1160 460" role="img" aria-labelledby="score-title score-description">
-            <title id="score-title">Four agent lanes converging on a completion gate</title>
-            <desc id="score-description">
-              Explore, plan, build, and verify work converge before evidence is returned.
-            </desc>
-            <line className="score-axis" x1="712" y1="45" x2="712" y2="414" />
-            {lanes.map((lane, index) => (
-              <g key={lane.role}>
-                <text className="score-label" x="79" y={lane.y - 18}>
-                  {`0${index + 1} / ${lane.role}`}
-                </text>
-                <path className="score-path" d={lane.path} />
-                <rect className="score-node" x={index % 2 === 0 ? 344 : 404} y={lane.y - 6} width="12" height="12" />
-              </g>
-            ))}
-            <rect className="score-gate" x="690" y="208" width="44" height="44" />
-            <text className="score-gate-mark" x="712" y="234" textAnchor="middle">
-              ✓
-            </text>
-            <text className="score-output" x="924" y="207">
-              EVIDENCE
-            </text>
-            <text className="score-output score-output--muted" x="924" y="229">
-              completion granted
-            </text>
-            <m.rect
-              className="score-runner"
-              width="10"
-              height="10"
-              initial={{ x: 73, y: 77 }}
-              animate={reduceMotion ? { x: 707, y: 225 } : { x: [73, 345, 707, 1075], y: [77, 77, 225, 225] }}
-              transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : {
-                      duration: 4.6,
-                      times: [0, 0.34, 0.72, 1],
-                      repeat: Infinity,
-                      repeatDelay: 1.4,
-                      ease: 'linear',
-                    }
-              }
-            />
-          </svg>
-          <div className="score-mobile-output" aria-hidden="true">
-            <span>Evidence</span>
-            <strong>Pass</strong>
-          </div>
-        </m.div>
-
-        <m.div className="hero-bottom" variants={revealItem}>
-          <div className="hero-counter" aria-hidden="true">
-            <span>01</span>
-            <span>04</span>
-          </div>
-          <div className="hero-copy">
-            <p>
-              Orchentra coordinates specialist agents inside your repository, runs the checks, operates the rendered
-              product when it matters, and preserves the evidence behind “done.”
-            </p>
-            <div className="button-row">
-              <a className="button button--dark" href="#install">
-                Install Orchentra
-              </a>
-              <a className="button button--light" href={GITHUB_URL}>
-                View GitHub ↗
-              </a>
+          <m.div className="hero-trace" variants={revealItem} aria-hidden="true">
+            <div className="hero-trace-head">
+              <span>RUN / FEAT-VERIFICATION-PANEL</span>
+              <span>COMPLETION CONTRACT · ACTIVE</span>
             </div>
-          </div>
-        </m.div>
+            <svg viewBox="0 0 900 300">
+              <line className="trace-spine" x1="690" y1="38" x2="690" y2="268" />
+              {lanes.map((lane) => (
+                <g key={lane.label}>
+                  <text className="trace-label" x="34" y={lane.y - 12}>
+                    {lane.label}
+                  </text>
+                  <path className="trace-lane" d={`M34 ${lane.y} H360 L540 160 H690`} />
+                  <m.circle
+                    className="trace-pulse"
+                    cx="34"
+                    cy={lane.y}
+                    r="4"
+                    animate={
+                      reduceMotion ? { cx: 690, cy: 160 } : { cx: [34, 360, 540, 690], cy: [lane.y, lane.y, 160, 160] }
+                    }
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : {
+                            duration: 3.2,
+                            delay: lane.delay,
+                            repeat: Infinity,
+                            repeatDelay: 2.2,
+                            times: [0, 0.42, 0.72, 1],
+                            ease: 'linear',
+                          }
+                    }
+                  />
+                </g>
+              ))}
+              <rect className="trace-gate-box" x="674" y="144" width="32" height="32" />
+              <text className="trace-gate-check" x="690" y="165" textAnchor="middle">
+                ✓
+              </text>
+              <text className="trace-result" x="746" y="154">
+                EVIDENCE
+              </text>
+              <text className="trace-result trace-result--small" x="746" y="175">
+                PASS · RETURN RESULT
+              </text>
+            </svg>
+          </m.div>
+        </div>
       </div>
     </m.section>
   )

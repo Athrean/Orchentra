@@ -1,58 +1,47 @@
 .crew-section {
-  border-top: 1px solid var(--rule);
-}
-
-.section-heading--crew {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-  gap: 32px;
-  align-items: end;
-}
-
-.section-heading--crew .eyebrow {
-  grid-column: 1 / -1;
-  margin-bottom: -20px;
-}
-
-.section-heading--crew p:last-child {
-  max-width: 48ch;
-  margin: 0;
-  color: var(--graphite);
-  font-size: 15px;
-  line-height: 1.6;
+  background: var(--surface);
 }
 
 .crew-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 62px;
+  margin-inline: calc(var(--page-gutter) * -1);
+  border-top: 1px solid var(--line);
 }
 
 .specialist-card {
   min-width: 0;
+  border-left: 1px solid var(--line);
+}
+
+.specialist-card:first-child {
+  border-left: 0;
 }
 
 .specialist-visual {
   position: relative;
-  height: 330px;
+  height: 310px;
   overflow: hidden;
-  background: var(--fog);
-}
-
-.specialist-card:nth-child(even) .specialist-visual {
-  background: #e3e3e3;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--line);
 }
 
 .specialist-image {
   position: absolute;
-  right: -12%;
+  right: -11%;
   bottom: -17%;
   width: 108%;
   aspect-ratio: 1;
-  filter: grayscale(1) contrast(1.22);
+  filter: grayscale(1) contrast(1.18);
   mix-blend-mode: multiply;
   pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .specialist-image {
+    filter: grayscale(1) contrast(1.15) invert(1);
+    mix-blend-mode: screen;
+  }
 }
 
 .specialist-image img {
@@ -62,26 +51,26 @@
 .portrait-grid {
   position: absolute;
   inset: 0;
-  opacity: 0;
   background-image:
-    linear-gradient(to right, rgba(5, 5, 5, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(5, 5, 5, 0.1) 1px, transparent 1px);
+    linear-gradient(to right, currentColor 1px, transparent 1px),
+    linear-gradient(to bottom, currentColor 1px, transparent 1px);
   background-size: 22px 22px;
-  mask-image: linear-gradient(125deg, #000, transparent 60%);
-  transition: opacity 220ms ease;
+  opacity: 0;
+  mask-image: linear-gradient(125deg, #000, transparent 64%);
+  transition: opacity 180ms ease;
 }
 
 .specialist-card:hover .portrait-grid {
-  opacity: 1;
+  opacity: 0.08;
 }
 
 .specialist-command {
   position: absolute;
   z-index: 2;
-  top: 16px;
-  left: 16px;
+  top: 17px;
+  left: 17px;
   font-family: var(--font-pixel);
-  font-size: clamp(23px, 2.2vw, 34px);
+  font-size: clamp(25px, 2.6vw, 36px);
   line-height: 1;
   letter-spacing: -0.035em;
 }
@@ -96,60 +85,62 @@
   width: 34px;
   height: 34px;
   background: var(--ink);
-  color: var(--paper);
+  color: var(--surface);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 8px;
 }
 
 .specialist-copy {
-  padding: 18px 2px 0;
+  min-height: 440px;
+  padding: 24px 22px 28px;
 }
 
 .card-kicker {
   margin: 0;
-  color: var(--muted);
+  color: var(--secondary);
   font-size: 8px;
 }
 
 .specialist-copy h3 {
-  min-height: 2.1em;
-  margin: 8px 0 0;
-  font-size: clamp(21px, 2vw, 28px);
+  min-height: 2.4em;
+  margin: 18px 0 0;
+  font-family: var(--font-display);
+  font-size: 21px;
   font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: -0.035em;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
 }
 
 .specialist-copy > p:not(.card-kicker),
 .support-role p {
-  margin: 11px 0 0;
-  color: var(--graphite);
-  font-size: 13.5px;
-  line-height: 1.55;
+  margin: 12px 0 0;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .support-role {
-  min-height: 132px;
-  padding-top: 16px;
-  margin-top: 18px;
-  border-top: 1px solid var(--rule);
+  min-height: 142px;
+  padding-top: 18px;
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
 }
 
 .support-role > span {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 13px;
+  gap: 5px;
+  margin-top: 16px;
   font-size: 7px;
 }
 
 .tag-row span {
   padding: 6px 7px;
-  background: var(--fog);
-  color: var(--coal);
+  background: var(--soft);
+  color: var(--secondary);
 }
