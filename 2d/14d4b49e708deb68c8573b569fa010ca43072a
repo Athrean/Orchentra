@@ -1,0 +1,43 @@
+apps/web/app/components/landing/model-rail.tsx
+  s_2013e9e2bfc2e9::t_1f2b59d8368f77 60-70
+apps/web/app/components/landing/data.ts
+  s_2013e9e2bfc2e9::t_8924b4ea81b04c 13-17,23-27,31-38,41-48,51-78
+apps/web/app/styles/editorial.css
+  s_2013e9e2bfc2e9::t_e613dab6919558 42,108-109,115-135
+apps/web/app/styles/responsive.css
+  s_2013e9e2bfc2e9::t_a1f9a686428f8c 10-13,189-190,194-195
+apps/web/public/labs/LICENSE.lobe-icons.txt
+  s_2013e9e2bfc2e9::t_d9d34ff7622e84 1-27
+apps/web/public/labs/chatgpt.svg
+  s_2013e9e2bfc2e9::t_459706c7a5caab 1
+apps/web/public/labs/claude.svg
+  s_2013e9e2bfc2e9::t_6ed874d2139913 1
+apps/web/public/labs/deepseek.svg
+  s_2013e9e2bfc2e9::t_ce1f9fb996d98e 1
+apps/web/public/labs/gemini.svg
+  s_2013e9e2bfc2e9::t_b9c867d4a2279b 1
+apps/web/public/labs/grok.svg
+  s_2013e9e2bfc2e9::t_05f1a55cf1f3d5 1
+apps/web/public/labs/kimi-dark.svg
+  s_2013e9e2bfc2e9::t_62c0e12660cdaf 1
+apps/web/public/labs/kimi.svg
+  s_2013e9e2bfc2e9::t_900f0a04833f4a 1
+apps/web/public/labs/qwen.svg
+  s_2013e9e2bfc2e9::t_925500ab9186ca 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2d14d4b49e708deb68c8573b569fa010ca43072a",
+  "prompts": {},
+  "sessions": {
+    "s_2013e9e2bfc2e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fb7-1e75-77b2-b400-731b668a7fc1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
