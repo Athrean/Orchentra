@@ -52,7 +52,7 @@ export function Footer(): React.ReactNode {
       <div className="section-frame footer-grid">
         <Reveal className="footer-brand-block">
           <div className="footer-brand">
-            <Logo size={27} />
+            <Logo size={44} />
             <span>Orchentra</span>
           </div>
           <p>A local-first coding harness that makes specialist agents accountable to the repository and its checks.</p>

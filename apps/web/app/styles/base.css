@@ -120,14 +120,14 @@ button {
 .site-header {
   position: relative;
   z-index: 40;
-  height: 64px;
+  height: 72px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
 
 .header-inner {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
   align-items: center;
   width: 100%;
   max-width: var(--max-width);
@@ -141,12 +141,31 @@ button {
 .footer-brand,
 .run-window-brand {
   display: inline-flex;
-  gap: 8px;
   align-items: center;
   width: max-content;
-  font-size: 14px;
   font-weight: 650;
   text-decoration: none;
+}
+
+.site-brand {
+  gap: 11px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.footer-brand {
+  gap: 15px;
+  font-family: var(--font-display);
+  font-size: clamp(31px, 3vw, 42px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.run-window-brand {
+  gap: 8px;
+  font-size: 14px;
 }
 
 .site-brand img,
@@ -158,7 +177,7 @@ button {
 
 .header-nav {
   display: flex;
-  gap: 28px;
+  gap: 32px;
 }
 
 .header-nav a,
@@ -271,13 +290,13 @@ button {
   line-height: 1;
   text-decoration: none;
   transition:
-    transform 150ms ease,
     background 150ms ease,
-    color 150ms ease;
+    color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .button:hover {
-  transform: translateY(-2px);
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
 .button--dark {

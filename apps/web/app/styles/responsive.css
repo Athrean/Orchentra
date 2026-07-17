@@ -42,6 +42,10 @@
     display: none;
   }
 
+  .profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .hero-field {
     min-height: 520px;
     padding-inline: 32px;
@@ -118,7 +122,17 @@
   }
 
   .site-header {
-    height: 58px;
+    height: 66px;
+  }
+
+  .site-brand {
+    gap: 9px;
+    font-size: 17px;
+  }
+
+  .site-brand img {
+    width: 27px;
+    height: 27px;
   }
 
   .header-github {
@@ -158,16 +172,23 @@
     grid-template-columns: 1fr;
   }
 
-  .profile-grid > div {
-    justify-content: flex-start;
-    min-height: 58px;
+  .model-profile-cell {
+    min-height: 74px;
     padding-inline: var(--page-gutter);
-    border-top: 1px solid var(--line);
-    border-left: 0;
   }
 
-  .profile-grid > div:first-child {
-    border-top: 0;
+  .model-profile-swap {
+    justify-self: start;
+  }
+
+  .model-profile-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .model-profile-mark img {
+    width: 21px;
+    height: 21px;
   }
 
   .run-window {
@@ -281,6 +302,16 @@
 
   .footer-grid {
     padding-block: 48px;
+  }
+
+  .footer-brand {
+    gap: 12px;
+    font-size: 32px;
+  }
+
+  .footer-brand img {
+    width: 38px;
+    height: 38px;
   }
 
   .footer-bottom {

@@ -4,18 +4,18 @@
 
 .footer-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1.1fr) minmax(0, 2.9fr);
-  gap: 72px;
-  min-height: 340px;
-  padding-block: 58px 48px;
+  grid-template-columns: minmax(290px, 1.35fr) minmax(0, 2.65fr);
+  gap: 86px;
+  min-height: 390px;
+  padding-block: 72px 60px;
 }
 
 .footer-brand-block > p {
-  max-width: 34ch;
-  margin: 20px 0 0;
+  max-width: 38ch;
+  margin: 24px 0 0;
   color: var(--secondary);
-  font-size: 12px;
-  line-height: 1.65;
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .footer-links {

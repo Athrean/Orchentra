@@ -30,7 +30,6 @@ export function CopyCommand({ command }: { command: string }): React.ReactNode {
       className="copy-command"
       onClick={copy}
       aria-label="Copy install command"
-      whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
     >
       <span className="copy-prompt">{copied ? '✓' : '$'}</span>

@@ -1,5 +1,6 @@
 import { m } from 'framer-motion'
-import { GITHUB_URL, INSTALL_COMMAND, LICENSE_URL, modelProfiles, reasons, runMetrics, workflow } from './data'
+import { GITHUB_URL, INSTALL_COMMAND, LICENSE_URL, reasons, runMetrics, workflow } from './data'
+import { ModelRail } from './model-rail'
 import { Reveal, revealItem, stagger } from './motion'
 import { CopyCommand, Logo } from './ui'
 
@@ -8,7 +9,7 @@ export function SiteHeader(): React.ReactNode {
     <header className="site-header">
       <div className="header-inner">
         <a href="#top" className="site-brand" aria-label="Orchentra home">
-          <Logo size={22} />
+          <Logo size={30} />
           <span>Orchentra</span>
         </a>
         <nav className="header-nav" aria-label="Primary navigation">
@@ -38,14 +39,7 @@ export function QuickstartSection(): React.ReactNode {
           </p>
         </Reveal>
       </div>
-      <div className="profile-grid" aria-label="Supported model profiles">
-        {modelProfiles.map((profile, index) => (
-          <div key={profile}>
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <strong>{profile}</strong>
-          </div>
-        ))}
-      </div>
+      <ModelRail />
     </section>
   )
 }

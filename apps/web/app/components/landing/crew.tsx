@@ -6,13 +6,11 @@ import { Reveal, softSpring, stagger } from './motion'
 const card: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: softSpring },
-  hover: { y: -4, transition: { ...softSpring, stiffness: 190 } },
 }
 
 const image: Variants = {
   hidden: { scale: 1.025, y: 8 },
   visible: { scale: 1, y: 0, transition: softSpring },
-  hover: { scale: 1.035, y: -4, transition: softSpring },
 }
 
 export function SpecialistCarousel(): React.ReactNode {
@@ -38,13 +36,7 @@ export function SpecialistCarousel(): React.ReactNode {
           variants={stagger}
         >
           {specialists.map((agent) => (
-            <m.article
-              className="specialist-card"
-              role="listitem"
-              key={agent.command}
-              variants={card}
-              whileHover="hover"
-            >
+            <m.article className="specialist-card" role="listitem" key={agent.command} variants={card}>
               <div className="specialist-visual">
                 <m.div className="specialist-image" variants={image}>
                   <Image
