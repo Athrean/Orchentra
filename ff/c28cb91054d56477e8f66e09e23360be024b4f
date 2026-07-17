@@ -1,0 +1,19 @@
+apps/web/app/components/landing/ui.tsx
+  s_2013e9e2bfc2e9::t_b16194654ec09b 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ffc28cb91054d56477e8f66e09e23360be024b4f",
+  "prompts": {},
+  "sessions": {
+    "s_2013e9e2bfc2e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fb7-1e75-77b2-b400-731b668a7fc1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
