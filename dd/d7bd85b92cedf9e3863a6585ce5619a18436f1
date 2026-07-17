@@ -1,0 +1,55 @@
+apps/web/app/components/landing/crew.tsx
+  s_18c4f4a8ff0ac3::t_650588a2e02c0d 39
+apps/web/app/components/landing/data.ts
+  s_18c4f4a8ff0ac3::t_9a18d741b5cd8f 9-40
+apps/web/app/components/landing/install-footer.tsx
+  s_18c4f4a8ff0ac3::t_954914ecaae2d8 55
+apps/web/app/components/landing/sections.tsx
+  s_18c4f4a8ff0ac3::t_f5f24beefbe028 2-3,12,42
+apps/web/public/labs/anthropic.svg
+  s_18c4f4a8ff0ac3::t_fb1ddd4c8564d4 1
+apps/web/public/labs/gemini.svg
+  s_18c4f4a8ff0ac3::t_9065b708b6baa1 1
+apps/web/public/labs/ollama.svg
+  s_18c4f4a8ff0ac3::t_ece546a162271b 1
+apps/web/public/labs/openai.svg
+  s_18c4f4a8ff0ac3::t_973550625b3582 1
+apps/web/public/labs/openrouter.svg
+  s_18c4f4a8ff0ac3::t_c642a1fed2cf4f 1
+apps/web/app/components/landing/model-rail.tsx
+  s_2013e9e2bfc2e9::t_0057604c74592d 1-68
+apps/web/app/styles/base.css
+  s_2013e9e2bfc2e9::t_37c088911e3ede 123,130,150-170,180,294-295,299
+apps/web/app/styles/carousels.css
+  s_2013e9e2bfc2e9::t_c9c864068d7ae0 15-22
+apps/web/app/styles/editorial.css
+  s_2013e9e2bfc2e9::t_92666409140c84 43,46,48,50,53-98,100-101,104-112,115-119,122-123,125-126,128,130
+apps/web/app/styles/footer.css
+  s_2013e9e2bfc2e9::t_bb0a33dc6d1093 7-10,14-15,17-18
+apps/web/app/styles/responsive.css
+  s_2013e9e2bfc2e9::t_5a54fbf23f9f2f 45-48,125-135,175-176,180-191,307-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ddd7bd85b92cedf9e3863a6585ce5619a18436f1",
+  "prompts": {},
+  "sessions": {
+    "s_18c4f4a8ff0ac3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f71be-a6c5-7900-bf5f-ee6bcb9a3f3b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    },
+    "s_2013e9e2bfc2e9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fb7-1e75-77b2-b400-731b668a7fc1",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
