@@ -4,172 +4,117 @@ export const RELEASES_URL = `${GITHUB_URL}/releases`
 export const ISSUES_URL = `${GITHUB_URL}/issues`
 export const SECURITY_URL = `${GITHUB_URL}/security`
 export const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
-export const PRODUCT_CONTRACT_URL = README_URL
 export const INSTALL_COMMAND = 'npm install -g @athreanlab/orchentra'
+
+export const modelProfiles = ['Anthropic', 'OpenAI / Codex', 'Gemini', 'OpenRouter', 'Open-compatible'] as const
 
 export const specialists = [
   {
     index: '01',
     role: 'Architect',
     command: '/plan',
-    title: 'Turns the repository into a path.',
-    body: 'Chooses the narrowest checkable approach, names the real alternatives, and defines what done must prove.',
+    title: 'Finds the path before files change.',
+    body: 'Reads the repository, compares viable approaches, and turns an open-ended request into a checkable plan.',
     image: '/heads/4.png',
     supportRole: 'Explorer',
-    supportBody: 'Maps scripts, conventions, constraints, and dirty state without touching the write surface.',
-    tags: ['read-only map', 'decision record'],
+    supportBody: 'Maps conventions, constraints, scripts, and existing work without widening the write surface.',
+    tags: ['read first', 'bound the work'],
   },
   {
     index: '02',
-    role: 'Senior dev',
+    role: 'Senior developer',
     command: '/build',
-    title: 'Builds the smallest complete slice.',
-    body: 'Works in the repository’s style, keeps the implementation lean, and delegates only genuinely independent work.',
+    title: 'Owns a complete, testable slice.',
+    body: 'Builds in the repository’s style and carries each change through the checks that can disprove it.',
     image: '/heads/5.png',
     supportRole: 'Builder',
-    supportBody: 'Owns one vertical slice with the full toolset and a verification obligation attached.',
-    tags: ['full tools', 'vertical slice'],
+    supportBody: 'Takes one independent slice with the tools and context needed to finish it cleanly.',
+    tags: ['vertical slice', 'full tools'],
   },
   {
     index: '03',
     role: 'Verifier',
     command: '/review',
-    title: 'Lets execution settle the review.',
-    body: 'Runs typechecks, tests, builds, repros, and browser flows so confidence cannot outrank evidence.',
+    title: 'Tries to break the completion claim.',
+    body: 'Runs the code, inspects the rendered product, and reports what the evidence says—not what the edit intended.',
     image: '/heads/6.png',
     supportRole: 'Reviewer',
-    supportBody: 'Can inspect and execute checks, but cannot edit the answer it is responsible for judging.',
-    tags: ['run checks', 'no edits'],
+    supportBody: 'Can inspect and execute checks, but cannot rewrite the answer it is responsible for judging.',
+    tags: ['execute checks', 'no edits'],
   },
   {
     index: '04',
     role: 'Orchestrator',
     command: 'agent',
-    title: 'Keeps parallel work accountable.',
-    body: 'Fans out independent tasks while every child inherits the parent’s live token, step, and dollar budget.',
+    title: 'Keeps the whole run inside bounds.',
+    body: 'Delegates independent work, tracks every child, and closes the run only when the shared contract is met.',
     image: '/heads/1.png',
     supportRole: 'Parallel crew',
-    supportBody: 'Coordinates up to four active roles and preserves a durable transcript for every handoff.',
-    tags: ['fan-out', 'shared budget'],
+    supportBody:
+      'Coordinates up to four active roles while preserving the budget, lineage, and result of every handoff.',
+    tags: ['shared budget', 'durable trace'],
   },
 ] as const
 
 export const reasons = [
   {
-    title: 'Repository first',
-    body: 'The tree, scripts, instructions, and dirty state are read before a plan becomes an edit.',
-    glyph: 'tree',
+    question: 'What did the agent actually do?',
+    title: 'Read the run, not the recap.',
+    body: 'Plans, tool calls, child tasks, edits, test results, and browser evidence stay connected in one inspectable trace.',
   },
   {
-    title: 'Model aware',
-    body: 'Profiles adapt prompts, tool vocabulary, and edit dialects to the model family doing the work.',
-    glyph: 'model',
+    question: 'Who decides when the work is done?',
+    title: 'The completion gate does.',
+    body: 'A verifiable task remains open until the required checks run and the result matches the product—not the model’s confidence.',
   },
   {
-    title: 'Evidence gated',
-    body: 'A verifiable task cannot reach done until tests or rendered-product evidence support the claim.',
-    glyph: 'gate',
-  },
-  {
-    title: 'Budget inherited',
-    body: 'Child agents draw from the parent’s live ceiling, keeping parallelism visible and bounded.',
-    glyph: 'budget',
-  },
-  {
-    title: 'Browser native',
-    body: 'When the product has a UI, Orchentra can run it, operate it, and preserve what actually happened.',
-    glyph: 'browser',
-  },
-  {
-    title: 'Local by design',
-    body: 'BYOK, zero application database, no telemetry, and git as the durable handoff.',
-    glyph: 'local',
+    question: 'How far can parallel work spread?',
+    title: 'Only as far as the live budget.',
+    body: 'Every child inherits the parent’s token, step, and spend ceilings, so fan-out stays visible and bounded.',
   },
 ] as const
 
 export const workflow = [
   {
     index: '01',
-    title: 'Inspect',
-    body: 'Map the repository, reproduce the problem, and establish the checks that can contradict the plan.',
+    command: 'orchentra inspect',
+    title: 'Start with the repository as it is.',
+    body: 'Orchentra reads instructions, scripts, architecture, and dirty state before it proposes a change.',
   },
   {
     index: '02',
-    title: 'Decide',
-    body: 'Choose the smallest complete path, bound the work, and assign independent slices deliberately.',
+    command: 'orchentra plan',
+    title: 'Turn the request into a contract.',
+    body: 'The run names the chosen path, its boundaries, and the checks that must pass before implementation begins.',
   },
   {
     index: '03',
-    title: 'Execute',
-    body: 'Edit in vertical slices, keep every child inside the shared budget, and surface failures immediately.',
+    command: 'orchentra run',
+    title: 'Delegate work without losing control.',
+    body: 'Independent slices can move in parallel while every writer, budget, and handoff remains attached to the parent run.',
   },
   {
     index: '04',
-    title: 'Prove',
-    body: 'Run the real gate, exercise the rendered product when relevant, and return the evidence chain.',
+    command: 'orchentra verify',
+    title: 'Return proof with the result.',
+    body: 'Tests, builds, browser flows, and failure receipts decide whether the run completes or comes back with the blocker.',
   },
 ] as const
 
-export const capabilities = [
+export const runMetrics = [
   {
-    index: '01',
-    title: 'Exact traces',
-    body: 'Tool results, decisions, spend, compaction, and verification evidence remain reconstructable.',
-    visual: 'trace',
+    label: 'Hosted database',
+    value: '0',
+    body: 'Local sessions and git remain the durable record.',
   },
   {
-    index: '02',
-    title: 'Durable context',
-    body: 'Long sessions compact live history without rewriting trust-boundary messages or sent prefixes.',
-    visual: 'context',
+    label: 'Active specialist roles',
+    value: '4',
+    body: 'One coordinated crew, each with explicit authority.',
   },
   {
-    index: '03',
-    title: 'Isolated writers',
-    body: 'Parallel builders work in separate worktrees and merge back only through gated, disjoint changes.',
-    visual: 'worktree',
-  },
-  {
-    index: '04',
-    title: 'Rendered proof',
-    body: 'Browser actions, accessibility assertions, console state, and network failures become reviewable evidence.',
-    visual: 'browser',
-  },
-  {
-    index: '05',
-    title: 'Recovery loops',
-    body: 'Classified failures trigger bounded replans instead of optimistic completion or endless retries.',
-    visual: 'recovery',
-  },
-  {
-    index: '06',
-    title: 'Provider choice',
-    body: 'Bring your own keys and use the model family that fits the repository, task, and budget.',
-    visual: 'provider',
-  },
-] as const
-
-export const faqs = [
-  {
-    question: 'Does Orchentra host my repository?',
-    answer: 'No. Orchentra runs from your terminal against your checkout. Git remains the durable handoff.',
-  },
-  {
-    question: 'Does it require an account or database?',
-    answer: 'No. The core is bring-your-own-key, uses local sessions, and has no application database.',
-  },
-  {
-    question: 'How does it verify interface work?',
-    answer:
-      'It can start the app, operate the rendered product in Chromium, and return browser evidence with the test results.',
-  },
-  {
-    question: 'Can agents work in parallel?',
-    answer:
-      'Yes. Independent builders can use isolated worktrees while sharing the parent task’s live budget and lifecycle.',
-  },
-  {
-    question: 'Does Orchentra collect telemetry?',
-    answer: 'No. The public product has no telemetry. Session evidence stays inspectable and local.',
+    label: 'Completion standard',
+    value: 'Proof',
+    body: 'Checks and rendered evidence outrank a confident answer.',
   },
 ] as const

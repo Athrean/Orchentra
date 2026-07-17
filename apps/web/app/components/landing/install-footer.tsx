@@ -5,30 +5,42 @@ import { CopyCommand, Logo } from './ui'
 
 export function InstallCTA(): React.ReactNode {
   return (
-    <section className="install-cta section-pad" id="install" aria-labelledby="install-title">
-      <div className="section-frame install-grid">
-        <Reveal className="install-panel">
-          <p className="eyebrow">Start in the terminal</p>
-          <h2 id="install-title">Put proof inside the coding loop.</h2>
+    <section className="install-cta ruled-section" id="install" aria-labelledby="install-title">
+      <div className="section-frame">
+        <Reveal className="centered-intro">
+          <p className="eyebrow">Run it where the code lives</p>
+          <h2 id="install-title">Bring your keys. Keep the control plane local.</h2>
           <p>
-            One global install. Your provider keys. Your repository. No hosted control plane between the work and you.
+            Orchentra runs against your checkout with no application database, no hosted workspace, and no product
+            telemetry.
           </p>
-          <div className="install-art" aria-hidden="true">
-            <span>READ</span>
-            <span>BUILD</span>
-            <span>RUN</span>
-            <strong>PROVE</strong>
-          </div>
         </Reveal>
-        <Reveal className="install-action" delay={0.08}>
-          <span className="install-index">01 / INSTALL</span>
-          <h3>Install Orchentra globally.</h3>
-          <CopyCommand command={INSTALL_COMMAND} />
-          <p>Then run Orchentra from the repository you want the crew to understand.</p>
-          <a className="button button--dark" href={GITHUB_URL}>
-            Read the setup guide ↗
-          </a>
-        </Reveal>
+
+        <div className="install-grid">
+          <Reveal className="install-terminal">
+            <div className="install-terminal-bar">
+              <span>~</span>
+              <span>Install</span>
+            </div>
+            <CopyCommand command={INSTALL_COMMAND} />
+            <div className="install-output" aria-hidden="true">
+              <span>package</span>
+              <strong>@athreanlab/orchentra</strong>
+              <span>scope</span>
+              <strong>global</strong>
+              <span>status</span>
+              <strong>ready</strong>
+            </div>
+          </Reveal>
+          <Reveal className="install-copy" delay={0.06}>
+            <span className="install-index">01 / INSTALL</span>
+            <h3>Open a repository. Start the run.</h3>
+            <p>Choose a model, describe the outcome, and let the harness connect the plan, execution, and evidence.</p>
+            <a className="button button--dark" href={README_URL}>
+              Read the setup guide ↗
+            </a>
+          </Reveal>
+        </div>
       </div>
     </section>
   )
@@ -38,13 +50,12 @@ export function Footer(): React.ReactNode {
   return (
     <footer className="brand-footer" id="footer">
       <div className="section-frame footer-grid">
-        <Reveal className="footer-statement">
+        <Reveal className="footer-brand-block">
           <div className="footer-brand">
-            <Logo size={34} />
+            <Logo size={27} />
             <span>Orchentra</span>
           </div>
-          <h2>Built where your code lives.</h2>
-          <p>Orchentra, the model-aware coding harness from Athrean Lab.</p>
+          <p>A local-first coding harness that makes specialist agents accountable to the repository and its checks.</p>
         </Reveal>
 
         <m.div
@@ -57,19 +68,10 @@ export function Footer(): React.ReactNode {
           <FooterColumn
             title="Product"
             links={[
-              ['Why Orchentra', '#why'],
+              ['Run trace', '#run'],
               ['Crew', '#crew'],
-              ['Capabilities', '#capabilities'],
+              ['Workflow', '#workflow'],
               ['Install', '#install'],
-            ]}
-          />
-          <FooterColumn
-            title="Workflow"
-            links={[
-              ['Inspect', '#workflow'],
-              ['Decide', '#workflow'],
-              ['Execute', '#workflow'],
-              ['Prove', '#workflow'],
             ]}
           />
           <FooterColumn
@@ -82,38 +84,42 @@ export function Footer(): React.ReactNode {
             ]}
           />
           <FooterColumn
+            title="Principles"
+            links={[
+              ['Local-first', '#run'],
+              ['Evidence-gated', '#why'],
+              ['Budget-aware', '#why'],
+              ['Provider choice', '#workflow'],
+            ]}
+          />
+          <FooterColumn
             title="Trust"
             links={[
               ['Security', SECURITY_URL],
               ['Apache-2.0 license', LICENSE_URL],
-              ['Questions', '#faq'],
             ]}
           />
         </m.div>
       </div>
 
-      <m.div
-        className="footer-wordmark"
-        aria-hidden="true"
-        initial={{ opacity: 0, y: 28 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ ...softSpring, delay: 0.08 }}
-      >
-        ORCHENTRA
-      </m.div>
-
       <div className="section-frame footer-bottom">
-        <span>© {new Date().getFullYear()} Orchentra by Athrean Lab</span>
+        <span>Orchentra by Athrean Lab</span>
         <span>CLI-first · BYOK · zero DB · no telemetry</span>
+        <span>© {new Date().getFullYear()}</span>
       </div>
     </footer>
   )
 }
 
-function FooterColumn({ title, links }: { title: string; links: ReadonlyArray<readonly [string, string]> }) {
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string
+  links: ReadonlyArray<readonly [string, string]>
+}): React.ReactNode {
   return (
-    <m.div variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: softSpring } }}>
+    <m.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: softSpring } }}>
       <h3>{title}</h3>
       <ul>
         {links.map(([label, href]) => (

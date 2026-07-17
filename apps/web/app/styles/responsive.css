@@ -1,360 +1,336 @@
-@media (max-width: 1120px) {
+@media (max-width: 1080px) {
   :root {
-    --rail-width: 168px;
-    --page-gutter: 40px;
+    --page-gutter: 28px;
   }
 
   .crew-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 58px;
+  }
+
+  .specialist-card:nth-child(3) {
+    border-left: 0;
+  }
+
+  .specialist-card:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
   }
 
   .specialist-visual {
     height: 390px;
   }
 
+  .specialist-copy {
+    min-height: 390px;
+  }
+
   .support-role {
-    min-height: 0;
+    min-height: 112px;
   }
 
   .footer-grid {
     grid-template-columns: 1fr;
+    gap: 48px;
   }
 }
 
-@media (max-width: 900px) {
-  :root {
-    --page-gutter: 32px;
+@media (max-width: 820px) {
+  .header-inner {
+    grid-template-columns: 1fr auto;
   }
 
-  .site-rail {
-    inset: 0 0 auto;
-    flex-direction: row;
-    gap: 24px;
-    align-items: center;
-    width: 100%;
-    height: 64px;
-    padding: 0 var(--page-gutter);
-    border-right: 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .page-canvas {
-    padding-top: 64px;
-    margin-left: 0;
-  }
-
-  .rail-nav {
-    display: flex;
-    gap: 18px;
-    margin-top: 0;
-    margin-left: auto;
-  }
-
-  .rail-meta {
-    margin-top: 0;
-  }
-
-  .rail-meta p {
+  .header-nav {
     display: none;
   }
 
-  .hero {
-    padding-top: 58px;
+  .hero-field {
+    min-height: 590px;
+    padding-inline: 32px;
   }
 
-  .hero-bottom,
-  .install-grid,
-  .faq-grid {
+  .hero-trace {
+    margin-top: 46px;
+  }
+
+  .paired-feature-grid,
+  .workflow-grid,
+  .install-grid {
     grid-template-columns: 1fr;
   }
 
-  .hero-counter {
-    display: none;
-  }
-
-  .hero-copy {
-    max-width: 55ch;
-    margin-left: auto;
-  }
-
-  .benefit-grid {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .proof-mosaic {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(220px, auto));
-  }
-
-  .proof-card--one,
-  .proof-card--two,
-  .proof-card--three,
-  .proof-card--inverse {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .proof-card--inverse {
-    grid-column: 1 / -1;
-  }
-
-  .workflow-feature {
-    grid-template-columns: 1fr;
-  }
-
-  .workflow-copy {
-    max-width: 52ch;
-  }
-
-  .capability-item,
-  .capability-item:nth-child(3),
-  .capability-item:nth-child(6) {
-    grid-column: auto;
-    grid-template-columns: 1fr;
-  }
-
-  .capability-visual {
-    min-height: 260px;
-  }
-
-  .faq-grid {
-    gap: 56px;
-  }
-
-  .install-panel {
-    min-height: 520px;
-  }
-}
-
-@media (max-width: 700px) {
-  :root {
-    --page-gutter: 22px;
-  }
-
-  .section-pad {
-    padding-block: 88px;
-  }
-
-  .site-rail {
-    gap: 14px;
-  }
-
-  .rail-brand span {
-    display: none;
-  }
-
-  .rail-nav {
-    gap: 14px;
-  }
-
-  .rail-nav a:nth-child(1),
-  .rail-nav a:nth-child(4) {
-    display: none;
-  }
-
-  .rail-meta a {
-    font-size: 10px;
-  }
-
-  .hero {
-    padding: 46px 0 78px;
-  }
-
-  .hero h1 {
-    font-size: clamp(54px, 16vw, 84px);
-  }
-
-  .score-stage {
-    min-height: 390px;
-    padding-inline: 12px;
-    margin-top: 38px;
-  }
-
-  .score-topline span:last-child {
-    display: none;
-  }
-
-  .score-stage svg {
-    width: 168%;
-    max-width: none;
-    margin-top: 22px;
-    margin-left: -42%;
-  }
-
-  .score-output {
-    display: none;
-  }
-
-  .score-mobile-output {
-    position: absolute;
-    right: 16px;
-    bottom: 16px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    font-family: var(--font-mono);
-    font-size: 7px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .score-mobile-output strong {
-    padding: 6px 8px;
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 7px;
-  }
-
-  .section-heading h2 {
-    font-size: clamp(38px, 11.5vw, 56px);
-  }
-
-  .section-heading--actions,
-  .section-heading--crew {
-    display: block;
-  }
-
-  .section-heading--actions .button {
-    margin-top: 24px;
-  }
-
-  .section-heading--crew .eyebrow {
-    margin-bottom: 10px;
-  }
-
-  .section-heading--crew p:last-child {
-    margin-top: 22px;
-  }
-
-  .benefit-grid {
-    grid-template-columns: 1fr;
-    margin-top: 52px;
-  }
-
-  .benefit-item,
-  .benefit-item:nth-child(3n + 2),
-  .benefit-item:nth-child(3n + 3) {
-    min-height: 0;
-    padding: 20px 0 32px;
+  .paired-feature,
+  .install-copy {
+    border-top: 1px solid var(--line);
     border-left: 0;
   }
 
-  .product-glyph {
-    width: 94px;
-    height: 94px;
+  .paired-feature:first-child {
+    border-top: 0;
   }
 
-  .glyph-axis {
-    top: 47px;
-    width: 78px;
+  .workflow-card,
+  .workflow-card:nth-child(-n + 2) {
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
-  .glyph-node--a,
-  .glyph-node--b,
-  .glyph-node--c {
-    top: 42px;
+  .workflow-card:first-child {
+    border-top: 0;
   }
 
-  .crew-grid {
-    display: flex;
-    gap: 14px;
-    padding-bottom: 18px;
-    margin-right: calc(var(--page-gutter) * -1);
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-  }
-
-  .crew-grid::-webkit-scrollbar {
-    display: none;
-  }
-
-  .specialist-card {
-    flex: 0 0 84vw;
-    scroll-snap-align: start;
-  }
-
-  .specialist-visual {
-    height: 370px;
-  }
-
-  .proof-mosaic {
+  .reason-grid,
+  .metrics-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: none;
-    margin-top: 52px;
   }
 
-  .proof-card--inverse {
-    grid-column: auto;
-    min-height: 260px;
+  .reason-grid article,
+  .metric-cell {
+    min-height: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
-  .workflow-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-top: 48px;
+  .reason-grid article:first-child,
+  .metric-cell:first-child {
+    border-top: 0;
   }
 
-  .trace-window {
-    min-height: 430px;
-    padding: 20px 14px;
+  .reason-question {
+    min-height: 0;
   }
 
-  .trace-body {
-    width: 100%;
+  .reason-grid h3 {
     margin-top: 32px;
   }
 
-  .trace-row {
-    grid-template-columns: 24px 86px minmax(0, 1fr);
-    gap: 8px;
-    padding-inline: 10px;
-    letter-spacing: 0.03em;
+  .metric-cell {
+    padding-block: 34px 40px;
   }
 
-  .capability-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .install-panel,
-  .install-action {
-    padding: 28px;
-  }
-
-  .install-action {
-    padding-inline: 0;
-  }
-
-  .install-art {
-    right: 22px;
-    left: 22px;
+  .metric-cell strong {
+    margin-top: 30px;
   }
 
   .footer-links {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 46px;
+    row-gap: 42px;
+  }
+}
+
+@media (max-width: 620px) {
+  :root {
+    --page-gutter: 20px;
   }
 
-  .footer-wordmark {
-    margin-top: 104px;
-    font-size: 22vw;
+  .site-header {
+    height: 58px;
+  }
+
+  .header-github {
+    font-size: 10px;
+  }
+
+  .hero .section-frame {
+    padding-bottom: var(--page-gutter);
+  }
+
+  .hero-field {
+    min-height: 610px;
+    padding: 68px 20px 24px;
+  }
+
+  .hero h1 {
+    font-size: clamp(43px, 13vw, 59px);
+  }
+
+  .hero-intro {
+    font-size: 13px;
+  }
+
+  .hero-trace {
+    height: 224px;
+    margin-top: 44px;
+  }
+
+  .hero-trace-head span:last-child {
+    display: none;
+  }
+
+  .hero-trace svg {
+    width: 156%;
+    max-width: none;
+    margin-top: 7px;
+    margin-left: -27%;
+  }
+
+  .trace-result {
+    display: none;
+  }
+
+  .centered-intro {
+    padding: 72px 0 56px;
+  }
+
+  .centered-intro h2 {
+    font-size: clamp(31px, 9.5vw, 42px);
+  }
+
+  .quickstart-frame {
+    padding-block: 68px 58px;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-grid > div {
+    justify-content: flex-start;
+    min-height: 58px;
+    padding-inline: var(--page-gutter);
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .profile-grid > div:first-child {
+    border-top: 0;
+  }
+
+  .run-window {
+    margin-inline: calc(var(--page-gutter) * -1);
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .run-window-bar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .run-window-bar > span:nth-child(2) {
+    display: none;
+  }
+
+  .run-window-toolbar {
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    min-height: 110px;
+  }
+
+  .run-window-toolbar > span:first-child {
+    display: none;
+  }
+
+  .run-window-toolbar strong {
+    font-size: 13px;
+  }
+
+  .run-table {
+    padding: 24px 14px;
+  }
+
+  .run-table-row {
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding-inline: 12px;
+  }
+
+  .run-table-row > :nth-child(2),
+  .run-table-row > :nth-child(3) {
+    display: none;
+  }
+
+  .run-window-foot {
+    gap: 18px;
+  }
+
+  .run-window-foot strong {
+    text-align: right;
+  }
+
+  .mini-trace,
+  .mini-receipt {
+    min-height: 220px;
+  }
+
+  .paired-copy,
+  .reason-grid article,
+  .workflow-copy {
+    padding-inline: 22px;
+  }
+
+  .crew-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .specialist-card,
+  .specialist-card:nth-child(3) {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .specialist-card:first-child {
+    border-top: 0;
+  }
+
+  .specialist-visual {
+    height: 390px;
+  }
+
+  .specialist-copy {
+    min-height: 0;
+    padding: 25px 22px 32px;
+  }
+
+  .specialist-copy h3 {
+    min-height: 0;
+  }
+
+  .support-role {
+    min-height: 0;
+  }
+
+  .terminal-frame {
+    min-height: 250px;
+    padding-inline: 20px;
+  }
+
+  .install-terminal,
+  .install-copy {
+    min-height: 390px;
+    padding-inline: 22px;
+  }
+
+  .install-copy h3 {
+    font-size: clamp(36px, 11vw, 48px);
+  }
+
+  .footer-grid {
+    padding-block: 48px;
   }
 
   .footer-bottom {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 7px;
-    margin-top: 62px;
+    padding-block: 20px;
+  }
+
+  .footer-bottom span:nth-child(2),
+  .footer-bottom span:last-child {
+    text-align: left;
   }
 }
 
 @media (max-width: 430px) {
-  .rail-nav a:nth-child(3) {
+  .copy-command > span:last-child {
     display: none;
   }
 
-  .copy-command > span:last-child {
-    display: none;
+  .copy-command {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .footer-links {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
   }
 }
 
