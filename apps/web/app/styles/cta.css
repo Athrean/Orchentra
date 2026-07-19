@@ -1,123 +1,185 @@
-.install-cta {
-  background: var(--surface);
+.final-cta-inner {
+  position: relative;
+  min-height: 450px;
+  overflow: hidden;
+  color: #031109;
 }
-
-.install-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-inline: calc(var(--page-gutter) * -1);
-  border-top: 1px solid var(--line);
+.final-cta-copy {
+  position: relative;
+  z-index: 2;
+  width: 650px;
+  padding: 76px 0 0 65px;
 }
-
-.install-terminal {
-  min-height: 430px;
-  padding: 0 34px 36px;
-  background: var(--canvas);
+.final-cta h2 {
+  margin-bottom: 17px;
+  font-size: 54px;
+  line-height: 1;
 }
-
-.install-terminal-bar {
+.final-cta-copy > p:not(.eyebrow) {
+  max-width: 510px;
+  margin-bottom: 29px;
+  color: rgba(1, 25, 13, 0.66);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.final-actions {
   display: flex;
-  justify-content: space-between;
-  padding: 14px 0;
-  margin-bottom: 70px;
-  color: var(--secondary);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.07em;
-  border-bottom: 1px solid var(--line);
-  text-transform: uppercase;
+  align-items: center;
+  gap: 28px;
+}
+.text-link--dark {
+  color: #06150d;
+}
+.text-link--dark span {
+  color: #06150d;
+}
+.final-command {
+  position: absolute;
+  z-index: 3;
+  right: 56px;
+  bottom: 42px;
+  width: 360px;
+}
+.final-command .copy-command {
+  border-color: rgba(0, 0, 0, 0.24);
 }
 
-.copy-command {
+.contact-page,
+.not-found-page {
+  border-bottom: 1px solid var(--line);
+}
+.contact-layout {
+  min-height: 780px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+.contact-intro {
+  position: relative;
+  overflow: hidden;
+  padding: 92px 65px;
+  background: var(--green);
+  color: #031109;
+}
+.contact-intro::after {
+  content: '';
+  position: absolute;
+  right: -120px;
+  bottom: -190px;
+  width: 480px;
+  height: 480px;
+  border: 1px solid rgba(0, 40, 20, 0.15);
+  border-radius: 50%;
+}
+.contact-intro h1 {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 30px;
+  font-size: 60px;
+  line-height: 0.96;
+}
+.contact-intro h1 em {
+  font-style: normal;
+  color: rgba(0, 32, 17, 0.55);
+}
+.contact-intro > p:last-child {
+  position: relative;
+  z-index: 1;
+  max-width: 390px;
+  color: rgba(1, 27, 14, 0.67);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.contact-form-wrap {
+  display: flex;
   align-items: center;
+  padding: 72px 60px;
+}
+.contact-form {
+  width: 100%;
+}
+.contact-form label {
+  display: grid;
+  gap: 11px;
+  margin-bottom: 25px;
+}
+.contact-form label > span {
+  color: #656565;
+  font: 500 7px/1 var(--font-mono);
+  letter-spacing: 0.1em;
+}
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 400 14px/1.4 var(--font-body);
+}
+.contact-form input {
+  height: 48px;
+}
+.contact-form textarea {
+  padding: 13px 0;
+  resize: vertical;
+}
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: var(--green);
+}
+.contact-submit {
   width: 100%;
   min-height: 52px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.07em;
-  text-align: left;
-  text-transform: uppercase;
+  margin-top: 11px;
+  border: 0;
+  background: var(--green);
+  color: #001007;
+  font: 500 9px/1 var(--font-mono);
+  letter-spacing: 0.09em;
   cursor: pointer;
-  transition: border-color 150ms ease;
+}
+.contact-submit span {
+  margin-left: 8px;
+}
+.form-receipt {
+  margin-top: 18px;
+  color: #7d9685;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
-.copy-command:hover {
-  border-color: var(--ink);
-}
-
-.copy-command code {
+.not-found-inner {
+  position: relative;
+  min-height: 690px;
   overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  text-transform: none;
-  white-space: nowrap;
+  color: #031109;
 }
-
-.copy-prompt {
-  font-size: 12px;
+.not-found-copy {
+  position: relative;
+  z-index: 2;
+  width: 610px;
+  padding: 120px 0 0 70px;
 }
-
-.install-output {
-  display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
-  margin-top: 34px;
-  font-family: var(--font-mono);
-  font-size: 8px;
+.not-found-copy h1 {
+  margin-bottom: 23px;
+  font-size: 65px;
+  line-height: 0.95;
 }
-
-.install-output span,
-.install-output strong {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
+.not-found-copy > p:not(.eyebrow) {
+  max-width: 420px;
+  margin-bottom: 30px;
+  color: rgba(1, 25, 13, 0.66);
+  font-size: 15px;
+  line-height: 1.5;
 }
-
-.install-output span {
-  color: var(--secondary);
-  text-transform: uppercase;
-}
-
-.install-output strong {
-  font-weight: 500;
-}
-
-.install-copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  min-height: 430px;
-  padding: 54px;
-  border-left: 1px solid var(--line);
-}
-
-.install-index {
-  color: var(--secondary);
-  font-size: 8px;
-}
-
-.install-copy h3 {
-  max-width: 12ch;
-  margin: 18px 0 0;
-  font-family: var(--font-display);
-  font-size: clamp(32px, 3.7vw, 52px);
-  font-weight: 500;
-  line-height: 0.98;
-  letter-spacing: -0.045em;
-}
-
-.install-copy p {
-  max-width: 46ch;
-  margin: 20px 0 26px;
-  color: var(--secondary);
-  font-size: 13px;
-  line-height: 1.6;
+.error-code {
+  position: absolute;
+  z-index: 1;
+  right: 38px;
+  bottom: -45px;
+  color: rgba(0, 35, 18, 0.13);
+  font: 500 260px/1 var(--font-display);
+  letter-spacing: -0.08em;
 }

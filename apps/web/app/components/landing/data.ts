@@ -6,186 +6,219 @@ export const SECURITY_URL = `${GITHUB_URL}/security`
 export const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
 export const INSTALL_COMMAND = 'npm install -g @athreanlab/orchentra'
 
-export const modelProfiles = [
+export const comparison = {
+  without: [
+    'One general-purpose agent owns every decision',
+    'Subtasks lose budget, lineage, and run context',
+    'Exit codes are mistaken for product correctness',
+    'Browser verification is optional or manual',
+    'Long runs collapse into an uncheckable recap',
+    'Parallel work can spread beyond its real limits',
+  ],
+  with: [
+    'Specialist roles with explicit authority',
+    'Shared budgets and durable child transcripts',
+    'Tests, builds, and browser evidence gate completion',
+    'Real browser operation with deterministic waits',
+    'Linked traces preserve the complete evidence chain',
+    'Local-first, BYOK, zero database, no telemetry',
+  ],
+} as const
+
+export const capabilities = [
   {
-    id: 'anthropic',
-    provider: 'Anthropic',
-    icon: {
-      light: '/labs/claude.svg',
-      dark: null,
-      mode: 'color',
-    },
-    models: ['Claude Opus', 'Claude Sonnet', 'Claude Haiku'],
+    icon: 'flow',
+    title: 'Unified Harness',
+    body: 'Keep planning, edits, delegated work, checks, browser state, and the final completion decision in one accountable run.',
   },
   {
-    id: 'openai',
-    provider: 'OpenAI',
-    icon: {
-      light: '/labs/chatgpt.svg',
-      dark: null,
-      mode: 'mono',
-    },
-    models: ['GPT-5', 'GPT-4o', 'o-series'],
+    icon: 'model',
+    title: 'Model Profiles',
+    body: 'Adapt prompt structure, edit dialect, tool vocabulary, and continuation behavior to the model family doing the work.',
   },
   {
-    id: 'xai',
-    provider: 'xAI',
-    icon: {
-      light: '/labs/grok.svg',
-      dark: null,
-      mode: 'mono',
-    },
-    models: ['Grok 4', 'Grok 3', 'Grok 3 Mini'],
+    icon: 'context',
+    title: 'Context Engine',
+    body: 'Preserve trust-boundary messages and live evidence while compacting only the context that is safe to replace.',
   },
   {
-    id: 'google',
-    provider: 'Google',
-    icon: {
-      light: '/labs/gemini.svg',
-      dark: null,
-      mode: 'color',
-    },
-    models: ['Gemini Pro', 'Gemini Flash', 'Gemini Flash-Lite'],
+    icon: 'browser',
+    title: 'Browser Verification',
+    body: 'Start the application, operate the rendered product, and surface console or network failures from a real Chromium session.',
   },
   {
-    id: 'moonshot',
-    provider: 'Moonshot AI',
-    icon: {
-      light: '/labs/kimi.svg',
-      dark: '/labs/kimi-dark.svg',
-      mode: 'adaptive',
-    },
-    models: ['Kimi K2', 'Kimi K2 Thinking', 'Kimi K1.5'],
+    icon: 'gate',
+    title: 'Completion Gates',
+    body: 'Keep verifiable work open until its declared checks run and the evidence supports the completion claim.',
   },
   {
-    id: 'alibaba',
-    provider: 'Alibaba',
-    icon: {
-      light: '/labs/qwen.svg',
-      dark: null,
-      mode: 'color',
-    },
-    models: ['Qwen3', 'Qwen3-Coder', 'QwQ'],
-  },
-  {
-    id: 'deepseek',
-    provider: 'DeepSeek',
-    icon: {
-      light: '/labs/deepseek.svg',
-      dark: null,
-      mode: 'color',
-    },
-    models: ['DeepSeek V3', 'DeepSeek R1', 'DeepSeek Coder'],
+    icon: 'agents',
+    title: 'Sub-Agent Runtime',
+    body: 'Fan out bounded, independent work while retaining shared budgets, role restrictions, durable state, and parent-child traces.',
   },
 ] as const
 
-export const specialists = [
+export const promptExamples = [
+  'Rebuild the settings flow and verify it in the browser',
+  'Split this refactor across isolated worktrees',
+  'Fix the regression and return the evidence that closes it',
+] as const
+
+export const setupSteps = [
   {
     index: '01',
-    role: 'Architect',
-    command: '/plan',
-    title: 'Finds the path before files change.',
-    body: 'Reads the repository, compares viable approaches, and turns an open-ended request into a checkable plan.',
-    image: '/heads/4.png',
-    supportRole: 'Explorer',
-    supportBody: 'Maps conventions, constraints, scripts, and existing work without widening the write surface.',
-    tags: ['read first', 'bound the work'],
+    short: '1. Install',
+    title: 'Install The Harness',
+    body: 'Add Orchentra globally, open the repository you want to change, and bring the provider credentials you already control.',
   },
   {
     index: '02',
-    role: 'Senior developer',
-    command: '/build',
-    title: 'Owns a complete, testable slice.',
-    body: 'Builds in the repository’s style and carries each change through the checks that can disprove it.',
-    image: '/heads/5.png',
-    supportRole: 'Builder',
-    supportBody: 'Takes one independent slice with the tools and context needed to finish it cleanly.',
-    tags: ['vertical slice', 'full tools'],
+    short: '2. Describe',
+    title: 'Describe The Outcome',
+    body: 'State the result you need. Orchentra reads repository instructions, dirty state, scripts, and architecture before work begins.',
   },
   {
     index: '03',
-    role: 'Verifier',
-    command: '/review',
-    title: 'Tries to break the completion claim.',
-    body: 'Runs the code, inspects the rendered product, and reports what the evidence says—not what the edit intended.',
-    image: '/heads/6.png',
-    supportRole: 'Reviewer',
-    supportBody: 'Can inspect and execute checks, but cannot rewrite the answer it is responsible for judging.',
-    tags: ['execute checks', 'no edits'],
-  },
-  {
-    index: '04',
-    role: 'Orchestrator',
-    command: 'agent',
-    title: 'Keeps the whole run inside bounds.',
-    body: 'Delegates independent work, tracks every child, and closes the run only when the shared contract is met.',
-    image: '/heads/1.png',
-    supportRole: 'Parallel crew',
-    supportBody:
-      'Coordinates up to four active roles while preserving the budget, lineage, and result of every handoff.',
-    tags: ['shared budget', 'durable trace'],
+    short: '3. Verify',
+    title: 'Run Until Proven',
+    body: 'The harness plans, delegates, edits, executes checks, operates the browser when relevant, and returns the evidence chain.',
   },
 ] as const
 
-export const reasons = [
+export const lifecycle = [
   {
-    question: 'What did the agent actually do?',
-    title: 'Read the run, not the recap.',
-    body: 'Plans, tool calls, child tasks, edits, test results, and browser evidence stay connected in one inspectable trace.',
+    id: 'inspect',
+    label: 'Inspect',
+    icon: 'folder',
+    title: 'Start With The Repository',
+    body: 'Load instructions, scripts, architecture, worktree state, and existing conventions before deciding what the task requires.',
   },
   {
-    question: 'Who decides when the work is done?',
-    title: 'The completion gate does.',
-    body: 'A verifiable task remains open until the required checks run and the result matches the product—not the model’s confidence.',
+    id: 'plan',
+    label: 'Plan',
+    icon: 'plan',
+    title: 'Turn Intent Into A Contract',
+    body: 'Choose a bounded path, name the files and behaviors in scope, and declare the checks that can disprove completion.',
   },
   {
-    question: 'How far can parallel work spread?',
-    title: 'Only as far as the live budget.',
-    body: 'Every child inherits the parent’s token, step, and spend ceilings, so fan-out stays visible and bounded.',
-  },
-] as const
-
-export const workflow = [
-  {
-    index: '01',
-    command: 'orchentra inspect',
-    title: 'Start with the repository as it is.',
-    body: 'Orchentra reads instructions, scripts, architecture, and dirty state before it proposes a change.',
+    id: 'build',
+    label: 'Build',
+    icon: 'build',
+    title: 'Coordinate The Right Crew',
+    body: 'Give independent slices to constrained specialists while the parent run retains the budget, authority, and merge contract.',
   },
   {
-    index: '02',
-    command: 'orchentra plan',
-    title: 'Turn the request into a contract.',
-    body: 'The run names the chosen path, its boundaries, and the checks that must pass before implementation begins.',
-  },
-  {
-    index: '03',
-    command: 'orchentra run',
-    title: 'Delegate work without losing control.',
-    body: 'Independent slices can move in parallel while every writer, budget, and handoff remains attached to the parent run.',
-  },
-  {
-    index: '04',
-    command: 'orchentra verify',
-    title: 'Return proof with the result.',
-    body: 'Tests, builds, browser flows, and failure receipts decide whether the run completes or comes back with the blocker.',
+    id: 'verify',
+    label: 'Verify',
+    icon: 'verify',
+    title: 'Close With Evidence',
+    body: 'Run the real checks, exercise rendered behavior, inspect failures, and complete only when the evidence matches the request.',
   },
 ] as const
 
-export const runMetrics = [
+export const plans = [
   {
-    label: 'Hosted database',
-    value: '0',
-    body: 'Local sessions and git remain the durable record.',
+    name: 'Open Source',
+    audience: 'For developers and teams running locally',
+    price: '$0',
+    suffix: 'forever',
+    body: 'The complete local coding harness. Bring your own provider keys and keep the control plane in your checkout.',
+    features: [
+      ['Model-aware runtime', true],
+      ['Browser verification', true],
+      ['Evidence-gated completion', true],
+      ['Specialist sub-agents', true],
+      ['Local traces and sessions', true],
+      ['Hosted workspace', false],
+      ['Managed provider credits', false],
+    ],
+    cta: 'Install Orchentra',
+    href: '#install',
+    popular: false,
   },
   {
-    label: 'Active specialist roles',
-    value: '4',
-    body: 'One coordinated crew, each with explicit authority.',
+    name: 'Teams',
+    audience: 'For organizations standardizing trusted runs',
+    price: 'Soon',
+    suffix: 'on the roadmap',
+    body: 'A future collaboration layer for teams that need shared policy and review without weakening the local-first core.',
+    features: [
+      ['Everything in open source', true],
+      ['Shared completion policies', true],
+      ['Team evidence review', true],
+      ['Organization controls', true],
+      ['Managed collaboration', true],
+      ['Product telemetry', false],
+      ['Closed provider lock-in', false],
+    ],
+    cta: 'Follow Releases',
+    href: RELEASES_URL,
+    popular: true,
+  },
+] as const
+
+export const principles = [
+  {
+    quote: 'A passing edit is not a finished product. The rendered behavior gets a vote.',
+    title: 'Browser evidence',
+    role: 'Verification contract',
   },
   {
-    label: 'Completion standard',
-    value: 'Proof',
-    body: 'Checks and rendered evidence outrank a confident answer.',
+    quote: 'Every specialist receives only the tools and authority required by its role.',
+    title: 'Constrained delegation',
+    role: 'Sub-agent contract',
+  },
+  {
+    quote: 'The final answer points back to checks and artifacts instead of asking for trust.',
+    title: 'Inspectable proof',
+    role: 'Trace contract',
+  },
+  {
+    quote: 'Children draw from the parent run. Parallel work never invents a hidden budget.',
+    title: 'Shared ceilings',
+    role: 'Budget contract',
+  },
+  {
+    quote: 'Provider choice changes execution strategy without changing the completion standard.',
+    title: 'Model awareness',
+    role: 'Runtime contract',
+  },
+  {
+    quote: 'Sessions, traces, credentials, and the working repository remain under local control.',
+    title: 'Local ownership',
+    role: 'Product contract',
+  },
+] as const
+
+export const faq = [
+  {
+    question: 'What is Orchentra?',
+    answer:
+      'Orchentra is a model-aware coding harness that coordinates specialist agents, runs the real checks, operates the rendered product when relevant, and preserves the evidence behind completion.',
+  },
+  {
+    question: 'Who is Orchentra built for?',
+    answer:
+      'It is built for developers and engineering teams who already use coding models but need stronger control over delegation, long-running work, verification, and auditability.',
+  },
+  {
+    question: 'Does Orchentra replace Claude Code or Codex?',
+    answer:
+      'No. Orchentra is the harness around model providers and coding workflows. It makes execution model-aware while keeping a consistent completion and evidence contract.',
+  },
+  {
+    question: 'Can I use my existing model providers?',
+    answer:
+      'Yes. The CLI is BYOK and supports provider-specific profiles so you can use the credentials and model access you already control.',
+  },
+  {
+    question: 'Does my work stay local?',
+    answer:
+      'Yes. The core product is CLI-first and zero-database. Repository state, sessions, traces, and the control plane stay local, and the product includes no telemetry.',
+  },
+  {
+    question: 'How does Orchentra decide a task is finished?',
+    answer:
+      'Verifiable work stays open until its completion policy has the required evidence: tests, builds, browser assertions, or classified failure receipts tied to the run trace.',
   },
 ] as const

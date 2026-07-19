@@ -1,46 +1,36 @@
-import { m } from 'framer-motion'
 import { GITHUB_URL, INSTALL_COMMAND, ISSUES_URL, LICENSE_URL, README_URL, RELEASES_URL, SECURITY_URL } from './data'
-import { Reveal, softSpring, stagger } from './motion'
-import { CopyCommand, Logo } from './ui'
+import { Reveal } from './motion'
+import { Brand, CopyCommand, CornerButton } from './ui'
 
-export function InstallCTA(): React.ReactNode {
+export function FinalCTA(): React.ReactNode {
   return (
-    <section className="install-cta ruled-section" id="install" aria-labelledby="install-title">
-      <div className="section-frame">
-        <Reveal className="centered-intro">
-          <p className="eyebrow">Run it where the code lives</p>
-          <h2 id="install-title">Bring your keys. Keep the control plane local.</h2>
-          <p>
-            Orchentra runs against your checkout with no application database, no hosted workspace, and no product
-            telemetry.
-          </p>
-        </Reveal>
-
-        <div className="install-grid">
-          <Reveal className="install-terminal">
-            <div className="install-terminal-bar">
-              <span>~</span>
-              <span>Install</span>
-            </div>
-            <CopyCommand command={INSTALL_COMMAND} />
-            <div className="install-output" aria-hidden="true">
-              <span>package</span>
-              <strong>@athreanlab/orchentra</strong>
-              <span>scope</span>
-              <strong>global</strong>
-              <span>status</span>
-              <strong>ready</strong>
-            </div>
-          </Reveal>
-          <Reveal className="install-copy" delay={0.06}>
-            <span className="install-index">01 / INSTALL</span>
-            <h3>Open a repository. Start the run.</h3>
-            <p>Choose a model, describe the outcome, and let the harness connect the plan, execution, and evidence.</p>
-            <a className="button button--dark" href={README_URL}>
-              Read the setup guide ↗
-            </a>
-          </Reveal>
+    <section className="final-cta ruled-section" id="install" aria-labelledby="install-title">
+      <div className="site-rail final-cta-inner">
+        <div className="technical-texture" aria-hidden="true">
+          <span className="texture-orbit texture-orbit--one" />
+          <span className="texture-orbit texture-orbit--two" />
+          <span className="texture-cross texture-cross--one">+</span>
+          <span className="texture-cross texture-cross--two">+</span>
         </div>
+        <Reveal className="final-cta-copy">
+          <p className="eyebrow eyebrow--light">READY WHEN YOUR REPOSITORY IS</p>
+          <h2 id="install-title">
+            Give the next coding run
+            <br />a real finish line.
+          </h2>
+          <p>Install the open-source harness. Bring your provider keys. Keep the evidence local.</p>
+          <div className="final-actions">
+            <CornerButton href={GITHUB_URL} external>
+              VIEW ON GITHUB
+            </CornerButton>
+            <a href="/contact" className="text-link text-link--dark">
+              CONTACT ATHREAN LAB <span>↗</span>
+            </a>
+          </div>
+        </Reveal>
+        <Reveal className="final-command" delay={0.08}>
+          <CopyCommand command={INSTALL_COMMAND} />
+        </Reveal>
       </div>
     </section>
   )
@@ -48,63 +38,45 @@ export function InstallCTA(): React.ReactNode {
 
 export function Footer(): React.ReactNode {
   return (
-    <footer className="brand-footer" id="footer">
-      <div className="section-frame footer-grid">
-        <Reveal className="footer-brand-block">
-          <div className="footer-brand">
-            <Logo size={44} />
-            <span>Orchentra</span>
-          </div>
-          <p>A local-first coding harness that makes specialist agents accountable to the repository and its checks.</p>
-        </Reveal>
-
-        <m.div
-          className="footer-links"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.18 }}
-          variants={stagger}
-        >
-          <FooterColumn
-            title="Product"
-            links={[
-              ['Run trace', '#run'],
-              ['Crew', '#crew'],
-              ['Workflow', '#workflow'],
-              ['Install', '#install'],
-            ]}
-          />
-          <FooterColumn
-            title="Project"
-            links={[
-              ['GitHub', GITHUB_URL],
-              ['README', README_URL],
-              ['Releases', RELEASES_URL],
-              ['Issues', ISSUES_URL],
-            ]}
-          />
-          <FooterColumn
-            title="Principles"
-            links={[
-              ['Local-first', '#run'],
-              ['Evidence-gated', '#why'],
-              ['Budget-aware', '#why'],
-              ['Provider choice', '#workflow'],
-            ]}
-          />
-          <FooterColumn
-            title="Trust"
-            links={[
-              ['Security', SECURITY_URL],
-              ['Apache-2.0 license', LICENSE_URL],
-            ]}
-          />
-        </m.div>
+    <footer className="site-footer">
+      <div className="site-rail footer-top">
+        <div className="footer-about">
+          <a href="#top" aria-label="Back to top">
+            <Brand />
+          </a>
+          <p>The coding harness for model-aware execution, constrained delegation, and evidence-gated completion.</p>
+        </div>
+        <FooterColumn
+          title="PRODUCT"
+          links={[
+            ['Capabilities', '/#capabilities'],
+            ['Workflow', '/#workflow'],
+            ['Pricing', '/#pricing'],
+            ['Install', '/#install'],
+          ]}
+        />
+        <FooterColumn
+          title="PROJECT"
+          links={[
+            ['GitHub', GITHUB_URL],
+            ['Documentation', README_URL],
+            ['Releases', RELEASES_URL],
+            ['Issues', ISSUES_URL],
+          ]}
+        />
+        <FooterColumn
+          title="COMPANY"
+          links={[
+            ['Athrean Lab', '/contact'],
+            ['Contact', '/contact'],
+            ['Security', SECURITY_URL],
+            ['License', LICENSE_URL],
+          ]}
+        />
       </div>
-
-      <div className="section-frame footer-bottom">
-        <span>Orchentra by Athrean Lab</span>
-        <span>CLI-first · BYOK · zero DB · no telemetry</span>
+      <div className="site-rail footer-bottom">
+        <span>ORCHENTRA BY ATHREAN LAB</span>
+        <span>CLI-FIRST · BYOK · ZERO DB · NO TELEMETRY</span>
         <span>© {new Date().getFullYear()}</span>
       </div>
     </footer>
@@ -119,15 +91,18 @@ function FooterColumn({
   links: ReadonlyArray<readonly [string, string]>
 }): React.ReactNode {
   return (
-    <m.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: softSpring } }}>
+    <div className="footer-column">
       <h3>{title}</h3>
       <ul>
         {links.map(([label, href]) => (
           <li key={label}>
-            <a href={href}>{label}</a>
+            <a href={href}>
+              {label}
+              <span>↗</span>
+            </a>
           </li>
         ))}
       </ul>
-    </m.div>
+    </div>
   )
 }
