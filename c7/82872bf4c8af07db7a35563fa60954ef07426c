@@ -1,0 +1,25 @@
+apps/web/app/404/page.tsx
+  s_2c8e39b3cfd680::t_00c98aa1e49191 1-5
+apps/web/app/components/contact-form.tsx
+  s_2c8e39b3cfd680::t_f6f4ffdb61a5ee 1-50
+apps/web/app/contact/page.tsx
+  s_2c8e39b3cfd680::t_12a890a150933c 1-43
+apps/web/app/not-found.tsx
+  s_2c8e39b3cfd680::t_b98fae30f84cbd 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c782872bf4c8af07db7a35563fa60954ef07426c",
+  "prompts": {},
+  "sessions": {
+    "s_2c8e39b3cfd680": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7b51-32f0-7341-a440-6dec59dbc61d",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
