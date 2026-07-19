@@ -1,0 +1,31 @@
+apps/web/app/components/landing/hero.tsx
+  s_2c8e39b3cfd680::t_6eac60c9859a27 4,38
+apps/web/app/components/landing/sections.tsx
+  s_2c8e39b3cfd680::t_f69f827e61d9f2 9,164,210,222,276-279,350-351
+apps/web/app/components/landing/visuals.tsx
+  s_2c8e39b3cfd680::t_7422285200e33f 1,3-4,6-12,15-22,25-138,141-157,159-164,166-236,240-255,257-301,303,305-309,311-326,330-338
+apps/web/app/styles/editorial.css
+  s_2c8e39b3cfd680::t_d66eb9230d5ccc 320
+apps/web/app/styles/hero.css
+  s_2c8e39b3cfd680::t_da680c7ed35c7e 57,69-296
+apps/web/app/styles/process.css
+  s_2c8e39b3cfd680::t_082466fbb553c7 79,253,261,289-290,295-298
+apps/web/app/styles/responsive.css
+  s_2c8e39b3cfd680::t_cccf73126e0955 36-38,110-115,169-171,251-255,445-450,484-488,544-546,593-594,598-600
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "beddcd8338c24a3dc5032cfa49c8509f88765178",
+  "prompts": {},
+  "sessions": {
+    "s_2c8e39b3cfd680": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7b51-32f0-7341-a440-6dec59dbc61d",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
