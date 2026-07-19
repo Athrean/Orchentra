@@ -152,6 +152,9 @@ export {
 } from './model-profile'
 export type { EditDialect, ModelProfile, ProfileDivergence, ProfileMode, ProviderName } from './model-profile'
 
+export { checkImageLimits, decodedByteLength, pngDimensions, MAX_IMAGE_BYTES, MAX_IMAGE_DIMENSION } from './image'
+export type { ImageContent, ImageLimits } from './image'
+
 export {
   parseFrontmatter,
   loadSkills,
