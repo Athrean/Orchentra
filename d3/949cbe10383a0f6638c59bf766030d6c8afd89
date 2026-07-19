@@ -1,0 +1,29 @@
+apps/web/app/styles/base.css
+  s_2c8e39b3cfd680::t_ad0620a9818980 46-52,57-59,66-89,104-105,180,230-231,251,270,317,321,398,487-493
+apps/web/app/styles/editorial.css
+  s_2c8e39b3cfd680::t_be679ec6226642 18,38,53,58,61,66,79,84,106,138,148,161,314,320
+apps/web/app/styles/footer.css
+  s_2c8e39b3cfd680::t_c01435104164a4 2,18,24,39,45,53,66
+apps/web/app/styles/process.css
+  s_2c8e39b3cfd680::t_0665cc54268185 33,50,69,79,203,219,228,236,253,261,270,282,420,426,435,455,467,473,493,499,513,517,520,560,565,593,598,630,639,649
+apps/web/app/layout.tsx
+  s_2c8e39b3cfd680::t_b932d10fca0479 21-25
+apps/web/app/styles/hero.css
+  s_2c8e39b3cfd680::t_c242b03c0f73b3 57,70-79,94-96,106-108,183,243,301-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d3949cbe10383a0f6638c59bf766030d6c8afd89",
+  "prompts": {},
+  "sessions": {
+    "s_2c8e39b3cfd680": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7b51-32f0-7341-a440-6dec59dbc61d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
