@@ -137,9 +137,6 @@
   .setup-inner {
     padding-inline: 35px;
   }
-  .setup-progress {
-    left: 70px;
-  }
   .setup-step {
     grid-template-columns: 70px 0.9fr 1.25fr;
   }
@@ -500,9 +497,6 @@
     margin-bottom: 48px;
     padding-inline: 12px;
   }
-  .setup-progress {
-    display: none;
-  }
   .setup-steps {
     gap: 12px;
   }
@@ -518,6 +512,9 @@
     padding: 0 18px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+  .setup-relay {
+    display: none;
   }
   .setup-step-index > span {
     width: 30px;

@@ -6,26 +6,12 @@
 .setup .section-heading {
   margin-bottom: 72px;
 }
-.setup-progress {
-  position: absolute;
-  z-index: 2;
-  left: 83px;
-  top: 296px;
-  width: 1px;
-  height: 750px;
-  background: var(--line);
-}
-.setup-progress i {
-  display: block;
-  width: 1px;
-  background: var(--green);
-  box-shadow: 0 0 8px rgba(0, 238, 128, 0.45);
-}
 .setup-steps {
   display: grid;
   gap: 20px;
 }
 .setup-step {
+  position: relative;
   display: grid;
   min-height: 240px;
   grid-template-columns: 84px 0.9fr 1.45fr;
@@ -33,6 +19,8 @@
   background: var(--panel-bg-soft);
 }
 .setup-step-index {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -40,6 +28,8 @@
   border-right: 1px solid var(--line);
 }
 .setup-step-index > span {
+  position: relative;
+  z-index: 2;
   display: grid;
   width: 35px;
   height: 35px;
@@ -49,6 +39,71 @@
   background: var(--canvas);
   color: var(--accent-text);
   font: 500 8px/1 var(--font-mono);
+  transition:
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    color 240ms ease,
+    opacity 240ms ease;
+}
+.setup-step.is-active .setup-step-index > span {
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-text) 10%, transparent);
+  opacity: 1;
+}
+.setup-step.is-complete .setup-step-index > span {
+  border-color: var(--line-strong);
+  color: var(--faint);
+  opacity: 0.42;
+}
+.setup-step.is-upcoming .setup-step-index > span {
+  border-color: var(--line-strong);
+  color: var(--muted);
+  opacity: 0.62;
+}
+.setup-relay {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  display: block;
+  width: 6px;
+  background-image: radial-gradient(circle, currentColor 1.15px, transparent 1.3px);
+  background-position: center 0;
+  background-repeat: repeat-y;
+  background-size: 2px 8px;
+  color: var(--faint);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition:
+    color 260ms ease,
+    filter 260ms ease,
+    opacity 260ms ease;
+}
+.setup-relay--out {
+  top: 67px;
+  bottom: -11px;
+}
+.setup-relay--in {
+  top: -11px;
+  height: 43px;
+}
+.setup-relay.is-complete {
+  color: var(--faint);
+  opacity: 0.2;
+}
+.setup-relay.is-upcoming {
+  color: var(--faint);
+  opacity: 0.42;
+}
+.setup-relay.is-active {
+  color: var(--accent-text);
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--accent-text) 35%, transparent));
+  opacity: 1;
+  animation: relay-dots 640ms linear infinite;
+}
+@keyframes relay-dots {
+  to {
+    background-position-y: 8px;
+  }
 }
 .setup-step-index small {
   display: none;
