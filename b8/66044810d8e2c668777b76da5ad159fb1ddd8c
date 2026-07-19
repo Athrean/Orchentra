@@ -1,0 +1,37 @@
+packages/cli-browser/src/engine.ts
+  s_78eb7e70681c18::t_65514844a336a4 53-54
+packages/cli-browser/src/playwright-engine.ts
+  s_78eb7e70681c18::t_5766de72a091b5 189,191
+packages/cli-browser/src/session-manager.ts
+  s_78eb7e70681c18::t_bd9a01b120238e 134-135
+packages/cli-browser/src/testing/fake-engine.ts
+  s_78eb7e70681c18::t_7b559a85ffe807 167,169-173
+packages/cli-core/src/runtime/browser.ts
+  s_78eb7e70681c18::t_eacec69e936e7e 93-96
+packages/cli-core/src/runtime/conversation.ts
+  s_78eb7e70681c18::t_a66d0f8ad146e8 563-565,786
+packages/cli-core/src/runtime/events.ts
+  s_78eb7e70681c18::t_c87c908d5b74da 46-47
+packages/cli-core/src/runtime/tools.ts
+  s_78eb7e70681c18::t_1350ab50746f98 5,139,144-150
+packages/cli-tools/src/tools/browser-tools.ts
+  s_78eb7e70681c18::t_0f2e5bdf1f544c 3,257-268,273
+packages/cli-tools/tests/browser-tools.test.ts
+  s_78eb7e70681c18::t_e26c78c3447bdf 55,57-62,196-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b866044810d8e2c668777b76da5ad159fb1ddd8c",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
