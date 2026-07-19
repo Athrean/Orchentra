@@ -1,67 +1,43 @@
-import { m, type Variants } from 'framer-motion'
-import Image from 'next/image'
 import { GITHUB_URL } from './data'
-import { revealItem, softSpring } from './motion'
-
-const heroSequence: Variants = {
-  hidden: {},
-  visible: { transition: { delayChildren: 0.05, staggerChildren: 0.09 } },
-}
-
-const titleLine: Variants = {
-  hidden: { y: '110%' },
-  visible: { y: 0, transition: { ...softSpring, stiffness: 120, damping: 20 } },
-}
+import { HeroReveal } from './motion'
+import { CornerButton } from './ui'
+import { WorkspaceMockup } from './visuals'
 
 export function Hero(): React.ReactNode {
   return (
-    <m.section
-      className="hero"
-      id="top"
-      aria-labelledby="hero-title"
-      initial="hidden"
-      animate="visible"
-      variants={heroSequence}
-    >
-      <div className="section-frame">
+    <section className="hero" id="top" aria-labelledby="hero-title">
+      <div className="site-rail hero-rail">
         <div className="hero-field">
-          <Image
-            className="hero-background"
-            src="/orch-back.webp"
-            alt=""
-            fill
-            priority
-            sizes="(max-width: 1280px) 100vw, 1280px"
-          />
-          <span className="hero-scrim" aria-hidden="true" />
-
-          <div className="hero-content">
-            <m.p className="hero-note" variants={revealItem}>
-              Local-first coding orchestration · Open source
-            </m.p>
-            <m.h1 id="hero-title" variants={heroSequence}>
-              <span>
-                <m.span variants={titleLine}>Give every coding run</m.span>
-              </span>
-              <span>
-                <m.span variants={titleLine}>a finish line.</m.span>
-              </span>
-            </m.h1>
-            <m.p className="hero-intro" variants={revealItem}>
-              Orchentra plans the work, coordinates specialist agents, runs the real checks, and returns the evidence
-              behind the result.
-            </m.p>
-            <m.div className="button-row hero-actions" variants={revealItem}>
-              <a className="button button--hero" href="#install">
-                Install Orchentra
-              </a>
-              <a className="button button--ghost" href={GITHUB_URL}>
-                View source ↗
-              </a>
-            </m.div>
+          <div className="technical-texture" aria-hidden="true">
+            <span className="texture-orbit texture-orbit--one" />
+            <span className="texture-orbit texture-orbit--two" />
+            <span className="texture-cross texture-cross--one">+</span>
+            <span className="texture-cross texture-cross--two">+</span>
+            <span className="texture-code">RUN / 00108</span>
           </div>
+          <HeroReveal className="hero-copy" delay={0.4}>
+            <p className="eyebrow eyebrow--light">THE ACCOUNTABLE CODING HARNESS</p>
+            <h1 id="hero-title">
+              Ship code with
+              <br />
+              proof attached.
+            </h1>
+            <p>
+              Orchentra coordinates the models, specialist agents, checks, and browser work behind one verifiable coding
+              run.
+            </p>
+            <div className="hero-actions">
+              <CornerButton href="#install">INSTALL ORCHENTRA</CornerButton>
+              <a href={GITHUB_URL} className="text-link" target="_blank" rel="noreferrer">
+                VIEW SOURCE <span>↗</span>
+              </a>
+            </div>
+          </HeroReveal>
         </div>
+        <HeroReveal className="hero-dashboard" delay={0.6} duration={1.5}>
+          <WorkspaceMockup />
+        </HeroReveal>
       </div>
-    </m.section>
+    </section>
   )
 }

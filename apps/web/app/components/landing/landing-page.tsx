@@ -1,10 +1,21 @@
 'use client'
 
-import { SpecialistCarousel } from './crew'
 import { Hero } from './hero'
-import { Footer, InstallCTA } from './install-footer'
+import { FinalCTA, Footer } from './install-footer'
 import { MotionProvider } from './motion'
-import { MetricsSection, QuickstartSection, ReasonGrid, RunSection, SiteHeader, WorkflowSection } from './sections'
+import {
+  CapabilitySection,
+  FaqSection,
+  LifecycleSection,
+  ModelSection,
+  MotiveSection,
+  PlaygroundSection,
+  PricingSection,
+  PrinciplesSection,
+  ProblemSection,
+  SetupSection,
+  SiteHeader,
+} from './sections'
 
 export function LandingPage(): React.ReactNode {
   return (
@@ -15,13 +26,17 @@ export function LandingPage(): React.ReactNode {
       <SiteHeader />
       <main id="main-content">
         <Hero />
-        <QuickstartSection />
-        <RunSection />
-        <ReasonGrid />
-        <SpecialistCarousel />
-        <WorkflowSection />
-        <MetricsSection />
-        <InstallCTA />
+        <MotiveSection />
+        <ProblemSection />
+        <CapabilitySection />
+        <PlaygroundSection />
+        <ModelSection />
+        <SetupSection />
+        <LifecycleSection />
+        <PricingSection />
+        <PrinciplesSection />
+        <FaqSection />
+        <FinalCTA />
       </main>
       <Footer />
     </MotionProvider>

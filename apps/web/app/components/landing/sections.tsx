@@ -1,147 +1,138 @@
-import { m } from 'framer-motion'
-import { GITHUB_URL, INSTALL_COMMAND, LICENSE_URL, reasons, runMetrics, workflow } from './data'
-import { ModelRail } from './model-rail'
-import { Reveal, revealItem, stagger } from './motion'
-import { CopyCommand, Logo } from './ui'
+'use client'
+
+import { AnimatePresence, m, useScroll, useTransform } from 'framer-motion'
+import { useRef, useState } from 'react'
+import { GITHUB_URL, comparison, capabilities, faq, lifecycle, plans, principles, setupSteps } from './data'
+import { Reveal, referenceEase } from './motion'
+import { Brand, CornerButton, Glyph } from './ui'
+import { CommandPanel, EvidencePanel, ProviderPanel, RunMap, WorkspaceMockup } from './visuals'
 
 export function SiteHeader(): React.ReactNode {
+  const [open, setOpen] = useState(false)
+
+  const links = [
+    ['WHY', '/#problem'],
+    ['CAPABILITIES', '/#capabilities'],
+    ['WORKFLOW', '/#workflow'],
+    ['PRICING', '/#pricing'],
+  ] as const
+
   return (
-    <header className="site-header">
-      <div className="header-inner">
-        <a href="#top" className="site-brand" aria-label="Orchentra home">
-          <Logo size={30} />
-          <span>Orchentra</span>
+    <header className={open ? 'site-header is-open' : 'site-header'}>
+      <div className="site-rail header-inner">
+        <a className="site-brand" href="/" aria-label="Orchentra home" onClick={() => setOpen(false)}>
+          <Brand />
         </a>
-        <nav className="header-nav" aria-label="Primary navigation">
-          <a href="#run">Product</a>
-          <a href="#crew">Crew</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#install">Install</a>
+        <nav className="desktop-nav" aria-label="Primary navigation">
+          {links.map(([label, href]) => (
+            <a href={href} key={label}>
+              {label}
+            </a>
+          ))}
         </nav>
-        <a className="header-github" href={GITHUB_URL}>
-          GitHub ↗
+        <a className="header-cta" href={GITHUB_URL} target="_blank" rel="noreferrer">
+          GITHUB <span>↗</span>
         </a>
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-expanded={open}
+          aria-controls="mobile-nav"
+          aria-label={open ? 'Close navigation' : 'Open navigation'}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span />
+          <span />
+        </button>
       </div>
+      <AnimatePresence initial={false}>
+        {open ? (
+          <m.nav
+            id="mobile-nav"
+            className="mobile-nav site-rail"
+            aria-label="Mobile navigation"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.76, ease: referenceEase }}
+          >
+            <div>
+              {links.map(([label, href], index) => (
+                <a href={href} key={label} onClick={() => setOpen(false)}>
+                  <span>0{index + 1}</span>
+                  {label}
+                  <b>↗</b>
+                </a>
+              ))}
+              <a href="/contact" onClick={() => setOpen(false)}>
+                <span>05</span>CONTACT<b>↗</b>
+              </a>
+            </div>
+          </m.nav>
+        ) : null}
+      </AnimatePresence>
     </header>
   )
 }
 
-export function QuickstartSection(): React.ReactNode {
+export function MotiveSection(): React.ReactNode {
   return (
-    <section className="quickstart ruled-section" aria-labelledby="quickstart-title">
-      <div className="section-frame quickstart-frame">
-        <Reveal className="quickstart-copy">
-          <p className="eyebrow">Orchentra CLI</p>
-          <h2 id="quickstart-title">Start in the repository.</h2>
-          <CopyCommand command={INSTALL_COMMAND} />
-          <p className="license-line">
-            Local-first · Open source · <a href={LICENSE_URL}>Apache-2.0</a>
-          </p>
+    <section className="motive ruled-section" aria-labelledby="motive-title">
+      <div className="site-rail motive-inner">
+        <Reveal>
+          <p className="eyebrow">THE MOTIVE</p>
+        </Reveal>
+        <Reveal delay={0.08}>
+          <h2 id="motive-title">
+            Models can write code. Orchentra makes the entire run <em>accountable.</em>
+          </h2>
         </Reveal>
       </div>
-      <ModelRail />
     </section>
   )
 }
 
-export function RunSection(): React.ReactNode {
+export function ProblemSection(): React.ReactNode {
   return (
-    <section className="run-section ruled-section" id="run" aria-labelledby="run-title">
-      <div className="section-frame">
-        <Reveal className="centered-intro">
-          <p className="eyebrow">One accountable run</p>
-          <h2 id="run-title">See the work that produced the answer.</h2>
-          <p>
-            Follow the plan, delegated tasks, changed files, checks, and completion decision without reconstructing the
-            story from chat.
-          </p>
+    <section className="problem ruled-section" id="problem" aria-labelledby="problem-title">
+      <div className="site-rail problem-inner">
+        <Reveal className="section-heading section-heading--center">
+          <p className="eyebrow">THE PROBLEM</p>
+          <h2 id="problem-title">
+            A capable model is not
+            <br />
+            an accountable system.
+          </h2>
+          <p>Without a harness, execution, delegation, and proof drift apart.</p>
         </Reveal>
-
-        <Reveal className="run-window">
-          <div className="run-window-bar">
-            <span className="run-window-brand">
-              <Logo size={17} />
-              Run trace
-            </span>
-            <span>feat/dashboard-filter</span>
-            <span>main</span>
-          </div>
-          <div className="run-window-toolbar">
-            <span>Task</span>
-            <strong>Add keyboard navigation to the filter panel</strong>
-            <span className="run-state">In verification</span>
-          </div>
-          <div className="run-table" role="table" aria-label="Example Orchentra run trace">
-            <div className="run-table-row run-table-head" role="row">
-              <span role="columnheader">Stage</span>
-              <span role="columnheader">Owner</span>
-              <span role="columnheader">Result</span>
-              <span role="columnheader">State</span>
+        <div className="comparison-grid">
+          <Reveal className="comparison-card comparison-card--muted">
+            <div className="comparison-title">
+              <span>×</span>
+              <strong>WITHOUT ORCHENTRA</strong>
             </div>
-            <div className="run-table-row" role="row">
-              <span role="cell">Inspect repository</span>
-              <span role="cell">Explorer</span>
-              <span role="cell">12 conventions · 3 checks</span>
-              <strong role="cell">Done</strong>
-            </div>
-            <div className="run-table-row" role="row">
-              <span role="cell">Choose implementation</span>
-              <span role="cell">Architect</span>
-              <span role="cell">1 bounded plan</span>
-              <strong role="cell">Done</strong>
-            </div>
-            <div className="run-table-row" role="row">
-              <span role="cell">Build interaction</span>
-              <span role="cell">Senior developer</span>
-              <span role="cell">4 files · 1 slice</span>
-              <strong role="cell">Done</strong>
-            </div>
-            <div className="run-table-row run-table-row--active" role="row">
-              <span role="cell">Verify behavior</span>
-              <span role="cell">Verifier</span>
-              <span role="cell">Tests + keyboard flow</span>
-              <strong role="cell">Running</strong>
-            </div>
-          </div>
-          <div className="run-window-foot">
-            <span>4 stages · 7 tool calls · 1 active gate</span>
-            <strong>Completion waits for evidence</strong>
-          </div>
-        </Reveal>
-
-        <div className="paired-feature-grid">
-          <Reveal className="paired-feature">
-            <div className="mini-trace" aria-hidden="true">
-              <span className="mini-line mini-line--one" />
-              <span className="mini-line mini-line--two" />
-              <span className="mini-line mini-line--three" />
-              <strong>1</strong>
-              <em>shared ceiling</em>
-            </div>
-            <div className="paired-copy">
-              <h3>Budget stays attached to the work.</h3>
-              <p>
-                Every delegated child draws from the same live token, step, and spend limits. Parallel work cannot hide
-                its real cost.
-              </p>
-            </div>
+            <ul>
+              {comparison.without.map((item) => (
+                <li key={item}>
+                  <span>×</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </Reveal>
-          <Reveal className="paired-feature" delay={0.06}>
-            <div className="mini-receipt" aria-hidden="true">
-              <span>TYPECHECK</span>
-              <strong>PASS</strong>
-              <span>TEST</span>
-              <strong>PASS</strong>
-              <span>BROWSER</span>
-              <strong>PASS</strong>
+          <Reveal className="comparison-card comparison-card--green" delay={0.08}>
+            <div className="comparison-title">
+              <span>✓</span>
+              <strong>WITH ORCHENTRA</strong>
             </div>
-            <div className="paired-copy">
-              <h3>Evidence ships with the result.</h3>
-              <p>
-                The final response points back to the checks, browser state, and failure receipts that decided whether
-                the task could close.
-              </p>
-            </div>
+            <ul>
+              {comparison.with.map((item) => (
+                <li key={item}>
+                  <span>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </Reveal>
         </div>
       </div>
@@ -149,67 +140,145 @@ export function RunSection(): React.ReactNode {
   )
 }
 
-export function ReasonGrid(): React.ReactNode {
+export function CapabilitySection(): React.ReactNode {
   return (
-    <section className="reason-section ruled-section" id="why" aria-labelledby="reason-title">
-      <div className="section-frame">
-        <Reveal className="centered-intro centered-intro--compact">
-          <p className="eyebrow">Why the harness exists</p>
-          <h2 id="reason-title">A coding agent should not grade its own work.</h2>
-          <p>Orchentra separates execution from proof, then keeps both inside the same local run.</p>
+    <section className="capability ruled-section" id="capabilities" aria-labelledby="capability-title">
+      <div className="site-rail capability-inner">
+        <Reveal className="section-heading section-heading--center">
+          <p className="eyebrow">THE SYSTEM</p>
+          <h2 id="capability-title">
+            Everything required to turn
+            <br />a request into verified work.
+          </h2>
         </Reveal>
-        <m.div
-          className="reason-grid"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={stagger}
-        >
-          {reasons.map((reason, index) => (
-            <m.article key={reason.question} variants={revealItem}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <p className="reason-question">“{reason.question}”</p>
-              <h3>{reason.title}</h3>
-              <p>{reason.body}</p>
-            </m.article>
+        <div className="capability-grid">
+          {capabilities.slice(0, 3).map((item, index) => (
+            <CapabilityCard item={item} key={item.title} index={index} />
           ))}
-        </m.div>
+          <Reveal className="capability-core" delay={0.05}>
+            <div className="technical-texture" aria-hidden="true">
+              <span className="texture-orbit texture-orbit--one" />
+              <span className="texture-orbit texture-orbit--two" />
+            </div>
+            <RunMap />
+            <div className="capability-core-copy">
+              <p className="eyebrow eyebrow--light">ONE ACCOUNTABLE RUN</p>
+              <h3>Launch a coding crew in minutes.</h3>
+            </div>
+          </Reveal>
+          {capabilities.slice(3).map((item, index) => (
+            <CapabilityCard item={item} key={item.title} index={index + 3} />
+          ))}
+        </div>
       </div>
     </section>
   )
 }
 
-export function WorkflowSection(): React.ReactNode {
+function CapabilityCard({ item, index }: { item: (typeof capabilities)[number]; index: number }): React.ReactNode {
   return (
-    <section className="workflow-section ruled-section" id="workflow" aria-labelledby="workflow-title">
-      <div className="section-frame">
-        <Reveal className="centered-intro">
-          <p className="eyebrow">The execution path</p>
-          <h2 id="workflow-title">From request to proof in four explicit stages.</h2>
+    <Reveal className={`capability-card capability-card--${index + 1}`} delay={(index % 3) * 0.04}>
+      <span className="capability-icon">
+        <Glyph name={item.icon} />
+      </span>
+      <span className="capability-index">0{index + 1}</span>
+      <div>
+        <h3>{item.title}</h3>
+        <p>{item.body}</p>
+      </div>
+    </Reveal>
+  )
+}
+
+export function PlaygroundSection(): React.ReactNode {
+  return (
+    <section className="split-feature ruled-section" aria-labelledby="playground-title">
+      <div className="site-rail split-feature-inner">
+        <Reveal className="feature-copy">
+          <p className="eyebrow">OUTCOME FIRST</p>
+          <h2 id="playground-title">Describe the finish line, not every keystroke.</h2>
           <p>
-            Order matters here: understand the repository, define the contract, do the work, then let the checks decide.
+            Orchentra reads the repository, selects a bounded execution path, and keeps the completion contract attached
+            to the work.
           </p>
+          <a className="arrow-link" href="#workflow">
+            SEE THE WORKFLOW <span>↗</span>
+          </a>
         </Reveal>
-        <div className="workflow-grid">
-          {workflow.map((step, index) => (
-            <Reveal className="workflow-card" key={step.index} delay={(index % 2) * 0.05}>
-              <div className="terminal-frame" aria-hidden="true">
-                <div className="terminal-bar">
-                  <span>~</span>
-                  <span>stage {step.index}</span>
-                </div>
-                <code>&gt; {step.command}</code>
-                <div className="terminal-lines">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <strong>{index === 3 ? 'EVIDENCE READY' : 'STAGE COMPLETE'}</strong>
-              </div>
-              <div className="workflow-copy">
+        <Reveal className="feature-visual feature-visual--command" delay={0.08}>
+          <CommandPanel />
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+export function ModelSection(): React.ReactNode {
+  return (
+    <section className="split-feature ruled-section split-feature--reverse" aria-labelledby="model-title">
+      <div className="site-rail split-feature-inner">
+        <Reveal className="feature-visual feature-visual--provider">
+          <ProviderPanel />
+        </Reveal>
+        <Reveal className="feature-copy" delay={0.08}>
+          <p className="eyebrow">MODEL AWARE</p>
+          <h2 id="model-title">One standard of proof. Provider-specific execution.</h2>
+          <p>
+            Prompt structure, edit behavior, tools, and continuation adapt to the model family without changing what
+            “complete” means.
+          </p>
+          <div className="feature-stat">
+            <strong>BYOK</strong>
+            <span>
+              YOUR MODELS.
+              <br />
+              YOUR PROVIDER KEYS.
+            </span>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+export function SetupSection(): React.ReactNode {
+  const sectionRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start 70%', 'end 70%'] })
+  const progress = useTransform(scrollYProgress, [0, 1], ['0%', '100%'])
+
+  return (
+    <section className="setup ruled-section" id="workflow" aria-labelledby="setup-title" ref={sectionRef}>
+      <div className="site-rail setup-inner">
+        <Reveal className="section-heading section-heading--center">
+          <p className="eyebrow">QUICK START</p>
+          <h2 id="setup-title">
+            From install to evidence
+            <br />
+            in three clear moves.
+          </h2>
+        </Reveal>
+        <div className="setup-progress" aria-hidden="true">
+          <m.i style={{ height: progress }} />
+        </div>
+        <div className="setup-steps">
+          {setupSteps.map((step, index) => (
+            <Reveal className="setup-step" key={step.index} amount={0.5}>
+              <div className="setup-step-index">
                 <span>{step.index}</span>
+                <small>{step.short}</small>
+              </div>
+              <div className="setup-step-copy">
                 <h3>{step.title}</h3>
                 <p>{step.body}</p>
+              </div>
+              <div className="setup-step-visual">
+                {index === 0 ? (
+                  <InstallVisual />
+                ) : index === 1 ? (
+                  <WorkspaceMockup compact />
+                ) : (
+                  <EvidencePanel mode="trace" />
+                )}
               </div>
             </Reveal>
           ))}
@@ -219,17 +288,231 @@ export function WorkflowSection(): React.ReactNode {
   )
 }
 
-export function MetricsSection(): React.ReactNode {
+function InstallVisual(): React.ReactNode {
   return (
-    <section className="metrics-section ruled-section" aria-label="Orchentra product facts">
-      <div className="section-frame metrics-grid">
-        {runMetrics.map((metric) => (
-          <Reveal className="metric-cell" key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{metric.value}</strong>
-            <p>{metric.body}</p>
-          </Reveal>
-        ))}
+    <div className="install-visual" aria-hidden="true">
+      <div>
+        <span>~/your-repository</span>
+        <i>•••</i>
+      </div>
+      <code>
+        <b>$</b> npm install -g @athreanlab/orchentra
+      </code>
+      <p>
+        <span>✓</span> installed 1 package
+      </p>
+      <code>
+        <b>$</b> orchentra run
+      </code>
+      <p>
+        <span>✓</span> repository instructions loaded
+      </p>
+    </div>
+  )
+}
+
+export function LifecycleSection(): React.ReactNode {
+  const [active, setActive] = useState(0)
+  const item = lifecycle[active]
+
+  return (
+    <section className="lifecycle ruled-section" aria-labelledby="lifecycle-title">
+      <div className="site-rail lifecycle-inner">
+        <Reveal className="section-heading section-heading--center">
+          <p className="eyebrow">THE RUN LIFECYCLE</p>
+          <h2 id="lifecycle-title">
+            Every stage visible.
+            <br />
+            Every handoff explicit.
+          </h2>
+        </Reveal>
+        <Reveal className="lifecycle-shell">
+          <div className="lifecycle-tabs" role="tablist" aria-label="Run stages">
+            {lifecycle.map((entry, index) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={index === active}
+                aria-controls={`panel-${entry.id}`}
+                id={`tab-${entry.id}`}
+                key={entry.id}
+                onClick={() => setActive(index)}
+              >
+                <span>0{index + 1}</span>
+                {entry.label}
+                <i>+</i>
+              </button>
+            ))}
+          </div>
+          <div className="lifecycle-panel" id={`panel-${item.id}`} role="tabpanel" aria-labelledby={`tab-${item.id}`}>
+            <AnimatePresence mode="wait">
+              <m.div
+                className="lifecycle-panel-inner"
+                key={item.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.44, ease: referenceEase }}
+              >
+                <div className="lifecycle-copy">
+                  <span>
+                    <Glyph name={item.icon} />
+                  </span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
+                <LifecycleVisual index={active} />
+              </m.div>
+            </AnimatePresence>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+function LifecycleVisual({ index }: { index: number }): React.ReactNode {
+  if (index === 3) return <EvidencePanel />
+  if (index === 2) return <RunMap />
+  if (index === 1) return <EvidencePanel mode="trace" />
+  return <WorkspaceMockup compact />
+}
+
+export function PricingSection(): React.ReactNode {
+  const [annual, setAnnual] = useState(true)
+
+  return (
+    <section className="pricing ruled-section" id="pricing" aria-labelledby="pricing-title">
+      <div className="site-rail pricing-inner">
+        <Reveal className="section-heading section-heading--center">
+          <p className="eyebrow">CLEAR FROM DAY ONE</p>
+          <h2 id="pricing-title">
+            Open source at the core.
+            <br />
+            No usage tax from us.
+          </h2>
+          <div className="billing-toggle">
+            <span className={!annual ? 'is-active' : ''}>TODAY</span>
+            <button
+              type="button"
+              aria-pressed={annual}
+              aria-label="Show roadmap plan"
+              onClick={() => setAnnual((value) => !value)}
+            >
+              <m.i animate={{ x: annual ? 22 : 0 }} transition={{ duration: 0.3 }} />
+            </button>
+            <span className={annual ? 'is-active' : ''}>ROADMAP</span>
+          </div>
+        </Reveal>
+        <div className="pricing-grid">
+          {plans.map((plan, index) => (
+            <Reveal
+              className={plan.popular ? 'price-card is-featured' : 'price-card'}
+              key={plan.name}
+              delay={index * 0.08}
+            >
+              {plan.popular ? <span className="price-badge">PLANNED</span> : null}
+              <p className="price-audience">{plan.audience}</p>
+              <h3>{plan.name}</h3>
+              <div className="price">
+                <strong>{plan.price}</strong>
+                <span>{plan.suffix}</span>
+              </div>
+              <p className="price-body">{plan.body}</p>
+              <ul>
+                {plan.features.map(([feature, included]) => (
+                  <li key={feature} className={included ? '' : 'is-muted'}>
+                    <span>{included ? '✓' : '—'}</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <CornerButton href={plan.href} external={plan.href.startsWith('http')}>
+                {plan.cta.toUpperCase()}
+              </CornerButton>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function PrinciplesSection(): React.ReactNode {
+  return (
+    <section className="principles ruled-section" aria-labelledby="principles-title">
+      <div className="site-rail principles-inner">
+        <Reveal className="section-heading section-heading--center">
+          <p className="eyebrow">BUILT ON CONTRACTS</p>
+          <h2 id="principles-title">
+            Trust comes from
+            <br />
+            how the system behaves.
+          </h2>
+        </Reveal>
+        <div className="principle-grid">
+          {principles.map((principle, index) => (
+            <Reveal className="principle-card" key={principle.title} delay={(index % 3) * 0.04}>
+              <span className="principle-mark">“</span>
+              <blockquote>{principle.quote}</blockquote>
+              <div>
+                <i>0{index + 1}</i>
+                <p>
+                  <strong>{principle.title}</strong>
+                  <span>{principle.role}</span>
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function FaqSection(): React.ReactNode {
+  const [open, setOpen] = useState<number | null>(0)
+
+  return (
+    <section className="faq ruled-section" aria-labelledby="faq-title">
+      <div className="site-rail faq-inner">
+        <Reveal className="section-heading section-heading--center">
+          <p className="eyebrow">COMMON QUESTIONS</p>
+          <h2 id="faq-title">Before your first run.</h2>
+        </Reveal>
+        <div className="faq-list">
+          {faq.map((item, index) => {
+            const expanded = open === index
+            return (
+              <Reveal className="faq-item" key={item.question} delay={(index % 3) * 0.03}>
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-controls={`faq-answer-${index}`}
+                  onClick={() => setOpen(expanded ? null : index)}
+                >
+                  <span>{item.question}</span>
+                  <m.i animate={{ rotate: expanded ? 45 : 0 }} transition={{ duration: 0.32 }}>
+                    +
+                  </m.i>
+                </button>
+                <AnimatePresence initial={false}>
+                  {expanded ? (
+                    <m.div
+                      id={`faq-answer-${index}`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.42, ease: referenceEase }}
+                    >
+                      <p>{item.answer}</p>
+                    </m.div>
+                  ) : null}
+                </AnimatePresence>
+              </Reveal>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
