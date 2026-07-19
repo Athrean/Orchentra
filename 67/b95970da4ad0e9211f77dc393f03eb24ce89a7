@@ -1,0 +1,19 @@
+apps/web/app/components/landing/sections.tsx
+  s_2c8e39b3cfd680::t_f016f49bf540e7 4,24,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "67b95970da4ad0e9211f77dc393f03eb24ce89a7",
+  "prompts": {},
+  "sessions": {
+    "s_2c8e39b3cfd680": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7b51-32f0-7341-a440-6dec59dbc61d",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
