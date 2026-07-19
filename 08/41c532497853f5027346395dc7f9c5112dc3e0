@@ -1,0 +1,27 @@
+apps/web/app/components/landing/sections.tsx
+  s_2c8e39b3cfd680::t_8aa44f1dcfd4cd 3,247,249-259,273-300
+apps/web/app/styles/base.css
+  s_2c8e39b3cfd680::t_ea2d009bbe9e41 251,259-267,270,273-277
+apps/web/app/styles/footer.css
+  s_2c8e39b3cfd680::t_d58b883ab4f141 39-40,43-45,55-61,63-67,69-70
+apps/web/app/styles/process.css
+  s_2c8e39b3cfd680::t_a12df7ad783fe8 14,22-23,31-32,42-106
+apps/web/app/styles/responsive.css
+  s_2c8e39b3cfd680::t_161cc58b96bdb7 516-518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0841c532497853f5027346395dc7f9c5112dc3e0",
+  "prompts": {},
+  "sessions": {
+    "s_2c8e39b3cfd680": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7b51-32f0-7341-a440-6dec59dbc61d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
