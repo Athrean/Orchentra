@@ -54,7 +54,7 @@
   height: 666px;
   padding: 50px 54px 0;
   overflow: hidden;
-  background: #aeb8c6;
+  background: var(--terminal-stage);
 }
 .hero-dashboard::before {
   content: '';
@@ -67,12 +67,16 @@
 }
 
 .orch-terminal {
-  --term-bg: #fcfcfc;
-  --term-border: #0000000f;
-  --term-text: #1e1e1e;
-  --term-muted: #707070;
-  --term-accent: #4f46e5;
-  --term-success: #087a4c;
+  --term-bg: #0e1013;
+  --term-border: rgba(255, 255, 255, 0.11);
+  --term-text: #eef0f3;
+  --term-muted: #8b9098;
+  --term-accent: #9b94ff;
+  --term-success: #45d99a;
+  --term-scrollbar: #42464d;
+  --term-shadow-ring: rgba(255, 255, 255, 0.05);
+  --term-shadow-soft: rgba(0, 0, 0, 0.24);
+  --term-shadow-deep: rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 4;
   display: flex;
@@ -87,9 +91,9 @@
   background: var(--term-bg);
   color: var(--term-text);
   box-shadow:
-    0 0 0 0.75px rgba(0, 0, 0, 0.06),
-    0 1.5px 3px rgba(0, 0, 0, 0.04),
-    0 6px 36px rgba(0, 0, 0, 0.12);
+    0 0 0 0.75px var(--term-shadow-ring),
+    0 1.5px 3px var(--term-shadow-soft),
+    0 6px 36px var(--term-shadow-deep);
   cursor: text;
   text-align: left;
   transition:
@@ -99,9 +103,9 @@
 
 .orch-terminal.is-focused {
   box-shadow:
-    0 0 0 2px rgba(79, 70, 229, 0.24),
-    0 1.5px 3px rgba(0, 0, 0, 0.04),
-    0 12px 42px rgba(0, 0, 0, 0.18);
+    0 0 0 2px color-mix(in srgb, var(--term-accent) 34%, transparent),
+    0 1.5px 3px var(--term-shadow-soft),
+    0 12px 42px var(--term-shadow-deep);
 }
 
 .orch-terminal--hero {
@@ -176,7 +180,7 @@
   padding: 12px 12px 8px;
   color: var(--term-text);
   font: 500 13px/20px var(--font-mono);
-  scrollbar-color: #d4d4d4 transparent;
+  scrollbar-color: var(--term-scrollbar) transparent;
   scrollbar-width: thin;
 }
 
@@ -236,7 +240,7 @@
   grid-template-columns: 13px 25px 1fr;
   min-height: 20px;
   align-items: baseline;
-  color: #757575;
+  color: var(--term-muted);
 }
 
 .terminal-options > div.is-current {
@@ -292,6 +296,21 @@
   border: 0;
   opacity: 0;
   pointer-events: none;
+}
+
+@media (prefers-color-scheme: light) {
+  .orch-terminal {
+    --term-bg: #fcfcfc;
+    --term-border: rgba(0, 0, 0, 0.06);
+    --term-text: #1e1e1e;
+    --term-muted: #707070;
+    --term-accent: #4f46e5;
+    --term-success: #087a4c;
+    --term-scrollbar: #d4d4d4;
+    --term-shadow-ring: rgba(0, 0, 0, 0.06);
+    --term-shadow-soft: rgba(0, 0, 0, 0.04);
+    --term-shadow-deep: rgba(0, 0, 0, 0.12);
+  }
 }
 
 .workspace {

@@ -30,7 +30,7 @@
   min-height: 240px;
   grid-template-columns: 84px 0.9fr 1.45fr;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--panel-bg-soft);
 }
 .setup-step-index {
   display: flex;
@@ -47,7 +47,7 @@
   border: 1px solid rgba(0, 238, 128, 0.35);
   border-radius: 50%;
   background: var(--canvas);
-  color: var(--green);
+  color: var(--accent-text);
   font: 500 8px/1 var(--font-mono);
 }
 .setup-step-index small {
@@ -66,7 +66,7 @@
 }
 .setup-step-copy p {
   margin: 0;
-  color: #838383;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
 }
@@ -76,7 +76,7 @@
   min-width: 0;
   padding: 18px;
   border-left: 1px solid var(--line);
-  background: #aeb8c6;
+  background: var(--terminal-stage);
   overflow: hidden;
 }
 .install-visual {
@@ -200,7 +200,7 @@
   grid-template-columns: 220px 1fr;
   min-height: 350px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.018);
+  background: var(--panel-bg-soft);
 }
 .lifecycle-tabs {
   display: flex;
@@ -216,7 +216,7 @@
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
-  color: #686868;
+  color: var(--muted);
   cursor: pointer;
   text-align: left;
 }
@@ -225,7 +225,7 @@
 }
 .lifecycle-tabs button[aria-selected='true'] {
   background: rgba(0, 238, 128, 0.04);
-  color: #e2e2e2;
+  color: var(--ink);
 }
 .lifecycle-tabs button span {
   color: #444;
@@ -233,7 +233,7 @@
 }
 .lifecycle-tabs button[aria-selected='true'] span,
 .lifecycle-tabs button[aria-selected='true'] i {
-  color: var(--green);
+  color: var(--accent-text);
 }
 .lifecycle-tabs button {
   font: 500 13px/1 var(--font-display);
@@ -250,7 +250,7 @@
   height: 100%;
   display: grid;
   grid-template-columns: 0.85fr 1.4fr;
-  background: #aeb8c6;
+  background: var(--terminal-stage);
 }
 .lifecycle-copy {
   display: flex;
@@ -258,7 +258,7 @@
   justify-content: center;
   padding: 40px 30px;
   border-right: 1px solid var(--line);
-  background: #0b0b0b;
+  background: var(--canvas);
 }
 .lifecycle-copy > span {
   display: grid;
@@ -267,7 +267,7 @@
   place-items: center;
   margin-bottom: 36px;
   border: 1px solid var(--line-strong);
-  color: var(--green);
+  color: var(--accent-text);
 }
 .lifecycle-copy svg {
   width: 18px;
@@ -279,7 +279,7 @@
 }
 .lifecycle-copy p {
   margin: 0;
-  color: #818181;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -417,13 +417,13 @@
   margin-top: 25px;
 }
 .billing-toggle > span {
-  color: #4d4d4d;
+  color: var(--faint);
   font: 500 7px/1 var(--font-mono);
   letter-spacing: 0.08em;
   transition: color 180ms ease;
 }
 .billing-toggle > span.is-active {
-  color: #9a9a9a;
+  color: var(--ink);
 }
 .billing-toggle button {
   position: relative;
@@ -432,7 +432,7 @@
   padding: 3px;
   border: 1px solid var(--line-strong);
   border-radius: 20px;
-  background: #111;
+  background: var(--surface);
   cursor: pointer;
 }
 .billing-toggle button i {
@@ -452,7 +452,7 @@
   min-height: 660px;
   padding: 40px 42px 36px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--panel-bg);
 }
 .price-card.is-featured {
   border-color: rgba(0, 238, 128, 0.24);
@@ -464,13 +464,13 @@
   top: 28px;
   padding: 7px 9px;
   border: 1px solid rgba(0, 238, 128, 0.3);
-  color: var(--green);
+  color: var(--accent-text);
   font: 500 6px/1 var(--font-mono);
   letter-spacing: 0.09em;
 }
 .price-audience {
   margin-bottom: 34px;
-  color: #777;
+  color: var(--muted);
   font-size: 11px;
 }
 .price-card h3 {
@@ -490,13 +490,13 @@
   letter-spacing: -0.05em;
 }
 .price span {
-  color: #666;
+  color: var(--muted);
   font-size: 9px;
 }
 .price-body {
   min-height: 73px;
   margin: 25px 0 17px;
-  color: #888;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -510,14 +510,14 @@
 .price-card li {
   display: grid;
   grid-template-columns: 20px 1fr;
-  color: #aaa;
+  color: var(--ink);
   font-size: 10px;
 }
 .price-card li span {
-  color: var(--green);
+  color: var(--accent-text);
 }
 .price-card li.is-muted {
-  color: #4d4d4d;
+  color: var(--faint);
 }
 .price-card li.is-muted span {
   color: #3e3e3e;
@@ -557,12 +557,12 @@
   border-bottom: 1px solid var(--line);
 }
 .principle-mark {
-  color: var(--green);
+  color: var(--accent-text);
   font: 500 35px/1 var(--font-display);
 }
 .principle-card blockquote {
   margin: 18px 0 29px;
-  color: #bdbdbd;
+  color: var(--ink);
   font: 400 13px/1.48 var(--font-body);
 }
 .principle-card > div {
@@ -590,12 +590,12 @@
   margin: 0;
 }
 .principle-card strong {
-  color: #a9a9a9;
+  color: var(--muted);
   font-size: 9px;
   font-weight: 500;
 }
 .principle-card p span {
-  color: #575757;
+  color: var(--faint);
   font: 500 6px/1 var(--font-mono);
   text-transform: uppercase;
 }
@@ -627,7 +627,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #cacaca;
+  color: var(--ink);
   cursor: pointer;
   text-align: left;
 }
@@ -636,7 +636,7 @@
   font-size: 16px;
 }
 .faq-item button i {
-  color: var(--green);
+  color: var(--accent-text);
   font: 400 19px/1 var(--font-mono);
   font-style: normal;
 }
@@ -646,7 +646,7 @@
 .faq-item p {
   max-width: 480px;
   margin: -3px 0 24px;
-  color: #7c7c7c;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
 }

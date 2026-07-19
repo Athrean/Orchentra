@@ -1,5 +1,5 @@
 .site-footer {
-  background: #070707;
+  background: var(--footer-bg);
 }
 .footer-top {
   min-height: 285px;
@@ -15,13 +15,13 @@
 }
 .footer-about p {
   margin: 22px 0 0;
-  color: #6b6b6b;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.55;
 }
 .footer-column h3 {
   margin-bottom: 23px;
-  color: #4f4f4f;
+  color: var(--faint);
   font: 500 7px/1 var(--font-mono);
   letter-spacing: 0.12em;
 }
@@ -36,13 +36,13 @@
   display: flex;
   width: max-content;
   gap: 7px;
-  color: #909090;
+  color: var(--muted);
   font-size: 10px;
   text-decoration: none;
   transition: color 160ms ease;
 }
 .footer-column a span {
-  color: var(--green);
+  color: var(--accent-text);
   opacity: 0;
   transform: translate(-3px, 2px);
   transition:
@@ -50,7 +50,7 @@
     transform 160ms ease;
 }
 .footer-column a:hover {
-  color: #ddd;
+  color: var(--ink);
 }
 .footer-column a:hover span {
   opacity: 1;
@@ -63,7 +63,7 @@
   align-items: center;
   padding: 0 62px;
   border-top: 1px solid var(--line);
-  color: #454545;
+  color: var(--faint);
   font: 500 6px/1 var(--font-mono);
   letter-spacing: 0.08em;
 }
