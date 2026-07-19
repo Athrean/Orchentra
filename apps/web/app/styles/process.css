@@ -76,7 +76,7 @@
   min-width: 0;
   padding: 18px;
   border-left: 1px solid var(--line);
-  background: #0b0b0b;
+  background: #aeb8c6;
   overflow: hidden;
 }
 .install-visual {
@@ -250,6 +250,7 @@
   height: 100%;
   display: grid;
   grid-template-columns: 0.85fr 1.4fr;
+  background: #aeb8c6;
 }
 .lifecycle-copy {
   display: flex;
@@ -257,6 +258,7 @@
   justify-content: center;
   padding: 40px 30px;
   border-right: 1px solid var(--line);
+  background: #0b0b0b;
 }
 .lifecycle-copy > span {
   display: grid;
@@ -284,10 +286,15 @@
 .lifecycle-panel-inner > .workspace,
 .lifecycle-panel-inner > .evidence-panel,
 .lifecycle-panel-inner > .browser-panel,
-.lifecycle-panel-inner > .run-map {
+.lifecycle-panel-inner > .run-map,
+.lifecycle-panel-inner > .orch-terminal {
   align-self: center;
   justify-self: center;
   width: calc(100% - 48px);
+}
+
+.lifecycle-panel-inner > .orch-terminal {
+  height: 270px;
 }
 .lifecycle-panel-inner > .run-map {
   height: 280px;

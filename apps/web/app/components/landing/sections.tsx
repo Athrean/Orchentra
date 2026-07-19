@@ -6,7 +6,7 @@ import { useRef, useState } from 'react'
 import { GITHUB_URL, comparison, capabilities, faq, lifecycle, plans, principles, setupSteps } from './data'
 import { Reveal, referenceEase } from './motion'
 import { Brand, CornerButton, Glyph } from './ui'
-import { CommandPanel, EvidencePanel, ProviderPanel, RunMap, WorkspaceMockup } from './visuals'
+import { OrchentraTerminal, type TerminalScenario } from './visuals'
 
 export function SiteHeader(): React.ReactNode {
   const [open, setOpen] = useState(false)
@@ -161,7 +161,7 @@ export function CapabilitySection(): React.ReactNode {
               <span className="texture-orbit texture-orbit--one" />
               <span className="texture-orbit texture-orbit--two" />
             </div>
-            <RunMap />
+            <OrchentraTerminal scenario="run" variant="core" />
             <div className="capability-core-copy">
               <p className="eyebrow eyebrow--light">ONE ACCOUNTABLE RUN</p>
               <h3>Launch a coding crew in minutes.</h3>
@@ -207,7 +207,7 @@ export function PlaygroundSection(): React.ReactNode {
           </a>
         </Reveal>
         <Reveal className="feature-visual feature-visual--command" delay={0.08}>
-          <CommandPanel />
+          <OrchentraTerminal scenario="outcome" variant="feature" />
         </Reveal>
       </div>
     </section>
@@ -219,7 +219,7 @@ export function ModelSection(): React.ReactNode {
     <section className="split-feature ruled-section split-feature--reverse" aria-labelledby="model-title">
       <div className="site-rail split-feature-inner">
         <Reveal className="feature-visual feature-visual--provider">
-          <ProviderPanel />
+          <OrchentraTerminal scenario="models" variant="feature" />
         </Reveal>
         <Reveal className="feature-copy" delay={0.08}>
           <p className="eyebrow">MODEL AWARE</p>
@@ -273,42 +273,16 @@ export function SetupSection(): React.ReactNode {
                 <p>{step.body}</p>
               </div>
               <div className="setup-step-visual">
-                {index === 0 ? (
-                  <InstallVisual />
-                ) : index === 1 ? (
-                  <WorkspaceMockup compact />
-                ) : (
-                  <EvidencePanel mode="trace" />
-                )}
+                <OrchentraTerminal
+                  scenario={index === 0 ? 'install' : index === 1 ? 'outcome' : 'verify'}
+                  variant="compact"
+                />
               </div>
             </Reveal>
           ))}
         </div>
       </div>
     </section>
-  )
-}
-
-function InstallVisual(): React.ReactNode {
-  return (
-    <div className="install-visual" aria-hidden="true">
-      <div>
-        <span>~/your-repository</span>
-        <i>•••</i>
-      </div>
-      <code>
-        <b>$</b> npm install -g @athreanlab/orchentra
-      </code>
-      <p>
-        <span>✓</span> installed 1 package
-      </p>
-      <code>
-        <b>$</b> orchentra run
-      </code>
-      <p>
-        <span>✓</span> repository instructions loaded
-      </p>
-    </div>
   )
 }
 
@@ -373,10 +347,8 @@ export function LifecycleSection(): React.ReactNode {
 }
 
 function LifecycleVisual({ index }: { index: number }): React.ReactNode {
-  if (index === 3) return <EvidencePanel />
-  if (index === 2) return <RunMap />
-  if (index === 1) return <EvidencePanel mode="trace" />
-  return <WorkspaceMockup compact />
+  const scenarios: readonly TerminalScenario[] = ['inspect', 'plan', 'build', 'verify']
+  return <OrchentraTerminal scenario={scenarios[index]} variant="compact" />
 }
 
 export function PricingSection(): React.ReactNode {

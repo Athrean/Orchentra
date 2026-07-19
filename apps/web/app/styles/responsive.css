@@ -33,6 +33,9 @@
     height: 580px;
     padding: 42px 40px 0;
   }
+  .orch-terminal--hero {
+    height: 538px;
+  }
   .workspace {
     height: 538px;
     grid-template-columns: 156px 1fr;
@@ -104,6 +107,12 @@
     right: 120px;
     height: 285px;
   }
+  .capability-core .orch-terminal--core {
+    top: 20px;
+    right: 96px;
+    left: 96px;
+    height: 265px;
+  }
   .capability-core-copy {
     left: 40px;
     bottom: 28px;
@@ -156,6 +165,9 @@
   }
   .lifecycle-panel-inner > .run-map {
     width: calc(100% - 30px);
+  }
+  .lifecycle-panel-inner > .orch-terminal {
+    width: calc(100% - 34px);
   }
 
   .pricing-inner {
@@ -236,8 +248,11 @@
     bottom: 24px;
   }
   .hero-dashboard {
-    height: 396px;
-    padding: 25px 20px 0;
+    height: 354px;
+    padding: 25px 0 0;
+  }
+  .orch-terminal--hero {
+    height: 303px;
   }
   .workspace {
     height: 370px;
@@ -427,6 +442,12 @@
     left: 22px;
     height: 290px;
   }
+  .capability-core .orch-terminal--core {
+    top: 18px;
+    right: 16px;
+    left: 16px;
+    height: 285px;
+  }
   .run-map-node {
     width: 104px;
     grid-template-columns: 25px 1fr;
@@ -460,7 +481,11 @@
   }
   .feature-visual {
     min-height: 430px;
-    padding: 42px 19px;
+    padding: 42px 0;
+  }
+  .orch-terminal--feature {
+    height: 303px;
+    max-width: 358px;
   }
   .command-panel,
   .provider-panel {
@@ -516,6 +541,9 @@
     border-top: 1px solid var(--line);
     border-left: 0;
   }
+  .setup-step-visual .orch-terminal--compact {
+    height: 245px;
+  }
   .workspace--compact {
     height: 260px;
     grid-template-columns: 70px 1fr;
@@ -562,9 +590,13 @@
   .lifecycle-panel-inner > .workspace,
   .lifecycle-panel-inner > .evidence-panel,
   .lifecycle-panel-inner > .browser-panel,
-  .lifecycle-panel-inner > .run-map {
+  .lifecycle-panel-inner > .run-map,
+  .lifecycle-panel-inner > .orch-terminal {
     margin-block: 25px;
     width: calc(100% - 36px);
+  }
+  .lifecycle-panel-inner > .orch-terminal {
+    height: 303px;
   }
   .lifecycle-panel-inner > .run-map {
     min-height: 250px;

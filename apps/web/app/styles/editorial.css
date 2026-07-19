@@ -173,14 +173,6 @@
 .capability-core .technical-texture {
   filter: saturate(0.96);
 }
-.capability-core .run-map {
-  position: absolute;
-  z-index: 2;
-  left: 30px;
-  right: 30px;
-  top: 52px;
-  height: 345px;
-}
 .capability-core-copy {
   position: absolute;
   z-index: 2;
@@ -325,7 +317,7 @@
   display: grid;
   place-items: center;
   padding: 60px 48px;
-  background: rgba(255, 255, 255, 0.014);
+  background: #aeb8c6;
 }
 
 .command-panel,

@@ -54,7 +54,7 @@
   height: 666px;
   padding: 50px 54px 0;
   overflow: hidden;
-  background: #0b0b0b;
+  background: #aeb8c6;
 }
 .hero-dashboard::before {
   content: '';
@@ -64,6 +64,234 @@
   width: 1px;
   height: 100%;
   background: var(--line);
+}
+
+.orch-terminal {
+  --term-bg: #fcfcfc;
+  --term-border: #0000000f;
+  --term-text: #1e1e1e;
+  --term-muted: #707070;
+  --term-accent: #4f46e5;
+  --term-success: #087a4c;
+  position: relative;
+  z-index: 4;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 1px solid var(--term-border);
+  border-right: 1px solid var(--term-border);
+  border-left: 1px solid var(--term-border);
+  border-radius: 8px 8px 0 0;
+  background: var(--term-bg);
+  color: var(--term-text);
+  box-shadow:
+    0 0 0 0.75px rgba(0, 0, 0, 0.06),
+    0 1.5px 3px rgba(0, 0, 0, 0.04),
+    0 6px 36px rgba(0, 0, 0, 0.12);
+  cursor: text;
+  text-align: left;
+  transition:
+    opacity 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.orch-terminal.is-focused {
+  box-shadow:
+    0 0 0 2px rgba(79, 70, 229, 0.24),
+    0 1.5px 3px rgba(0, 0, 0, 0.04),
+    0 12px 42px rgba(0, 0, 0, 0.18);
+}
+
+.orch-terminal--hero {
+  height: 600px;
+}
+
+.orch-terminal--feature {
+  width: 100%;
+  max-width: 445px;
+  height: 330px;
+}
+
+.orch-terminal--compact {
+  height: 230px;
+}
+
+.orch-terminal--core {
+  position: absolute;
+  right: 24px;
+  left: 24px;
+  top: 30px;
+  width: auto;
+  height: 310px;
+}
+
+.orch-terminal-bar {
+  position: relative;
+  display: flex;
+  height: 32px;
+  flex: 0 0 32px;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--term-border);
+}
+
+.terminal-lights {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terminal-lights i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+.terminal-lights i:nth-child(2) {
+  background: #febc2e;
+}
+
+.terminal-lights i:nth-child(3) {
+  background: #28c840;
+}
+
+.terminal-location {
+  position: absolute;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--term-muted);
+  font: 500 12px/1 var(--font-mono);
+  transform: translateX(-50%);
+}
+
+.orch-terminal-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 12px 12px 8px;
+  color: var(--term-text);
+  font: 500 13px/20px var(--font-mono);
+  scrollbar-color: #d4d4d4 transparent;
+  scrollbar-width: thin;
+}
+
+.terminal-muted {
+  color: var(--term-muted);
+}
+
+.terminal-command {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.terminal-command > b {
+  color: var(--term-accent);
+}
+
+.terminal-command > span {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 15px;
+  margin-left: 1px;
+  background: var(--term-text);
+  vertical-align: -2px;
+  animation: terminal-blink 1s steps(1, end) infinite;
+}
+
+@keyframes terminal-blink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+  49%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.terminal-screen-title {
+  display: block;
+  margin-bottom: 1px;
+  color: var(--term-text);
+  font-size: 13px;
+}
+
+.terminal-options {
+  margin-top: 6px;
+}
+
+.terminal-options > div {
+  display: grid;
+  grid-template-columns: 13px 25px 1fr;
+  min-height: 20px;
+  align-items: baseline;
+  color: #757575;
+}
+
+.terminal-options > div.is-current {
+  color: var(--term-text);
+}
+
+.terminal-options > div > b {
+  color: var(--term-accent);
+}
+
+.terminal-options > div > strong {
+  font-weight: 500;
+}
+
+.terminal-options > div.is-current > strong {
+  font-weight: 700;
+}
+
+.terminal-output {
+  display: grid;
+  gap: 3px;
+}
+
+.terminal-line--muted {
+  color: var(--term-muted);
+}
+
+.terminal-line--accent {
+  color: var(--term-accent);
+}
+
+.terminal-line--success {
+  color: var(--term-success);
+}
+
+.orch-terminal-hint {
+  display: flex;
+  min-height: 31px;
+  flex: 0 0 31px;
+  align-items: center;
+  padding: 0 12px;
+  border-top: 1px solid var(--term-border);
+  color: var(--term-muted);
+  font: 500 11px/1 var(--font-mono);
+}
+
+.orch-terminal-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .workspace {

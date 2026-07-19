@@ -1,7 +1,7 @@
 import { GITHUB_URL } from './data'
 import { HeroReveal } from './motion'
 import { CornerButton } from './ui'
-import { WorkspaceMockup } from './visuals'
+import { OrchentraTerminal } from './visuals'
 
 export function Hero(): React.ReactNode {
   return (
@@ -35,7 +35,7 @@ export function Hero(): React.ReactNode {
           </HeroReveal>
         </div>
         <HeroReveal className="hero-dashboard" delay={0.6} duration={1.5}>
-          <WorkspaceMockup />
+          <OrchentraTerminal scenario="run" variant="hero" />
         </HeroReveal>
       </div>
     </section>
