@@ -1,0 +1,23 @@
+packages/cli-api/src/gemini/client.ts
+  s_78eb7e70681c18::t_5127b239ded11f 9,176,198-201,206,220-221,231
+packages/cli-api/src/gemini/types.ts
+  s_78eb7e70681c18::t_e69bf2237036b6 11-14
+packages/cli-api/tests/image-content.test.ts
+  s_78eb7e70681c18::t_5ba1c405e0066b 2,4,11-14,71-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "16dd6afeeb7d28bc685a9fe6082c21d56bdd6574",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
