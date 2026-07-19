@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { ChatMessage, ProviderRequest } from '@orchentra/cli-core'
 import { toAnthropicMessages } from '../src/anthropic/client'
 import { buildGeminiRequest } from '../src/gemini/client'
+import { convertMessage, convertMessages } from '../src/openai-compat/client'
 
 const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
 
@@ -100,5 +101,46 @@ describe('buildGeminiRequest — inlineData image parts', () => {
         8192,
       ),
     ).toThrow(/vision|image input/i)
+  })
+})
+
+describe('OpenAI-compat — image_url content parts', () => {
+  test('a user message with an image becomes array content with a data-URL image_url part', () => {
+    const out = convertMessage({
+      role: 'user',
+      content: 'look',
+      images: [{ data: PNG_1X1, mediaType: 'image/png' }],
+    })
+    expect(out).toEqual({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'look' },
+        { type: 'image_url', image_url: { url: `data:image/png;base64,${PNG_1X1}` } },
+      ],
+    })
+  })
+
+  test('a tool result with an image expands into the tool message plus a trailing user image message', () => {
+    // OpenAI tool messages are string-only, so the image cannot ride the tool
+    // message — it follows as a user message with image_url parts.
+    const out = convertMessages([
+      {
+        role: 'tool',
+        content: 'screenshot saved',
+        toolCallId: 'shot',
+        images: [{ data: PNG_1X1, mediaType: 'image/png' }],
+      },
+    ])
+    expect(out).toEqual([
+      { role: 'tool', content: 'screenshot saved', tool_call_id: 'shot' },
+      {
+        role: 'user',
+        content: [{ type: 'image_url', image_url: { url: `data:image/png;base64,${PNG_1X1}` } }],
+      },
+    ])
+  })
+
+  test('messages without images pass through unchanged', () => {
+    expect(convertMessages([{ role: 'user', content: 'hi' }])).toEqual([{ role: 'user', content: 'hi' }])
   })
 })
