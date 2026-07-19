@@ -1,0 +1,23 @@
+packages/cli-core/src/runtime/index.ts
+  s_78eb7e70681c18::t_6c5aa3a2034d1f 150
+packages/cli-core/src/runtime/model-profile.ts
+  s_78eb7e70681c18::t_f6b9a0d1e6359b 48-54,87-90,95-96,98-99,129-131,136-144
+packages/cli-core/tests/model-vision.test.ts
+  s_78eb7e70681c18::t_5058bf0d6ef295 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8157a25bbf802edf0db41fc431c7dbfb08be5f00",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
