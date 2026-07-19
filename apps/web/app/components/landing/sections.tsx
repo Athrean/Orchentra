@@ -1,6 +1,7 @@
 'use client'
 
 import { AnimatePresence, m, useScroll, useTransform } from 'framer-motion'
+import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { GITHUB_URL, comparison, capabilities, faq, lifecycle, plans, principles, setupSteps } from './data'
 import { Reveal, referenceEase } from './motion'
@@ -20,9 +21,9 @@ export function SiteHeader(): React.ReactNode {
   return (
     <header className={open ? 'site-header is-open' : 'site-header'}>
       <div className="site-rail header-inner">
-        <a className="site-brand" href="/" aria-label="Orchentra home" onClick={() => setOpen(false)}>
+        <Link className="site-brand" href="/" aria-label="Orchentra home" onClick={() => setOpen(false)}>
           <Brand />
-        </a>
+        </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {links.map(([label, href]) => (
             <a href={href} key={label}>
