@@ -147,6 +147,7 @@ export {
   PROFILE_MODE_ENV,
   activeProfileMode,
   isKnownModel,
+  modelSupportsVision,
   profileFor,
   validateProfileDivergences,
 } from './model-profile'
