@@ -2,6 +2,7 @@ import type { Provider, ProviderToolSchema } from './provider'
 import type { ToolLevel } from './permissions'
 import type { RuntimeBudget } from './budget'
 import type { ToolArtifact, ToolEvidence } from './events'
+import type { ImageContent } from './image'
 import type { QuirkCounters } from './quirks'
 import type { ProcessSupervisor } from './process-supervisor'
 import type { BrowserRunSession } from './browser'
@@ -135,11 +136,18 @@ export interface ToolContext {
 }
 
 export interface ToolResult {
-  /** Model-facing text — the only field that reaches the provider. */
+  /** Model-facing text — the primary field that reaches the provider. */
   content: string
   isError: boolean
   /** Structured tool-specific payload for programmatic consumers (traces, gates, UIs). */
   data?: unknown
+  /**
+   * Visual output (browser screenshots, MCP image results) forwarded to the
+   * model as image content blocks alongside `content`. Attached to the tool
+   * message and rendered per-provider; dropped for non-vision models with a
+   * clear error rather than silently.
+   */
+  images?: ImageContent[]
   /** Side effects: files/URLs the tool created, modified, or deleted. */
   artifacts?: ToolArtifact[]
   /** Machine-checkable proof of what the run did or found. */

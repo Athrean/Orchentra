@@ -50,8 +50,8 @@ export interface EnginePage {
   selectOption(loc: LocatorDescriptor, value: string, timeoutMs: number): Promise<void>
   /** Focus the target and commit (Enter) — used for `submit` actions. */
   submit(loc: LocatorDescriptor, timeoutMs: number): Promise<void>
-  /** Write a PNG to `path`; returns the byte count. */
-  screenshot(opts: { fullPage: boolean; path: string }): Promise<number>
+  /** Write a PNG to `path`; returns the byte count and base64 image data. */
+  screenshot(opts: { fullPage: boolean; path: string }): Promise<{ bytes: number; data: string }>
   /** Cumulative console errors observed on this page. */
   consoleErrors(): ConsoleErrorEntry[]
   /** Cumulative failed requests observed on this page. */

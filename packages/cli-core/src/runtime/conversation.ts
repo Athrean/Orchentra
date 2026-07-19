@@ -560,6 +560,9 @@ export class ConversationRuntime {
           role: 'tool',
           content: budgeted.content,
           toolCallId: call.id,
+          // Visual output (screenshots, MCP images) rides to the provider as
+          // image content blocks; the budgeted text stays the model-facing note.
+          ...(result.images && result.images.length > 0 ? { images: result.images } : {}),
         })
         // Keep only the newest browser snapshot live: a fresh snapshot supersedes
         // every earlier one down to a stub, so a long browser session holds one
@@ -780,6 +783,7 @@ export class ConversationRuntime {
 
       const payload: ToolResultPayload = { id: call.id, content: r.content, isError: r.isError }
       if (r.data !== undefined) payload.data = r.data
+      if (r.images !== undefined) payload.images = r.images
       if (r.artifacts !== undefined) payload.artifacts = r.artifacts
       if (r.evidence !== undefined) payload.evidence = r.evidence
       return { payload, permission }

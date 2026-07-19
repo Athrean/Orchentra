@@ -43,6 +43,8 @@ export interface ToolResultPayload {
   isError: boolean
   /** Structured tool-specific payload for programmatic consumers. Not model input. */
   data?: unknown
+  /** Visual output forwarded to the model as image content blocks. */
+  images?: import('./image').ImageContent[]
   artifacts?: ToolArtifact[]
   evidence?: ToolEvidence[]
 }

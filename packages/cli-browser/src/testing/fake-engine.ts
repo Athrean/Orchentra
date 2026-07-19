@@ -164,9 +164,13 @@ class FakeLoginPage implements EnginePage {
     throw browserOpError('ref-not-found', `cannot submit ${loc.role}`)
   }
 
-  async screenshot(): Promise<number> {
+  async screenshot(): Promise<{ bytes: number; data: string }> {
     this.guard()
-    return 1024
+    // A real 1x1 PNG so downstream image handling sees a valid payload.
+    return {
+      bytes: 1024,
+      data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    }
   }
 
   consoleErrors(): ConsoleErrorEntry[] {

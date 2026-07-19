@@ -52,8 +52,14 @@ class FakeSession implements BrowserRunSession {
     if (this.actError) throw this.actError
     return { action: params.action, ref: params.ref, remapped: false }
   }
+  screenshotData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
   async screenshot(params: BrowserScreenshotParams): Promise<BrowserScreenshotResult> {
-    return { path: params.path ?? '/tmp/shot.png', bytes: 2048 }
+    return {
+      path: params.path ?? '/tmp/shot.png',
+      bytes: 2048,
+      data: this.screenshotData,
+      mediaType: 'image/png',
+    }
   }
   async close(): Promise<void> {
     this.closeCount++
@@ -186,6 +192,24 @@ describe('browser_screenshot', () => {
     const res = await browserScreenshotTool.execute({ path: '/tmp/a.png' }, ctxWith(new FakeSession()))
     expect(res.isError).toBe(false)
     expect(res.artifacts).toEqual([{ uri: '/tmp/a.png', kind: 'file', action: 'created' }])
+  })
+
+  test('attaches the captured image as a content block the model can see', async () => {
+    const session = new FakeSession()
+    const res = await browserScreenshotTool.execute({ path: '/tmp/a.png' }, ctxWith(session))
+    expect(res.images).toEqual([{ data: session.screenshotData, mediaType: 'image/png' }])
+    // The artifact path reference is still kept for logs.
+    expect(res.artifacts).toEqual([{ uri: '/tmp/a.png', kind: 'file', action: 'created' }])
+  })
+
+  test('rejects an oversized capture with a clear error and no image block', async () => {
+    const session = new FakeSession()
+    // A base64 payload well past the byte cap.
+    session.screenshotData = 'A'.repeat(8 * 1024 * 1024)
+    const res = await browserScreenshotTool.execute({ path: '/tmp/big.png' }, ctxWith(session))
+    expect(res.isError).toBe(true)
+    expect(res.content).toMatch(/exceeds|too large|cap/i)
+    expect(res.images).toBeUndefined()
   })
 })
 
