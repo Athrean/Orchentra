@@ -1,7 +1,13 @@
-import type { ToolDefinition, ToolResult, ToolContext, ToolLevel } from '@orchentra/cli-core'
+import {
+  checkImageLimits,
+  type ToolDefinition,
+  type ToolResult,
+  type ToolContext,
+  type ToolLevel,
+} from '@orchentra/cli-core'
 import type { McpClient } from './client'
 import { mcpToolName } from './naming'
-import { coerceContentToText, type McpToolSpec } from './protocol'
+import { coerceContentToText, extractMcpImages, type McpToolSpec } from './protocol'
 
 export interface BridgeToolOptions {
   readonly serverName: string
@@ -27,7 +33,22 @@ export function buildMcpToolDefinition(options: BridgeToolOptions): ToolDefiniti
       try {
         const result = await options.client.callTool(options.spec.name, input, options.timeoutMs)
         const text = coerceContentToText(result.content)
-        return { content: text.length > 0 ? text : '(empty response)', isError: result.isError === true }
+        // Forward image results as visual content blocks. Oversized images are
+        // dropped with a clear note appended to the text rather than silently.
+        const images: { data: string; mediaType: string }[] = []
+        const notes: string[] = []
+        for (const image of extractMcpImages(result.content)) {
+          const limitError = checkImageLimits(image)
+          if (limitError) notes.push(`image dropped: ${limitError}`)
+          else images.push(image)
+        }
+        const body = [text, ...notes].filter((s) => s.length > 0).join('\n')
+        const out: ToolResult = {
+          content: body.length > 0 ? body : '(empty response)',
+          isError: result.isError === true,
+        }
+        if (images.length > 0) out.images = images
+        return out
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         return { content: `MCP tool error: ${message}`, isError: true }
