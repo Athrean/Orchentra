@@ -36,10 +36,13 @@
   display: flex;
   width: max-content;
   gap: 7px;
-  color: var(--muted);
+  color: var(--ink);
+  opacity: 1;
   font-size: 10px;
   text-decoration: none;
-  transition: color 160ms ease;
+  transition:
+    color 160ms ease,
+    opacity 160ms ease;
 }
 .footer-column a span {
   color: var(--accent-text);
@@ -49,10 +52,22 @@
     opacity 160ms ease,
     transform 160ms ease;
 }
-.footer-column a:hover {
-  color: var(--ink);
+.footer-column ul:hover a,
+.footer-column ul:focus-within a {
+  color: var(--faint);
+  opacity: 0.42;
 }
-.footer-column a:hover span {
+.footer-column ul a:hover,
+.footer-column ul a:focus-visible {
+  color: var(--ink);
+  opacity: 1;
+}
+.footer-column ul:hover a:not(:hover) {
+  color: var(--faint);
+  opacity: 0.42;
+}
+.footer-column ul a:hover span,
+.footer-column ul a:focus-visible span {
   opacity: 1;
   transform: translate(0, 0);
 }

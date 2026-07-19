@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, m, useScroll, useTransform } from 'framer-motion'
+import { AnimatePresence, m, useMotionValueEvent, useScroll } from 'framer-motion'
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { GITHUB_URL, comparison, capabilities, faq, lifecycle, plans, principles, setupSteps } from './data'
@@ -244,8 +244,19 @@ export function ModelSection(): React.ReactNode {
 
 export function SetupSection(): React.ReactNode {
   const sectionRef = useRef<HTMLElement>(null)
+  const [activeStep, setActiveStep] = useState(0)
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start 70%', 'end 70%'] })
-  const progress = useTransform(scrollYProgress, [0, 1], ['0%', '100%'])
+
+  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
+    const nextStep = latest < 0.34 ? 0 : latest < 0.67 ? 1 : 2
+    setActiveStep((current) => (current === nextStep ? current : nextStep))
+  })
+
+  function relayState(segment: number): 'is-complete' | 'is-active' | 'is-upcoming' {
+    if (segment < activeStep) return 'is-complete'
+    if (segment === activeStep) return 'is-active'
+    return 'is-upcoming'
+  }
 
   return (
     <section className="setup ruled-section" id="workflow" aria-labelledby="setup-title" ref={sectionRef}>
@@ -258,28 +269,35 @@ export function SetupSection(): React.ReactNode {
             in three clear moves.
           </h2>
         </Reveal>
-        <div className="setup-progress" aria-hidden="true">
-          <m.i style={{ height: progress }} />
-        </div>
         <div className="setup-steps">
-          {setupSteps.map((step, index) => (
-            <Reveal className="setup-step" key={step.index} amount={0.5}>
-              <div className="setup-step-index">
-                <span>{step.index}</span>
-                <small>{step.short}</small>
-              </div>
-              <div className="setup-step-copy">
-                <h3>{step.title}</h3>
-                <p>{step.body}</p>
-              </div>
-              <div className="setup-step-visual">
-                <OrchentraTerminal
-                  scenario={index === 0 ? 'install' : index === 1 ? 'outcome' : 'verify'}
-                  variant="compact"
-                />
-              </div>
-            </Reveal>
-          ))}
+          {setupSteps.map((step, index) => {
+            const stepState = index < activeStep ? 'is-complete' : index === activeStep ? 'is-active' : 'is-upcoming'
+
+            return (
+              <Reveal className={`setup-step ${stepState}`} key={step.index} amount={0.5}>
+                <div className="setup-step-index">
+                  {index > 0 ? (
+                    <i className={`setup-relay setup-relay--in ${relayState(index - 1)}`} aria-hidden="true" />
+                  ) : null}
+                  <span>{step.index}</span>
+                  {index < setupSteps.length - 1 ? (
+                    <i className={`setup-relay setup-relay--out ${relayState(index)}`} aria-hidden="true" />
+                  ) : null}
+                  <small>{step.short}</small>
+                </div>
+                <div className="setup-step-copy">
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </div>
+                <div className="setup-step-visual">
+                  <OrchentraTerminal
+                    scenario={index === 0 ? 'install' : index === 1 ? 'outcome' : 'verify'}
+                    variant="compact"
+                  />
+                </div>
+              </Reveal>
+            )
+          })}
         </div>
       </div>
     </section>
