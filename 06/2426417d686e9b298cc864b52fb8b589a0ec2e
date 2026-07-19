@@ -1,0 +1,23 @@
+packages/cli-api/src/openai-compat/client.ts
+  s_78eb7e70681c18::t_77b1b0b6c7d0a3 7,10-11,205,215,255-276,279-282,288-292
+packages/cli-api/src/openai-compat/types.ts
+  s_78eb7e70681c18::t_f1d94f6f28bcc9 1-2,5
+packages/cli-api/tests/image-content.test.ts
+  s_78eb7e70681c18::t_8ece9e705f294c 5,106-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "062426417d686e9b298cc864b52fb8b589a0ec2e",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
