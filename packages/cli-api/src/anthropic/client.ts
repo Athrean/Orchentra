@@ -1,4 +1,12 @@
-import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, StopReason } from '@orchentra/cli-core'
+import type {
+  ChatMessage,
+  ImageContent,
+  Provider,
+  ProviderRequest,
+  ProviderStreamEvent,
+  StopReason,
+} from '@orchentra/cli-core'
+import { assertVisionSupport } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { AnthropicApiError, classifyError, enrichAuthError, missingCredentialsError } from '../errors'
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
@@ -63,7 +71,7 @@ export class AnthropicProvider implements Provider {
     const body: MessageRequest = {
       model: request.model || this.model,
       max_tokens: maxTokens,
-      messages: toAnthropicMessages(request.messages),
+      messages: toAnthropicMessages(request.messages, request.model || this.model),
       system,
       stream: true,
     }
@@ -397,16 +405,27 @@ function sleep(ms: number): Promise<void> {
 // Consecutive role-"tool" messages from a single multi-tool turn are
 // coalesced into ONE user message with multiple `tool_result` blocks —
 // Anthropic 400s on tool_result blocks split across messages.
-export function toAnthropicMessages(messages: readonly ChatMessage[]): MessageRequest['messages'] {
+function toImageBlock(image: ImageContent): ContentBlock {
+  return { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } }
+}
+
+export function toAnthropicMessages(messages: readonly ChatMessage[], model?: string): MessageRequest['messages'] {
+  assertVisionSupport(messages, model)
   const out: MessageRequest['messages'] = []
 
   for (const m of messages) {
+    const images = m.images ?? []
     if (m.role === 'tool') {
-      const block: ContentBlock = {
-        type: 'tool_result',
-        tool_use_id: m.toolCallId ?? '',
-        content: m.content,
-      }
+      // Image results ride inside the tool_result block as an array of blocks
+      // (text + image); text-only results keep the plain string form.
+      const block: ContentBlock =
+        images.length > 0
+          ? {
+              type: 'tool_result',
+              tool_use_id: m.toolCallId ?? '',
+              content: [{ type: 'text', text: m.content }, ...images.map(toImageBlock)],
+            }
+          : { type: 'tool_result', tool_use_id: m.toolCallId ?? '', content: m.content }
       const last = out[out.length - 1]
       if (
         last &&
@@ -434,6 +453,11 @@ export function toAnthropicMessages(messages: readonly ChatMessage[]): MessageRe
         blocks.push({ type: 'tool_use', id: call.id, name: call.name, input: call.input })
       }
       out.push({ role: 'assistant', content: blocks })
+      continue
+    }
+
+    if (images.length > 0) {
+      out.push({ role: m.role, content: [{ type: 'text', text: m.content }, ...images.map(toImageBlock)] })
       continue
     }
 

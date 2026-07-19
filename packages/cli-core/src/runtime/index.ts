@@ -146,6 +146,7 @@ export {
   MODEL_PROFILES,
   PROFILE_MODE_ENV,
   activeProfileMode,
+  assertVisionSupport,
   isKnownModel,
   modelSupportsVision,
   profileFor,

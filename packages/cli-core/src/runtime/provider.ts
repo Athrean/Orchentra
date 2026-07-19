@@ -1,4 +1,5 @@
 import type { ToolCall, UsageTotals } from './events'
+import type { ImageContent } from './image'
 
 /**
  * A signed extended-thinking block from the provider. Anthropic requires the
@@ -17,6 +18,13 @@ export interface ChatMessage {
   toolCallId?: string
   toolCalls?: ToolCall[]
   thinking?: ThinkingBlock[]
+  /**
+   * Visual payload attached to this message (browser screenshots, MCP image
+   * results). Each provider converter renders these into its own wire format;
+   * a converter throws rather than silently dropping them when the target
+   * model is not vision-capable. `content` stays the model-facing text.
+   */
+  images?: ImageContent[]
 }
 
 export interface ProviderToolSchema {

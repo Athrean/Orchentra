@@ -143,6 +143,27 @@ export function modelSupportsVision(
 }
 
 /**
+ * Provider gate: throws a clear error if any message carries images but `model`
+ * is not vision-capable — a screenshot is never silently dropped onto a text
+ * model. A missing model skips the gate (the caller has no model to check).
+ * Kept structurally typed (not ChatMessage) to avoid a provider↔profile import
+ * cycle.
+ */
+export function assertVisionSupport(
+  messages: readonly { readonly images?: readonly unknown[] }[],
+  model?: string,
+): void {
+  if (!model) return
+  const hasImages = messages.some((m) => (m.images?.length ?? 0) > 0)
+  if (hasImages && !modelSupportsVision(model)) {
+    throw new Error(
+      `model "${model}" does not support image input — cannot send an image block. ` +
+        `Select a vision-capable model or omit the image.`,
+    )
+  }
+}
+
+/**
  * The justification bar. Every divergence must cite a quirk the snapshot
  * actually recorded (count > 0) on a model this profile matches, plus a
  * non-empty evidence reference. Returns human-readable violations; empty
