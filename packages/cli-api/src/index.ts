@@ -1,4 +1,4 @@
-export { AnthropicProvider, type AnthropicConfig } from './anthropic/client'
+export { AnthropicProvider, toAnthropicMessages, type AnthropicConfig } from './anthropic/client'
 export { injectCacheBoundary } from './anthropic/cache'
 
 export { GeminiProvider, type GeminiConfig } from './gemini'
