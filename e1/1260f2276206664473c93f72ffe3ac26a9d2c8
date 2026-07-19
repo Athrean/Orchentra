@@ -1,0 +1,21 @@
+packages/cli-api/src/index.ts
+  s_78eb7e70681c18::t_4a8e3ee68399d8 1
+packages/cli-tools/tests/screenshot-image-integration.test.ts
+  s_78eb7e70681c18::t_627c99e8043c69 1-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e11260f2276206664473c93f72ffe3ac26a9d2c8",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
