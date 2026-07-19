@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   ProviderToolSchema,
 } from '@orchentra/cli-core'
+import { assertVisionSupport } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
 import type { GeminiContent, GeminiFunctionDeclaration, GeminiPart, GeminiRequest, GeminiStreamChunk } from './types'
@@ -172,6 +173,7 @@ export class GeminiProvider implements Provider {
 }
 
 export function buildGeminiRequest(request: ProviderRequest, defaultMaxTokens: number): GeminiRequest {
+  assertVisionSupport(request.messages, request.model)
   const body: GeminiRequest = {
     contents: convertMessages(request.messages),
     generationConfig: {
@@ -193,11 +195,15 @@ export function buildGeminiRequest(request: ProviderRequest, defaultMaxTokens: n
   return body
 }
 
+function imageParts(msg: ChatMessage): GeminiPart[] {
+  return (msg.images ?? []).map((img) => ({ inlineData: { mimeType: img.mediaType, data: img.data } }))
+}
+
 function convertMessages(messages: ChatMessage[]): GeminiContent[] {
   const result: GeminiContent[] = []
   for (const msg of messages) {
     if (msg.role === 'user') {
-      result.push({ role: 'user', parts: [{ text: msg.content }] })
+      result.push({ role: 'user', parts: [{ text: msg.content }, ...imageParts(msg)] })
     } else if (msg.role === 'assistant') {
       const parts: GeminiPart[] = []
       if (msg.content) parts.push({ text: msg.content })
@@ -211,6 +217,8 @@ function convertMessages(messages: ChatMessage[]): GeminiContent[] {
       }
       if (parts.length > 0) result.push({ role: 'model', parts })
     } else if (msg.role === 'tool') {
+      // Image results ride as sibling inlineData parts in the same user content
+      // as the functionResponse — Gemini accepts multiple parts per turn.
       result.push({
         role: 'user',
         parts: [
@@ -220,6 +228,7 @@ function convertMessages(messages: ChatMessage[]): GeminiContent[] {
               response: { content: msg.content },
             },
           },
+          ...imageParts(msg),
         ],
       })
     }

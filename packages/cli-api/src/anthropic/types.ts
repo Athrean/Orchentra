@@ -45,16 +45,26 @@ export interface MessageRequest {
   stop_sequences?: string[]
 }
 
+export interface ImageSource {
+  type: 'base64'
+  media_type: string
+  data: string
+}
+
 export interface ContentBlock {
-  type: 'text' | 'tool_use' | 'tool_result' | 'thinking'
+  type: 'text' | 'tool_use' | 'tool_result' | 'thinking' | 'image'
   text?: string
   id?: string
   name?: string
   input?: unknown
   tool_use_id?: string
-  content?: string
+  // tool_result content is a string when text-only, or an array of blocks
+  // (text + image) when the result carries visual output.
+  content?: string | ContentBlock[]
   thinking?: string
   signature?: string
+  // Present when type === 'image'.
+  source?: ImageSource
 }
 
 export interface SystemContentBlock {

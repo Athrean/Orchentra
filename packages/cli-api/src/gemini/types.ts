@@ -8,6 +8,10 @@ export interface GeminiPart {
     name: string
     response: Record<string, unknown>
   }
+  inlineData?: {
+    mimeType: string
+    data: string
+  }
 }
 
 export interface GeminiContent {

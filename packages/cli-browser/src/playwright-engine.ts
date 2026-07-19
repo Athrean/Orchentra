@@ -186,9 +186,9 @@ class PlaywrightPage implements EnginePage {
     }, 'ref-not-found')
   }
 
-  async screenshot(opts: { fullPage: boolean; path: string }): Promise<number> {
+  async screenshot(opts: { fullPage: boolean; path: string }): Promise<{ bytes: number; data: string }> {
     const bytes = await this.page.screenshot({ path: opts.path, fullPage: opts.fullPage })
-    return bytes.byteLength
+    return { bytes: bytes.byteLength, data: Buffer.from(bytes).toString('base64') }
   }
 
   consoleErrors(): ConsoleErrorEntry[] {

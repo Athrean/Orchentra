@@ -53,7 +53,7 @@ const ROLES: Record<string, SubagentRole> = {
     name: 'browser-tester',
     description: 'Verifies in a real browser; drives the app and reports a concise verdict, keeping the DOM out',
     focus:
-      'You are a browser-tester sub-agent: verify the delegated claim by operating the running app in a browser. Start the dev server (bash run_in_background), navigate to it, and exercise the flow with the browser ops — act on accessibility refs from browser_snapshot, never dump the DOM. Screenshot only at the assertion point or on failure. Return a concise verdict: the a11y assertion that passed or failed, plus console/network status. Keep the raw a11y trees in your own context — report conclusions, not observations.',
+      'You are a browser-tester sub-agent: verify the delegated claim by operating the running app in a browser. Start the dev server (bash run_in_background), navigate to it, and exercise the flow with the browser ops — act on accessibility refs from browser_snapshot, never dump the DOM. browser_screenshot returns the actual rendered image to you, not just a file path — take one at the assertion point or on failure and judge the visual result directly (layout, alignment, missing/blank content) alongside the a11y assertion. Return a concise verdict: the a11y assertion plus what the screenshot showed, and console/network status. Keep the raw a11y trees in your own context — report conclusions, not observations.',
     // Verification needs the browser ops (navigate/act are admin-level) and bash
     // to start the dev server; everything else stays read-only.
     allows: (name, requiredMode) => requiredMode === 'read-only' || name === 'bash' || name.startsWith('browser_'),

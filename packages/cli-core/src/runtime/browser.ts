@@ -90,6 +90,10 @@ export interface BrowserScreenshotParams {
 export interface BrowserScreenshotResult {
   readonly path: string
   readonly bytes: number
+  /** Base64-encoded image bytes, for attaching as a visual content block. */
+  readonly data: string
+  /** IANA media type of the capture (PNG). */
+  readonly mediaType: string
 }
 
 export type BrowserFailureKind =

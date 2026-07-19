@@ -4,10 +4,11 @@ import type {
   ProviderStreamEvent,
   StopReason,
   ChatMessage,
+  ImageContent,
   ProviderToolSchema,
 } from '@orchentra/cli-core'
-import { emptyUsage } from '@orchentra/cli-core'
-import type { OpenAiMessage, OpenAiToolCall, OpenAiToolDefinition, OpenAiStreamDelta } from './types'
+import { assertVisionSupport, emptyUsage } from '@orchentra/cli-core'
+import type { OpenAiContentPart, OpenAiMessage, OpenAiToolCall, OpenAiToolDefinition, OpenAiStreamDelta } from './types'
 import { getCredential, type ProviderKey } from '../credential-store'
 import { parseToolArguments } from '../tool-arguments'
 import { assertModelProvenance } from '../model-provenance'
@@ -201,6 +202,7 @@ export class OpenAiCompatProvider implements Provider {
 }
 
 function buildRequestBody(request: ProviderRequest, includeReasoningEffort = false): Record<string, unknown> {
+  assertVisionSupport(request.messages, request.model)
   const messages: OpenAiMessage[] = []
 
   if (request.systemStatic || request.systemDynamic) {
@@ -210,9 +212,7 @@ function buildRequestBody(request: ProviderRequest, includeReasoningEffort = fal
     messages.push({ role: 'system', content: parts.join('\n\n') })
   }
 
-  for (const msg of request.messages) {
-    messages.push(convertMessage(msg))
-  }
+  messages.push(...convertMessages(request.messages))
 
   const body: Record<string, unknown> = {
     model: request.model,
@@ -252,20 +252,44 @@ function supportsReasoningEffort(config: OpenAiCompatConfig, model: string): boo
   )
 }
 
+function imageUrlPart(image: ImageContent): OpenAiContentPart {
+  return { type: 'image_url', image_url: { url: `data:${image.mediaType};base64,${image.data}` } }
+}
+
+/**
+ * Converts the message list to OpenAI wire messages, expanding any image
+ * payloads. OpenAI `tool` messages are string-only, so a tool result's image
+ * cannot ride the tool message — it follows as a `user` message with
+ * image_url parts. User-message images are inlined as array content.
+ */
+export function convertMessages(messages: readonly ChatMessage[]): OpenAiMessage[] {
+  const out: OpenAiMessage[] = []
+  for (const msg of messages) {
+    out.push(convertMessage(msg))
+    const images = msg.images ?? []
+    if (msg.role === 'tool' && images.length > 0) {
+      out.push({ role: 'user', content: images.map(imageUrlPart) })
+    }
+  }
+  return out
+}
+
 export function convertMessage(msg: ChatMessage): OpenAiMessage {
   if (msg.role === 'user') {
+    const images = msg.images ?? []
+    if (images.length > 0) {
+      return { role: 'user', content: [{ type: 'text', text: msg.content }, ...images.map(imageUrlPart)] }
+    }
     return { role: 'user', content: msg.content }
   }
   if (msg.role === 'assistant') {
     const result: OpenAiMessage = { role: 'assistant', content: msg.content || null }
     if (msg.toolCalls && msg.toolCalls.length > 0) {
-      result.tool_calls = msg.toolCalls.map(
-        (tc): OpenAiToolCall => ({
-          id: tc.id,
-          type: 'function',
-          function: { name: tc.name, arguments: typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input) },
-        }),
-      )
+      result.tool_calls = msg.toolCalls.map((tc): OpenAiToolCall => ({
+        id: tc.id,
+        type: 'function',
+        function: { name: tc.name, arguments: typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input) },
+      }))
     }
     return result
   }

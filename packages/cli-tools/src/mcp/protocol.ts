@@ -97,6 +97,21 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/**
+ * Pulls image blocks out of an MCP tool result into the canonical
+ * `{ data, mediaType }` shape so they can ride to the model as visual content
+ * instead of being flattened to a `[image/png]` text placeholder.
+ */
+export function extractMcpImages(content: McpContentBlock[]): { data: string; mediaType: string }[] {
+  const images: { data: string; mediaType: string }[] = []
+  for (const block of content) {
+    if (block.type === 'image' && typeof block.data === 'string' && typeof block.mimeType === 'string') {
+      images.push({ data: block.data, mediaType: block.mimeType })
+    }
+  }
+  return images
+}
+
 export function coerceContentToText(content: McpContentBlock[]): string {
   const parts: string[] = []
   for (const block of content) {

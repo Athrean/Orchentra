@@ -131,8 +131,8 @@ export class BrowserSessionManager implements BrowserRunSession {
     const page = this.requirePage()
     const path = params.path ?? join(this.artifactDir, `screenshot-${Date.now()}.png`)
     await mkdir(dirname(path), { recursive: true })
-    const bytes = await page.screenshot({ fullPage: params.fullPage ?? false, path })
-    return { path, bytes }
+    const shot = await page.screenshot({ fullPage: params.fullPage ?? false, path })
+    return { path, bytes: shot.bytes, data: shot.data, mediaType: 'image/png' }
   }
 
   async close(): Promise<void> {

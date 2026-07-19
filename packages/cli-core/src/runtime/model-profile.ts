@@ -45,6 +45,13 @@ export interface ModelProfile {
   readonly match: readonly RegExp[]
   /** Provider route for matched models. */
   readonly provider: ProviderName
+  /**
+   * Whether this family's current models accept image input. Plumbing (a
+   * factual capability), not a divergence — it carries no justification burden
+   * and survives generic mode, exactly like `provider` and `family`. Gates
+   * image sends so a screenshot is never silently dropped onto a text model.
+   */
+  readonly vision?: boolean
   /** Counter-backed deviations from generic behavior. Empty = generic. */
   readonly divergences: readonly ProfileDivergence[]
   // ── Specializations. Each set field is a divergence and must be justified
@@ -77,19 +84,19 @@ export const MODEL_PROFILES: readonly ModelProfile[] = [
   { family: 'local', match: [/^ollama\//i], provider: 'local', divergences: [] },
   // OpenRouter-hosted families keep their real family name so per-family
   // specialization applies regardless of route.
-  { family: 'claude', match: [/^anthropic\//i], provider: 'openrouter', divergences: [] },
-  { family: 'gpt', match: [/^openai\//i], provider: 'openrouter', divergences: [] },
-  { family: 'gemini', match: [/^google\//i], provider: 'openrouter', divergences: [] },
-  { family: 'grok', match: [/^x-ai\//i], provider: 'openrouter', divergences: [] },
+  { family: 'claude', match: [/^anthropic\//i], provider: 'openrouter', vision: true, divergences: [] },
+  { family: 'gpt', match: [/^openai\//i], provider: 'openrouter', vision: true, divergences: [] },
+  { family: 'gemini', match: [/^google\//i], provider: 'openrouter', vision: true, divergences: [] },
+  { family: 'grok', match: [/^x-ai\//i], provider: 'openrouter', vision: true, divergences: [] },
   { family: 'mistral', match: [/^mistralai\//i], provider: 'openrouter', divergences: [] },
   { family: 'deepseek', match: [/^deepseek\//i], provider: 'openrouter', divergences: [] },
   { family: 'qwen', match: [/^qwen\//i], provider: 'openrouter', divergences: [] },
   { family: 'glm', match: [/^(z-ai|zhipu)\//i], provider: 'openrouter', divergences: [] },
-  { family: 'gpt', match: [/^gpt/i, /openai/i], provider: 'openai', divergences: [] },
-  { family: 'grok', match: [/^grok/i, /xai/i], provider: 'xai', divergences: [] },
+  { family: 'gpt', match: [/^gpt/i, /openai/i], provider: 'openai', vision: true, divergences: [] },
+  { family: 'grok', match: [/^grok/i, /xai/i], provider: 'xai', vision: true, divergences: [] },
   { family: 'qwen', match: [/qwen/i, /dashscope/i], provider: 'dashscope', divergences: [] },
-  { family: 'gemini', match: [/^gemini/i, /google/i], provider: 'gemini', divergences: [] },
-  { family: 'claude', match: [/^claude/i], provider: 'anthropic', divergences: [] },
+  { family: 'gemini', match: [/^gemini/i, /google/i], provider: 'gemini', vision: true, divergences: [] },
+  { family: 'claude', match: [/^claude/i], provider: 'anthropic', vision: true, divergences: [] },
 ]
 
 /**
@@ -119,7 +126,40 @@ export function profileFor(
     family: matched.family,
     match: matched.match,
     provider: matched.provider,
+    // vision is plumbing (a factual capability), so it survives generic mode
+    // alongside family and route — stripping it would break image sends.
+    vision: matched.vision,
     divergences: [],
+  }
+}
+
+/** Whether the resolved profile for `model` accepts image input. */
+export function modelSupportsVision(
+  model: string,
+  mode: ProfileMode = 'profiled',
+  profiles: readonly ModelProfile[] = MODEL_PROFILES,
+): boolean {
+  return profileFor(model, mode, profiles).vision === true
+}
+
+/**
+ * Provider gate: throws a clear error if any message carries images but `model`
+ * is not vision-capable — a screenshot is never silently dropped onto a text
+ * model. A missing model skips the gate (the caller has no model to check).
+ * Kept structurally typed (not ChatMessage) to avoid a provider↔profile import
+ * cycle.
+ */
+export function assertVisionSupport(
+  messages: readonly { readonly images?: readonly unknown[] }[],
+  model?: string,
+): void {
+  if (!model) return
+  const hasImages = messages.some((m) => (m.images?.length ?? 0) > 0)
+  if (hasImages && !modelSupportsVision(model)) {
+    throw new Error(
+      `model "${model}" does not support image input — cannot send an image block. ` +
+        `Select a vision-capable model or omit the image.`,
+    )
   }
 }
 

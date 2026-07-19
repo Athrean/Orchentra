@@ -1,5 +1,6 @@
 import {
   SNAPSHOT_CONTENT_MARKER,
+  checkImageLimits,
   isBrowserOpError,
   renderA11yTree,
   type BrowserActionKind,
@@ -253,10 +254,23 @@ export const browserScreenshotTool: ToolDefinition = {
     const input = args as ScreenshotInput
     try {
       const result = await session.screenshot({ fullPage: input.fullPage, path: input.path })
+      const image = { data: result.data, mediaType: result.mediaType }
+      // Guardrail before the image reaches a provider payload: reject an
+      // oversized capture with a clear error rather than silently dropping it.
+      const limitError = checkImageLimits(image)
+      if (limitError) {
+        return {
+          content: `screenshot saved to ${result.path} (${result.bytes} bytes) but was not attached: ${limitError}`,
+          isError: true,
+          data: result,
+          artifacts: [{ uri: result.path, kind: 'file', action: 'created' }],
+        }
+      }
       return {
         content: `screenshot saved to ${result.path} (${result.bytes} bytes)`,
         isError: false,
         data: result,
+        images: [image],
         artifacts: [{ uri: result.path, kind: 'file', action: 'created' }],
         evidence: [{ kind: 'browser-screenshot', summary: `screenshot: ${result.path}`, detail: result }],
       }
