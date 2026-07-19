@@ -3,22 +3,23 @@ import { GeistPixelCircle } from 'geist/font/pixel'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Orchentra — Give every coding run a finish line',
+  metadataBase: new URL('https://orchentra.dev'),
+  title: {
+    default: 'Orchentra — Ship code with proof attached',
+    template: '%s — Orchentra',
+  },
   description:
-    'A local-first coding harness that plans the work, coordinates specialist agents, runs the real checks, and returns the evidence behind the result.',
+    'The model-aware coding harness for constrained delegation, real verification, and evidence-gated completion.',
   openGraph: {
-    title: 'Orchentra — Give every coding run a finish line',
-    description: 'Plan the work. Coordinate the crew. Return proof with the result.',
+    title: 'Orchentra — Ship code with proof attached',
+    description: 'One accountable coding run, from repository inspection to verified completion.',
     type: 'website',
   },
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f6f6f6' },
-    { media: '(prefers-color-scheme: dark)', color: '#090909' },
-  ],
+  colorScheme: 'dark',
+  themeColor: '#080808',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactNode {
