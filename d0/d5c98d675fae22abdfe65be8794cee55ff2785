@@ -1,0 +1,23 @@
+packages/cli-tools/src/tools/agent-tool.ts
+  s_78eb7e70681c18::t_613d2fe08c31f4 13,42,46,51-103,105,107-120,123-126,128-133,136-138,140-145,148-152,154-165,168-173,175-186,188-204,206-208,210-220,223-225,259,291
+packages/cli-tools/src/index.ts
+  s_78eb7e70681c18::t_2a24e5597af02e 72-81
+packages/cli-tools/tests/agent-tool-custom-types.test.ts
+  s_78eb7e70681c18::t_3799ba0e2a0697 1-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d0d5c98d675fae22abdfe65be8794cee55ff2785",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
