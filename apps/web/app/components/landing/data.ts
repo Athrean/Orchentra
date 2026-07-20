@@ -58,12 +58,6 @@ export const capabilities = [
   },
 ] as const
 
-export const promptExamples = [
-  'Rebuild the settings flow and verify it in the browser',
-  'Split this refactor across isolated worktrees',
-  'Fix the regression and return the evidence that closes it',
-] as const
-
 export const setupSteps = [
   {
     index: '01',

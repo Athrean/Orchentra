@@ -8,15 +8,15 @@ import { Reveal, referenceEase } from './motion'
 import { Brand, CornerButton, Glyph } from './ui'
 import { OrchentraTerminal, type TerminalScenario } from './visuals'
 
+const headerLinks = [
+  ['WHY', '/#problem'],
+  ['CAPABILITIES', '/#capabilities'],
+  ['WORKFLOW', '/#workflow'],
+  ['PRICING', '/#pricing'],
+] as const
+
 export function SiteHeader(): React.ReactNode {
   const [open, setOpen] = useState(false)
-
-  const links = [
-    ['WHY', '/#problem'],
-    ['CAPABILITIES', '/#capabilities'],
-    ['WORKFLOW', '/#workflow'],
-    ['PRICING', '/#pricing'],
-  ] as const
 
   return (
     <header className={open ? 'site-header is-open' : 'site-header'}>
@@ -25,7 +25,7 @@ export function SiteHeader(): React.ReactNode {
           <Brand />
         </Link>
         <nav className="desktop-nav" aria-label="Primary navigation">
-          {links.map(([label, href]) => (
+          {headerLinks.map(([label, href]) => (
             <a href={href} key={label}>
               {label}
             </a>
@@ -58,7 +58,7 @@ export function SiteHeader(): React.ReactNode {
             transition={{ duration: 0.76, ease: referenceEase }}
           >
             <div>
-              {links.map(([label, href], index) => (
+              {headerLinks.map(([label, href], index) => (
                 <a href={href} key={label} onClick={() => setOpen(false)}>
                   <span>0{index + 1}</span>
                   {label}
@@ -364,9 +364,10 @@ export function LifecycleSection(): React.ReactNode {
   )
 }
 
+const lifecycleScenarios: readonly TerminalScenario[] = ['inspect', 'plan', 'build', 'verify']
+
 function LifecycleVisual({ index }: { index: number }): React.ReactNode {
-  const scenarios: readonly TerminalScenario[] = ['inspect', 'plan', 'build', 'verify']
-  return <OrchentraTerminal scenario={scenarios[index]} variant="compact" />
+  return <OrchentraTerminal scenario={lifecycleScenarios[index]} variant="compact" />
 }
 
 export function PricingSection(): React.ReactNode {

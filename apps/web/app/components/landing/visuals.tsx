@@ -153,7 +153,7 @@ export function OrchentraTerminal({
   const [phase, setPhase] = useState<'command' | 'select' | 'complete'>('command')
   const [command, setCommand] = useState(config.command)
   const [cursor, setCursor] = useState(config.selected?.[0] ?? 0)
-  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set(config.selected ?? []))
+  const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set(config.selected ?? []))
   const [focused, setFocused] = useState(false)
 
   useEffect(() => {

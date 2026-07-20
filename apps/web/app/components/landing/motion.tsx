@@ -1,34 +1,8 @@
 'use client'
 
-import {
-  LazyMotion,
-  MotionConfig,
-  animate,
-  domAnimation,
-  m,
-  useInView,
-  useMotionValue,
-  useReducedMotion,
-  useTransform,
-  type Variants,
-} from 'framer-motion'
-import { useEffect, useRef } from 'react'
+import { LazyMotion, MotionConfig, domAnimation, m } from 'framer-motion'
 
 export const referenceEase = [0.12, 0.23, 0.17, 0.99] as const
-
-export const revealItem: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.82, ease: referenceEase },
-  },
-}
-
-export const stagger: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-}
 
 export function MotionProvider({ children }: { children: React.ReactNode }): React.ReactNode {
   return (
@@ -83,32 +57,4 @@ export function HeroReveal({
       {children}
     </m.div>
   )
-}
-
-export function CountUp({
-  value,
-  suffix = '',
-  prefix = '',
-}: {
-  value: number
-  suffix?: string
-  prefix?: string
-}): React.ReactNode {
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true, amount: 0.8 })
-  const reduceMotion = useReducedMotion()
-  const motionValue = useMotionValue(0)
-  const rounded = useTransform(motionValue, (latest) => `${prefix}${Math.round(latest).toLocaleString()}${suffix}`)
-
-  useEffect(() => {
-    if (!inView) return
-    if (reduceMotion) {
-      motionValue.set(value)
-      return
-    }
-    const controls = animate(motionValue, value, { duration: 1.25, ease: referenceEase })
-    return () => controls.stop()
-  }, [inView, motionValue, reduceMotion, value])
-
-  return <m.span ref={ref}>{rounded}</m.span>
 }
