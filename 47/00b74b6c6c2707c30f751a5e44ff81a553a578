@@ -1,0 +1,27 @@
+apps/cli/scripts/install.sh
+  s_78eb7e70681c18::t_f20d5f397a0f80 1-78
+apps/cli/tests/dist-scripts.test.ts
+  s_78eb7e70681c18::t_f3acb06e7da782 1-121
+scripts/update-homebrew-formula.sh
+  s_78eb7e70681c18::t_a0bb9953b45f93 1-46
+.github/workflows/release-binaries.yml
+  s_78eb7e70681c18::t_d3b7be3b121793 1-50
+Formula/orchentra.rb
+  s_78eb7e70681c18::t_a02f0dbc382394 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4700b74b6c6c2707c30f751a5e44ff81a553a578",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
