@@ -1,0 +1,25 @@
+packages/cli-core/src/runtime/config-types.ts
+  s_78eb7e70681c18::t_6ccae27435505b 39-45,56
+packages/cli-core/src/runtime/config.ts
+  s_78eb7e70681c18::t_38f3981da7b50e 12,104-114
+packages/cli-core/src/runtime/index.ts
+  s_78eb7e70681c18::t_a7f21fc7d4065a 285
+packages/cli-core/tests/config.test.ts
+  s_78eb7e70681c18::t_7cba6bb385a0bf 62-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8c38ff1deaa746f735e29933b515debad0e23021",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
