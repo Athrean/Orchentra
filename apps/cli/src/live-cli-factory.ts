@@ -14,7 +14,17 @@ import {
 } from '@orchentra/cli-core'
 import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config'
 import { BrowserSessionManager } from '@orchentra/cli-browser'
-import { DefaultToolRegistry, McpManager, DEFAULT_MCP_DEFER_TOKENS, applyModelProfile } from '@orchentra/cli-tools'
+import {
+  BUILTIN_TOOLS,
+  DefaultToolRegistry,
+  McpManager,
+  DEFAULT_MCP_DEFER_TOKENS,
+  applyModelProfile,
+  createAgentTool,
+  resolveAgentRoles,
+  type SubagentCaps,
+  type SubagentRole,
+} from '@orchentra/cli-tools'
 import { LiveCli } from './live-cli'
 import { CliCoreHookAdapter } from './hooks/cli-core-adapter'
 import type { HookProgressUpdate } from './hooks/types'
@@ -47,7 +57,11 @@ export interface CliContext {
 export async function createCliContext(options: CliContextOptions): Promise<CliContext> {
   const config = ConfigLoader.defaultFor(options.cwd).load()
   const userAliases = config.featureConfig.aliases as Record<string, string> | undefined
-  const tools = buildToolRegistry()
+  // Discover user/project agent definitions once per process, not per tool-call,
+  // and build the `agent` tool over the merged role set so custom types are
+  // spawnable by name and the depth/fan-out caps honor config.
+  const agentRoles = await resolveAgentRoles(options.cwd)
+  const tools = buildToolRegistry(agentRoles, config.featureConfig.subagents)
   const resolveModel: ModelResolver = (raw: string) => {
     const model = resolveModelAlias(raw, userAliases)
     if (!isKnownModel(model)) {
@@ -143,6 +157,8 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   }
 }
 
-function buildToolRegistry(): DefaultToolRegistry {
-  return new DefaultToolRegistry()
+function buildToolRegistry(roles: Record<string, SubagentRole>, caps: SubagentCaps): DefaultToolRegistry {
+  // The dynamic `agent` tool (built over the merged roles) overrides the static
+  // one baked into BUILTIN_TOOLS — same tool name, so the registry Map dedups.
+  return new DefaultToolRegistry([...BUILTIN_TOOLS, createAgentTool(roles, caps)])
 }
