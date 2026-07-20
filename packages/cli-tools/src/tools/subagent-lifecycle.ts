@@ -56,6 +56,10 @@ interface ChildHandle {
   restoredMessages: ChatMessage[]
   /** Serializes snapshot writes so a slow write never lands out of order. */
   persistChain: Promise<void>
+  /** Cancels the current run when interrupted; replaced on each (re)attach. */
+  abortController: AbortController | null
+  /** ISO timestamp of the most recent spawn/resume. */
+  startedAt: string
 }
 
 const children = new Map<string, ChildHandle>()
@@ -104,10 +108,14 @@ function persist(handle: ChildHandle): void {
 function attachRun(handle: ChildHandle, ctx: ToolContext, role: SubagentRole, prompt: string, resume: boolean): void {
   handle.status = 'running'
   handle.outcome = null
+  handle.startedAt = new Date().toISOString()
+  const abortController = new AbortController()
+  handle.abortController = abortController
   handle.promise = runSubagent(prompt, handle.model, ctx, role, {
     ...(resume
       ? { priorMessages: handle.restoredMessages, runState: handle.lastRunState ?? undefined, resume: true }
       : {}),
+    signal: abortController.signal,
     onRuntime: (runtime) => {
       handle.runtime = runtime
     },
@@ -149,6 +157,8 @@ export function spawnBackgroundChild(
     lastRunState: null,
     restoredMessages: [],
     persistChain: Promise.resolve(),
+    abortController: null,
+    startedAt: new Date().toISOString(),
   }
   children.set(handle.id, handle)
   attachRun(handle, ctx, role, prompt, false)
@@ -178,6 +188,8 @@ async function loadFromDisk(cwd: string, id: string): Promise<ChildHandle | null
     lastRunState: record.runState ?? null,
     restoredMessages: record.messages ?? [],
     persistChain: Promise.resolve(),
+    abortController: null,
+    startedAt: record.updatedAt,
   }
   children.set(id, handle)
   return handle
@@ -201,12 +213,12 @@ interface AgentControlInput {
 export const agentControlTool: ToolDefinition = {
   name: 'agent_control',
   description:
-    'Manage background sub-agents spawned with the agent tool: "steer" injects an instruction into a running agent at its next step, "wait" blocks until it finishes and returns its result, "resume" restarts a suspended/finished agent from its persisted transcript (optionally with a new instruction), "status" reports one or all agents.',
+    'Manage background sub-agents spawned with the agent tool: "steer" injects an instruction into a running agent at its next step, "interrupt" cancels a running agent cleanly (it stops at the next boundary and can be resumed), "wait" blocks until it finishes and returns its result, "resume" restarts a suspended/finished agent from its persisted transcript (optionally with a new instruction), "status" reports one or all agents.',
   level: 'admin',
   inputSchema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['steer', 'wait', 'resume', 'status'] },
+      action: { type: 'string', enum: ['steer', 'interrupt', 'wait', 'resume', 'status'] },
       agentId: { type: 'string', description: 'Agent id returned by a background spawn (required except for status)' },
       instruction: {
         type: 'string',
@@ -232,6 +244,8 @@ export const agentControlTool: ToolDefinition = {
         data: {
           id: handle.id,
           status: handle.status,
+          role: handle.roleName,
+          startedAt: handle.startedAt,
           doneReason: handle.outcome?.doneReason,
           usage: handle.outcome?.usage,
           costUsd: handle.outcome?.costUsd,
@@ -258,6 +272,23 @@ export const agentControlTool: ToolDefinition = {
         }
         handle.runtime.steer(input.instruction)
         return { content: `steering queued for agent ${handle.id}; it lands at the next step boundary`, isError: false }
+      }
+      case 'interrupt': {
+        if (handle.status !== 'running' || !handle.abortController) {
+          return {
+            content: `error: agent ${handle.id} is ${handle.status}, not running; nothing to interrupt`,
+            isError: true,
+          }
+        }
+        handle.abortController.abort()
+        // Let the run settle to its clean aborted checkpoint before reporting,
+        // so status/transcript reflect the stop rather than a race.
+        if (handle.promise) await handle.promise
+        return {
+          content: `agent ${handle.id} interrupted; it stopped cleanly and can be resumed`,
+          isError: false,
+          data: { id: handle.id, status: handle.status },
+        }
       }
       case 'wait': {
         if (handle.status === 'running' && handle.promise) {

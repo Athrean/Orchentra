@@ -47,6 +47,8 @@ export interface SubagentRunOptions {
   onRuntime?: (runtime: ConversationRuntime) => void
   /** Observes every runtime event, e.g. for transcript persistence. */
   onEvent?: (event: RuntimeEvent) => void
+  /** External cancel: aborting it stops the run cleanly (doneReason 'aborted'). */
+  signal?: AbortSignal
 }
 
 export async function runSubagent(
@@ -76,6 +78,12 @@ export async function runSubagent(
   let usage = emptyUsage()
   try {
     const abort = new AbortController()
+    // Let an external caller (agent_control interrupt) cancel the run: link its
+    // signal into the same controller the budget-exhaustion path already uses.
+    if (options.signal) {
+      if (options.signal.aborted) abort.abort()
+      else options.signal.addEventListener('abort', () => abort.abort(), { once: true })
+    }
     const runtime = new ConversationRuntime(
       {
         model,
