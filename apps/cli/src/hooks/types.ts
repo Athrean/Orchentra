@@ -11,7 +11,21 @@
  * The JSON shape sent to each hook on stdin is `HookExecutionContext` below.
  */
 
-export type HookEvent = 'pre_tool_use' | 'post_tool_use'
+export type ToolHookEvent = 'pre_tool_use' | 'post_tool_use'
+
+/**
+ * Session/compaction/sub-agent lifecycle events. Unlike tool events these are
+ * not tool-scoped and never block — they fire as notifications. Configured in
+ * the same `.orchentra/hooks.json`, matched on `event` alone (their `tools`
+ * field, if present, is ignored).
+ */
+export type LifecycleHookEvent =
+  'session_start' | 'session_end' | 'pre_compact' | 'post_compact' | 'subagent_start' | 'subagent_stop'
+
+export type HookEvent = ToolHookEvent | LifecycleHookEvent
+
+/** JSON piped to a lifecycle hook's stdin: the event plus event-specific fields. */
+export type LifecycleHookContext = { readonly event: LifecycleHookEvent } & Record<string, unknown>
 
 /**
  * One entry in `.orchentra/hooks.json`. `tools` accepts exact tool names and
@@ -20,6 +34,8 @@ export type HookEvent = 'pre_tool_use' | 'post_tool_use'
  */
 export interface HookMatch {
   readonly event: HookEvent
+  /** Tool-name filter for tool events (exact names or `*`). Ignored — and
+   * defaulted to `[]` — for lifecycle events, which match on `event` alone. */
   readonly tools: readonly string[]
   readonly command: string
 }
@@ -74,7 +90,9 @@ export interface HookProgressUpdate {
   readonly id: string
   readonly phase: 'running' | 'done'
   readonly ok?: boolean
-  readonly event: HookEvent
+  // Only tool hooks surface a "running hook…" row; lifecycle hooks are silent
+  // background notifications, so this stays the tool-event union.
+  readonly event: ToolHookEvent
   readonly tool: string
   readonly command: string
 }

@@ -2,6 +2,15 @@ import type { PermissionOverride } from './permissions'
 
 export type HookEvent = 'PreToolUse' | 'PostToolUse' | 'PostToolUseFailure'
 
+/**
+ * Session/compaction/sub-agent lifecycle events, distinct from the per-tool
+ * events above. They fire as non-blocking notifications, never gate a tool.
+ * The base runner has no lifecycle hooks; an adapter over a config source that
+ * carries them (e.g. the `.orchentra/hooks.json` engine) overrides `runLifecycle`.
+ */
+export type LifecycleHookEvent =
+  'SessionStart' | 'SessionEnd' | 'PreCompact' | 'PostCompact' | 'SubagentStart' | 'SubagentStop'
+
 export interface HookConfig {
   preToolUse: string[]
   postToolUse: string[]
@@ -295,6 +304,15 @@ export class HookRunner {
       postToolUse: config?.postToolUse ?? [],
       postToolUseFailure: config?.postToolUseFailure ?? [],
     }
+  }
+
+  /**
+   * Fire a lifecycle event (session/compaction/sub-agent). No-op in the base
+   * runner, which sources only per-tool hooks; adapters whose config carries
+   * lifecycle hooks override this. Never blocks and never throws.
+   */
+  async runLifecycle(_event: LifecycleHookEvent, _payload: Record<string, unknown> = {}): Promise<void> {
+    // Base runner has no lifecycle hooks.
   }
 
   async runPreToolUse(toolName: string, toolInput: string, opts: RunHookOptions = {}): Promise<HookRunResult> {

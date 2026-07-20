@@ -264,6 +264,7 @@ export { detectGitContext, renderGitContext } from './git-context'
 
 export type {
   HookEvent,
+  LifecycleHookEvent,
   HookConfig,
   HookRunResult,
   RunHookOptions,
