@@ -1,0 +1,23 @@
+packages/cli-tools/src/tools/agent-definitions.ts
+  s_78eb7e70681c18::t_1cb27ab0e5a9cd 1-140
+packages/cli-tools/src/tools/subagent-roles.ts
+  s_78eb7e70681c18::t_f0a2cd8aced8be 63-79,85,87,89
+packages/cli-tools/tests/agent-definitions.test.ts
+  s_78eb7e70681c18::t_84d5542d731979 1-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f73fe7fffe8a6cbc7f21fa32194494444f33f338",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
