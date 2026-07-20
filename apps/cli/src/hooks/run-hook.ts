@@ -1,12 +1,12 @@
 import { spawn } from 'node:child_process'
-import type { HookExecutionContext, HookMatch, HookResult } from './types'
+import type { HookExecutionContext, HookMatch, HookResult, LifecycleHookContext } from './types'
 
 /**
  * Spawn the hook's command via the system shell, pipe the JSON-encoded
  * `context` to stdin, and collect the result. Never throws — process spawn
  * failures surface as `exitCode === -1` with the failure message in stderr.
  */
-export function runHook(hook: HookMatch, context: HookExecutionContext): Promise<HookResult> {
+export function runHook(hook: HookMatch, context: HookExecutionContext | LifecycleHookContext): Promise<HookResult> {
   return new Promise((resolve) => {
     const start = Date.now()
     const child = spawn(hook.command, { shell: true })

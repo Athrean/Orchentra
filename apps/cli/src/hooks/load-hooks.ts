@@ -4,8 +4,18 @@ import { z } from 'zod'
 import type { HookConfig } from './types'
 
 const HookMatchSchema = z.object({
-  event: z.enum(['pre_tool_use', 'post_tool_use']),
-  tools: z.array(z.string().min(1)),
+  event: z.enum([
+    'pre_tool_use',
+    'post_tool_use',
+    'session_start',
+    'session_end',
+    'pre_compact',
+    'post_compact',
+    'subagent_start',
+    'subagent_stop',
+  ]),
+  // Required for tool events; optional for lifecycle events, which ignore it.
+  tools: z.array(z.string().min(1)).optional().default([]),
   command: z.string().min(1),
 })
 

@@ -1,6 +1,21 @@
-import { HookRunner as CoreHookRunner, type HookRunResult, type PermissionOverride } from '@orchentra/cli-core'
+import {
+  HookRunner as CoreHookRunner,
+  type HookRunResult,
+  type LifecycleHookEvent as CoreLifecycleEvent,
+  type PermissionOverride,
+} from '@orchentra/cli-core'
 import { createHookRunner, type HookRunner } from './hook-runner'
-import type { HookProgressUpdate } from './types'
+import type { HookProgressUpdate, LifecycleHookEvent } from './types'
+
+/** cli-core's PascalCase lifecycle events → the `.orchentra/hooks.json` snake_case names. */
+const LIFECYCLE_EVENT_MAP: Record<CoreLifecycleEvent, LifecycleHookEvent> = {
+  SessionStart: 'session_start',
+  SessionEnd: 'session_end',
+  PreCompact: 'pre_compact',
+  PostCompact: 'post_compact',
+  SubagentStart: 'subagent_start',
+  SubagentStop: 'subagent_stop',
+}
 
 interface ParsedAnnotationOutput {
   messages: string[]
@@ -147,5 +162,9 @@ export class CliCoreHookAdapter extends CoreHookRunner {
     const args = parseArgs(toolInput)
     const result = await this.inner.firePostToolUse(toolName, args, new Error(toolError))
     return allowWithMessages(parseAnnotations(result.annotations).messages)
+  }
+
+  override async runLifecycle(event: CoreLifecycleEvent, payload: Record<string, unknown> = {}): Promise<void> {
+    await this.inner.fireLifecycle(LIFECYCLE_EVENT_MAP[event], payload)
   }
 }

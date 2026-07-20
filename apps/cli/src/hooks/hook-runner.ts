@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { loadHooks } from './load-hooks'
-import { matchHooks } from './match'
+import { matchHooks, matchLifecycleHooks } from './match'
 import { runHook } from './run-hook'
-import type { HookConfig, HookExecutionContext, HookFireResult, HookProgressUpdate } from './types'
+import type { HookConfig, HookExecutionContext, HookFireResult, HookProgressUpdate, LifecycleHookEvent } from './types'
 
 export interface HookRunnerOptions {
   /**
@@ -30,6 +30,12 @@ export interface HookRunnerOptions {
 export interface HookRunner {
   firePreToolUse(toolName: string, args: unknown): Promise<HookFireResult>
   firePostToolUse(toolName: string, args: unknown, resultOrError: string | Error): Promise<HookFireResult>
+  /**
+   * Fire the matching lifecycle hooks (session/compaction/sub-agent) in order.
+   * Non-blocking: a non-zero exit is ignored. Returns each hook's trimmed
+   * stdout as an annotation, purely informational.
+   */
+  fireLifecycle(event: LifecycleHookEvent, payload?: Record<string, unknown>): Promise<readonly string[]>
 }
 
 const NOOP_RESULT: HookFireResult = { blocked: false }
@@ -94,6 +100,21 @@ export function createHookRunner(options: HookRunnerOptions): HookRunner {
       }
 
       return annotations.length > 0 ? { blocked: false, annotations } : NOOP_RESULT
+    },
+
+    async fireLifecycle(event, payload = {}): Promise<readonly string[]> {
+      // Lifecycle hooks are silent background notifications: no progress row, and
+      // a non-zero exit never blocks. Only their stdout is captured, in order.
+      const hooks = matchLifecycleHooks(config, event)
+      if (hooks.length === 0) return []
+
+      const annotations: string[] = []
+      for (const hook of hooks) {
+        const result = await runHook(hook, { event, ...payload })
+        const stdout = result.stdout.trim()
+        if (stdout.length > 0) annotations.push(stdout)
+      }
+      return annotations
     },
   }
 }

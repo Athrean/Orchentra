@@ -9,6 +9,7 @@ import type {
   AskUserRequest,
   DoneReason,
   HookRunner,
+  LifecycleHookEvent,
   EffortTier,
   TerseMode,
   PlanLevel,
@@ -155,6 +156,10 @@ export class LiveCli implements SessionControl {
   private compactionThreshold = 0.8
   private keepRecentOnCompact = 6
   private readonly hookRunner: HookRunner | null
+  /** True once the SessionStart lifecycle hook has fired (once per process). */
+  private sessionStartFired = false
+  /** Live `agent` tool_use ids, so a matching tool_result fires SubagentStop. */
+  private readonly subagentCallIds = new Set<string>()
 
   private messages: ChatMessage[] = []
   private session: SessionWriter | null = null
@@ -732,6 +737,11 @@ export class LiveCli implements SessionControl {
     this.pendingFileUndoSnapshots.clear()
     this.currentTurnFileUndo = []
 
+    if (!this.sessionStartFired) {
+      this.sessionStartFired = true
+      this.fireLifecycle('SessionStart', { sessionId: this.sessionId, cwd: this.getCwd(), model: this.model })
+    }
+
     if (!sink) this.spinner.start('Thinking...')
 
     // Build dynamic prompt parts (memory context)
@@ -946,13 +956,38 @@ export class LiveCli implements SessionControl {
     return { ok: doneReason === 'stop', reason: doneReason ?? 'error' }
   }
 
+  /**
+   * Fire a lifecycle hook (session/compaction/sub-agent). Fire-and-forget: a
+   * slow or failing notification hook never blocks or breaks a turn. No-op when
+   * no hook runner is wired.
+   */
+  private fireLifecycle(event: LifecycleHookEvent, payload: Record<string, unknown> = {}): void {
+    void this.hookRunner?.runLifecycle(event, payload).catch(() => {})
+  }
+
   private async handleEvent(event: RuntimeEvent): Promise<void> {
     if (event.kind === 'run_state') this.runState = event.state
     if (event.kind === 'tool_use') {
       await this.captureFileUndoSnapshot(event.call)
+      // The `agent` tool spawning a sub-agent is a lifecycle boundary; pair its
+      // start with the SubagentStop fired when its tool_result comes back.
+      if (event.call.name === 'agent') {
+        this.subagentCallIds.add(event.call.id)
+        this.fireLifecycle('SubagentStart', { toolCallId: event.call.id })
+      }
     }
     if (event.kind === 'tool_result') {
       this.recordFileUndoSnapshot(event.result.id, event.result.isError)
+      if (this.subagentCallIds.delete(event.result.id)) {
+        this.fireLifecycle('SubagentStop', { toolCallId: event.result.id, isError: event.result.isError })
+      }
+    }
+    if (event.kind === 'compacted') {
+      // The runtime compacts atomically, then emits this. Fire PreCompact then
+      // PostCompact as ordered notifications around that boundary.
+      const stats = { droppedMessageCount: event.droppedMessageCount, tokensSaved: event.tokensSaved }
+      this.fireLifecycle('PreCompact', stats)
+      this.fireLifecycle('PostCompact', stats)
     }
 
     if (this.eventSink) {
@@ -1117,6 +1152,7 @@ export class LiveCli implements SessionControl {
 
   async persistSession(): Promise<void> {
     if (this.session) {
+      this.fireLifecycle('SessionEnd', { sessionId: this.sessionId })
       await this.session.close()
     }
   }
