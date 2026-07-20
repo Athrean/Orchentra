@@ -1,0 +1,23 @@
+packages/cli-core/src/runtime/migrations.ts
+  s_78eb7e70681c18::t_0027a076b72d27 1-72
+packages/cli-core/src/runtime/index.ts
+  s_78eb7e70681c18::t_32422cbbbc2439 288
+packages/cli-core/tests/migrations.test.ts
+  s_78eb7e70681c18::t_6345e524d84413 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e020c9c1b794b9ecd6e901b223007aa1d9678af1",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
