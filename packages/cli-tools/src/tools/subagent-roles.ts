@@ -60,16 +60,33 @@ const ROLES: Record<string, SubagentRole> = {
   },
 }
 
+/** The four roles compiled into the binary; discovered definitions layer over these. */
+export const BUILTIN_ROLES: Record<string, SubagentRole> = ROLES
+
+// The role set in force for this process. Startup replaces it with the merged
+// built-in + discovered set (setActiveRoles) so paths without the merged map in
+// scope — notably agent_control resume — still resolve a custom role by name.
+let activeRoles: Record<string, SubagentRole> = ROLES
+
+export function setActiveRoles(roles: Record<string, SubagentRole>): void {
+  activeRoles = roles
+}
+
+/** Test isolation only; production sets the active roles once at startup. */
+export function resetActiveRolesForTests(): void {
+  activeRoles = ROLES
+}
+
 export interface ResolvedRole {
   role?: SubagentRole
   error?: string
 }
 
-export function resolveSubagentRole(name?: string): ResolvedRole {
+export function resolveSubagentRole(name?: string, roles: Record<string, SubagentRole> = activeRoles): ResolvedRole {
   if (!name) return { role: GENERIC_ROLE }
-  const role = ROLES[name]
+  const role = roles[name]
   if (!role) {
-    return { error: `unknown agentType "${name}"; valid types: ${Object.keys(ROLES).join(', ')}` }
+    return { error: `unknown agentType "${name}"; valid types: ${Object.keys(roles).join(', ')}` }
   }
   return { role }
 }

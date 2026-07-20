@@ -36,6 +36,13 @@ export interface BudgetFeatureConfig {
   warnCostUsd: number | undefined
 }
 
+export interface SubagentsFeatureConfig {
+  /** Max sub-agent nesting depth (root=0); undefined keeps the built-in default (2). */
+  maxDepth: number | undefined
+  /** Max sub-agents running at once from one fan-out; undefined keeps the built-in default (4). */
+  maxConcurrent: number | undefined
+}
+
 export interface RuntimeFeatureConfig {
   hooks: RuntimeHookConfig
   model: string | undefined
@@ -46,6 +53,7 @@ export interface RuntimeFeatureConfig {
   permissionRules: RuntimePermissionRuleConfig
   memory: MemoryFeatureConfig
   budget: BudgetFeatureConfig
+  subagents: SubagentsFeatureConfig
 }
 
 export type ResolvedPermissionMode = 'read-only' | 'workspace-write' | 'danger-full-access'
