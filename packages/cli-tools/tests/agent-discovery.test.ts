@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { discoverAgentDefinitions, mergeAgentRoles } from '../src/tools/agent-definitions'
+import type { Provider, ProviderRequest, ProviderStreamEvent, ToolContext, ToolRegistry } from '@orchentra/cli-core'
+import { discoverAgentDefinitions, mergeAgentRoles, resolveAgentRoles } from '../src/tools/agent-definitions'
+import { createAgentTool } from '../src/tools/agent-tool'
+import { resetActiveRolesForTests } from '../src/tools/subagent-roles'
 
 let root: string
 let prevConfigHome: string | undefined
@@ -18,6 +21,7 @@ beforeEach(async () => {
 afterEach(async () => {
   if (prevConfigHome === undefined) delete process.env.ORCHESTRA_CONFIG_HOME
   else process.env.ORCHESTRA_CONFIG_HOME = prevConfigHome
+  resetActiveRolesForTests()
   await rm(root, { recursive: true, force: true })
 })
 
@@ -104,5 +108,63 @@ Do global work.`,
     await writeAgent(dir, 'bad.md', `no frontmatter at all`)
     const defs = await discoverAgentDefinitions(cwd)
     expect(defs.map((d) => d.name)).toEqual(['good'])
+  })
+})
+
+function capturingProvider(captured: ProviderRequest[]): Provider {
+  return {
+    async *stream(req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+      captured.push(req)
+      yield { kind: 'text-delta', delta: 'done' }
+      yield { kind: 'usage', usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 } }
+      yield { kind: 'finish', stopReason: 'end_turn' }
+    },
+  }
+}
+
+function leveledRegistry(): ToolRegistry {
+  const entries: Record<string, 'read-only' | 'workspace-write' | 'danger-full-access'> = {
+    read_file: 'read-only',
+    write_file: 'workspace-write',
+  }
+  return {
+    list: () =>
+      Object.keys(entries).map((name) => ({ name, description: name, inputSchema: { type: 'object' as const } })),
+    requirements: () => entries,
+    has: (name) => name in entries,
+    execute: async (name) => ({ content: `ran:${name}`, isError: false }),
+    register: () => {},
+  }
+}
+
+describe('end-to-end: a disk definition is spawnable with no code change', () => {
+  test('resolveAgentRoles → createAgentTool spawns a project-local custom type by name', async () => {
+    const cwd = join(root, 'proj')
+    await writeAgent(
+      join(cwd, '.orchentra', 'agents'),
+      'doc-writer.md',
+      `---
+name: doc-writer
+description: writes documentation
+tools: read-only
+---
+You are the doc-writer sub-agent: read code and draft docs, never edit source.`,
+    )
+
+    const roles = await resolveAgentRoles(cwd)
+    const captured: ProviderRequest[] = []
+    const tool = createAgentTool(roles)
+    const result = await tool.execute({ prompt: 'document the config loader', agentType: 'doc-writer' }, {
+      sessionId: 't',
+      cwd,
+      model: 'test-model',
+      provider: capturingProvider(captured),
+      tools: leveledRegistry(),
+    } as ToolContext)
+
+    expect(result.isError).toBe(false)
+    expect(captured[0]!.systemStatic).toContain('doc-writer sub-agent')
+    // read-only cap from the file kept the write tool off the advertised set.
+    expect(captured[0]!.tools.map((t) => t.name)).toEqual(['read_file'])
   })
 })
