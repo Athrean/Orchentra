@@ -285,6 +285,7 @@ export type {
   SubagentsFeatureConfig,
 } from './config-types'
 export { ConfigLoader, defaultConfigHome } from './config'
+export { runMigrations, MigrationError, type Migration, type MigrationSpec } from './migrations'
 
 export type { ModelPricing, UsageCostEstimate, TerseModeUsage, SpineSavings } from './usage'
 export {
