@@ -258,3 +258,63 @@ describe('suspended children resume from the persisted transcript', () => {
     expect(all.content).toContain(ids[1]!)
   })
 })
+
+/** Provider whose stream blocks until the run's abort signal fires. */
+function abortAwareProvider(): Provider {
+  return {
+    async *stream(req: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
+      await new Promise<void>((resolve) => {
+        if (req.signal?.aborted) return resolve()
+        req.signal?.addEventListener('abort', () => resolve(), { once: true })
+      })
+      // The runtime's post-turn abort check ends the run 'aborted' before this
+      // finish reaches the completion path — it only exists to close the stream.
+      yield { kind: 'finish', stopReason: 'end_turn' }
+    },
+  }
+}
+
+describe('interrupt: cancel a running child mid-flight', () => {
+  test('spawn + interrupt stops the child cleanly and frees its running slot', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'orchentra-lifecycle-'))
+    const ctx = ctxIn(dir, abortAwareProvider(), registryWith({}))
+
+    const spawn = await agentTool.execute({ prompt: 'long running task', background: true }, ctx)
+    const id = (spawn.data as { agentIds: string[] }).agentIds[0]!
+
+    // Child is running (blocked in the provider stream).
+    const before = await agentControlTool.execute({ action: 'status', agentId: id }, ctx)
+    expect((before.data as { status: string }).status).toBe('running')
+
+    // Interrupt it: clean stop, not a crash.
+    const interrupted = await agentControlTool.execute({ action: 'interrupt', agentId: id }, ctx)
+    expect(interrupted.isError).toBe(false)
+    expect(interrupted.content).toMatch(/interrupt|stopped/i)
+
+    // The slot is freed: the child no longer reports as running.
+    const after = await agentControlTool.execute({ action: 'status', agentId: id }, ctx)
+    expect((after.data as { status: string }).status).not.toBe('running')
+
+    // Durable transcript records the clean stop, and the child is resumable.
+    const suspended = await transcriptAtStatus(dir, id, 'suspended')
+    expect(suspended.doneReason).toBe('aborted')
+  }, 15_000)
+
+  test('interrupting a non-running child is refused with a clear message', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'orchentra-lifecycle-'))
+    const { provider } = sequencedProvider([
+      [
+        { kind: 'text-delta', delta: 'quick' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ])
+    const ctx = ctxIn(dir, provider, registryWith({}))
+    const spawn = await agentTool.execute({ prompt: 'quick task', background: true }, ctx)
+    const id = (spawn.data as { agentIds: string[] }).agentIds[0]!
+    await agentControlTool.execute({ action: 'wait', agentId: id }, ctx)
+
+    const interrupted = await agentControlTool.execute({ action: 'interrupt', agentId: id }, ctx)
+    expect(interrupted.isError).toBe(true)
+    expect(interrupted.content).toMatch(/not running|completed/i)
+  })
+})
