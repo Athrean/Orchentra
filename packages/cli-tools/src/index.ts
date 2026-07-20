@@ -69,7 +69,16 @@ export { webFetchTool } from './tools/web-fetch-tool'
 export { webSearchTool } from './tools/web-search-tool'
 export { askUserTool } from './tools/ask-user-tool'
 export { todoWriteTool } from './tools/todo-write-tool'
-export { agentTool } from './tools/agent-tool'
+export { agentTool, createAgentTool, type SubagentCaps } from './tools/agent-tool'
+export {
+  discoverAgentDefinitions,
+  mergeAgentRoles,
+  parseAgentDefinition,
+  resolveAgentRoles,
+  roleFromDefinition,
+  type AgentDefinition,
+  type ParseAgentDefinitionResult,
+} from './tools/agent-definitions'
 export { runSubagent, type SubagentRunOutcome, type SubagentRunOptions } from './tools/subagent-run'
 export {
   agentControlTool,
