@@ -1,0 +1,25 @@
+apps/web/app/components/landing/motion.tsx
+  s_78eb7e70681c18::t_8cfb7de8fbf755 3
+apps/web/app/components/landing/sections.tsx
+  s_78eb7e70681c18::t_69883984f62b25 11-17,28,61,367-368,370
+apps/web/app/components/landing/ui.tsx
+  s_78eb7e70681c18::t_d85c4d3b36439c 7-9,94,101-102,109,116,123-124,131-134,141,143,152-153,159
+apps/web/app/components/landing/visuals.tsx
+  s_78eb7e70681c18::t_6d6bdc4f07800f 156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4dc8d81eaed0e759aea5db335fc1cdb301e25c77",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
