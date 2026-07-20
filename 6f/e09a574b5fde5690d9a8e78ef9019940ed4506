@@ -1,0 +1,39 @@
+apps/cli/src/hooks/cli-core-adapter.ts
+  s_78eb7e70681c18::t_28d2bedd59a19f 1-6,8-18,166-169
+apps/cli/src/hooks/hook-runner.ts
+  s_78eb7e70681c18::t_93c95ae33de73b 3,5,33-38,104-118
+apps/cli/src/hooks/load-hooks.ts
+  s_78eb7e70681c18::t_cfec4f4c9cff21 7-18
+apps/cli/src/hooks/match.ts
+  s_78eb7e70681c18::t_dad0205bc5a5e1 1,13-20
+apps/cli/src/hooks/run-hook.ts
+  s_78eb7e70681c18::t_576d947a5c2910 2,9
+apps/cli/src/hooks/types.ts
+  s_78eb7e70681c18::t_cba5b37c35cb5c 14-28,37-38,93-95
+apps/cli/src/live-cli.ts
+  s_78eb7e70681c18::t_7d7ded41cc8876 12,159-162,740-744,959-967,972-977,981-990,1155
+apps/cli/tests/hooks/lifecycle.test.ts
+  s_78eb7e70681c18::t_63fee610bfd84c 1-118
+apps/cli/tests/live-cli-lifecycle.test.ts
+  s_78eb7e70681c18::t_3514e9709d0cf4 1-139
+packages/cli-core/src/runtime/hooks.ts
+  s_78eb7e70681c18::t_ae53054d160ac3 5-13,309-317
+packages/cli-core/src/runtime/index.ts
+  s_78eb7e70681c18::t_b169f94365df29 267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6fe09a574b5fde5690d9a8e78ef9019940ed4506",
+  "prompts": {},
+  "sessions": {
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
