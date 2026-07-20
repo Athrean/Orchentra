@@ -13,6 +13,16 @@ import type {
 } from './config-types'
 import { isEffortTier } from './provider'
 import { isTerseMode } from './terse'
+import { runMigrations, type Migration } from './migrations'
+
+/** Current settings schema version. Bump when a settings shape changes and add
+ * the matching `vN -> vN+1` transform to CONFIG_MIGRATIONS below. */
+export const CURRENT_CONFIG_VERSION = 1
+
+/** Ordered `vN -> vN+1` settings transforms, keyed by from-version. Empty today:
+ * the shape is in place so the next settings change adds a migration step here
+ * instead of a silent breaking change. */
+const CONFIG_MIGRATIONS: Record<number, Migration> = {}
 
 export class ConfigLoader {
   constructor(
@@ -47,8 +57,13 @@ export class ConfigLoader {
       loadedEntries.push(entry)
     }
 
+    // Bring the merged settings up to the current schema version. A settings file
+    // from a newer Orchentra than this build throws here rather than being read
+    // under the wrong shape. Missing version = the original schema (v1).
+    merged = runMigrations(merged, { current: CURRENT_CONFIG_VERSION, migrations: CONFIG_MIGRATIONS })
+
     const featureConfig = extractFeatureConfig(merged)
-    return { merged, loadedEntries, featureConfig }
+    return { merged, loadedEntries, featureConfig, configVersion: CURRENT_CONFIG_VERSION }
   }
 }
 

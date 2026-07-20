@@ -62,4 +62,6 @@ export interface RuntimeConfig {
   merged: Record<string, unknown>
   loadedEntries: ConfigEntry[]
   featureConfig: RuntimeFeatureConfig
+  /** Resolved schema version of the merged settings after migration. */
+  configVersion: number
 }

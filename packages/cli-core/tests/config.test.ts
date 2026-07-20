@@ -79,6 +79,34 @@ describe('ConfigLoader', () => {
     cleanup()
   })
 
+  test('configVersion defaults to the current version when unset', () => {
+    setupTmp({})
+    const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    const config = loader.load()
+    expect(config.configVersion).toBe(1)
+    cleanup()
+  })
+
+  test('a settings file at the current version loads normally', () => {
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ version: 1, model: 'sonnet' }),
+    })
+    const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    const config = loader.load()
+    expect(config.configVersion).toBe(1)
+    expect(config.featureConfig.model).toBe('sonnet')
+    cleanup()
+  })
+
+  test('a settings file from a newer Orchentra fails loudly instead of loading', () => {
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ version: 99, model: 'sonnet' }),
+    })
+    const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    expect(() => loader.load()).toThrow(/newer than this build/)
+    cleanup()
+  })
+
   test('terse mode defaults to off and reads valid settings', () => {
     setupTmp({})
     let loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
