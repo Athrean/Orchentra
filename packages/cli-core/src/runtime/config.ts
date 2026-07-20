@@ -9,6 +9,7 @@ import type {
   RuntimeHookConfig,
   RuntimePermissionRuleConfig,
   ResolvedPermissionMode,
+  SubagentsFeatureConfig,
 } from './config-types'
 import { isEffortTier } from './provider'
 import { isTerseMode } from './terse'
@@ -100,6 +101,17 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
     permissionRules: extractPermissionRules(merged),
     memory: extractMemoryConfig(merged),
     budget: extractBudgetConfig(merged),
+    subagents: extractSubagentsConfig(merged),
+  }
+}
+
+function extractSubagentsConfig(merged: Record<string, unknown>): SubagentsFeatureConfig {
+  const sub = isPlainObject(merged.subagents) ? (merged.subagents as Record<string, unknown>) : {}
+  const positiveInt = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : undefined
+  return {
+    maxDepth: positiveInt(sub.maxDepth),
+    maxConcurrent: positiveInt(sub.maxConcurrent),
   }
 }
 

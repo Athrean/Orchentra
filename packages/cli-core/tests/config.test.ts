@@ -59,6 +59,26 @@ describe('ConfigLoader', () => {
     cleanup()
   })
 
+  test('subagents caps default to undefined (built-in defaults apply) when unset', () => {
+    setupTmp({})
+    const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    const config = loader.load()
+    expect(config.featureConfig.subagents).toEqual({ maxDepth: undefined, maxConcurrent: undefined })
+    cleanup()
+  })
+
+  test('reads positive integer subagents caps and ignores invalid values', () => {
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ subagents: { maxDepth: 3, maxConcurrent: 0 } }),
+    })
+    const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    const config = loader.load()
+    expect(config.featureConfig.subagents.maxDepth).toBe(3)
+    // Non-positive is rejected, falling back to the built-in default.
+    expect(config.featureConfig.subagents.maxConcurrent).toBeUndefined()
+    cleanup()
+  })
+
   test('terse mode defaults to off and reads valid settings', () => {
     setupTmp({})
     let loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))

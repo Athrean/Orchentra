@@ -282,6 +282,7 @@ export type {
   RuntimeConfig,
   MemoryFeatureConfig,
   BudgetFeatureConfig,
+  SubagentsFeatureConfig,
 } from './config-types'
 export { ConfigLoader, defaultConfigHome } from './config'
 
