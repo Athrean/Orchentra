@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { GITHUB_URL, INSTALL_COMMAND, ISSUES_URL, LICENSE_URL, README_URL, RELEASES_URL, SECURITY_URL } from './data'
 import { Reveal } from './motion'
 import { Brand, CopyCommand, CornerButton } from './ui'
@@ -23,9 +24,9 @@ export function FinalCTA(): React.ReactNode {
             <CornerButton href={GITHUB_URL} external>
               VIEW ON GITHUB
             </CornerButton>
-            <a href="/contact" className="text-link text-link--dark">
+            <Link href="/contact" className="text-link text-link--dark">
               CONTACT ATHREAN LAB <span>↗</span>
-            </a>
+            </Link>
           </div>
         </Reveal>
         <Reveal className="final-command" delay={0.08}>
