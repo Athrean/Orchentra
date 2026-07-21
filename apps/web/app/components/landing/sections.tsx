@@ -3,8 +3,18 @@
 import { AnimatePresence, m, useMotionValueEvent, useScroll } from 'framer-motion'
 import Link from 'next/link'
 import { useRef, useState } from 'react'
-import { GITHUB_URL, comparison, capabilities, faq, lifecycle, plans, principles, setupSteps } from './data'
-import { Reveal, referenceEase } from './motion'
+import {
+  GITHUB_URL,
+  comparison,
+  capabilities,
+  faq,
+  lifecycle,
+  plans,
+  principles,
+  referenceEase,
+  setupSteps,
+} from './data'
+import { Reveal } from './motion'
 import { Brand, CornerButton, Glyph } from './ui'
 import { OrchentraTerminal, type TerminalScenario } from './visuals'
 
@@ -65,9 +75,9 @@ export function SiteHeader(): React.ReactNode {
                   <b>↗</b>
                 </a>
               ))}
-              <a href="/contact" onClick={() => setOpen(false)}>
+              <Link href="/contact" onClick={() => setOpen(false)}>
                 <span>05</span>CONTACT<b>↗</b>
-              </a>
+              </Link>
             </div>
           </m.nav>
         ) : null}
@@ -367,7 +377,8 @@ export function LifecycleSection(): React.ReactNode {
 const lifecycleScenarios: readonly TerminalScenario[] = ['inspect', 'plan', 'build', 'verify']
 
 function LifecycleVisual({ index }: { index: number }): React.ReactNode {
-  return <OrchentraTerminal scenario={lifecycleScenarios[index]} variant="compact" />
+  const scenario = lifecycleScenarios[index]
+  return <OrchentraTerminal key={scenario} scenario={scenario} variant="compact" />
 }
 
 export function PricingSection(): React.ReactNode {

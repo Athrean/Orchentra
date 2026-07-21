@@ -2,7 +2,7 @@
 
 import { AnimatePresence, m } from 'framer-motion'
 import { useState } from 'react'
-import { referenceEase } from './landing/motion'
+import { referenceEase } from './landing/data'
 
 export function ContactForm(): React.ReactNode {
   const [sent, setSent] = useState(false)

@@ -1,8 +1,7 @@
 'use client'
 
 import { LazyMotion, MotionConfig, domAnimation, m } from 'framer-motion'
-
-export const referenceEase = [0.12, 0.23, 0.17, 0.99] as const
+import { referenceEase } from './data'
 
 export function MotionProvider({ children }: { children: React.ReactNode }): React.ReactNode {
   return (

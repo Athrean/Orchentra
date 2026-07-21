@@ -157,13 +157,6 @@ export function OrchentraTerminal({
   const [focused, setFocused] = useState(false)
 
   useEffect(() => {
-    setPhase('command')
-    setCommand(config.command)
-    setCursor(config.selected?.[0] ?? 0)
-    setSelected(new Set(config.selected ?? []))
-  }, [config])
-
-  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [phase])
 
@@ -291,7 +284,7 @@ export function OrchentraTerminal({
             {output.map((line, index) => (
               <m.div
                 className={`terminal-line terminal-line--${line.tone ?? 'plain'}`}
-                key={`${line.text}-${index}`}
+                key={line.text}
                 initial={{ opacity: 0, y: 3 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.09, duration: 0.2 }}

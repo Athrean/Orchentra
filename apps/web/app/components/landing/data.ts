@@ -6,6 +6,8 @@ export const SECURITY_URL = `${GITHUB_URL}/security`
 export const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
 export const INSTALL_COMMAND = 'npm install -g @athreanlab/orchentra'
 
+export const referenceEase = [0.12, 0.23, 0.17, 0.99] as const
+
 export const comparison = {
   without: [
     'One general-purpose agent owns every decision',
