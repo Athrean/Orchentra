@@ -1,0 +1,87 @@
+apps/cli/src/commands/builtin/build.ts
+  s_78eb7e70681c18::t_b9d71d58c7442a 106
+apps/cli/src/commands/builtin/export.ts
+  s_78eb7e70681c18::t_f8e796318fdb0e 45-46,48-53
+apps/cli/src/commands/builtin/resume.ts
+  s_78eb7e70681c18::t_013a5e2115a134 29-32,34,36,38-60,184-194
+apps/cli/src/commands/builtin/session.ts
+  s_78eb7e70681c18::t_2aef39f13004ba 91-94,98,103-104
+apps/cli/src/composites/scan.ts
+  s_78eb7e70681c18::t_9198596b4a62d9 65-76
+apps/cli/src/auth/credential-check.ts
+  s_567d09aeac994e::t_7214d103f09a46 1,34-40,42-44
+apps/cli/src/commands/builtin/help.ts
+  s_567d09aeac994e::t_26f6bdd42ae157 120-123
+apps/cli/src/commands/builtin/terminal-parity.ts
+  s_567d09aeac994e::t_6b624bc1cd7c91 373-375,380-382
+apps/cli/src/commands/run-regressions.ts
+  s_78eb7e70681c18::t_a541f042ef0a7c 56-65
+apps/cli/src/composites/slices.ts
+  s_567d09aeac994e::t_0695d6d99edb16 18-30
+apps/cli/src/live-cli.ts
+  s_567d09aeac994e::t_71052a37e51b03 670-682,1097-1099
+apps/cli/src/render/banner.tsx
+  s_efbd53dc15e478::t_5eefac44093d3e 127,280-281,319-322
+apps/cli/src/statusline.ts
+  s_567d09aeac994e::t_31baa66b022107 163
+apps/cli/src/tui/Tui.tsx
+  s_78eb7e70681c18::t_36867cedd40f82 63-65,67-69,86-92,194-197
+apps/cli/src/tui/components/AskUserPrompt.tsx
+  s_567d09aeac994e::t_08e72cfc23cf58 28-32,40,202
+apps/cli/src/tui/components/CardSections.tsx
+  s_efbd53dc15e478::t_d95386e61bc20a 15
+apps/cli/src/tui/components/LoginPickerCard.tsx
+  s_eda3cd8a12b4c9::t_40ef63a0a4f902 38
+apps/cli/src/tui/components/MarkdownView.tsx
+  s_efbd53dc15e478::t_eabf375abb6dc6 29-30,39-40,73,120-121,174-175
+apps/cli/src/tui/components/QueuedMessages.tsx
+  s_efbd53dc15e478::t_b7338de9e15f06 21-22
+apps/cli/src/tui/components/ReasoningBlock.tsx
+  s_eda3cd8a12b4c9::t_516105db144f7a 1,28-31,33-38,40
+apps/cli/src/tui/components/Suggestions.tsx
+  s_efbd53dc15e478::t_4e886be62bc8be 29
+apps/cli/src/tui/hooks/use-chord.ts
+  s_eda3cd8a12b4c9::t_5846c565be3224 100-102
+apps/cli/src/tui/status/Footer.tsx
+  s_78eb7e70681c18::t_0b9b015e085fdf 14-15,226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b1f5dcae3bed8ab05c4b49d14154c17b31096e82",
+  "prompts": {},
+  "sessions": {
+    "s_567d09aeac994e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af8c0e68d3d9e70bf",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    },
+    "s_78eb7e70681c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54225d98-a2f1-46be-b1fc-4ad4a33a9e90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    },
+    "s_eda3cd8a12b4c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac1a52682ceeb8731",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    },
+    "s_efbd53dc15e478": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-abfd9a0452aaeda75",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
