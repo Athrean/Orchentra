@@ -1,4 +1,4 @@
-import { getCredentialAsync, type KeychainShim, KEYCHAIN_SERVICE, type ProviderKey } from '@orchentra/cli-api'
+import { getCredentialAsync, type KeychainShim, type ProviderKey } from '@orchentra/cli-api'
 
 export const LLM_PROVIDER_ENV_VARS: Record<string, readonly string[]> = {
   anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'],
@@ -31,16 +31,16 @@ export async function hasAnyLlmCredential(home: string, shim: KeychainShim | nul
 }
 
 export async function listLlmProvidersWithCreds(home: string, shim: KeychainShim | null): Promise<ProviderKey[]> {
+  const hasCreds = await Promise.all(
+    LLM_PROVIDERS.map(async (provider) => {
+      if (envCredentialFor(provider)) return true
+      const cred = await getCredentialAsync(provider, home, shim)
+      return !!(cred && (cred.apiKey || cred.accessToken))
+    }),
+  )
   const set = new Set<ProviderKey>()
-  for (const provider of LLM_PROVIDERS) {
-    if (envCredentialFor(provider)) {
-      set.add(provider)
-      continue
-    }
-    const cred = await getCredentialAsync(provider, home, shim)
-    if (cred && (cred.apiKey || cred.accessToken)) set.add(provider)
-  }
+  LLM_PROVIDERS.forEach((provider, i) => {
+    if (hasCreds[i]) set.add(provider)
+  })
   return Array.from(set)
 }
-
-export { KEYCHAIN_SERVICE }

@@ -370,18 +370,16 @@ export class StatuslineCommand implements CommandHandler {
         title: 'Enabled',
         rows: [
           { key: 'Theme colors', value: config.useThemeColors ? 'on' : 'off' },
-          ...STATUSLINE_OPTIONS.filter((option) => option.supported && enabled.has(option.id)).map((option) => ({
-            key: option.label,
-            value: option.description,
-          })),
+          ...STATUSLINE_OPTIONS.flatMap((option) =>
+            option.supported && enabled.has(option.id) ? [{ key: option.label, value: option.description }] : [],
+          ),
         ],
       },
       {
         title: 'Unavailable',
-        rows: STATUSLINE_OPTIONS.filter((option) => !option.supported).map((option) => ({
-          key: option.label,
-          value: option.description,
-        })),
+        rows: STATUSLINE_OPTIONS.flatMap((option) =>
+          !option.supported ? [{ key: option.label, value: option.description }] : [],
+        ),
       },
     ])
   }

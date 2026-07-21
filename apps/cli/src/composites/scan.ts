@@ -62,16 +62,18 @@ export async function scan(opts: ScanOptions): Promise<ScanResult | { error: str
     const r = spawnSync('git', ['ls-files'], { cwd: opts.cwd, encoding: 'utf-8', timeout: 5000 })
     if (r.status !== 0) return { error: `git ls-files failed: ${r.stderr || r.stdout || 'unknown'}` }
     const files = r.stdout.split('\n').filter(Boolean).slice(0, 200)
-    const chunks: string[] = []
-    for (const f of files) {
-      try {
-        const body = await readFile(resolve(opts.cwd, f), 'utf-8')
-        chunks.push(`--- ${f} ---\n${body}`)
-      } catch {
-        // skip unreadable
-      }
-    }
-    payload = chunks.join('\n\n')
+    const chunks = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const body = await readFile(resolve(opts.cwd, f), 'utf-8')
+          return `--- ${f} ---\n${body}`
+        } catch {
+          // skip unreadable
+          return null
+        }
+      }),
+    )
+    payload = chunks.filter((c): c is string => c !== null).join('\n\n')
   } else {
     if (!opts.path) return { error: 'mode=path requires --path' }
     try {

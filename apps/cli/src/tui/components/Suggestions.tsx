@@ -26,13 +26,7 @@ export function Suggestions(props: SuggestionsProps): React.ReactElement | null 
   return (
     <Box flexDirection="column" width={width}>
       {state.items.map((item, index) => (
-        <Row
-          key={`${index}-${item.value}`}
-          item={item}
-          selected={index === state.selected}
-          labelW={labelW}
-          width={width}
-        />
+        <Row key={item.value} item={item} selected={index === state.selected} labelW={labelW} width={width} />
       ))}
     </Box>
   )

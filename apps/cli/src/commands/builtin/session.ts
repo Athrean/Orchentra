@@ -88,20 +88,20 @@ export class SessionCommand implements CommandHandler {
     if (jsonlFiles.length === 0) return note(ctx, 'No sessions found.')
 
     const sessionId = ctx.session.getSessionId()
-    const rows: UiKVRow[] = []
-    for (const f of jsonlFiles.slice(0, 20)) {
-      const filePath = join(dir, f)
-      const s = await stat(filePath)
+    const topFiles = jsonlFiles.slice(0, 20)
+    const stats = await Promise.all(topFiles.map((f) => stat(join(dir, f))))
+    const rows: UiKVRow[] = topFiles.map((f, i) => {
+      const s = stats[i]!
       const size = (s.size / 1024).toFixed(1)
       const id = f.replace('.jsonl', '')
       const isCurrent = id === sessionId.slice(0, id.length) || f.startsWith(sessionId.slice(0, 8))
-      rows.push({
+      return {
         key: id.slice(0, 12),
         value: `${size.padStart(6)}KB  ${s.mtime.toISOString().slice(0, 16)}${isCurrent ? '  · current' : ''}`,
         valueColor: isCurrent ? THEME.brand : undefined,
         bold: isCurrent,
-      })
-    }
+      }
+    })
 
     if (ctx.ui) {
       ctx.ui({
