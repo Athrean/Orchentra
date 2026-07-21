@@ -35,7 +35,7 @@ const TOP_ROWS: readonly TopRow[] = [
 ]
 
 export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement {
-  const [state, setState] = useState<LoginState>(initialLoginState())
+  const [state, setState] = useState<LoginState>(() => initialLoginState())
   const [saving, setSaving] = useState(false)
 
   function dispatch(event: Parameters<typeof loginReducer>[1]): LoginState {

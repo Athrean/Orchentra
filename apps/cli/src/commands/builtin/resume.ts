@@ -26,32 +26,38 @@ export class ResumeCommand implements CommandHandler {
     const searching = idArg !== 'latest'
     const needle = idArg.toLowerCase()
 
-    const candidates: Array<{ dir: string; file: string; mtimeMs: number; tag: string | null }> = []
-    for (const dir of buckets) {
-      let files: string[]
-      try {
-        files = await readdir(dir)
-      } catch {
-        continue
-      }
-      for (const f of files) {
-        if (!f.endsWith('.jsonl')) continue
-        const full = join(dir, f)
-        let s
+    interface Candidate { dir: string; file: string; mtimeMs: number; tag: string | null }
+    const candidateLists = await Promise.all(
+      buckets.map(async (dir): Promise<Candidate[]> => {
+        let files: string[]
         try {
-          s = await stat(full)
-          if (!s.isFile()) continue
+          files = await readdir(dir)
         } catch {
-          continue
+          return []
         }
-        let tag: string | null = null
-        if (searching) {
-          tag = await readSessionTag(full)
-          if (!f.startsWith(idArg) && !(tag !== null && tag.includes(needle))) continue
-        }
-        candidates.push({ dir, file: f, mtimeMs: s.mtimeMs, tag })
-      }
-    }
+        const entries = await Promise.all(
+          files.map(async (f): Promise<Candidate | null> => {
+            if (!f.endsWith('.jsonl')) return null
+            const full = join(dir, f)
+            let s
+            try {
+              s = await stat(full)
+              if (!s.isFile()) return null
+            } catch {
+              return null
+            }
+            let tag: string | null = null
+            if (searching) {
+              tag = await readSessionTag(full)
+              if (!f.startsWith(idArg) && !(tag !== null && tag.includes(needle))) return null
+            }
+            return { dir, file: f, mtimeMs: s.mtimeMs, tag }
+          }),
+        )
+        return entries.filter((e): e is Candidate => e !== null)
+      }),
+    )
+    const candidates: Candidate[] = candidateLists.flat()
 
     if (candidates.length === 0) {
       const where = crossWorkspace ? 'across workspaces' : 'in this workspace'
@@ -175,16 +181,17 @@ async function listBucketDirs(): Promise<string[]> {
   } catch {
     return []
   }
-  const out: string[] = []
-  for (const name of entries) {
-    try {
-      const s = await stat(join(root, name))
-      if (s.isDirectory()) out.push(join(root, name))
-    } catch {
-      /* skip */
-    }
-  }
-  return out
+  const dirs = await Promise.all(
+    entries.map(async (name) => {
+      try {
+        const s = await stat(join(root, name))
+        return s.isDirectory() ? join(root, name) : null
+      } catch {
+        return null
+      }
+    }),
+  )
+  return dirs.filter((d): d is string => d !== null)
 }
 
 function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {

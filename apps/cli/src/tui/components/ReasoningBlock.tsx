@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Box, Text } from 'ink'
 import { THEME } from '../theme'
 import type { ReasoningRow } from '../types'
@@ -25,15 +25,19 @@ export function ReasoningBlock(props: ReasoningBlockProps): React.ReactElement {
   const verb = verbForId(row.id)
 
   // Track the timestamp of the last text update. We don't have a real event
-  // here — instead, watch `row.text` across renders and snap the ref each
-  // time it changes. Initialised to `row.startedAt` so a row mounted with
-  // pre-existing stale text correctly reports as idle.
+  // here — instead, snap the ref whenever `row.text` changes between renders.
+  // Initialised to `row.startedAt` so a row mounted with pre-existing stale
+  // text correctly reports as idle; the mount run of the effect below is
+  // skipped so it doesn't immediately overwrite that initial value.
   const lastUpdateRef = useRef<number>(row.startedAt)
-  const prevTextRef = useRef<string>(row.text)
-  if (prevTextRef.current !== row.text) {
-    prevTextRef.current = row.text
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      return
+    }
     lastUpdateRef.current = Date.now()
-  }
+  }, [row.text])
 
   // Drive a re-render every ~150ms while streaming so the shimmer palette
   // advances and the elapsed-on-idle counter updates.

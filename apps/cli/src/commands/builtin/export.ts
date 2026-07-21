@@ -42,16 +42,16 @@ export class ExportCommand implements CommandHandler {
       output = JSON.stringify(records, null, 2)
     } else {
       output = records
-        .filter((r: Record<string, unknown>) => r.event)
-        .map((r: Record<string, unknown>) => {
+        .flatMap((r: Record<string, unknown>) => {
+          if (!r.event) return []
           const event = r.event as Record<string, unknown>
-          if (event.kind === 'text') return event.delta
-          if (event.kind === 'tool_use') return `\n[tool: ${(event.call as Record<string, unknown>)?.name}]\n`
-          if (event.kind === 'tool_result')
-            return `[result: ${(event.result as Record<string, unknown>)?.content?.toString().slice(0, 100)}]`
-          return null
+          let value: unknown = null
+          if (event.kind === 'text') value = event.delta
+          else if (event.kind === 'tool_use') value = `\n[tool: ${(event.call as Record<string, unknown>)?.name}]\n`
+          else if (event.kind === 'tool_result')
+            value = `[result: ${(event.result as Record<string, unknown>)?.content?.toString().slice(0, 100)}]`
+          return value ? [value] : []
         })
-        .filter(Boolean)
         .join('')
     }
 

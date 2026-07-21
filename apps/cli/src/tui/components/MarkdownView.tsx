@@ -26,8 +26,8 @@ export function MarkdownView(props: MarkdownViewProps): React.ReactElement {
     const blocks = parseMarkdown(safe)
     return (
       <Box flexDirection="column">
-        {blocks.map((block, i) => (
-          <BlockView key={i} block={block} width={available} />
+        {blocks.map((block) => (
+          <BlockView key={JSON.stringify(block)} block={block} width={available} />
         ))}
         {pending.length > 0 ? <Text>{pending}</Text> : null}
       </Box>
@@ -36,8 +36,8 @@ export function MarkdownView(props: MarkdownViewProps): React.ReactElement {
   const blocks = parseMarkdown(props.text)
   return (
     <Box flexDirection="column">
-      {blocks.map((block, i) => (
-        <BlockView key={i} block={block} width={available} />
+      {blocks.map((block) => (
+        <BlockView key={JSON.stringify(block)} block={block} width={available} />
       ))}
     </Box>
   )
@@ -70,7 +70,7 @@ function BlockView({ block, width }: { readonly block: Block; readonly width: nu
       return (
         <Box flexDirection="column">
           {block.items.map((item, i) => (
-            <Box key={i} flexDirection="row">
+            <Box key={item} flexDirection="row">
               <Text color={THEME.brand}>{block.ordered ? `${i + 1}. ` : '• '}</Text>
               <Text>
                 <Inline text={item} />
@@ -117,8 +117,8 @@ function TableView({ block, width }: { readonly block: TableBlock; readonly widt
       <Text color={border}>{rule('╭', '┬', '╮')}</Text>
       <TableRow cells={block.headers} widths={widths} aligns={block.aligns} border={border} header />
       <Text color={border}>{rule('├', '┼', '┤')}</Text>
-      {block.rows.map((row, i) => (
-        <TableRow key={i} cells={row} widths={widths} aligns={block.aligns} border={border} />
+      {block.rows.map((row) => (
+        <TableRow key={JSON.stringify(row)} cells={row} widths={widths} aligns={block.aligns} border={border} />
       ))}
       <Text color={border}>{rule('╰', '┴', '╯')}</Text>
     </Box>
@@ -171,8 +171,8 @@ function Inline({ text }: { readonly text: string }): React.ReactElement {
   const tokens = tokenizeInline(text)
   return (
     <>
-      {tokens.map((tok, i) => (
-        <InlineToken key={i} token={tok} />
+      {tokens.map((tok) => (
+        <InlineToken key={JSON.stringify(tok)} token={tok} />
       ))}
     </>
   )

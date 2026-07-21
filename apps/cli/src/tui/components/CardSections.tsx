@@ -12,7 +12,7 @@ export function CardSections(props: CardSectionsProps): React.ReactElement {
   return (
     <Box flexDirection="column">
       {props.sections.map((section, i) => (
-        <Box key={i} flexDirection="column">
+        <Box key={JSON.stringify(section)} flexDirection="column">
           {section.title ? (
             <Text bold color={THEME.brand}>
               {section.title}

@@ -15,15 +15,19 @@ export interface Slice {
  * intent. Directory entries (trailing `/`) carry no work and are dropped.
  */
 export function planSlices(plan: ArchitectPlan): Slice[] {
-  return plan.scaffold
-    .filter((entry) => !entry.path.endsWith('/'))
-    .map((entry) => ({
-      id: entry.path,
-      title: entry.purpose || entry.path,
-      intent: entry.purpose || entry.path,
-      files: [entry.path],
-      dependsOn: [],
-    }))
+  return plan.scaffold.flatMap((entry) =>
+    entry.path.endsWith('/')
+      ? []
+      : [
+          {
+            id: entry.path,
+            title: entry.purpose || entry.path,
+            intent: entry.purpose || entry.path,
+            files: [entry.path],
+            dependsOn: [],
+          },
+        ],
+  )
 }
 
 /**
