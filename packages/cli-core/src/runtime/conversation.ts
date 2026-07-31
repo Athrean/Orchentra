@@ -972,7 +972,7 @@ export class ConversationRuntime {
   private mergeConsole(trace: ActiveTrace, raw: unknown): void {
     if (!Array.isArray(raw)) return
     for (const entry of raw as ConsoleErrorEntry[]) {
-      const key = `${entry.at} ${entry.text}`
+      const key = `${entry.at}\x00${entry.text}`
       if (trace.browserConsoleSeen.has(key)) continue
       trace.browserConsoleSeen.add(key)
       trace.browserConsoleErrors.push(entry)
@@ -982,7 +982,7 @@ export class ConversationRuntime {
   private mergeNetwork(trace: ActiveTrace, raw: unknown): void {
     if (!Array.isArray(raw)) return
     for (const entry of raw as FailedRequestEntry[]) {
-      const key = `${entry.at} ${entry.method} ${entry.url} ${entry.status ?? ''}`
+      const key = `${entry.at}\x00${entry.method}\x00${entry.url}\x00${entry.status ?? ''}`
       if (trace.browserNetworkSeen.has(key)) continue
       trace.browserNetworkSeen.add(key)
       trace.browserNetworkFailures.push(entry)
