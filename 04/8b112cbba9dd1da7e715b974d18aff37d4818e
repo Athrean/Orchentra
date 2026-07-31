@@ -1,0 +1,19 @@
+apps/cli/tests/one-shot-exit.test.ts
+  s_403900cd20b650::t_d122c36a5649b1 6,14,68-78,101,113,149-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "048b112cbba9dd1da7e715b974d18aff37d4818e",
+  "prompts": {},
+  "sessions": {
+    "s_403900cd20b650": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0e6be1-232c-44c7-9086-10620c0ff0a6",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
