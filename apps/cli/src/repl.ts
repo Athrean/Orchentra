@@ -17,6 +17,7 @@ import { runOneShot } from './one-shot'
 import { runTui } from './tui'
 import { hasAnyLlmCredential } from './auth/credential-check'
 import { runFirstRunFlow, makeDefaultFirstRunDeps } from './auth/first-run-flow'
+import { gitDiscoveryEnv } from '@orchentra/cli-core'
 
 export interface ReplOptions {
   model: string
@@ -135,7 +136,7 @@ function readGitSummary(cwd: string): GitSummary {
 
 function runGit(args: string[], cwd: string): string | null {
   try {
-    const result = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 500 })
+    const result = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 500, env: gitDiscoveryEnv() })
     if (result.status !== 0) return null
     return result.stdout.trim()
   } catch {

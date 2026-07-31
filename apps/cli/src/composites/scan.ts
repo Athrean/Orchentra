@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { gitDiscoveryEnv } from '@orchentra/cli-core'
 
 export type Severity = 'P0' | 'P1' | 'P2'
 
@@ -55,11 +56,21 @@ export interface ScanOptions {
 export async function scan(opts: ScanOptions): Promise<ScanResult | { error: string }> {
   let payload: string
   if (opts.mode === 'diff') {
-    const r = spawnSync('git', ['diff', 'origin/main...HEAD'], { cwd: opts.cwd, encoding: 'utf-8', timeout: 5000 })
+    const r = spawnSync('git', ['diff', 'origin/main...HEAD'], {
+      cwd: opts.cwd,
+      encoding: 'utf-8',
+      timeout: 5000,
+      env: gitDiscoveryEnv(),
+    })
     if (r.status !== 0) return { error: `git diff failed: ${r.stderr || r.stdout || 'unknown'}` }
     payload = r.stdout
   } else if (opts.mode === 'full') {
-    const r = spawnSync('git', ['ls-files'], { cwd: opts.cwd, encoding: 'utf-8', timeout: 5000 })
+    const r = spawnSync('git', ['ls-files'], {
+      cwd: opts.cwd,
+      encoding: 'utf-8',
+      timeout: 5000,
+      env: gitDiscoveryEnv(),
+    })
     if (r.status !== 0) return { error: `git ls-files failed: ${r.stderr || r.stdout || 'unknown'}` }
     const files = r.stdout.split('\n').filter(Boolean).slice(0, 200)
     const chunks: string[] = []
