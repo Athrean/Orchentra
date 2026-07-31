@@ -1,34 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { GitHubApiError, GitHubClient } from '../src/github/octokit'
-
-interface FetchCall {
-  readonly url: string
-  readonly method: string
-  readonly headers: Record<string, string>
-  readonly body?: string
-}
-
-function stubFetch(responses: Response[]): { fetchImpl: typeof fetch; calls: FetchCall[] } {
-  const calls: FetchCall[] = []
-  let idx = 0
-  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url = typeof input === 'string' ? input : input.toString()
-    const headers: Record<string, string> = {}
-    if (init?.headers) {
-      for (const [k, v] of new Headers(init.headers as HeadersInit).entries()) headers[k] = v
-    }
-    calls.push({
-      url,
-      method: init?.method ?? 'GET',
-      headers,
-      body: typeof init?.body === 'string' ? init.body : undefined,
-    })
-    const response = responses[idx] ?? responses[responses.length - 1]
-    idx++
-    return response
-  }) as typeof fetch
-  return { fetchImpl, calls }
-}
+import { stubFetch } from './support/fetch'
 
 function jsonOk(body: unknown, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
