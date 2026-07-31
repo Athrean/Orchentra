@@ -114,6 +114,7 @@ export type {
   AskUserOption,
   AskUserRequest,
   AskUserHandler,
+  ToolEnforcementContext,
   ToolContext,
   ToolResult,
   ToolDefinition,
