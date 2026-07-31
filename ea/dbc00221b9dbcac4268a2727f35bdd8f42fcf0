@@ -1,0 +1,45 @@
+apps/cli/src/commands/builtin/commit.ts
+  s_6ea902a4421c95::t_133f3855069c0a 2,16,22,25,32,37-39
+apps/cli/src/commands/builtin/debug.ts
+  s_6ea902a4421c95::t_d7329df5e273d3 5,132,134,137,146-147,149
+apps/cli/src/commands/builtin/diff.ts
+  s_6ea902a4421c95::t_e960850962163e 2,13
+apps/cli/src/commands/builtin/issue.ts
+  s_6ea902a4421c95::t_a0c096cff17a56 4,17
+apps/cli/src/commands/builtin/pr.ts
+  s_6ea902a4421c95::t_650da67a6928af 10,59,69,76-82,115,118
+apps/cli/src/util/git-owner.ts
+  s_6ea902a4421c95::t_f9601c583ae8f6 13-14,35-40
+packages/cli-core/src/runtime/git-context.ts
+  s_6ea902a4421c95::t_41cf6ccbc382b3 1-2,17,23,48,54
+packages/cli-core/src/runtime/index.ts
+  s_6ea902a4421c95::t_9f94d955d43fed 264-265
+packages/cli-tools/src/mcp/config.ts
+  s_6ea902a4421c95::t_86897b2d161a8b 2,126-128
+packages/cli-tools/src/tools/diagnostics-tool.ts
+  s_6ea902a4421c95::t_97e27e7205332a 2,42
+packages/cli-tools/src/tools/git-tools.ts
+  s_6ea902a4421c95::t_7c97c72b609a11 1-2,8,29
+packages/cli-tools/src/tools/worktree-writers.ts
+  s_6ea902a4421c95::t_a35cbdd4c435b0 4,29,31-32
+packages/cli-core/src/runtime/run-process.ts
+  s_6ea902a4421c95::t_2e8a756c5c334c 1-84
+packages/cli-core/tests/run-process.test.ts
+  s_6ea902a4421c95::t_1a8d54725a5d9b 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "eadbc00221b9dbcac4268a2727f35bdd8f42fcf0",
+  "prompts": {},
+  "sessions": {
+    "s_6ea902a4421c95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba5fc057-eea5-4d00-b5b0-74036c00c66f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
