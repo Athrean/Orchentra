@@ -1,5 +1,5 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
-import { runProcessSync } from '@orchentra/cli-core'
+import { gitCommandEnv, runProcessSync } from '@orchentra/cli-core'
 
 export class CommitCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -13,28 +13,37 @@ export class CommitCommand implements CommandHandler {
     const explicitMsg = extractFlag(args, '--message') ?? extractFlag(args, '-m')
 
     // Check if there are changes to commit
-    const statusOut = runProcessSync(['git', 'status', '--porcelain'], { cwd: ctx.cwd }).stdout.trim()
+    const statusOut = runProcessSync(['git', 'status', '--porcelain'], {
+      cwd: ctx.cwd,
+      env: gitCommandEnv(),
+    }).stdout.trim()
     if (!statusOut) {
       return note(ctx, 'No changes to commit.')
     }
 
     // Stage all changes
-    runProcessSync(['git', 'add', '-A'], { cwd: ctx.cwd })
+    runProcessSync(['git', 'add', '-A'], { cwd: ctx.cwd, env: gitCommandEnv() })
 
     // Get the diff for message generation
-    const diffStat = runProcessSync(['git', 'diff', '--cached', '--stat'], { cwd: ctx.cwd }).stdout.trim()
+    const diffStat = runProcessSync(['git', 'diff', '--cached', '--stat'], {
+      cwd: ctx.cwd,
+      env: gitCommandEnv(),
+    }).stdout.trim()
 
     let message: string
     if (explicitMsg) {
       message = explicitMsg
     } else {
       // Generate commit message from diff
-      const branch = runProcessSync(['git', 'branch', '--show-current'], { cwd: ctx.cwd }).stdout.trim()
+      const branch = runProcessSync(['git', 'branch', '--show-current'], {
+        cwd: ctx.cwd,
+        env: gitCommandEnv(),
+      }).stdout.trim()
       message = generateCommitMessage(diffStat, branch)
     }
 
     // Commit
-    const commitResult = runProcessSync(['git', 'commit', '-m', message], { cwd: ctx.cwd })
+    const commitResult = runProcessSync(['git', 'commit', '-m', message], { cwd: ctx.cwd, env: gitCommandEnv() })
     const commitOut = commitResult.stdout.trim()
     const commitErr = commitResult.stderr.trim()
 

@@ -1,5 +1,5 @@
 import type { ToolDefinition, ToolResult, ToolContext, ProcessResult } from '@orchentra/cli-core'
-import { runProcess } from '@orchentra/cli-core'
+import { gitCommandEnv, runProcess } from '@orchentra/cli-core'
 
 // 30KB output ceiling per call; raise if an agent legitimately needs fuller
 // diffs (rare — it can scope with `path`).
@@ -7,32 +7,8 @@ const MAX_OUTPUT_BYTES = 30_000
 
 type GitRun = ProcessResult
 
-const GIT_LOCAL_ENV_KEYS = [
-  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
-  'GIT_CONFIG',
-  'GIT_CONFIG_PARAMETERS',
-  'GIT_CONFIG_COUNT',
-  'GIT_OBJECT_DIRECTORY',
-  'GIT_DIR',
-  'GIT_WORK_TREE',
-  'GIT_IMPLICIT_WORK_TREE',
-  'GIT_GRAFT_FILE',
-  'GIT_INDEX_FILE',
-  'GIT_NO_REPLACE_OBJECTS',
-  'GIT_REPLACE_REF_BASE',
-  'GIT_PREFIX',
-  'GIT_SHALLOW_FILE',
-  'GIT_COMMON_DIR',
-] as const
-
 async function runGit(args: string[], cwd: string): Promise<GitRun> {
-  return runProcess(['git', ...args], { cwd, env: cleanGitEnv() })
-}
-
-function cleanGitEnv(): Record<string, string> {
-  const env: Record<string, string> = { ...(process.env as Record<string, string>) }
-  for (const key of GIT_LOCAL_ENV_KEYS) delete env[key]
-  return env
+  return runProcess(['git', ...args], { cwd, env: gitCommandEnv() })
 }
 
 function cap(text: string): string {

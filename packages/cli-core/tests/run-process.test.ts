@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { gitDiscoveryEnv, gitOutput, runProcess, runProcessSync } from '../src/runtime/run-process'
+import { gitCommandEnv, gitDiscoveryEnv, gitOutput, runProcess, runProcessSync } from '../src/runtime/run-process'
 
 describe('runProcess', () => {
   test('captures stdout, stderr and exit code', async () => {
@@ -45,6 +45,40 @@ describe('gitDiscoveryEnv', () => {
 
   test('skips undefined values', () => {
     expect(gitDiscoveryEnv({ SET: 'yes', UNSET: undefined })).toEqual({ SET: 'yes' })
+  })
+})
+
+describe('gitCommandEnv', () => {
+  test('drops repo-discovery vars but keeps credentials and identity', () => {
+    const env = gitCommandEnv({
+      GIT_DIR: '/somewhere/.git',
+      GIT_WORK_TREE: '/somewhere',
+      GIT_INDEX_FILE: '.git/index',
+      GIT_CONFIG_PARAMETERS: "'core.hooksPath=/dev/null'",
+      GIT_SSH_COMMAND: 'ssh -i /key',
+      GIT_ASKPASS: '/usr/bin/askpass',
+      GIT_AUTHOR_NAME: 'Rishit',
+      GIT_COMMITTER_EMAIL: 'r@example.com',
+      PATH: '/usr/bin',
+    })
+    // Stripping these is the whole point: they redirect git at another repo.
+    expect(env.GIT_DIR).toBeUndefined()
+    expect(env.GIT_WORK_TREE).toBeUndefined()
+    expect(env.GIT_INDEX_FILE).toBeUndefined()
+    expect(env.GIT_CONFIG_PARAMETERS).toBeUndefined()
+    // Keeping these is equally the point: a blanket GIT_* strip breaks SSH
+    // pushes and loses commit identity.
+    expect(env.GIT_SSH_COMMAND).toBe('ssh -i /key')
+    expect(env.GIT_ASKPASS).toBe('/usr/bin/askpass')
+    expect(env.GIT_AUTHOR_NAME).toBe('Rishit')
+    expect(env.GIT_COMMITTER_EMAIL).toBe('r@example.com')
+    expect(env.PATH).toBe('/usr/bin')
+  })
+
+  test('is stricter than gitDiscoveryEnv only about non-discovery vars', () => {
+    const source = { GIT_DIR: '/x', GIT_SSH_COMMAND: 'ssh', PATH: '/usr/bin' }
+    expect(gitDiscoveryEnv(source)).toEqual({ PATH: '/usr/bin' })
+    expect(gitCommandEnv(source)).toEqual({ GIT_SSH_COMMAND: 'ssh', PATH: '/usr/bin' })
   })
 })
 

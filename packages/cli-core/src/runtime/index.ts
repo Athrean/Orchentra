@@ -262,7 +262,7 @@ export {
 export type { GitCommitEntry, GitContext } from './git-context'
 export { detectGitContext, renderGitContext } from './git-context'
 export type { ProcessResult, RunProcessOptions } from './run-process'
-export { gitDiscoveryEnv, gitOutput, runProcess, runProcessSync } from './run-process'
+export { gitCommandEnv, gitDiscoveryEnv, gitOutput, runProcess, runProcessSync } from './run-process'
 
 export type {
   HookEvent,
