@@ -1,20 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import { ConversationRuntime, type ConversationConfig, type ConversationDeps } from '../src/runtime/conversation'
-import type { Provider, ProviderStreamEvent } from '../src/runtime/provider'
 import type { ToolRegistry, ToolResult } from '../src/runtime/tools'
 import type { RuntimeEvent } from '../src/runtime/events'
 import { buildSystemPrompt } from '../src/runtime/system-prompt'
 import type { TraceManifest, TraceSink } from '../src/runtime/trace'
-
-function fakeProvider(responses: ProviderStreamEvent[][]): Provider {
-  let callIndex = 0
-  return {
-    async *stream() {
-      const resp = responses[callIndex++] ?? []
-      for (const ev of resp) yield ev
-    },
-  }
-}
+import { scriptedProvider as fakeProvider } from './support/provider'
 
 function toolsReturning(results: Record<string, ToolResult>): ToolRegistry {
   return {

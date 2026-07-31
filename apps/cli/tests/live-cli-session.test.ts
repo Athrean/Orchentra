@@ -6,24 +6,7 @@ import type { Provider, ProviderRequest, ProviderStreamEvent, SharedToolState } 
 import { SessionWriter } from '@orchentra/cli-core'
 import { DefaultToolRegistry } from '@orchentra/cli-tools'
 import { LiveCli, type ModelResolver } from '../src/live-cli'
-
-function fakeProvider(): Provider {
-  return {
-    async *stream(): AsyncGenerator<ProviderStreamEvent> {
-      yield { kind: 'finish', stopReason: 'end_turn' }
-    },
-  }
-}
-
-function scriptedProvider(turns: ProviderStreamEvent[][]): Provider {
-  let i = 0
-  return {
-    async *stream(_request: ProviderRequest): AsyncGenerator<ProviderStreamEvent> {
-      const turn = turns[i++] ?? []
-      for (const event of turn) yield event
-    },
-  }
-}
+import { scriptedProvider, silentProvider as fakeProvider } from './support/provider'
 
 function sharedState(): SharedToolState {
   return {

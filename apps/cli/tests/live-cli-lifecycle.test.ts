@@ -2,10 +2,11 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { LifecycleHookEvent, Provider, ProviderStreamEvent, SharedToolState } from '@orchentra/cli-core'
+import type { LifecycleHookEvent } from '@orchentra/cli-core'
 import { HookRunner, SessionWriter } from '@orchentra/cli-core'
 import { DefaultToolRegistry } from '@orchentra/cli-tools'
 import { LiveCli, type ModelResolver } from '../src/live-cli'
+import { silentProvider as fakeProvider, sharedState } from './support/provider'
 
 /** Records lifecycle fires; no-op for tool hooks (inherited base behavior). */
 class RecordingHookRunner extends HookRunner {
@@ -15,31 +16,6 @@ class RecordingHookRunner extends HookRunner {
   }
   events(): LifecycleHookEvent[] {
     return this.lifecycle.map((c) => c.event)
-  }
-}
-
-function fakeProvider(): Provider {
-  return {
-    async *stream(): AsyncGenerator<ProviderStreamEvent> {
-      yield { kind: 'finish', stopReason: 'end_turn' }
-    },
-  }
-}
-
-function sharedState(): SharedToolState {
-  return {
-    taskStore: {
-      create: () => {
-        throw new Error('not used')
-      },
-      get: () => undefined,
-      list: () => [],
-      update: () => {},
-      cancel: () => {},
-    },
-    todos: [],
-    agentCounter: 0,
-    planMode: false,
   }
 }
 

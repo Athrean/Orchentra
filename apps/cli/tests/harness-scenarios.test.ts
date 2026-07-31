@@ -7,25 +7,13 @@ import {
   ConversationRuntime,
   createEnforcer,
   type ConversationConfig,
-  type Provider,
   type ProviderRequest,
-  type ProviderStreamEvent,
   type RuntimeEvent,
   type SharedToolState,
 } from '@orchentra/cli-core'
 import { DefaultToolRegistry } from '@orchentra/cli-tools'
 import { LiveCli, type ModelResolver } from '../src/live-cli'
-
-function fakeProvider(responses: ProviderStreamEvent[][], onRequest?: (request: ProviderRequest) => void): Provider {
-  let callIndex = 0
-  return {
-    async *stream(request) {
-      onRequest?.(request)
-      const resp = responses[callIndex++] ?? []
-      for (const ev of resp) yield ev
-    },
-  }
-}
+import { scriptedProvider as fakeProvider } from './support/provider'
 
 function config(cwd: string, overrides: Partial<ConversationConfig> = {}): ConversationConfig {
   return {
