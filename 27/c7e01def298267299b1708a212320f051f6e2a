@@ -1,0 +1,33 @@
+packages/cli-api/tests/github-octokit.test.ts
+  s_6ea902a4421c95::t_df884a2630b2df 3
+packages/cli-api/tests/github-prs.test.ts
+  s_6ea902a4421c95::t_ed9d4067f8453f 4
+packages/cli-api/tests/github-statuses.test.ts
+  s_6ea902a4421c95::t_49025f1381ea67 4
+packages/cli-api/tests/support/fetch.ts
+  s_6ea902a4421c95::t_da1ac2d41468bf 1-36
+packages/cli-tools/tests/github-issues.test.ts
+  s_6ea902a4421c95::t_5c9668b2b6cbfd 3
+packages/cli-tools/tests/github-pulls.test.ts
+  s_6ea902a4421c95::t_0385013ed07a00 3
+packages/cli-tools/tests/github-search.test.ts
+  s_6ea902a4421c95::t_7da2c7327f82cb 3
+packages/cli-tools/tests/support/fetch.ts
+  s_6ea902a4421c95::t_4dba455a382ae7 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "27c7e01def298267299b1708a212320f051f6e2a",
+  "prompts": {},
+  "sessions": {
+    "s_6ea902a4421c95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba5fc057-eea5-4d00-b5b0-74036c00c66f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
