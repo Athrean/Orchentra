@@ -1,0 +1,21 @@
+packages/cli-core/src/runtime/index.ts
+  s_403900cd20b650::t_34cfa4053bc8a5 117
+packages/cli-core/src/runtime/tools.ts
+  s_403900cd20b650::t_0341a6a641d9ab 9-11,79-89,113-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "c6fb91ed5d782c3dd1a8671d918bb4c885853444",
+  "prompts": {},
+  "sessions": {
+    "s_403900cd20b650": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0e6be1-232c-44c7-9086-10620c0ff0a6",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
