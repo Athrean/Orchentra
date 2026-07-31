@@ -1,26 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { searchGitHubIssues } from '../src/github/search'
-
-interface MockFetchCall {
-  url: string
-}
-
-function mockFetch(responses: Array<{ status: number; body: unknown }>): {
-  fetch: typeof fetch
-  calls: MockFetchCall[]
-} {
-  const calls: MockFetchCall[] = []
-  let i = 0
-  const fakeFetch: typeof fetch = async (input) => {
-    calls.push({ url: typeof input === 'string' ? input : (input as Request).url })
-    const r = responses[i++] ?? responses[responses.length - 1]!
-    return new Response(JSON.stringify(r.body), {
-      status: r.status,
-      headers: { 'content-type': 'application/json' },
-    })
-  }
-  return { fetch: fakeFetch, calls }
-}
+import { fakeFetch as mockFetch } from './support/fetch'
 
 describe('searchGitHubIssues', () => {
   test('hits /search/issues with q + per_page', async () => {

@@ -3,6 +3,7 @@ import { StatusCommand } from '../src/commands/builtin/status'
 import type { CommandContext } from '../src/commands/registry'
 import type { SessionControl, SpineSavings, TerseModeUsage, UsageTotals } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 function makeSession(breakdown?: readonly TerseModeUsage[], savings?: SpineSavings): SessionControl {
   const usage: UsageTotals = {
@@ -11,31 +12,23 @@ function makeSession(breakdown?: readonly TerseModeUsage[], savings?: SpineSavin
     cacheReadTokens: 99,
     cacheCreationTokens: 12,
   }
-  return {
+  return makeSessionControl({
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (m) => m,
     getSessionId: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     getTurns: () => 7,
     getUsage: () => usage,
     getTerseBreakdown: breakdown ? () => breakdown : undefined,
     getSavings: savings ? () => savings : undefined,
     getTerseMode: () => 'full',
-    clearHistory: () => {},
-    forceCompact: () => {},
-  }
+  })
 }
 
 function makeCtx(
   breakdown?: readonly TerseModeUsage[],
   savings?: SpineSavings,
 ): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return {
-    events,
-    ctx: { cwd: '/work', session: makeSession(breakdown, savings), ui: (o) => events.push(o) },
-  }
+  return makeCommandCtx(makeSession(breakdown, savings))
 }
 
 describe('StatusCommand', () => {

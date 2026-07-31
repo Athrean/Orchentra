@@ -1,43 +1,28 @@
 import { describe, expect, test } from 'bun:test'
-import type { EffortTier, SessionControl, UsageTotals } from '@orchentra/cli-core'
+import type { EffortTier, SessionControl } from '@orchentra/cli-core'
 
 import { EffortCommand } from '../../src/commands/builtin/effort'
 import { createBuiltinRegistry } from '../../src/commands/builtin'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from '../support/session'
 
 function makeSession(initial: EffortTier = 'medium'): SessionControl {
   let effort = initial
-  const usage: UsageTotals = {
-    inputTokens: 0,
-    outputTokens: 0,
-    cacheReadTokens: 0,
-    cacheCreationTokens: 0,
-  }
-  return {
+  return makeSessionControl({
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (mode) => mode,
     getSessionId: () => 'session-1',
-    getTurns: () => 0,
-    getUsage: () => usage,
-    clearHistory: () => {},
-    forceCompact: () => {},
     getEffort: () => effort,
     setEffort: (next) => {
       effort = next
       return effort
     },
-  }
+  })
 }
 
 function makeCtx(session = makeSession()): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return {
-    events,
-    ctx: { cwd: '/work', session, ui: (output) => events.push(output) },
-  }
+  return makeCommandCtx(session)
 }
 
 describe('/effort slash command', () => {

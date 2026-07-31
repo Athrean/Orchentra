@@ -2,21 +2,15 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
-import type { SessionControl, UsageTotals } from '@orchentra/cli-core'
 
 import { ScanSlashCommand } from '../../src/commands/builtin/scan-slash'
 import type { LlmCaller } from '../../src/composites/scan'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from '../support/session'
 
 function makeCtx(cwd: string): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  const usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }
-  const session = {
-    getModel: () => 'claude-sonnet-4-20250514',
-    getUsage: () => usage,
-  } as unknown as SessionControl
-  return { events, ctx: { cwd, session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(makeSessionControl({ getModel: () => 'claude-sonnet-4-20250514' }), cwd)
 }
 
 describe('/scan command (BYOK retrofit)', () => {

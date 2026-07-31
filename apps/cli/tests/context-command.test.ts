@@ -2,8 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import { buildContextSections, renderMeter, type ContextReport } from '../src/commands/builtin/context-report'
 import { ContextCommand } from '../src/commands/builtin/terminal-parity'
 import type { CommandContext } from '../src/commands/registry'
-import type { SessionControl, SpineSavings, UsageTotals } from '@orchentra/cli-core'
+import type { SpineSavings, UsageTotals } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 const usage: UsageTotals = { inputTokens: 1200, outputTokens: 800, cacheReadTokens: 0, cacheCreationTokens: 0 }
 
@@ -106,19 +107,18 @@ describe('buildContextSections', () => {
 })
 
 function makeCtx(withStats: boolean): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  const session = {
-    getModel: () => 'sonnet',
-    getTurns: () => 4,
-    getUsage: () => usage,
-    getContextStats: withStats
-      ? () => ({ messages: 12, estimatedTokens: 100_000, contextWindowTokens: 200_000, compactThresholdRatio: 0.8 })
-      : undefined,
-    getSavings: () => ({ compactions: 0, compactionTokensSaved: 0, toolOutputTrims: 0, toolOutputCharsTrimmed: 0 }),
-    clearHistory: () => {},
-    forceCompact: () => {},
-  } as unknown as SessionControl
-  return { events, ctx: { cwd: '/w', session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(
+    makeSessionControl({
+      getModel: () => 'sonnet',
+      getTurns: () => 4,
+      getUsage: () => usage,
+      getContextStats: withStats
+        ? () => ({ messages: 12, estimatedTokens: 100_000, contextWindowTokens: 200_000, compactThresholdRatio: 0.8 })
+        : undefined,
+      getSavings: () => ({ compactions: 0, compactionTokensSaved: 0, toolOutputTrims: 0, toolOutputCharsTrimmed: 0 }),
+    }),
+    '/w',
+  )
 }
 
 describe('ContextCommand (enhanced)', () => {

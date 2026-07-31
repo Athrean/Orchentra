@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
-import type { EffortTier, SessionControl, UsageTotals } from '@orchentra/cli-core'
+import type { EffortTier, SessionControl } from '@orchentra/cli-core'
 
 import { createBuiltinRegistry } from '../../src/commands/builtin'
 import { PlanCommand } from '../../src/commands/builtin/plan'
@@ -26,26 +26,15 @@ import {
 } from '../../src/commands/builtin/terminal-parity'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from '../support/session'
 
 function makeSession(): SessionControl {
   let effort: EffortTier = 'medium'
   let planMode = false
-  const usage: UsageTotals = {
-    inputTokens: 0,
-    outputTokens: 0,
-    cacheReadTokens: 0,
-    cacheCreationTokens: 0,
-  }
-  return {
+  return makeSessionControl({
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (mode) => mode,
     getSessionId: () => 'session-1',
-    getTurns: () => 0,
-    getUsage: () => usage,
-    clearHistory: () => {},
-    forceCompact: () => {},
     getEffort: () => effort,
     setEffort: (next) => {
       effort = next
@@ -56,15 +45,11 @@ function makeSession(): SessionControl {
       planMode = next
       return planMode
     },
-  }
+  })
 }
 
 function makeCtx(cwd: string, session = makeSession()): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return {
-    events,
-    ctx: { cwd, session, ui: (output) => events.push(output) },
-  }
+  return makeCommandCtx(session, cwd)
 }
 
 describe('small slash parity commands', () => {

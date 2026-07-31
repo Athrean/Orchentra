@@ -1,27 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { listGitHubPulls, getGitHubPull } from '../src/github/pulls'
-
-interface MockFetchCall {
-  url: string
-  init?: RequestInit
-}
-
-function mockFetch(responses: Array<{ status: number; body: unknown }>): {
-  fetch: typeof fetch
-  calls: MockFetchCall[]
-} {
-  const calls: MockFetchCall[] = []
-  let i = 0
-  const fakeFetch: typeof fetch = async (input, init) => {
-    calls.push({ url: typeof input === 'string' ? input : (input as Request).url, init })
-    const r = responses[i++] ?? responses[responses.length - 1]!
-    return new Response(JSON.stringify(r.body), {
-      status: r.status,
-      headers: { 'content-type': 'application/json' },
-    })
-  }
-  return { fetch: fakeFetch, calls }
-}
+import { fakeFetch as mockFetch } from './support/fetch'
 
 describe('listGitHubPulls', () => {
   test('hits /repos/:o/:r/pulls with state=open by default', async () => {

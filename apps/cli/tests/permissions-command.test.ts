@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { PermissionsCommand } from '../src/commands/builtin/permissions'
 import type { CommandContext } from '../src/commands/registry'
-import type { PermissionMode, PolicyRule, SessionControl, StoredPermissionRule, UsageTotals } from '@orchentra/cli-core'
+import type { PermissionMode, PolicyRule, SessionControl, StoredPermissionRule } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 function makeSession(
   initial: PermissionMode = 'workspace-write',
@@ -16,30 +17,21 @@ function makeSession(
 } {
   let mode = initial
   const calls: PermissionMode[] = []
-  const usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }
-  const session: SessionControl = {
-    getModel: () => 'm',
-    setModel: () => 'm',
+  const session = makeSessionControl({
     getPermissionMode: () => mode,
     setPermissionMode: (x: PermissionMode) => {
       mode = x
       calls.push(x)
       return x
     },
-    getSessionId: () => 's',
-    getTurns: () => 0,
-    getUsage: () => usage,
     listPermissionRules: opts.permissionRules ? () => opts.permissionRules ?? [] : undefined,
     listStoredPermissionRules: opts.storedRules ? () => opts.storedRules ?? [] : undefined,
-    clearHistory: () => {},
-    forceCompact: () => {},
-  }
+  })
   return { session, calls }
 }
 
 function makeCtx(session: SessionControl): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return { events, ctx: { cwd: '/w', session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(session, '/w')
 }
 
 describe('PermissionsCommand', () => {

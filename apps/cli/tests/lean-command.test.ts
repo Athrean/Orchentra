@@ -7,6 +7,7 @@ import { LeanCommand } from '../src/commands/builtin/lean'
 import { createBuiltinRegistry } from '../src/commands/builtin'
 import type { CommandContext } from '../src/commands/registry'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx } from './support/session'
 
 function runGit(cwd: string, args: string[]): void {
   const env: Record<string, string> = {}
@@ -33,8 +34,7 @@ function session(): SessionControl {
 }
 
 function makeCtx(cwd: string): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return { events, ctx: { cwd, session: session(), ui: (event) => events.push(event) } }
+  return makeCommandCtx(session(), cwd)
 }
 
 describe('LeanCommand', () => {
