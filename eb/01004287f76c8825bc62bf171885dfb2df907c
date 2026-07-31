@@ -1,0 +1,23 @@
+apps/cli/src/live-cli.ts
+  s_403900cd20b650::t_9244a60a17d79d 20,39,71,118-119,135-152,200,884-885,893-901,908-917,1113,1115-1116,1118
+apps/cli/src/repl.ts
+  s_403900cd20b650::t_b692cd13d73052 14,59-60
+apps/cli/tests/live-cli-permissions.test.ts
+  s_403900cd20b650::t_f263292f74698c 5,9-10,53-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "eb01004287f76c8825bc62bf171885dfb2df907c",
+  "prompts": {},
+  "sessions": {
+    "s_403900cd20b650": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b0e6be1-232c-44c7-9086-10620c0ff0a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
