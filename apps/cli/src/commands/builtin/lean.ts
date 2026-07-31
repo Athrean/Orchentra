@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import type { UiCardSection } from '../ui-output'
+import { gitDiscoveryEnv } from '@orchentra/cli-core'
 
 export class LeanCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -45,12 +46,12 @@ async function requestFix(ctx: CommandContext, path: string | undefined): Promis
 function inspectDiff(cwd: string, path: string | undefined): LeanReport | Error {
   const args = ['diff', '--numstat', '--']
   if (path) args.push(path)
-  const stat = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 5000, env: cleanGitEnv() })
+  const stat = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 5000, env: gitDiscoveryEnv() })
   if (stat.status !== 0) return new Error(`git diff failed: ${stat.stderr || stat.stdout || 'unknown'}`)
 
   const patchArgs = ['diff', '--']
   if (path) patchArgs.push(path)
-  const patch = spawnSync('git', patchArgs, { cwd, encoding: 'utf8', timeout: 5000, env: cleanGitEnv() })
+  const patch = spawnSync('git', patchArgs, { cwd, encoding: 'utf8', timeout: 5000, env: gitDiscoveryEnv() })
   if (patch.status !== 0) return new Error(`git diff failed: ${patch.stderr || patch.stdout || 'unknown'}`)
 
   let files = 0
@@ -134,14 +135,6 @@ function numericStat(value: string | undefined): number {
   if (!value || value === '-') return 0
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
-}
-
-function cleanGitEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
-  }
-  return env
 }
 
 function note(ctx: CommandContext, text: string, tone: 'info' | 'warn' = 'info'): boolean {
