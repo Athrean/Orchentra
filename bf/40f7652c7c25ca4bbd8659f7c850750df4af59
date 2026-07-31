@@ -1,0 +1,19 @@
+packages/cli-core/src/runtime/conversation.ts
+  s_6ea902a4421c95::t_6d4da5a76b512a 975,985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "bf40f7652c7c25ca4bbd8659f7c850750df4af59",
+  "prompts": {},
+  "sessions": {
+    "s_6ea902a4421c95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba5fc057-eea5-4d00-b5b0-74036c00c66f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
