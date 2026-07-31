@@ -1,0 +1,37 @@
+apps/cli/tests/harness-scenarios.test.ts
+  s_6ea902a4421c95::t_6628c712b14fa1 16
+apps/cli/tests/live-cli-lifecycle.test.ts
+  s_6ea902a4421c95::t_317c10950f8461 5,9
+apps/cli/tests/live-cli-permissions.test.ts
+  s_6ea902a4421c95::t_4339030691c28c 5,9
+apps/cli/tests/live-cli-savings.test.ts
+  s_6ea902a4421c95::t_a82da8d567fd7d 5,8
+apps/cli/tests/live-cli-session.test.ts
+  s_6ea902a4421c95::t_06583d3bf61840 9
+apps/cli/tests/support/provider.ts
+  s_6ea902a4421c95::t_c79a743d958471 1-53
+packages/cli-core/tests/conversation.test.ts
+  s_6ea902a4421c95::t_40212f7fd8fac8 22
+packages/cli-core/tests/loop-detector.test.ts
+  s_6ea902a4421c95::t_028425cc5e6d89 8
+packages/cli-core/tests/support/provider.ts
+  s_6ea902a4421c95::t_dae734eb15e5c5 1-18
+packages/cli-core/tests/trace-browser.test.ts
+  s_6ea902a4421c95::t_116324af2b2b56 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3db8b6a95091478373e1b1f511602d065bf2f90d",
+  "prompts": {},
+  "sessions": {
+    "s_6ea902a4421c95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba5fc057-eea5-4d00-b5b0-74036c00c66f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
