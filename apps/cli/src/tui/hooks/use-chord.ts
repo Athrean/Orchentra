@@ -97,7 +97,9 @@ export function useChord(
   onMatch: () => void,
 ): ChordInterceptor {
   const onMatchRef = useRef(onMatch)
-  onMatchRef.current = onMatch
+  useEffect(() => {
+    onMatchRef.current = onMatch
+  })
 
   const chord = useMemo(
     () =>

@@ -667,18 +667,19 @@ export class LiveCli implements SessionControl {
     const turnsToDrop = countUserTurns(this.messages.slice(boundary))
     // Only the most recent turn's edits are snapshotted, so the preview reports
     // exactly what rewindTurns would revert — no more, no less.
-    const files: RewindFilePreview[] = []
-    for (const edit of this.lastTurnFileUndo) {
-      const current = await readFile(edit.path, 'utf8').catch(() => '')
-      const target = edit.existed ? edit.content : ''
-      const { added, removed } = lineDiffStats(current, target)
-      files.push({
-        path: edit.path,
-        action: edit.existed ? 'restore' : 'delete',
-        linesAdded: added,
-        linesRemoved: removed,
-      })
-    }
+    const files: RewindFilePreview[] = await Promise.all(
+      this.lastTurnFileUndo.map(async (edit): Promise<RewindFilePreview> => {
+        const current = await readFile(edit.path, 'utf8').catch(() => '')
+        const target = edit.existed ? edit.content : ''
+        const { added, removed } = lineDiffStats(current, target)
+        return {
+          path: edit.path,
+          action: edit.existed ? 'restore' : 'delete',
+          linesAdded: added,
+          linesRemoved: removed,
+        }
+      }),
+    )
     return { kind: 'preview', turnsToDrop, messagesToDrop, files }
   }
 
@@ -1093,9 +1094,9 @@ export class LiveCli implements SessionControl {
         reason = event.reason
       }
     }
-    const missing = state.verificationObligations
-      .filter((obligation) => !obligation.evidenceKinds.every((kind) => evidenceKinds.has(kind)))
-      .map((obligation) => obligation.id)
+    const missing = state.verificationObligations.flatMap((obligation) =>
+      obligation.evidenceKinds.every((kind) => evidenceKinds.has(kind)) ? [] : [obligation.id],
+    )
     const passed = reason === 'stop' && missing.length === 0
     return {
       passed,

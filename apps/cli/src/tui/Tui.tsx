@@ -60,9 +60,13 @@ export function Tui(props: TuiProps): React.ReactElement {
   )
 
   // Keep a ref to current state for handlers that need fresh values without
-  // re-binding `useInput` on every keystroke.
+  // re-binding `useInput` on every keystroke. Written from an effect (not
+  // during render) to keep render pure; handlers only ever read this after
+  // a commit, so the one-tick lag between render and effect is invisible.
   const stateRef = useRef(state)
-  stateRef.current = state
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   const shellHistoryRef = useRef<string[]>([])
 
@@ -79,9 +83,13 @@ export function Tui(props: TuiProps): React.ReactElement {
   const MULTILINE_THRESHOLD = 5
   const wrappedLines = countWrappedLines(state.buffer, cols)
   const [modalCollapsed, setModalCollapsed] = useState(false)
-  useEffect(() => {
-    if (wrappedLines < MULTILINE_THRESHOLD && modalCollapsed) setModalCollapsed(false)
-  }, [wrappedLines, modalCollapsed])
+  // Adjust during render, not in an effect: the guard includes the state it
+  // resets, so it settles in the same pass (React discards this render and
+  // reruns once) with no extra commit — see
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  if (wrappedLines < MULTILINE_THRESHOLD && modalCollapsed) {
+    setModalCollapsed(false)
+  }
   const isMultilineModal = wrappedLines >= MULTILINE_THRESHOLD && !modalCollapsed
 
   const wireEvents = useCallback(() => {
@@ -183,8 +191,10 @@ export function Tui(props: TuiProps): React.ReactElement {
     if (!isWorkspaceTrusted(props.cwd)) {
       dispatch({ type: 'flow/start', flow: { kind: 'trust-gate', cwd: props.cwd } })
     }
-    // Runs once on mount; the gate only applies to the directory the CLI opened in.
-  }, [])
+    // props.cwd is fixed for the life of this component (set once when the
+    // CLI launches — see runTui() in tui/index.ts), so this still only ever
+    // runs once in practice; the dependency is listed for correctness.
+  }, [props.cwd])
 
   // Spinner & elapsed timer ticker.
   const [spinnerFrame, setSpinnerFrame] = useState(0)

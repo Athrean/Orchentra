@@ -18,8 +18,8 @@ export function QueuedMessages(props: QueuedMessagesProps): React.ReactElement |
   return (
     <Box flexDirection="column" paddingX={1}>
       <Text color={THEME.muted}>{`${props.queued.length} queued  ${THEME.separator}  ↑ to edit`}</Text>
-      {props.queued.map((msg, i) => (
-        <Text key={i} color={THEME.muted}>
+      {props.queued.map((msg) => (
+        <Text key={msg} color={THEME.muted}>
           {`${THEME.arrowRight} ${oneLine(msg)}`}
         </Text>
       ))}

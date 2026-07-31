@@ -25,6 +25,11 @@ export interface AskUserPromptProps {
 
 type PromptMode = 'choice' | 'text'
 
+// Stable reference so `options` below doesn't allocate a fresh empty array
+// on every render when the request omits options — a fresh `[]` each render
+// would make the `rows` useMemo below think its dependency changed every time.
+const NO_OPTIONS: readonly AskUserOption[] = []
+
 interface ChoiceRow {
   readonly kind: 'option' | 'other'
   readonly label: string
@@ -32,7 +37,7 @@ interface ChoiceRow {
 }
 
 export function AskUserPrompt(props: AskUserPromptProps): React.ReactElement {
-  const options = props.request.options ?? []
+  const options = props.request.options ?? NO_OPTIONS
   const hasChoices = options.length > 0
   const allowOther = hasChoices && props.request.allowOther !== false
   const rows = useMemo<readonly ChoiceRow[]>(() => {
@@ -194,7 +199,7 @@ export function AskUserPrompt(props: AskUserPromptProps): React.ReactElement {
       ) : (
         <>
           {rows.map((row, index) => (
-            <Box key={`${row.kind}-${index.toString()}`} flexDirection="column">
+            <Box key={`${row.kind}-${row.label}`} flexDirection="column">
               <Text color={index === selected ? THEME.brand : undefined}>
                 {index === selected ? '❯ ' : '  '}
                 {multiSelect ? `${checked.has(index) ? '[x]' : '[ ]'} ` : ''}

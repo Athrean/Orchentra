@@ -124,7 +124,7 @@ function IdeCompactBanner(props: BannerOptions): React.ReactElement {
   return (
     <Box flexDirection="column" paddingX={1} paddingTop={1} width={infoMaxWidth}>
       {lines.map((line, index) => (
-        <Box key={`${index}:${line}`} flexDirection="row" width={infoMaxWidth}>
+        <Box key={line} flexDirection="row" width={infoMaxWidth}>
           <Text color={THEME.brand}>{line.padEnd(markWidth)}</Text>
           {index === 0 ? (
             <>
@@ -277,8 +277,8 @@ function MascotMark({ size = 'compact' }: { readonly size?: MascotSize }): React
 
   return (
     <Box flexDirection="column" width={width}>
-      {lines.map((line, index) => (
-        <Text key={`${index}:${line}`} color={THEME.brand}>
+      {lines.map((line) => (
+        <Text key={line} color={THEME.brand}>
           {line.padEnd(width)}
         </Text>
       ))}
@@ -316,10 +316,10 @@ function createCapturedStdout(columns: number, rows: number): CapturedStdout {
 }
 
 /**
- * Render the welcome banner to a string without writing to stdout. Exposed
- * separately from {@link printWelcomeBanner} so the TUI can stash the frame
- * inside Ink's `fullStaticOutput`, ensuring resize-driven `clearTerminal`
- * writes re-emit the banner instead of leaving it scrolled away.
+ * Render the welcome banner to a string without writing to stdout, so the
+ * TUI can stash the frame inside Ink's `fullStaticOutput`, ensuring
+ * resize-driven `clearTerminal` writes re-emit the banner instead of
+ * leaving it scrolled away.
  */
 export async function renderBannerFrame(opts: BannerOptions): Promise<string> {
   const cols = process.stdout.columns ?? 80
@@ -336,11 +336,6 @@ export async function renderBannerFrame(opts: BannerOptions): Promise<string> {
   // eslint-disable-next-line no-control-regex
   const frame = captured.read().replace(/\[\?(25|2026)[hl]/g, '')
   return frame.endsWith('\n') ? frame : `${frame}\n`
-}
-
-export async function printWelcomeBanner(opts: BannerOptions): Promise<void> {
-  const frame = await renderBannerFrame(opts)
-  process.stdout.write(frame)
 }
 
 export { useStdout }

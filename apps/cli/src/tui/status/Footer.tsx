@@ -11,6 +11,8 @@ import { FIGURES } from '../figures'
 import type { TurnStatus } from '../types'
 import { ShimmerText } from '../components/ShimmerText'
 
+const numberFormatter = new Intl.NumberFormat('en-US')
+
 export interface FooterContextStats {
   readonly estimatedTokens?: number
   readonly contextWindowTokens?: number
@@ -221,7 +223,7 @@ function renderContextRemaining(stats: FooterContextStats | undefined): string |
 }
 
 function formatNumber(value: number): string {
-  return new Intl.NumberFormat('en-US').format(Math.max(0, Math.round(value)))
+  return numberFormatter.format(Math.max(0, Math.round(value)))
 }
 
 function formatCwd(cwd: string): string {

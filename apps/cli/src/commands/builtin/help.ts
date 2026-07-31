@@ -117,7 +117,10 @@ function sectionsFor(tab: TabName, specs: readonly SlashCommandSpec[]): UiCardSe
   if (tab === 'All') {
     const groups = ['Core', 'Workspace', 'Auth', 'Tools'] as const
     return [
-      ...groups.map((g) => ({ title: g, rows: rowsForCategory(specs, g) })).filter((s) => s.rows.length > 0),
+      ...groups.flatMap((g) => {
+        const rows = rowsForCategory(specs, g)
+        return rows.length > 0 ? [{ title: g, rows }] : []
+      }),
       QUICK_HINTS,
     ]
   }

@@ -53,10 +53,16 @@ export async function runRegressionsCommand(args: RunRegressionsArgs): Promise<n
 
   const all = loadRegressionEntries(suiteDir)
   if (args.listCategories) {
-    const categories = all
-      .map((e) => e.meta.category)
-      .filter((c, i, all) => all.indexOf(c) === i)
-      .sort()
+    const seen = new Set<RegressionCategory>()
+    const categories: RegressionCategory[] = []
+    for (const e of all) {
+      const category = e.meta.category
+      if (!seen.has(category)) {
+        seen.add(category)
+        categories.push(category)
+      }
+    }
+    categories.sort()
     for (const category of categories) write(`${category}\n`)
     return 0
   }

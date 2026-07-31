@@ -160,7 +160,7 @@ export const DEFAULT_STATUSLINE_CONFIG: StatuslineConfig = {
   ],
 }
 
-const SUPPORTED_IDS = new Set(STATUSLINE_OPTIONS.filter((option) => option.supported).map((option) => option.id))
+const SUPPORTED_IDS = new Set(STATUSLINE_OPTIONS.flatMap((option) => (option.supported ? [option.id] : [])))
 
 export function isStatuslineFieldId(value: unknown): value is StatuslineFieldId {
   return typeof value === 'string' && (STATUSLINE_FIELD_IDS as readonly string[]).includes(value)
@@ -177,10 +177,6 @@ export function normalizeStatuslineConfig(value: unknown): StatuslineConfig {
       typeof raw.useThemeColors === 'boolean' ? raw.useThemeColors : DEFAULT_STATUSLINE_CONFIG.useThemeColors,
     fields: fields.length > 0 ? dedupe(fields) : DEFAULT_STATUSLINE_CONFIG.fields,
   }
-}
-
-export function unsupportedStatuslineOptions(): readonly StatuslineOption[] {
-  return STATUSLINE_OPTIONS.filter((option) => !option.supported)
 }
 
 function dedupe(fields: readonly StatuslineFieldId[]): StatuslineFieldId[] {

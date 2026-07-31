@@ -103,10 +103,7 @@ export class BuildCommand implements CommandHandler {
     const runCheck: RunCheck = async () => {
       const results = checks.map((c) => ({ c, r: run(c.command, ctx.cwd) }))
       const passed = results.every((x) => x.r.exitCode === 0)
-      const output = results
-        .filter((x) => x.r.exitCode !== 0)
-        .map((x) => `${x.c.name}: ${x.r.output}`)
-        .join('\n')
+      const output = results.flatMap((x) => (x.r.exitCode !== 0 ? [`${x.c.name}: ${x.r.output}`] : [])).join('\n')
       return { passed, output }
     }
 
