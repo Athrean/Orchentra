@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type {
+  HookRunResult,
   PermissionMode,
   Provider,
   ProviderStreamEvent,
@@ -10,6 +11,7 @@ import type {
   ToolRegistry,
   ToolResult,
 } from '@orchentra/cli-core'
+import { HookRunner } from '@orchentra/cli-core'
 import { DefaultToolRegistry } from '@orchentra/cli-tools'
 import { LiveCli, type ModelResolver } from '../src/live-cli'
 import { runOneShot } from '../src/one-shot'
@@ -63,6 +65,17 @@ function verificationTools(): ToolRegistry {
   }
 }
 
+class DenyReviewerHooks extends HookRunner {
+  calls = 0
+
+  override async runPreToolUse(): Promise<HookRunResult> {
+    this.calls++
+    return this.calls === 1
+      ? { denied: false, failed: false, cancelled: false, messages: [] }
+      : { denied: true, failed: false, cancelled: false, messages: ['reviewer blocked'] }
+  }
+}
+
 function sharedState(): SharedToolState {
   return {
     taskStore: {
@@ -85,6 +98,7 @@ function makeCli(
   cwd: string,
   tools: ToolRegistry = new DefaultToolRegistry(),
   permissionMode: PermissionMode = 'workspace-write',
+  hookRunner?: HookRunner,
 ): LiveCli {
   const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
   return new LiveCli({
@@ -96,6 +110,7 @@ function makeCli(
     cwd,
     sessionId: 'one-shot-test',
     sharedState: sharedState(),
+    hookRunner,
   })
 }
 
@@ -126,6 +141,22 @@ describe('one-shot exit codes', () => {
       })
       expect(code).toBe(0)
       expect(closed).toBe(true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('reviewer replays inherit root hooks', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-one-shot-review-hooks-'))
+    try {
+      const hooks = new DenyReviewerHooks()
+      const cli = makeCli(gatePassingProvider(), dir, verificationTools(), 'allow', hooks)
+      cli.setAskToolUser(async () => 'allow-once')
+
+      const code = await runOneShot(cli, 'do something', async () => {})
+
+      expect(code).toBe(1)
+      expect(hooks.calls).toBeGreaterThan(1)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
