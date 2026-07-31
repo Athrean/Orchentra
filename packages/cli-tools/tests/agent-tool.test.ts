@@ -1,7 +1,18 @@
-import { describe, expect, test } from 'bun:test'
-import { RuntimeBudget } from '@orchentra/cli-core'
-import type { Provider, ProviderRequest, ProviderStreamEvent, ToolContext, ToolRegistry } from '@orchentra/cli-core'
+import { afterEach, describe, expect, test } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { HookRunner, RuntimeBudget, createEnforcer } from '@orchentra/cli-core'
+import type {
+  HookRunResult,
+  Provider,
+  ProviderRequest,
+  ProviderStreamEvent,
+  ToolContext,
+  ToolRegistry,
+} from '@orchentra/cli-core'
 import { agentTool } from '../src/tools/agent-tool'
+import { agentControlTool, resetChildRegistryForTests } from '../src/tools/subagent-lifecycle'
 
 function fakeProvider(reply: string, usage = { inputTokens: 10, outputTokens: 5 }): Provider {
   return {
@@ -38,6 +49,17 @@ function baseCtx(overrides: Partial<ToolContext> = {}): ToolContext {
     ...overrides,
   }
 }
+
+class RecordingHookRunner extends HookRunner {
+  preToolCalls = 0
+
+  override async runPreToolUse(): Promise<HookRunResult> {
+    this.preToolCalls++
+    return { denied: false, failed: false, cancelled: false, messages: [] }
+  }
+}
+
+afterEach(() => resetChildRegistryForTests())
 
 describe('agentTool', () => {
   test('errors when neither prompt nor tasks provided', async () => {
@@ -381,6 +403,114 @@ describe('agentTool named types', () => {
     for (const req of captured) {
       expect(req.tools.map((t) => t.name).sort()).toEqual(['grep_search', 'read_file'])
       expect(req.systemStatic).toContain('explorer sub-agent')
+    }
+  })
+})
+
+describe('agentTool enforcement inheritance', () => {
+  test('child runtime inherits hooks, policy, tool requirements, and permission prompts', async () => {
+    const turns: ProviderStreamEvent[][] = [
+      [
+        { kind: 'tool-use', call: { id: 'p1', name: 'ping', input: {} } },
+        { kind: 'finish', stopReason: 'tool_use' },
+      ],
+      [
+        { kind: 'text-delta', delta: 'permission handled' },
+        { kind: 'finish', stopReason: 'end_turn' },
+      ],
+    ]
+    let executions = 0
+    let policyCalls = 0
+    const requiredModes: Array<string | undefined> = []
+    const hooks = new RecordingHookRunner()
+    const tools: ToolRegistry = {
+      list: () => [{ name: 'ping', description: 'ping', inputSchema: { type: 'object' } }],
+      has: (name) => name === 'ping',
+      register: () => {},
+      execute: async () => {
+        executions++
+        return { content: 'pong', isError: false }
+      },
+    }
+
+    const result = await agentTool.execute(
+      { prompt: 'ping once' },
+      baseCtx({
+        permissionMode: 'read-only',
+        provider: scriptedProvider(turns),
+        tools,
+        enforcement: {
+          enforcer: createEnforcer(),
+          enforcerAskUser: async (request) => {
+            requiredModes.push(request.requiredMode)
+            return 'deny'
+          },
+          enforcerPolicy: () => {
+            policyCalls++
+            return { kind: 'allow', rule: { tool: 'ping', pattern: '*', decision: 'allow' } }
+          },
+          enforcerToolRequirements: { ping: 'danger-full-access' },
+          hookRunner: hooks,
+        },
+      }),
+    )
+
+    expect(result.isError).toBe(false)
+    expect(executions).toBe(0)
+    expect(hooks.preToolCalls).toBe(1)
+    expect(policyCalls).toBe(1)
+    expect(requiredModes).toEqual(['danger-full-access'])
+  })
+
+  test('background child denies ask policy without invoking parent prompt', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'orchentra-background-policy-'))
+    try {
+      const turns: ProviderStreamEvent[][] = [
+        [
+          { kind: 'tool-use', call: { id: 'p1', name: 'ping', input: {} } },
+          { kind: 'finish', stopReason: 'tool_use' },
+        ],
+        [
+          { kind: 'text-delta', delta: 'permission handled' },
+          { kind: 'finish', stopReason: 'end_turn' },
+        ],
+      ]
+      let executions = 0
+      let parentPrompts = 0
+      const tools: ToolRegistry = {
+        list: () => [{ name: 'ping', description: 'ping', inputSchema: { type: 'object' } }],
+        has: (name) => name === 'ping',
+        register: () => {},
+        execute: async () => {
+          executions++
+          return { content: 'pong', isError: false }
+        },
+      }
+      const ctx = baseCtx({
+        cwd,
+        permissionMode: 'allow',
+        provider: scriptedProvider(turns),
+        tools,
+        enforcement: {
+          enforcer: createEnforcer(),
+          enforcerAskUser: async () => {
+            parentPrompts++
+            return 'allow-once'
+          },
+          enforcerPolicy: () => ({ kind: 'ask', rule: { tool: 'ping', pattern: '*', decision: 'ask' } }),
+          enforcerToolRequirements: { ping: 'read-only' },
+        },
+      })
+
+      const spawned = await agentTool.execute({ prompt: 'ping once', background: true }, ctx)
+      const agentId = (spawned.data as { agentIds: string[] }).agentIds[0]!
+      const waited = await agentControlTool.execute({ action: 'wait', agentId }, ctx)
+
+      expect(waited.isError).toBe(false)
+      expect(executions).toBe(0)
+      expect(parentPrompts).toBe(0)
+    } finally {
+      rmSync(cwd, { recursive: true, force: true })
     }
   })
 })

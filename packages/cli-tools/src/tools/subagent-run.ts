@@ -108,6 +108,7 @@ export async function runSubagent(
           ],
           dynamicParts: [],
         }),
+        ...ctx.enforcement,
         sharedState: ctx.sharedState,
         askUser: ctx.askUser,
         permissionMode: ctx.permissionMode,

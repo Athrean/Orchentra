@@ -106,12 +106,21 @@ function persist(handle: ChildHandle): void {
 }
 
 function attachRun(handle: ChildHandle, ctx: ToolContext, role: SubagentRole, prompt: string, resume: boolean): void {
+  const backgroundCtx: ToolContext = {
+    ...ctx,
+    enforcement: ctx.enforcement
+      ? {
+          ...ctx.enforcement,
+          enforcerAskUser: async () => 'deny',
+        }
+      : undefined,
+  }
   handle.status = 'running'
   handle.outcome = null
   handle.startedAt = new Date().toISOString()
   const abortController = new AbortController()
   handle.abortController = abortController
-  handle.promise = runSubagent(prompt, handle.model, ctx, role, {
+  handle.promise = runSubagent(prompt, handle.model, backgroundCtx, role, {
     ...(resume
       ? { priorMessages: handle.restoredMessages, runState: handle.lastRunState ?? undefined, resume: true }
       : {}),
