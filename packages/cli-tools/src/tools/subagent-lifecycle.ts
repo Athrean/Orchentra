@@ -200,7 +200,7 @@ async function getChild(cwd: string, id: string): Promise<ChildHandle | null> {
 }
 
 function statusLine(handle: ChildHandle): string {
-  const cost = handle.outcome ? ` cost $${handle.outcome.costUsd.toFixed(4)}` : ''
+  const cost = handle.outcome?.costUsd !== undefined ? ` cost $${handle.outcome.costUsd.toFixed(4)}` : ''
   return `${handle.id}: ${handle.status} (${handle.roleName})${cost}`
 }
 

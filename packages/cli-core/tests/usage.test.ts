@@ -21,14 +21,27 @@ describe('pricingForModel', () => {
     })
   })
 
-  test('returns opus pricing', () => {
+  test('returns current opus pricing, not the retired $15/$75 tier', () => {
     const p = pricingForModel('claude-opus-4-6')
     expect(p).toEqual({
-      inputCostPerMillion: 15,
-      outputCostPerMillion: 75,
-      cacheCreationCostPerMillion: 18.75,
-      cacheReadCostPerMillion: 1.5,
+      inputCostPerMillion: 5,
+      outputCostPerMillion: 25,
+      cacheCreationCostPerMillion: 6.25,
+      cacheReadCostPerMillion: 0.5,
     })
+  })
+
+  // Opus 4.1 and Opus 4 kept the old tier when 4.5 onward dropped to $5/$25.
+  // A single `includes('opus')` match would price every Opus at one of these.
+  test('prices retired Opus 4.1 and Opus 4 at the old tier', () => {
+    for (const id of ['claude-opus-4-1-20250805', 'claude-opus-4-20250514']) {
+      expect(pricingForModel(id)).toEqual({
+        inputCostPerMillion: 15,
+        outputCostPerMillion: 75,
+        cacheCreationCostPerMillion: 18.75,
+        cacheReadCostPerMillion: 1.5,
+      })
+    }
   })
 
   test('returns sonnet pricing', () => {
@@ -41,8 +54,67 @@ describe('pricingForModel', () => {
     })
   })
 
+  // Sonnet 5 is $2/$10 through 2026-08-31 and $3/$15 from 2026-09-01. Both
+  // dates are pinned so the cutover happens on schedule rather than whenever
+  // someone next reads an invoice.
+  test('switches Sonnet 5 off introductory pricing on 2026-09-01', () => {
+    const intro = pricingForModel('claude-sonnet-5', new Date('2026-08-31T23:59:59Z'))
+    expect(intro).toMatchObject({ inputCostPerMillion: 2, outputCostPerMillion: 10 })
+    const standard = pricingForModel('claude-sonnet-5', new Date('2026-09-01T00:00:00Z'))
+    expect(standard).toMatchObject({ inputCostPerMillion: 3, outputCostPerMillion: 15 })
+  })
+
+  test('prices the pre-4.x id spelling that puts the version first', () => {
+    expect(pricingForModel('claude-3-5-sonnet-20241022')).toMatchObject({
+      inputCostPerMillion: 3,
+      outputCostPerMillion: 15,
+    })
+  })
+
+  test('prices Fable 5', () => {
+    expect(pricingForModel('claude-fable-5')).toEqual({
+      inputCostPerMillion: 10,
+      outputCostPerMillion: 50,
+      cacheCreationCostPerMillion: 12.5,
+      cacheReadCostPerMillion: 1,
+    })
+  })
+
+  // Ids appear with dots (`gpt-5.6-sol`) and dashes (`gpt-5-6-sol`) depending
+  // on the caller, and OpenRouter prefixes a vendor (`z-ai/glm-5.2`).
+  test.each([
+    ['gpt-5.6-sol', 5, 30],
+    ['gpt-5-6-sol', 5, 30],
+    ['gpt-5.6-terra', 2, 12],
+    ['gpt-5.6-luna', 0.2, 1.2],
+    ['gpt-5.4-mini', 0.75, 4.5],
+    ['gpt-5.4', 2.5, 15],
+    ['kimi-k3', 3, 15],
+    ['kimi-k2.7-code', 0.95, 4],
+    ['kimi-k2.7-code-highspeed', 1.9, 8],
+    ['z-ai/glm-5.2', 1.4, 4.4],
+    ['glm-5', 1, 3.2],
+    ['glm-4.7', 0.6, 2.2],
+    ['glm-4.7-flashx', 0.07, 0.4],
+  ])('prices %s at $%d in / $%d out per million', (id, input, output) => {
+    expect(pricingForModel(id)).toMatchObject({
+      inputCostPerMillion: input,
+      outputCostPerMillion: output,
+    })
+  })
+
+  // Ordering bug guard: `flashx` must be matched before `flash`, and the
+  // sized GLM 4.5 variants before the bare family entry.
+  test('prefers the more specific pattern when families overlap', () => {
+    expect(pricingForModel('glm-4.7-flash')).toMatchObject({ inputCostPerMillion: 0 })
+    expect(pricingForModel('glm-4.5-air')).toMatchObject({ inputCostPerMillion: 0.2 })
+    expect(pricingForModel('glm-4.5-airx')).toMatchObject({ inputCostPerMillion: 1.1 })
+    expect(pricingForModel('glm-4.5')).toMatchObject({ inputCostPerMillion: 0.6 })
+  })
+
   test('returns undefined for unknown model', () => {
     expect(pricingForModel('custom-model')).toBeUndefined()
+    expect(pricingForModel('deepseek/deepseek-v4-pro')).toBeUndefined()
   })
 })
 
@@ -184,7 +256,10 @@ describe('summaryLines', () => {
     expect(lines[1]).toContain('cache_read=$0.0600')
   })
 
-  test('with unknown model shows pricing=estimated-default', () => {
+  // The previous behaviour substituted Sonnet pricing here and printed a real
+  // dollar figure for a model it had never heard of. A fabricated number is
+  // indistinguishable from a measured one, so there must be no number at all.
+  test('with unknown model reports cost as unknown, never a substituted rate', () => {
     const usage = {
       inputTokens: 100,
       outputTokens: 100,
@@ -193,8 +268,11 @@ describe('summaryLines', () => {
     }
     const lines = summaryLines(usage, 'usage', 'custom-model')
 
-    expect(lines[0]).toContain('pricing=estimated-default')
+    expect(lines[0]).toContain('estimated_cost=unknown')
     expect(lines[0]).toContain('model=custom-model')
+    expect(lines[0]).not.toContain('$')
+    expect(lines[1]).toContain('unavailable')
+    expect(lines[1]).not.toContain('$')
   })
 
   test('without model omits model and pricing suffixes', () => {

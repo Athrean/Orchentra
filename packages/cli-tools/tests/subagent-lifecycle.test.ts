@@ -47,7 +47,7 @@ function registryWith(tools: Record<string, (args: unknown, ctx: ToolContext) =>
 }
 
 function ctxIn(cwd: string, provider: Provider, tools: ToolRegistry, budget?: RuntimeBudget): ToolContext {
-  return { sessionId: 'lifecycle-test', cwd, model: 'test-model', provider, tools, budget }
+  return { sessionId: 'lifecycle-test', cwd, model: 'claude-sonnet-4-20250514', provider, tools, budget }
 }
 
 async function readTranscript(cwd: string, id: string): Promise<ChildTranscript> {

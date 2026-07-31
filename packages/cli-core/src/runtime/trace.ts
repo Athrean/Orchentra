@@ -73,7 +73,8 @@ export interface TraceManifest {
   usage: UsageTotals
   billedTokens: number
   cachedTokens: number
-  estimatedCostUsd: number
+  /** Undefined when the model has no published pricing. */
+  estimatedCostUsd: number | undefined
   /** Provider-visible context size (input + cache tokens) per model call. */
   contextSizeCurve: number[]
   modelCallLatenciesMs: number[]

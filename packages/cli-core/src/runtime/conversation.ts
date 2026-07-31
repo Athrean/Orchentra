@@ -242,7 +242,13 @@ export class ConversationRuntime {
   }
 
   private async *loop(input: RunInput): AsyncIterable<RuntimeEvent> {
-    const budget = this.deps.budget ?? new RuntimeBudget(this.config.budget)
+    // `budget.model` is optional and usually unset, so the run's own model has
+    // to be threaded in or the dollar cap has nothing to price against. This
+    // was previously masked by a Sonnet fallback inside the pricing lookup,
+    // which quietly billed every model at Sonnet's rate.
+    const budget =
+      this.deps.budget ??
+      new RuntimeBudget({ ...this.config.budget, model: this.config.budget.model ?? this.config.model })
     budget.beginTurn()
     const loopDetector = new LoopDetector(this.config.loopDetection)
     const messages: ChatMessage[] = [...(input.priorMessages ?? [])]

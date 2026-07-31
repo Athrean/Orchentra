@@ -32,8 +32,8 @@ export interface SubagentRunOutcome {
   gate?: GateDecisionRecord
   /** This child's own provider spend (also fed into the parent budget live). */
   usage: UsageTotals
-  /** Estimated dollar cost of `usage` at the child's model pricing. */
-  costUsd: number
+  /** Estimated dollar cost of `usage`, or undefined when the child's model has no published pricing. */
+  costUsd: number | undefined
 }
 
 export interface SubagentRunOptions {

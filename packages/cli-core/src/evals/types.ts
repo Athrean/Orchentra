@@ -32,7 +32,8 @@ export interface EvalMeta {
 export interface TrialMetrics {
   billedTokens: number
   cachedTokens: number
-  estimatedCostUsd: number
+  /** Undefined when the model has no published pricing. */
+  estimatedCostUsd: number | undefined
   loopDetections: number
   toolCalls: number
   steps: number
@@ -84,7 +85,8 @@ export interface EvalScore {
   /** All k trials passed. */
   passHatK: boolean
   passCount: number
-  totalCostUsd: number
+  /** Null when any trial ran on a model with no published pricing. */
+  totalCostUsd: number | null
   /** Total spend across all trials per successful trial; null when 0 successes. */
   costPerSuccessUsd: number | null
   /** Fraction of trials that tripped the loop detector. */

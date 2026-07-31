@@ -42,7 +42,7 @@ describe('run-scoped dollar budget', () => {
       }
       const resolveModel: ModelResolver = (model) => ({ model, provider, providerName: 'test' })
       const cli = new LiveCli({
-        model: 'sonnet',
+        model: 'claude-sonnet-4-20250514',
         permissionMode: 'workspace-write',
         provider,
         resolveModel,
