@@ -1,0 +1,25 @@
+apps/cli/src/commands/builtin/lean.ts
+  s_6ea902a4421c95::t_76fe3660ab0689 4,49,54
+apps/cli/src/commands/builtin/terminal-parity.ts
+  s_6ea902a4421c95::t_51deb837c2e9f8 14,445
+apps/cli/src/composites/scan.ts
+  s_6ea902a4421c95::t_491b08ad1a5a4b 4,59-64,68-73
+apps/cli/src/repl.ts
+  s_6ea902a4421c95::t_39fb26c0fe3d75 20,139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "d18e249474273966c037e29073388047b3a21692",
+  "prompts": {},
+  "sessions": {
+    "s_6ea902a4421c95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba5fc057-eea5-4d00-b5b0-74036c00c66f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
