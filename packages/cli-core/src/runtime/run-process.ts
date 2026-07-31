@@ -72,6 +72,49 @@ export function gitDiscoveryEnv(source: Record<string, string | undefined> = pro
   return env
 }
 
+/**
+ * The `GIT_*` variables that redirect git at a different repository. Git
+ * exports these to child processes during a hook, so any git command run by a
+ * process that was itself spawned from a hook inherits them and silently
+ * operates on the hooked repository instead of its own `cwd`.
+ */
+const GIT_REPO_DISCOVERY_KEYS = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_CONFIG',
+  'GIT_CONFIG_PARAMETERS',
+  'GIT_CONFIG_COUNT',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_IMPLICIT_WORK_TREE',
+  'GIT_GRAFT_FILE',
+  'GIT_INDEX_FILE',
+  'GIT_NO_REPLACE_OBJECTS',
+  'GIT_REPLACE_REF_BASE',
+  'GIT_PREFIX',
+  'GIT_SHALLOW_FILE',
+  'GIT_COMMON_DIR',
+] as const
+
+/**
+ * Environment for git commands that authenticate or write history.
+ *
+ * Drops only the repository-discovery variables, so `cwd` stays authoritative
+ * while GIT_SSH_COMMAND, GIT_ASKPASS, GIT_AUTHOR_* and GIT_COMMITTER_* survive
+ * — stripping those would break pushes over SSH and lose commit identity.
+ *
+ * Use `gitDiscoveryEnv` instead for read-only probes, where nothing needs to
+ * authenticate and the blunter strip is safe.
+ */
+export function gitCommandEnv(source: Record<string, string | undefined> = process.env): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined) env[key] = value
+  }
+  for (const key of GIT_REPO_DISCOVERY_KEYS) delete env[key]
+  return env
+}
+
 /** Trimmed stdout of a git command run against `cwd`, or null if it failed. */
 export function gitOutput(cwd: string, args: string[]): string | null {
   try {

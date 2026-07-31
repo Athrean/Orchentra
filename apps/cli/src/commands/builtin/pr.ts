@@ -7,7 +7,7 @@ import {
   listPullReviewComments,
   GitHubClient,
 } from '@orchentra/cli-api'
-import { runProcessSync } from '@orchentra/cli-core'
+import { gitCommandEnv, runProcessSync } from '@orchentra/cli-core'
 
 interface PrRef {
   readonly number: number
@@ -56,7 +56,10 @@ export class PrCommand implements CommandHandler {
     const base = extractFlag(args, '--base') ?? 'main'
 
     // Get current branch
-    const branch = runProcessSync(['git', 'branch', '--show-current'], { cwd: ctx.cwd }).stdout.trim()
+    const branch = runProcessSync(['git', 'branch', '--show-current'], {
+      cwd: ctx.cwd,
+      env: gitCommandEnv(),
+    }).stdout.trim()
     if (!branch || branch === base) {
       return note(
         ctx,
@@ -66,14 +69,17 @@ export class PrCommand implements CommandHandler {
     }
 
     // Detect remote repo
-    const remoteUrl = runProcessSync(['git', 'remote', 'get-url', 'origin'], { cwd: ctx.cwd }).stdout.trim()
+    const remoteUrl = runProcessSync(['git', 'remote', 'get-url', 'origin'], {
+      cwd: ctx.cwd,
+      env: gitCommandEnv(),
+    }).stdout.trim()
     const repoInfo = parseGitRemote(remoteUrl)
     if (!repoInfo) {
       return note(ctx, 'error: could not determine owner/repo from git remote', 'warn')
     }
 
     note(ctx, `Pushing ${branch}…`)
-    const push = runProcessSync(['git', 'push', '-u', 'origin', branch], { cwd: ctx.cwd })
+    const push = runProcessSync(['git', 'push', '-u', 'origin', branch], { cwd: ctx.cwd, env: gitCommandEnv() })
     if (push.exitCode !== 0) {
       return note(
         ctx,
@@ -112,10 +118,16 @@ export class PrCommand implements CommandHandler {
   }
 
   private async showComments(ctx: CommandContext): Promise<boolean> {
-    const branch = runProcessSync(['git', 'branch', '--show-current'], { cwd: ctx.cwd }).stdout.trim()
+    const branch = runProcessSync(['git', 'branch', '--show-current'], {
+      cwd: ctx.cwd,
+      env: gitCommandEnv(),
+    }).stdout.trim()
     if (!branch) return note(ctx, 'error: not on a branch', 'warn')
 
-    const remoteUrl = runProcessSync(['git', 'remote', 'get-url', 'origin'], { cwd: ctx.cwd }).stdout.trim()
+    const remoteUrl = runProcessSync(['git', 'remote', 'get-url', 'origin'], {
+      cwd: ctx.cwd,
+      env: gitCommandEnv(),
+    }).stdout.trim()
     const repoInfo = parseGitRemote(remoteUrl)
     if (!repoInfo) return note(ctx, 'error: could not determine owner/repo from git remote', 'warn')
 
