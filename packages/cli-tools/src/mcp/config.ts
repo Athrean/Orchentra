@@ -1,4 +1,5 @@
 import type { ToolLevel } from '@orchentra/cli-core'
+import { runProcess } from '@orchentra/cli-core'
 
 export type McpTransport = 'stdio' | 'http'
 
@@ -122,16 +123,10 @@ function parseServerEntry(name: string, raw: unknown, warnings: string[]): McpSe
 export async function resolveHeaders(config: McpHttpConfig): Promise<Record<string, string>> {
   const resolved: Record<string, string> = { ...config.headers }
   if (!config.headersHelper) return resolved
-  const proc = Bun.spawn(['sh', '-c', config.headersHelper], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  const exit = await proc.exited
-  if (exit !== 0) {
-    const errText = await new Response(proc.stderr).text()
-    throw new Error(`headersHelper exited ${exit}: ${errText.trim()}`)
+  const { stdout, stderr, exitCode } = await runProcess(['sh', '-c', config.headersHelper])
+  if (exitCode !== 0) {
+    throw new Error(`headersHelper exited ${exitCode}: ${stderr.trim()}`)
   }
-  const stdout = await new Response(proc.stdout).text()
   for (const line of stdout.split('\n')) {
     const trimmed = line.trim()
     if (trimmed.length === 0 || trimmed.startsWith('#')) continue

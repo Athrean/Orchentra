@@ -1,6 +1,7 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import { resolveToken, GitHubClient } from '@orchentra/cli-api'
 import type { UiKVRow } from '../ui-output'
+import { runProcessSync } from '@orchentra/cli-core'
 
 export class IssueCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -13,11 +14,7 @@ export class IssueCommand implements CommandHandler {
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
     const subcommand = args[0] ?? 'list'
 
-    const remoteResult = Bun.spawnSync(['git', 'remote', 'get-url', 'origin'], {
-      cwd: ctx.cwd,
-      stdout: 'pipe',
-    })
-    const remoteUrl = new TextDecoder().decode(remoteResult.stdout).trim()
+    const remoteUrl = runProcessSync(['git', 'remote', 'get-url', 'origin'], { cwd: ctx.cwd }).stdout.trim()
     const repoInfo = parseGitRemote(remoteUrl)
     if (!repoInfo) return note(ctx, 'error: could not determine owner/repo from git remote', 'warn')
 

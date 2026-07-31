@@ -1,14 +1,11 @@
-import type { ToolDefinition, ToolResult, ToolContext } from '@orchentra/cli-core'
+import type { ToolDefinition, ToolResult, ToolContext, ProcessResult } from '@orchentra/cli-core'
+import { runProcess } from '@orchentra/cli-core'
 
 // 30KB output ceiling per call; raise if an agent legitimately needs fuller
 // diffs (rare — it can scope with `path`).
 const MAX_OUTPUT_BYTES = 30_000
 
-interface GitRun {
-  stdout: string
-  stderr: string
-  exitCode: number
-}
+type GitRun = ProcessResult
 
 const GIT_LOCAL_ENV_KEYS = [
   'GIT_ALTERNATE_OBJECT_DIRECTORIES',
@@ -29,10 +26,7 @@ const GIT_LOCAL_ENV_KEYS = [
 ] as const
 
 async function runGit(args: string[], cwd: string): Promise<GitRun> {
-  const proc = Bun.spawn(['git', ...args], { cwd, stdout: 'pipe', stderr: 'pipe', env: cleanGitEnv() })
-  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()])
-  await proc.exited
-  return { stdout, stderr, exitCode: proc.exitCode ?? 0 }
+  return runProcess(['git', ...args], { cwd, env: cleanGitEnv() })
 }
 
 function cleanGitEnv(): Record<string, string> {

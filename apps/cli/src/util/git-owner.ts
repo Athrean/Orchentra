@@ -10,6 +10,8 @@
  * tell the user where they are when their config is missing.
  */
 
+import { gitOutput } from '@orchentra/cli-core'
+
 export interface GitHubRepo {
   readonly owner: string
   readonly repo: string
@@ -30,29 +32,11 @@ export function parseGitHubRemote(url: string): GitHubRepo | null {
 }
 
 export function inferGitHubOwner(cwd: string): GitHubRepo | null {
-  const res = Bun.spawnSync(['git', 'remote', 'get-url', 'origin'], {
-    cwd,
-    // GIT_DIR / GIT_WORK_TREE in the inherited env override `cwd` for
-    // any child git process. That bites when orchentra is invoked from
-    // inside another git operation (e.g. a husky pre-commit hook for
-    // tests) — the probe would resolve the *outer* worktree's origin
-    // instead of `cwd`'s. Strip git env vars so `cwd` is authoritative.
-    env: gitFreeEnv(),
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  if (res.exitCode !== 0) return null
-  const url = new TextDecoder().decode(res.stdout).trim()
-  if (url.length === 0) return null
+  // gitOutput scrubs GIT_* from the child env: GIT_DIR / GIT_WORK_TREE in the
+  // inherited environment override `cwd` for any child git process, so a probe
+  // run from inside another git operation (e.g. a husky pre-commit hook for
+  // tests) would otherwise resolve the *outer* worktree's origin.
+  const url = gitOutput(cwd, ['remote', 'get-url', 'origin'])
+  if (!url) return null
   return parseGitHubRemote(url)
-}
-
-function gitFreeEnv(): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value === undefined) continue
-    if (key.startsWith('GIT_')) continue
-    out[key] = value
-  }
-  return out
 }

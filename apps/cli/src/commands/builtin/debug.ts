@@ -2,6 +2,7 @@ import { PatternStore, failureSignature, looksLikeFailure, redactSecrets } from 
 import type { PatternEntry } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
 import type { UiCardSection } from '../ui-output'
+import { runProcessSync } from '@orchentra/cli-core'
 
 export interface FailedRun {
   repo: string
@@ -128,12 +129,12 @@ function defaultDeps(): DebugDeps {
 // its no-data state rather than throwing.
 async function ghFindLatestFailure(cwd: string): Promise<FailedRun | null> {
   try {
-    const list = Bun.spawnSync(
+    const list = runProcessSync(
       ['gh', 'run', 'list', '--status', 'failure', '--limit', '1', '--json', 'databaseId,workflowName,headBranch,url'],
-      { cwd, stdout: 'pipe', stderr: 'pipe' },
+      { cwd },
     )
     if (list.exitCode !== 0) return null
-    const runs = JSON.parse(list.stdout.toString()) as Array<{
+    const runs = JSON.parse(list.stdout) as Array<{
       databaseId: number
       workflowName: string
       headBranch: string
@@ -142,19 +143,10 @@ async function ghFindLatestFailure(cwd: string): Promise<FailedRun | null> {
     const run = runs[0]
     if (!run) return null
 
-    const repoProc = Bun.spawnSync(['gh', 'repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], {
-      cwd,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
-    const repo = repoProc.exitCode === 0 ? repoProc.stdout.toString().trim() : 'unknown'
+    const repoProc = runProcessSync(['gh', 'repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { cwd })
+    const repo = repoProc.exitCode === 0 ? repoProc.stdout.trim() : 'unknown'
 
-    const logProc = Bun.spawnSync(['gh', 'run', 'view', String(run.databaseId), '--log-failed'], {
-      cwd,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
-    const log = logProc.stdout.toString()
+    const log = runProcessSync(['gh', 'run', 'view', String(run.databaseId), '--log-failed'], { cwd }).stdout
     const jobName = firstFailedJobName(log)
 
     return {
