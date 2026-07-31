@@ -1,28 +1,24 @@
 import { describe, expect, test } from 'bun:test'
 import { CostCommand } from '../src/commands/builtin/cost'
 import type { CommandContext } from '../src/commands/registry'
-import type { SessionControl, UsageTotals } from '@orchentra/cli-core'
+import type { UsageTotals } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 function makeCtx(limits?: { maxCostUsd?: number; warnCostUsd?: number }): {
   ctx: CommandContext
   events: UiOutput[]
 } {
-  const events: UiOutput[] = []
   const usage: UsageTotals = { inputTokens: 1000, outputTokens: 500, cacheReadTokens: 0, cacheCreationTokens: 0 }
-  const session = {
-    getModel: () => 'sonnet',
-    setModel: () => 'sonnet',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: () => 'workspace-write',
-    getSessionId: () => 's',
-    getTurns: () => 0,
-    getUsage: () => usage,
-    getCostLimits: limits ? () => limits : undefined,
-    clearHistory: () => {},
-    forceCompact: () => {},
-  } as unknown as SessionControl
-  return { events, ctx: { cwd: '/w', session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(
+    makeSessionControl({
+      getModel: () => 'sonnet',
+      setModel: () => 'sonnet',
+      getUsage: () => usage,
+      getCostLimits: limits ? () => limits : undefined,
+    }),
+    '/w',
+  )
 }
 
 describe('CostCommand', () => {

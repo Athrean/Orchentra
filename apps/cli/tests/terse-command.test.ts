@@ -1,39 +1,26 @@
 import { describe, expect, test } from 'bun:test'
-import type { SessionControl, TerseMode, UsageTotals } from '@orchentra/cli-core'
+import type { SessionControl, TerseMode } from '@orchentra/cli-core'
 import { TerseCommand } from '../src/commands/builtin/terse'
 import { createBuiltinRegistry } from '../src/commands/builtin'
 import type { CommandContext } from '../src/commands/registry'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 function makeSession(): SessionControl {
   let terseMode: TerseMode = 'off'
-  const usage: UsageTotals = {
-    inputTokens: 0,
-    outputTokens: 0,
-    cacheReadTokens: 0,
-    cacheCreationTokens: 0,
-  }
-  return {
+  return makeSessionControl({
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (mode) => mode,
-    getSessionId: () => 's',
-    getTurns: () => 0,
-    getUsage: () => usage,
-    clearHistory: () => {},
-    forceCompact: () => {},
     getTerseMode: () => terseMode,
     setTerseMode: (mode) => {
       terseMode = mode
       return terseMode
     },
-  }
+  })
 }
 
 function makeCtx(session = makeSession()): { ctx: CommandContext; events: UiOutput[]; session: SessionControl } {
-  const events: UiOutput[] = []
-  return { session, events, ctx: { cwd: '/work', session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(session)
 }
 
 describe('TerseCommand', () => {

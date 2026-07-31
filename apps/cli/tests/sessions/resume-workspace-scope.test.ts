@@ -7,6 +7,7 @@ import type { CommandContext } from '../../src/commands/registry'
 import type { SessionControl } from '@orchentra/cli-core'
 import type { UiOutput } from '../../src/commands/ui-output'
 import { fingerprintWorkspace } from '../../src/sessions/workspace-fingerprint'
+import { makeCommandCtx, makeSessionControl } from '../support/session'
 
 let savedHome: string | undefined
 let tmpHome: string
@@ -24,27 +25,19 @@ afterEach(() => {
 })
 
 function makeSession(): SessionControl {
-  return {
+  return makeSessionControl({
     getModel: () => 'test-model',
     setModel: () => 'test-model',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (m) => m,
     getSessionId: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
-    getTurns: () => 0,
-    getUsage: () => ({ inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }),
-    clearHistory: () => {},
-    forceCompact: () => {},
-  }
+  })
 }
 
 function makeCtx(cwd: string): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return { events, ctx: { cwd, session: makeSession(), ui: (o) => events.push(o) } }
+  return makeCommandCtx(makeSession(), cwd)
 }
 
 function makeCtxWithSession(cwd: string, session: SessionControl): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return { events, ctx: { cwd, session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(session, cwd)
 }
 
 function writeSession(bucketDir: string, id: string, lines: object[]): void {

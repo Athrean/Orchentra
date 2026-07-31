@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { MemoryCommand, ForgetCommand } from '../src/commands/builtin/memory'
 import type { CommandContext } from '../src/commands/registry'
-import type { MemoryStore, PatternEntry, SessionControl, UsageTotals } from '@orchentra/cli-core'
+import type { MemoryStore, PatternEntry } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 function makeEntry(over: Partial<PatternEntry> = {}): PatternEntry {
   return {
@@ -44,20 +45,7 @@ class FakeStore implements MemoryStore {
 }
 
 function makeCtx(): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  const usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }
-  const session = {
-    getModel: () => 'm',
-    setModel: () => 'm',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: () => 'workspace-write',
-    getSessionId: () => 's',
-    getTurns: () => 0,
-    getUsage: () => usage,
-    clearHistory: () => {},
-    forceCompact: () => {},
-  } as unknown as SessionControl
-  return { events, ctx: { cwd: '/w', session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(makeSessionControl(), '/w')
 }
 
 describe('MemoryCommand', () => {

@@ -2,8 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import { DebugCommand, type DebugDeps, type FailedRun } from '../src/commands/builtin/debug'
 import { failureSignature } from '@orchentra/cli-core'
 import type { CommandContext } from '../src/commands/registry'
-import type { PatternEntry, SessionControl } from '@orchentra/cli-core'
+import type { PatternEntry } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 const RUN: FailedRun = {
   repo: 'acme/app',
@@ -16,9 +17,7 @@ const RUN: FailedRun = {
 }
 
 function makeCtx(): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  const session = { getModel: () => 'm', getUsage: () => ({}) } as unknown as SessionControl
-  return { events, ctx: { cwd: '/w', session, ui: (o) => events.push(o) } }
+  return makeCommandCtx(makeSessionControl(), '/w')
 }
 
 function deps(over: Partial<DebugDeps>): DebugDeps {

@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { RewindCommand } from '../src/commands/builtin/terminal-parity'
 import type { CommandContext } from '../src/commands/registry'
-import type { RewindPreview, RewindResult, SessionControl } from '@orchentra/cli-core'
+import type { RewindPreview, RewindResult } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 interface Hooks {
   rewind?: (n: number) => Promise<RewindResult>
@@ -15,14 +16,11 @@ function makeCtx(hooks: Hooks = {}): {
   rewindCalls: number[]
   previewCalls: number[]
 } {
-  const events: UiOutput[] = []
   const rewindCalls: number[] = []
   const previewCalls: number[] = []
-  const session = {
+  const session = makeSessionControl({
     getModel: () => 'sonnet',
     getTurns: () => 1,
-    clearHistory: () => {},
-    forceCompact: () => {},
     rewindTurns: hooks.rewind
       ? (n: number) => {
           rewindCalls.push(n)
@@ -35,8 +33,9 @@ function makeCtx(hooks: Hooks = {}): {
           return hooks.preview!(n)
         }
       : undefined,
-  } as unknown as SessionControl
-  return { events, rewindCalls, previewCalls, ctx: { cwd: '/w', session, ui: (o) => events.push(o) } }
+  })
+  const { ctx, events } = makeCommandCtx(session, '/w')
+  return { events, rewindCalls, previewCalls, ctx }
 }
 
 const applied = (over?: Partial<Extract<RewindResult, { kind: 'applied' }>>): RewindResult => ({

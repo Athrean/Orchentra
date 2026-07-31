@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import type { SessionControl, SpineBudgetControls, SpineSavings, UsageTotals } from '@orchentra/cli-core'
+import type { SessionControl, SpineBudgetControls, SpineSavings } from '@orchentra/cli-core'
 import { BudgetCommand } from '../src/commands/builtin/budget'
 import { createBuiltinRegistry } from '../src/commands/builtin'
 import type { CommandContext } from '../src/commands/registry'
 import type { UiOutput } from '../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from './support/session'
 
 function makeSession(): SessionControl {
   let controls: SpineBudgetControls = {
@@ -19,15 +20,7 @@ function makeSession(): SessionControl {
     toolOutputTrims: 1,
     toolOutputCharsTrimmed: 70000,
   }
-  const usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }
-  return {
-    getModel: () => 'm',
-    setModel: () => 'm',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (m) => m,
-    getSessionId: () => 's',
-    getTurns: () => 0,
-    getUsage: () => usage,
+  return makeSessionControl({
     getSavings: () => savings,
     getContextStats: () => ({
       messages: 4,
@@ -40,14 +33,11 @@ function makeSession(): SessionControl {
       controls = { ...controls, ...patch }
       return controls
     },
-    clearHistory: () => {},
-    forceCompact: () => {},
-  }
+  })
 }
 
 function makeCtx(session = makeSession()): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return { events, ctx: { cwd: '/work', session, ui: (event) => events.push(event) } }
+  return makeCommandCtx(session)
 }
 
 describe('BudgetCommand', () => {

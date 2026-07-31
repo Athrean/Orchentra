@@ -2,7 +2,6 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
-import type { SessionControl, UsageTotals } from '@orchentra/cli-core'
 import type { MemoryStore, PatternEntry } from '@orchentra/cli-core'
 import type { GitHubClient } from '@orchentra/cli-api'
 
@@ -11,22 +10,15 @@ import type { CheckRunner } from '../../src/composites/review'
 import type { LlmCaller } from '../../src/composites/scan'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from '../support/session'
 
 function makeCtx(cwd: string): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  const usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }
-  const session = {
+  const session = makeSessionControl({
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (m) => m,
     getSessionId: () => 's1',
-    getTurns: () => 0,
-    getUsage: () => usage,
-    clearHistory: () => {},
-    forceCompact: () => {},
-  } as unknown as SessionControl
-  return { events, ctx: { cwd, session, ui: (o) => events.push(o) } }
+  })
+  return makeCommandCtx(session, cwd)
 }
 
 const findingsLlm: LlmCaller = async () => ({

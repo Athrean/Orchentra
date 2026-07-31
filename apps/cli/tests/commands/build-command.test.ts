@@ -11,6 +11,7 @@ import type { CommandContext } from '../../src/commands/registry'
 import type { LlmCaller } from '../../src/composites/scan'
 import type { CheckRunner } from '../../src/composites/review'
 import type { UiOutput } from '../../src/commands/ui-output'
+import { makeCommandCtx, makeSessionControl } from '../support/session'
 
 const PLAN = {
   recommendedStack: 's',
@@ -64,22 +65,16 @@ function fakeLlm(code = 'export const a = 1\n'): LlmCaller {
 function makeSession(
   usage: UsageTotals = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
 ): SessionControl {
-  return {
+  return makeSessionControl({
     getModel: () => 'claude-sonnet-4-20250514',
     setModel: () => 'claude-sonnet-4-20250514',
-    getPermissionMode: () => 'workspace-write',
-    setPermissionMode: (m) => m,
     getSessionId: () => 's1',
-    getTurns: () => 0,
     getUsage: () => usage,
-    clearHistory: () => {},
-    forceCompact: () => {},
-  }
+  })
 }
 
 function makeCtx(cwd: string): { ctx: CommandContext; events: UiOutput[] } {
-  const events: UiOutput[] = []
-  return { events, ctx: { cwd, session: makeSession(), ui: (o) => events.push(o) } }
+  return makeCommandCtx(makeSession(), cwd)
 }
 
 function tmp(): string {
