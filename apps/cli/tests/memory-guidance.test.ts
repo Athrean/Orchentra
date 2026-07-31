@@ -1,22 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import type { PatternEntry } from '@orchentra/cli-core'
 import { formatMemoryFeedbackGuidance } from '../src/composites/memory-guidance'
+import { makePatternEntry } from './support/memory'
 
-function makeEntry(id: string, over: Partial<PatternEntry> = {}): PatternEntry {
-  return {
-    id,
-    orgId: 'default',
-    incidentId: null,
-    embedding: [],
-    pattern: 'default pattern',
-    resolution: 'default resolution',
-    failureType: 'code_bug',
-    usageCount: 0,
-    lastMatchedAt: null,
-    createdAt: '2026-06-26T00:00:00.000Z',
-    ...over,
-  }
-}
+const makeEntry = makePatternEntry
 
 describe('formatMemoryFeedbackGuidance', () => {
   test('formats accepted and rejected memories while excluding unmarked memories', () => {

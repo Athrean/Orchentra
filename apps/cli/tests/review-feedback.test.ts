@@ -1,20 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import type { MemoryStore, PatternEntry } from '@orchentra/cli-core'
 import { applyReviewFeedback, parseReviewFeedbackComments } from '../src/composites/review-feedback'
+import { makePatternEntry } from './support/memory'
 
 function makeEntry(id: string): PatternEntry {
-  return {
-    id,
-    orgId: 'default',
-    incidentId: null,
-    embedding: [],
+  return makePatternEntry(id, {
     pattern: 'review found repeated null check',
     resolution: 'prefer shared guard',
-    failureType: 'code_bug',
-    usageCount: 0,
-    lastMatchedAt: null,
-    createdAt: '2026-06-26T00:00:00.000Z',
-  }
+  })
 }
 
 class FakeStore implements MemoryStore {
