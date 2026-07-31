@@ -9,7 +9,11 @@ import type { EvalRun, EvalScore, Scoreboard, ScoreboardSummary } from './types'
 export function scoreEval(run: EvalRun): EvalScore {
   const { meta, trials } = run
   const passCount = trials.filter((t) => t.passed).length
-  const totalCostUsd = sum(trials.map((t) => t.metrics.estimatedCostUsd))
+  // One unpriced trial makes the eval's total unknowable, not smaller. Summing
+  // the priced trials alone would understate spend and silently flatter the
+  // cost/success comparison this scoreboard exists to make.
+  const trialCosts = trials.map((t) => t.metrics.estimatedCostUsd)
+  const totalCostUsd = trialCosts.some((c) => c === undefined) ? null : sum(trialCosts as number[])
   const totalToolCalls = sum(trials.map((t) => t.metrics.toolCalls))
   const looped = trials.filter((t) => t.metrics.loopDetections > 0).length
   return {
@@ -22,7 +26,7 @@ export function scoreEval(run: EvalRun): EvalScore {
     passHatK: trials.length > 0 && passCount === trials.length,
     passCount,
     totalCostUsd,
-    costPerSuccessUsd: passCount > 0 ? totalCostUsd / passCount : null,
+    costPerSuccessUsd: totalCostUsd !== null && passCount > 0 ? totalCostUsd / passCount : null,
     loopRate: trials.length > 0 ? looped / trials.length : 0,
     toolCallsPerSuccess: passCount > 0 ? totalToolCalls / passCount : null,
   }
@@ -32,13 +36,14 @@ export function summarize(evals: EvalScore[]): ScoreboardSummary {
   const total = evals.length
   const passAt1 = evals.filter((e) => e.passAt1).length
   const passHatK = evals.filter((e) => e.passHatK).length
-  const totalCost = sum(evals.map((e) => e.totalCostUsd))
+  const evalCosts = evals.map((e) => e.totalCostUsd)
+  const totalCost = evalCosts.some((c) => c === null) ? null : sum(evalCosts as number[])
   const totalSuccesses = sum(evals.map((e) => e.passCount))
   return {
     total,
     passAt1Rate: total > 0 ? passAt1 / total : 0,
     passHatKRate: total > 0 ? passHatK / total : 0,
-    costPerSuccessUsd: totalSuccesses > 0 ? totalCost / totalSuccesses : null,
+    costPerSuccessUsd: totalCost !== null && totalSuccesses > 0 ? totalCost / totalSuccesses : null,
     loopRate: total > 0 ? mean(evals.map((e) => e.loopRate)) : 0,
   }
 }

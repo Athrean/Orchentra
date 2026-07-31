@@ -15,7 +15,8 @@ export interface BudgetConfig {
 export interface BudgetState {
   steps: number
   usage: UsageTotals
-  costUsd: number
+  /** Undefined when the model has no published pricing. */
+  costUsd: number | undefined
   exhausted: boolean
   exhaustedBy?: 'steps' | 'tokens' | 'cost'
 }
@@ -74,7 +75,8 @@ export class RuntimeBudget {
     this.usage = addUsage(this.usage, turn)
   }
 
-  private costUsd(): number {
+  /** Undefined when the model has no published pricing — see `estimatedCostUsd`. */
+  private costUsd(): number | undefined {
     return estimatedCostUsd(this.usage, this.limits.model)
   }
 
@@ -87,7 +89,9 @@ export class RuntimeBudget {
     if (totalTokens(this.usage) - this.turnStartTokens >= this.limits.maxTokens) {
       return { ...base, exhausted: true, exhaustedBy: 'tokens' }
     }
-    if (this.limits.maxCostUsd !== undefined && costUsd >= this.limits.maxCostUsd) {
+    // An unpriceable model makes the dollar cap inert rather than approximate:
+    // maxSteps and maxTokens above are model-independent and still bound the run.
+    if (this.limits.maxCostUsd !== undefined && costUsd !== undefined && costUsd >= this.limits.maxCostUsd) {
       return { ...base, exhausted: true, exhaustedBy: 'cost' }
     }
     return { ...base, exhausted: false }
@@ -101,7 +105,7 @@ export class RuntimeBudget {
     const threshold = this.limits.warnCostUsd
     if (threshold === undefined || this.warned) return null
     const costUsd = this.costUsd()
-    if (costUsd < threshold) return null
+    if (costUsd === undefined || costUsd < threshold) return null
     this.warned = true
     return { costUsd, thresholdUsd: threshold }
   }

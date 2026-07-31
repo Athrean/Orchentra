@@ -211,7 +211,7 @@ export function createAgentTool(roles: Record<string, SubagentRole>, caps: Subag
       return {
         content:
           results.map((r, i) => `[task ${i + 1}] ${r.text}`).join('\n\n') +
-          `\n\n[fan-out] ${summary.succeeded}/${summary.tasks} succeeded; est. cost $${summary.costUsd.toFixed(4)}`,
+          `\n\n[fan-out] ${summary.succeeded}/${summary.tasks} succeeded; est. cost ${summary.costUsd === undefined ? 'unknown' : `$${summary.costUsd.toFixed(4)}`}`,
         isError: results.some((r) => r.isError),
         data,
         evidence,
@@ -232,13 +232,15 @@ function fanoutSummary(results: SubagentRunOutcome[]): {
   succeeded: number
   failed: number
   usage: UsageTotals
-  costUsd: number
+  /** Undefined when any child ran on a model with no published pricing. */
+  costUsd: number | undefined
 } {
   let usage = emptyUsage()
-  let costUsd = 0
+  let costUsd: number | undefined = 0
   for (const r of results) {
     usage = addUsage(usage, r.usage)
-    costUsd += r.costUsd
+    // One unpriced child makes the batch total unknown rather than lower.
+    costUsd = costUsd === undefined || r.costUsd === undefined ? undefined : costUsd + r.costUsd
   }
   const failed = results.filter((r) => r.isError).length
   return { tasks: results.length, succeeded: results.length - failed, failed, usage, costUsd }

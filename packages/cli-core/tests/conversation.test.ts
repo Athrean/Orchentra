@@ -195,8 +195,13 @@ describe('ConversationRuntime', () => {
         { kind: 'finish', stopReason: 'end_turn' },
       ],
     ])
-    // 1000 output tokens at Sonnet ($15/M) ≈ $0.015 > $0.01 cap.
-    const config = makeConfig({ budget: { maxSteps: 10, maxTokens: 100_000_000, maxCostUsd: 0.01 } })
+    // 1000 output tokens at Sonnet 4 ($15/M) ≈ $0.015 > $0.01 cap. The model id
+    // must be a real one: a dollar cap is only enforceable against published
+    // pricing, and an unrecognised id leaves the cap inert by design.
+    const config = makeConfig({
+      model: 'claude-sonnet-4-20250514',
+      budget: { maxSteps: 10, maxTokens: 100_000_000, maxCostUsd: 0.01 },
+    })
     const rt = new ConversationRuntime(config, makeDeps(provider))
     const events = await collect(rt, 'go')
 
@@ -212,7 +217,10 @@ describe('ConversationRuntime', () => {
         { kind: 'finish', stopReason: 'end_turn' },
       ],
     ])
-    const config = makeConfig({ budget: { maxSteps: 10, maxTokens: 100_000_000, warnCostUsd: 0.005 } })
+    const config = makeConfig({
+      model: 'claude-sonnet-4-20250514',
+      budget: { maxSteps: 10, maxTokens: 100_000_000, warnCostUsd: 0.005 },
+    })
     const rt = new ConversationRuntime(config, makeDeps(provider))
     const events = await collect(rt, 'go')
 
@@ -800,8 +808,8 @@ describe('ConversationRuntime', () => {
       },
     }
     const config = makeConfig({
-      model: 'sonnet',
-      budget: { maxSteps: 10, maxTokens: 1_000_000_000, maxCostUsd: 0.01, model: 'sonnet' },
+      model: 'claude-sonnet-4-20250514',
+      budget: { maxSteps: 10, maxTokens: 1_000_000_000, maxCostUsd: 0.01, model: 'claude-sonnet-4-20250514' },
     })
     const budget = new RuntimeBudget(config.budget)
     const deps: ConversationDeps = { ...makeDeps(provider), budget }

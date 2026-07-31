@@ -47,8 +47,13 @@ describe('RuntimeBudget', () => {
   })
 
   test('exhausts on dollar cost limit', () => {
-    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, maxCostUsd: 0.01, model: 'sonnet' })
-    // 1000 output tokens at sonnet ($15/M) = $0.015 > $0.01
+    const b = new RuntimeBudget({
+      maxSteps: 100,
+      maxTokens: 1_000_000_000,
+      maxCostUsd: 0.01,
+      model: 'claude-sonnet-4-20250514',
+    })
+    // 1000 output tokens at Sonnet 4 ($15/M) = $0.015 > $0.01
     b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 })
     const snap = b.snapshot()
     expect(snap.exhausted).toBe(true)
@@ -57,13 +62,43 @@ describe('RuntimeBudget', () => {
   })
 
   test('never cost-exhausts when no maxCostUsd is set', () => {
-    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, model: 'opus' })
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, model: 'claude-opus-5' })
     b.addUsage({ inputTokens: 1_000_000, outputTokens: 1_000_000, cacheReadTokens: 0, cacheCreationTokens: 0 })
     expect(b.snapshot().exhausted).toBe(false)
   })
 
+  // An unpriceable model must not be billed at some other model's rate. The
+  // dollar cap goes inert and the token cap — which needs no pricing — is what
+  // actually bounds the run.
+  test('leaves the dollar cap inert for a model with no published pricing', () => {
+    const b = new RuntimeBudget({
+      maxSteps: 100,
+      maxTokens: 1_000_000_000,
+      maxCostUsd: 0.01,
+      model: 'some-local-model',
+    })
+    b.addUsage({ inputTokens: 5_000_000, outputTokens: 5_000_000, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    const snap = b.snapshot()
+    expect(snap.costUsd).toBeUndefined()
+    expect(snap.exhausted).toBe(false)
+    expect(b.consumeCostWarning()).toBeNull()
+  })
+
+  test('still token-exhausts an unpriced model', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1000, maxCostUsd: 0.01, model: 'some-local-model' })
+    b.addUsage({ inputTokens: 2000, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    const snap = b.snapshot()
+    expect(snap.exhausted).toBe(true)
+    expect(snap.exhaustedBy).toBe('tokens')
+  })
+
   test('emits a cost warning once when crossing warnCostUsd', () => {
-    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, warnCostUsd: 0.005, model: 'sonnet' })
+    const b = new RuntimeBudget({
+      maxSteps: 100,
+      maxTokens: 1_000_000_000,
+      warnCostUsd: 0.005,
+      model: 'claude-sonnet-4-20250514',
+    })
     expect(b.consumeCostWarning()).toBeNull()
     b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 }) // $0.015
     const warning = b.consumeCostWarning()
@@ -86,7 +121,12 @@ describe('RuntimeBudget', () => {
   })
 
   test('dollar cost survives beginTurn — spend is run-scoped', () => {
-    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, maxCostUsd: 0.02, model: 'sonnet' })
+    const b = new RuntimeBudget({
+      maxSteps: 100,
+      maxTokens: 1_000_000_000,
+      maxCostUsd: 0.02,
+      model: 'claude-sonnet-4-20250514',
+    })
     b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 }) // $0.015
     expect(b.snapshot().exhausted).toBe(false)
     b.beginTurn()
@@ -97,7 +137,12 @@ describe('RuntimeBudget', () => {
   })
 
   test('cost warning fires once per run, not once per turn', () => {
-    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, warnCostUsd: 0.005, model: 'sonnet' })
+    const b = new RuntimeBudget({
+      maxSteps: 100,
+      maxTokens: 1_000_000_000,
+      warnCostUsd: 0.005,
+      model: 'claude-sonnet-4-20250514',
+    })
     b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 })
     expect(b.consumeCostWarning()).not.toBeNull()
     b.beginTurn()
@@ -105,7 +150,7 @@ describe('RuntimeBudget', () => {
   })
 
   test('updateLimits applies a new cost cap mid-run', () => {
-    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, model: 'sonnet' })
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, model: 'claude-sonnet-4-20250514' })
     b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 }) // $0.015
     expect(b.snapshot().exhausted).toBe(false)
     b.updateLimits({ maxCostUsd: 0.01 })
@@ -115,7 +160,12 @@ describe('RuntimeBudget', () => {
   })
 
   test('changing the warn threshold re-arms the one-time warning', () => {
-    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000_000, warnCostUsd: 0.005, model: 'sonnet' })
+    const b = new RuntimeBudget({
+      maxSteps: 100,
+      maxTokens: 1_000_000_000,
+      warnCostUsd: 0.005,
+      model: 'claude-sonnet-4-20250514',
+    })
     b.addUsage({ inputTokens: 0, outputTokens: 1000, cacheReadTokens: 0, cacheCreationTokens: 0 })
     expect(b.consumeCostWarning()).not.toBeNull()
     b.updateLimits({ warnCostUsd: 0.01 })

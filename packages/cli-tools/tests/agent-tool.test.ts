@@ -32,7 +32,7 @@ function baseCtx(overrides: Partial<ToolContext> = {}): ToolContext {
   return {
     sessionId: 'test',
     cwd: '/tmp',
-    model: 'test-model',
+    model: 'claude-sonnet-4-20250514',
     provider: fakeProvider('done'),
     tools: emptyToolRegistry,
     ...overrides,
