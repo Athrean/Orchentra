@@ -5,16 +5,7 @@ import type { Provider, ProviderStreamEvent } from '../src/runtime/provider'
 import type { ToolRegistry, ToolResult } from '../src/runtime/tools'
 import type { RuntimeEvent } from '../src/runtime/events'
 import { buildSystemPrompt } from '../src/runtime/system-prompt'
-
-function fakeProvider(responses: ProviderStreamEvent[][]): Provider {
-  let callIndex = 0
-  return {
-    async *stream() {
-      const resp = responses[callIndex++] ?? []
-      for (const ev of resp) yield ev
-    },
-  }
-}
+import { scriptedProvider as fakeProvider } from './support/provider'
 
 function echoTools(): ToolRegistry {
   return {

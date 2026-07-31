@@ -19,16 +19,7 @@ import { QuirkCounters } from '../src/runtime/quirks'
 import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-
-function fakeProvider(responses: ProviderStreamEvent[][]): Provider {
-  let callIndex = 0
-  return {
-    async *stream() {
-      const resp = responses[callIndex++] ?? []
-      for (const ev of resp) yield ev
-    },
-  }
-}
+import { scriptedProvider as fakeProvider } from './support/provider'
 
 function noopTools(): ToolRegistry {
   return {
