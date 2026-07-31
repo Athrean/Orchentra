@@ -12,6 +12,7 @@ import type { LlmCaller } from '../../src/composites/scan'
 import type { CheckRunner } from '../../src/composites/review'
 import type { UiOutput } from '../../src/commands/ui-output'
 import { makeCommandCtx, makeSessionControl } from '../support/session'
+import { makePatternEntry } from '../support/memory'
 
 const PLAN = {
   recommendedStack: 's',
@@ -23,19 +24,11 @@ const PLAN = {
 }
 
 function makeEntry(id: string, over: Partial<PatternEntry> = {}): PatternEntry {
-  return {
-    id,
-    orgId: 'default',
-    incidentId: null,
-    embedding: [],
+  return makePatternEntry(id, {
     pattern: 'default build pattern',
     resolution: 'default build resolution',
-    failureType: 'code_bug',
-    usageCount: 0,
-    lastMatchedAt: null,
-    createdAt: '2026-06-26T00:00:00.000Z',
     ...over,
-  }
+  })
 }
 
 class FakeStore implements MemoryStore {

@@ -4,21 +4,17 @@ import type { CommandContext } from '../src/commands/registry'
 import type { MemoryStore, PatternEntry } from '@orchentra/cli-core'
 import type { UiOutput } from '../src/commands/ui-output'
 import { makeCommandCtx, makeSessionControl } from './support/session'
+import { makePatternEntry } from './support/memory'
 
 function makeEntry(over: Partial<PatternEntry> = {}): PatternEntry {
-  return {
-    id: '11111111-2222-3333-4444-555555555555',
-    orgId: 'default',
-    incidentId: null,
-    embedding: [],
+  return makePatternEntry('11111111-2222-3333-4444-555555555555', {
     pattern: 'flaky network test on CI runner',
     resolution: 'add retry with backoff to the fetch helper',
     failureType: 'flaky_test',
     usageCount: 3,
-    lastMatchedAt: null,
     createdAt: '2026-06-20T10:00:00.000Z',
     ...over,
-  }
+  })
 }
 
 class FakeStore implements MemoryStore {

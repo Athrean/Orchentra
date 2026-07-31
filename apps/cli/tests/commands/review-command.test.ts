@@ -11,6 +11,7 @@ import type { LlmCaller } from '../../src/composites/scan'
 import type { CommandContext } from '../../src/commands/registry'
 import type { UiOutput } from '../../src/commands/ui-output'
 import { makeCommandCtx, makeSessionControl } from '../support/session'
+import { makePatternEntry } from '../support/memory'
 
 function makeCtx(cwd: string): { ctx: CommandContext; events: UiOutput[] } {
   const session = makeSessionControl({
@@ -31,19 +32,11 @@ const findingsLlm: LlmCaller = async () => ({
 })
 
 function makeEntry(id: string, over: Partial<PatternEntry> = {}): PatternEntry {
-  return {
-    id,
-    orgId: 'default',
-    incidentId: null,
-    embedding: [],
+  return makePatternEntry(id, {
     pattern: 'accepted review pattern',
     resolution: 'reuse the accepted fix',
-    failureType: 'code_bug',
-    usageCount: 0,
-    lastMatchedAt: null,
-    createdAt: '2026-06-26T00:00:00.000Z',
     ...over,
-  }
+  })
 }
 
 class FakeStore implements MemoryStore {
