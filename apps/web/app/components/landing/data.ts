@@ -6,6 +6,8 @@ export const SECURITY_URL = `${GITHUB_URL}/security`
 export const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
 export const INSTALL_COMMAND = 'npm install -g @athreanlab/orchentra'
 
+export const referenceEase = [0.12, 0.23, 0.17, 0.99] as const
+
 export const comparison = {
   without: [
     'One general-purpose agent owns every decision',
@@ -56,12 +58,6 @@ export const capabilities = [
     title: 'Sub-Agent Runtime',
     body: 'Fan out bounded, independent work while retaining shared budgets, role restrictions, durable state, and parent-child traces.',
   },
-] as const
-
-export const promptExamples = [
-  'Rebuild the settings flow and verify it in the browser',
-  'Split this refactor across isolated worktrees',
-  'Fix the regression and return the evidence that closes it',
 ] as const
 
 export const setupSteps = [

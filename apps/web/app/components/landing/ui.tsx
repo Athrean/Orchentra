@@ -4,7 +4,9 @@ import { AnimatePresence, m } from 'framer-motion'
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 
-export function Logo({ size = 26 }: { size?: number }): React.ReactNode {
+const glyphStroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const }
+
+function Logo({ size = 26 }: { size?: number }): React.ReactNode {
   return <Image src="/white-logo.svg" alt="" width={size} height={size} priority />
 }
 
@@ -86,61 +88,59 @@ export function CopyCommand({ command }: { command: string }): React.ReactNode {
 }
 
 export function Glyph({ name }: { name: string }): React.ReactNode {
-  const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' as const }
-
   if (name === 'folder') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <path {...common} d="M3.5 7.5h6l2-2h9v13h-17z" />
+        <path {...glyphStroke} d="M3.5 7.5h6l2-2h9v13h-17z" />
       </svg>
     )
   }
   if (name === 'plan') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <path {...common} d="M5 5h14M5 12h9M5 19h6" />
-        <path {...common} d="m16 15 3 3-3 3" />
+        <path {...glyphStroke} d="M5 5h14M5 12h9M5 19h6" />
+        <path {...glyphStroke} d="m16 15 3 3-3 3" />
       </svg>
     )
   }
   if (name === 'build') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <path {...common} d="m5 18 8-8M12 5l7 7M15 3l6 6-3 3-6-6zM3 17l4 4" />
+        <path {...glyphStroke} d="m5 18 8-8M12 5l7 7M15 3l6 6-3 3-6-6zM3 17l4 4" />
       </svg>
     )
   }
   if (name === 'verify' || name === 'gate') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <path {...common} d="M4 12.5 9.5 18 20 6" />
+        <path {...glyphStroke} d="M4 12.5 9.5 18 20 6" />
       </svg>
     )
   }
   if (name === 'browser') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <rect {...common} x="3" y="4" width="18" height="16" />
-        <path {...common} d="M3 8h18M6 6h.01M9 6h.01" />
+        <rect {...glyphStroke} x="3" y="4" width="18" height="16" />
+        <path {...glyphStroke} d="M3 8h18M6 6h.01M9 6h.01" />
       </svg>
     )
   }
   if (name === 'agents') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <circle {...common} cx="12" cy="6" r="2.5" />
-        <circle {...common} cx="6" cy="17" r="2.5" />
-        <circle {...common} cx="18" cy="17" r="2.5" />
-        <path {...common} d="m10.5 8-3 6M13.5 8l3 6M8.5 17h7" />
+        <circle {...glyphStroke} cx="12" cy="6" r="2.5" />
+        <circle {...glyphStroke} cx="6" cy="17" r="2.5" />
+        <circle {...glyphStroke} cx="18" cy="17" r="2.5" />
+        <path {...glyphStroke} d="m10.5 8-3 6M13.5 8l3 6M8.5 17h7" />
       </svg>
     )
   }
   if (name === 'model') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <circle {...common} cx="12" cy="12" r="3" />
+        <circle {...glyphStroke} cx="12" cy="12" r="3" />
         <path
-          {...common}
+          {...glyphStroke}
           d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
         />
       </svg>
@@ -149,14 +149,14 @@ export function Glyph({ name }: { name: string }): React.ReactNode {
   if (name === 'context') {
     return (
       <svg viewBox="0 0 24 24" role="presentation">
-        <circle {...common} cx="12" cy="12" r="7" />
-        <path {...common} d="M12 8v4l3 2" />
+        <circle {...glyphStroke} cx="12" cy="12" r="7" />
+        <path {...glyphStroke} d="M12 8v4l3 2" />
       </svg>
     )
   }
   return (
     <svg viewBox="0 0 24 24" role="presentation">
-      <path {...common} d="M4 7h7v4H4zM13 13h7v4h-7zM11 9h2v6" />
+      <path {...glyphStroke} d="M4 7h7v4H4zM13 13h7v4h-7zM11 9h2v6" />
     </svg>
   )
 }
