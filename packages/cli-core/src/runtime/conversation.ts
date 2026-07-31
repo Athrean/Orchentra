@@ -40,9 +40,8 @@ import { classifyRecovery } from './recovery'
 import type { ChatMessage, Provider, ProviderRequest, ProviderStreamEvent, ThinkingBlock } from './provider'
 import type { EffortTier } from './provider'
 import type { SystemPrompt } from './system-prompt'
-import type { AskUserHandler, SharedToolState, ToolContext, ToolRegistry } from './tools'
+import type { AskUserHandler, SharedToolState, ToolContext, ToolEnforcementContext, ToolRegistry } from './tools'
 import type { HookRunner } from './hooks'
-import type { Enforcer } from '../permissions/enforcer'
 
 function exhaustionReason(by: BudgetState['exhaustedBy']): DoneReason {
   if (by === 'steps') return 'max_steps'
@@ -77,7 +76,7 @@ export interface ConversationConfig {
   harnessVersion?: string
 }
 
-export interface ConversationDeps {
+export interface ConversationDeps extends ToolEnforcementContext {
   provider: Provider
   tools: ToolRegistry
   systemPrompt: SystemPrompt
@@ -87,14 +86,6 @@ export interface ConversationDeps {
    * turn-scoped budget from `config.budget`.
    */
   budget?: RuntimeBudget
-  hookRunner?: HookRunner
-  enforcer?: Enforcer
-  enforcerAskUser?: import('../permissions/enforcer').AskUser
-  enforcerStore?: import('../permissions/store').PermissionStore
-  enforcerNotifyDeny?: import('../permissions/enforcer').EnforcerContext['notifyDeny']
-  enforcerPolicy?: import('../permissions/enforcer').EnforcerContext['policy']
-  enforcerNotifyPolicy?: import('../permissions/enforcer').EnforcerContext['notifyPolicy']
-  enforcerToolRequirements?: import('../permissions/enforcer').EnforcerContext['toolRequirements']
   permissionMode?: import('./permissions').PermissionMode
   spinePrompt?: string
   /**
@@ -705,6 +696,16 @@ export class ConversationRuntime {
       askUser: this.deps.askUser,
       provider: this.deps.provider,
       tools: this.deps.tools,
+      enforcement: {
+        hookRunner: this.deps.hookRunner,
+        enforcer: this.deps.enforcer,
+        enforcerAskUser: this.deps.enforcerAskUser,
+        enforcerStore: this.deps.enforcerStore,
+        enforcerNotifyDeny: this.deps.enforcerNotifyDeny,
+        enforcerPolicy: this.deps.enforcerPolicy,
+        enforcerNotifyPolicy: this.deps.enforcerNotifyPolicy,
+        enforcerToolRequirements: this.deps.enforcerToolRequirements,
+      },
       permissionMode: this.deps.permissionMode,
       spinePrompt: this.deps.spinePrompt,
       budget,
