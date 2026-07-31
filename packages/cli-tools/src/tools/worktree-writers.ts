@@ -1,6 +1,7 @@
 import { cp, mkdtemp, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { gitDiscoveryEnv, runProcess } from '@orchentra/cli-core'
 
 /**
  * Worktree isolation for parallel write-capable sub-agents (M6 phase-1).
@@ -24,27 +25,12 @@ interface GitOutcome {
 // process runs inside a git hook and would redirect these commands at the
 // hooked repo — a relative GIT_INDEX_FILE even breaks outright inside a
 // worktree, where .git is a file. Spawn git with a scrubbed environment.
-function gitEnv(): Record<string, string> {
-  const env: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined && !key.startsWith('GIT_')) env[key] = value
-  }
-  return env
-}
-
 async function git(args: string[], cwd: string, stdin?: string): Promise<GitOutcome> {
-  const proc = Bun.spawn(['git', ...args], {
+  const { stdout, stderr, exitCode } = await runProcess(['git', ...args], {
     cwd,
-    env: gitEnv(),
-    stdin: stdin === undefined ? 'ignore' : new TextEncoder().encode(stdin),
-    stdout: 'pipe',
-    stderr: 'pipe',
+    env: gitDiscoveryEnv(),
+    stdin,
   })
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ])
   return { ok: exitCode === 0, stdout, stderr }
 }
 

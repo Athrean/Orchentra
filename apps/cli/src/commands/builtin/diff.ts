@@ -1,4 +1,5 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
+import { runProcessSync } from '@orchentra/cli-core'
 
 export class DiffCommand implements CommandHandler {
   spec: SlashCommandSpec = {
@@ -9,12 +10,7 @@ export class DiffCommand implements CommandHandler {
 
   async execute(_args: string[], ctx: CommandContext): Promise<boolean> {
     try {
-      const proc = Bun.spawnSync(['git', 'diff', '--stat'], {
-        cwd: ctx.cwd,
-        stdout: 'pipe',
-        stderr: 'pipe',
-      })
-      const stdout = new TextDecoder().decode(proc.stdout).trim()
+      const stdout = runProcessSync(['git', 'diff', '--stat'], { cwd: ctx.cwd }).stdout.trim()
       const text = stdout.length > 0 ? stdout : 'No uncommitted changes.'
       if (ctx.ui) ctx.ui({ kind: 'text', text })
       else process.stdout.write(text + '\n')

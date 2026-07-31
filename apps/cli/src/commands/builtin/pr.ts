@@ -7,6 +7,7 @@ import {
   listPullReviewComments,
   GitHubClient,
 } from '@orchentra/cli-api'
+import { runProcessSync } from '@orchentra/cli-core'
 
 interface PrRef {
   readonly number: number
@@ -55,11 +56,7 @@ export class PrCommand implements CommandHandler {
     const base = extractFlag(args, '--base') ?? 'main'
 
     // Get current branch
-    const branchResult = Bun.spawnSync(['git', 'branch', '--show-current'], {
-      cwd: ctx.cwd,
-      stdout: 'pipe',
-    })
-    const branch = new TextDecoder().decode(branchResult.stdout).trim()
+    const branch = runProcessSync(['git', 'branch', '--show-current'], { cwd: ctx.cwd }).stdout.trim()
     if (!branch || branch === base) {
       return note(
         ctx,
@@ -69,26 +66,20 @@ export class PrCommand implements CommandHandler {
     }
 
     // Detect remote repo
-    const remoteResult = Bun.spawnSync(['git', 'remote', 'get-url', 'origin'], {
-      cwd: ctx.cwd,
-      stdout: 'pipe',
-    })
-    const remoteUrl = new TextDecoder().decode(remoteResult.stdout).trim()
+    const remoteUrl = runProcessSync(['git', 'remote', 'get-url', 'origin'], { cwd: ctx.cwd }).stdout.trim()
     const repoInfo = parseGitRemote(remoteUrl)
     if (!repoInfo) {
       return note(ctx, 'error: could not determine owner/repo from git remote', 'warn')
     }
 
     note(ctx, `Pushing ${branch}…`)
-    const pushResult = Bun.spawnSync(['git', 'push', '-u', 'origin', branch], {
-      cwd: ctx.cwd,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
-    if (pushResult.exitCode !== 0) {
-      const stdout = new TextDecoder().decode(pushResult.stdout).trim()
-      const stderr = new TextDecoder().decode(pushResult.stderr).trim()
-      return note(ctx, `error: git push failed (exit ${pushResult.exitCode})\n${stderr || stdout}`, 'warn')
+    const push = runProcessSync(['git', 'push', '-u', 'origin', branch], { cwd: ctx.cwd })
+    if (push.exitCode !== 0) {
+      return note(
+        ctx,
+        `error: git push failed (exit ${push.exitCode})\n${push.stderr.trim() || push.stdout.trim()}`,
+        'warn',
+      )
     }
 
     // Create PR
@@ -121,12 +112,10 @@ export class PrCommand implements CommandHandler {
   }
 
   private async showComments(ctx: CommandContext): Promise<boolean> {
-    const branchResult = Bun.spawnSync(['git', 'branch', '--show-current'], { cwd: ctx.cwd, stdout: 'pipe' })
-    const branch = new TextDecoder().decode(branchResult.stdout).trim()
+    const branch = runProcessSync(['git', 'branch', '--show-current'], { cwd: ctx.cwd }).stdout.trim()
     if (!branch) return note(ctx, 'error: not on a branch', 'warn')
 
-    const remoteResult = Bun.spawnSync(['git', 'remote', 'get-url', 'origin'], { cwd: ctx.cwd, stdout: 'pipe' })
-    const remoteUrl = new TextDecoder().decode(remoteResult.stdout).trim()
+    const remoteUrl = runProcessSync(['git', 'remote', 'get-url', 'origin'], { cwd: ctx.cwd }).stdout.trim()
     const repoInfo = parseGitRemote(remoteUrl)
     if (!repoInfo) return note(ctx, 'error: could not determine owner/repo from git remote', 'warn')
 

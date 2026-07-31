@@ -1,4 +1,5 @@
 import type { ToolDefinition, ToolResult, ToolContext } from '@orchentra/cli-core'
+import { runProcess } from '@orchentra/cli-core'
 import { diagnosticsReport } from '../diagnostics'
 import { validateCommand } from '../bash-validation'
 import { resolveBashSpawn } from './bash-tool'
@@ -38,9 +39,7 @@ export const diagnosticsTool: ToolDefinition = {
     try {
       const env: Record<string, string> = { ...(process.env as Record<string, string>) }
       for (const [k, v] of spawn.env ?? []) env[k] = v
-      const proc = Bun.spawn([spawn.program, ...spawn.args], { cwd: ctx.cwd, stdout: 'pipe', stderr: 'pipe', env })
-      const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()])
-      await proc.exited
+      const { stdout, stderr } = await runProcess([spawn.program, ...spawn.args], { cwd: ctx.cwd, env })
       // Finding diagnostics is a successful run — isError is reserved for the
       // command failing to execute, not for the code under test having errors.
       const report = diagnosticsReport(`${stdout}\n${stderr}`)
