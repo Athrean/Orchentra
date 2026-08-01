@@ -17,6 +17,7 @@ import type {
   BudgetFeatureConfig,
   SpineBudgetControls,
   PermissionMode,
+  PermissionRuleConfig,
   Provider,
   ProviderRequest,
   ProviderStreamEvent,
@@ -35,6 +36,7 @@ import type {
   SharedToolState,
   SystemPrompt,
   ToolCall,
+  ToolEnforcementContext,
   ToolRegistry,
   UndoFileEditResult,
   UndoFileEditsResult,
@@ -66,6 +68,7 @@ import {
   createEnforcer,
   createPermissionStore,
   loadPolicy,
+  parseRule,
   evaluate as evaluatePolicy,
   replaySession,
   SessionWriter,
@@ -112,6 +115,8 @@ export interface TurnRunResult {
 }
 
 export interface TurnRunOptions {
+  /** Per-skill permission grants layered under workspace deny/ask policy. */
+  readonly permissionOverlay?: PermissionRuleConfig
   /** One-shot/autonomous path: completion needs executable evidence and a gate decision. */
   readonly verify?: boolean
   /** Explicit policy wins over the default one-shot policy. */
@@ -126,6 +131,24 @@ export type AskToolUserOverride = ToolAskUser
 export type NotifyDenyOverride = (info: { toolName: string; inputJson: string; reason: string }) => Promise<void>
 export type NotifyPolicyOverride = (info: { kind: 'allow' | 'deny' | 'ask'; rule: PolicyRule }) => Promise<void>
 export type { ToolPromptChoice }
+
+function permissionOverlayRules(overlay?: PermissionRuleConfig): PolicyRule[] {
+  const overlayRules: PolicyRule[] = []
+  if (!overlay) return overlayRules
+  for (const decision of ['allow', 'deny', 'ask'] as const) {
+    for (const raw of overlay[decision]) {
+      const parsed = parseRule(raw)
+      const pattern =
+        parsed.matcher.kind === 'any'
+          ? '*'
+          : parsed.matcher.kind === 'exact'
+            ? parsed.matcher.value
+            : `${parsed.matcher.prefix}*`
+      overlayRules.push({ tool: parsed.toolName, pattern, decision })
+    }
+  }
+  return overlayRules
+}
 
 interface FileUndoSnapshot {
   readonly path: string
@@ -174,6 +197,7 @@ export class LiveCli implements SessionControl {
   private notifyPolicyOverride: NotifyPolicyOverride | null = null
   private readonly policyHandle: PolicyHandle
   private currentAbort: AbortController | null = null
+  private activeEnforcement: ToolEnforcementContext = {}
   private readonly enforcer = createEnforcer()
   private readonly permissionStore: PermissionStore
   private startupNotices: string[] = []
@@ -857,13 +881,8 @@ export class LiveCli implements SessionControl {
     if (this.session) {
       await this.session.append({ kind: 'user_message', content: input })
     }
-    const deps: ConversationDeps = {
-      provider: this.provider,
-      tools: this.tools,
-      systemPrompt,
-      budget: this.runBudget,
-      sharedState: this.sharedState,
-      askUser,
+    const overlayRules = permissionOverlayRules(options.permissionOverlay)
+    this.activeEnforcement = {
       enforcer: this.enforcer,
       enforcerAskUser: askToolUser,
       enforcerStore: this.permissionStore,
@@ -871,16 +890,33 @@ export class LiveCli implements SessionControl {
         if (this.notifyDenyOverride) return this.notifyDenyOverride(info)
         process.stderr.write(`\nBlocked ${info.toolName}: ${info.reason}\n`)
       },
-      enforcerPolicy: (call) => evaluatePolicy(call, this.policyHandle.ruleset),
+      enforcerPolicy: (call) => {
+        const ruleset = this.policyHandle.ruleset
+        return evaluatePolicy(
+          call,
+          overlayRules.length === 0
+            ? ruleset
+            : { version: ruleset.version, rules: [...ruleset.rules, ...overlayRules] },
+        )
+      },
       enforcerNotifyPolicy: async (info) => {
         if (this.notifyPolicyOverride) return this.notifyPolicyOverride(info)
         const verb = info.kind === 'allow' ? 'auto-allowed' : 'denied'
         process.stderr.write(`\n${verb} by policy: ${info.rule.tool} ${info.rule.pattern}\n`)
       },
       enforcerToolRequirements: this.tools.requirements?.(),
+      hookRunner: this.hookRunner ?? undefined,
+    }
+    const deps: ConversationDeps = {
+      provider: this.provider,
+      tools: this.tools,
+      systemPrompt,
+      budget: this.runBudget,
+      sharedState: this.sharedState,
+      askUser,
+      ...this.activeEnforcement,
       permissionMode: this.permissionMode,
       signal: this.currentAbort.signal,
-      hookRunner: this.hookRunner ?? undefined,
       spinePrompt: spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'sub-agent' }),
       compactionSummarizer: this.buildCompactionSummarizer(),
       workspaceRoots,
@@ -1074,8 +1110,12 @@ export class LiveCli implements SessionControl {
           ],
           dynamicParts: [],
         }),
+        ...this.activeEnforcement,
         sharedState: this.sharedState,
+        permissionMode: this.permissionMode,
+        workspaceRoots: this.getWorkspaceRoots(),
         subagentDepth: 1,
+        quirks: this.quirks,
         signal: abort.signal,
       },
     )

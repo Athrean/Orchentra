@@ -11,6 +11,7 @@ import {
   recordLoadErrors,
   recordSkillsReloadCallback,
   getLoadedSkills,
+  type SkillTurnOptions,
 } from './commands/builtin/skills-adapter'
 import { isFirstRun, markWelcomed } from './render/first-run'
 import { runOneShot } from './one-shot'
@@ -55,8 +56,8 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     configHome: process.env.ORCHENTRA_CONFIG_HOME ?? (process.env.HOME ? `${process.env.HOME}/.orchentra` : undefined),
   }
   const runTurnDep = {
-    runTurn: async (text: string): Promise<void> => {
-      await cli.runTurn(text)
+    runTurn: async (text: string, opts?: SkillTurnOptions): Promise<void> => {
+      await cli.runTurn(text, opts)
     },
   }
 

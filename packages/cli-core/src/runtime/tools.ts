@@ -6,6 +6,9 @@ import type { ImageContent } from './image'
 import type { QuirkCounters } from './quirks'
 import type { ProcessSupervisor } from './process-supervisor'
 import type { BrowserRunSession } from './browser'
+import type { HookRunner } from './hooks'
+import type { AskUser as PermissionAskUser, Enforcer, EnforcerContext } from '../permissions/enforcer'
+import type { PermissionStore } from '../permissions/store'
 
 export interface TaskHandle {
   taskId: string
@@ -73,6 +76,17 @@ export interface AskUserRequest {
 
 export type AskUserHandler = (request: string | AskUserRequest) => Promise<string>
 
+export interface ToolEnforcementContext {
+  hookRunner?: HookRunner
+  enforcer?: Enforcer
+  enforcerAskUser?: PermissionAskUser
+  enforcerStore?: PermissionStore
+  enforcerNotifyDeny?: EnforcerContext['notifyDeny']
+  enforcerPolicy?: EnforcerContext['policy']
+  enforcerNotifyPolicy?: EnforcerContext['notifyPolicy']
+  enforcerToolRequirements?: EnforcerContext['toolRequirements']
+}
+
 export interface ToolContext {
   sessionId: string
   cwd: string
@@ -96,6 +110,8 @@ export interface ToolContext {
   askUser?: AskUserHandler
   provider?: Provider
   tools?: ToolRegistry
+  /** Parent runtime enforcement inherited by nested runtimes. */
+  enforcement?: ToolEnforcementContext
   /** Shared Orchentra spine prompt for nested model calls such as sub-agents. */
   spinePrompt?: string
   /**
