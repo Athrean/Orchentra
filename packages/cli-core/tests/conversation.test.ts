@@ -1420,3 +1420,24 @@ describe('mid-run steering', () => {
     expect(events.some((e) => e.kind === 'user_message' && e.content === 'focus only on the failing test')).toBe(true)
   })
 })
+
+test('a turn truncated by max_output_tokens reports truncation, not a clean stop', async () => {
+  // A reasoning model can spend its whole output budget before emitting text.
+  // Reported as 'stop', that is indistinguishable from a wrong answer — which
+  // is exactly how four curriculum cases were misread as model failures.
+  const provider: Provider = {
+    async *stream() {
+      yield {
+        kind: 'usage',
+        usage: { inputTokens: 10, outputTokens: 4096, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      }
+      yield { kind: 'finish', stopReason: 'max_tokens' }
+    },
+  }
+  const runtime = new ConversationRuntime(makeConfig(), makeDeps(provider))
+  const events: RuntimeEvent[] = []
+  for await (const event of runtime.run({ userMessage: 'go', priorMessages: [] })) events.push(event)
+  const done = events.find((event) => event.kind === 'done')
+  expect(done?.kind === 'done' && done.reason).toBe('max_output_tokens')
+  expect(events.some((event) => event.kind === 'run_state' && event.state === 'DONE')).toBe(false)
+})

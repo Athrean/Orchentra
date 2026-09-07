@@ -59,6 +59,14 @@ export type DoneReason =
   | 'loop_detected'
   | 'gate_failed'
   | 'quarantined'
+  /**
+   * The provider stopped because the response hit `max_output_tokens`. A
+   * reasoning model can spend the whole budget before emitting any text, so
+   * this arrives looking exactly like a clean finish with an empty answer —
+   * reporting it as 'stop' makes a truncated run indistinguishable from a
+   * wrong one.
+   */
+  | 'max_output_tokens'
 
 export interface TextEvent {
   kind: 'text'

@@ -721,6 +721,18 @@ export class ConversationRuntime {
             return
           }
         }
+        // A turn that ran out of output budget did not finish its answer. It
+        // never reaches DONE, and it is reported as truncation rather than as a
+        // clean stop, so a caller can tell an empty answer from a wrong one.
+        if (turn.stopReason === 'max_tokens') {
+          yield* this.emit({
+            kind: 'done',
+            reason: 'max_output_tokens',
+            steps: budget.currentSteps,
+            usage: budget.currentUsage,
+          })
+          return
+        }
         runState = transitionRunState(runState, 'DONE', this.now())
         yield* this.emit({ kind: 'run_state', state: runState })
         yield* this.emit({ kind: 'done', reason: 'stop', steps: budget.currentSteps, usage: budget.currentUsage })
