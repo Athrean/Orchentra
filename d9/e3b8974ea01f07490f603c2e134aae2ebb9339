@@ -1,0 +1,21 @@
+packages/cli-core/src/permissions/enforcer.ts
+  s_27c10fe9731fec::t_dd3c952a3dcfca 160-161,214-234
+packages/cli-core/tests/enforcer.test.ts
+  s_27c10fe9731fec::t_815430408e1fcb 558-560,571,583,592,617,803-936
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d9e3b8974ea01f07490f603c2e134aae2ebb9339",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
