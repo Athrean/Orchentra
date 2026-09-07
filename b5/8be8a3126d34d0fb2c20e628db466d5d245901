@@ -1,0 +1,37 @@
+apps/cli/src/provider-factory.ts
+  s_27c10fe9731fec::t_2f066e5039c411 10-12,59-60,70-86
+packages/cli-api/src/index.ts
+  s_27c10fe9731fec::t_3dba0dc59875d0 72,134-135
+packages/cli-api/src/openai-compat/client.ts
+  s_27c10fe9731fec::t_d8bbce5ca780a6 15-17,37-43,99,104-113,118,147-161
+packages/cli-api/src/openai-compat/index.ts
+  s_27c10fe9731fec::t_a3e374fb85264a 7
+packages/cli-api/src/responses/client.ts
+  s_27c10fe9731fec::t_44f220b93937f7 1-255
+packages/cli-api/src/responses/index.ts
+  s_27c10fe9731fec::t_5ac1e9342429ff 1
+packages/cli-api/src/retry.ts
+  s_27c10fe9731fec::t_f6ac93bb22ac63 18-98
+packages/cli-api/src/session-id.ts
+  s_27c10fe9731fec::t_9764664a050fc1 1-7
+packages/cli-api/tests/openai-compat.test.ts
+  s_27c10fe9731fec::t_b49c817300c699 4,330-348
+packages/cli-api/tests/retry.test.ts
+  s_27c10fe9731fec::t_2867526275ebbc 2-3,27-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b58be8a3126d34d0fb2c20e628db466d5d245901",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
