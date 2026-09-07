@@ -1,0 +1,45 @@
+packages/cli-api/src/github/checks.ts
+  s_27c10fe9731fec::t_91ec4dc414ee57 4
+packages/cli-api/src/github/workflows.ts
+  s_27c10fe9731fec::t_40718345fb46b9 4
+packages/cli-api/src/index.ts
+  s_27c10fe9731fec::t_040b4b4e6e701a 71
+packages/cli-api/src/openai-compat/client.ts
+  s_27c10fe9731fec::t_c7f7e318537a8e 28-33,79-91,118-123,178-180,184-199,228-232,251-252
+packages/cli-api/src/openai-compat/index.ts
+  s_27c10fe9731fec::t_77b24c586d444b 6
+packages/cli-api/tests/openai-compat.test.ts
+  s_6712c90ba5505e::t_379a5a53218083 38,118-154,224-241
+packages/cli-api/src/anthropic/client.ts
+  s_6712c90ba5505e::t_e45e6f033fab2a 207,236,295,307,337
+packages/cli-api/src/gemini/client.ts
+  s_6712c90ba5505e::t_e8a9d7b6bd4095 108,136,168-176
+packages/cli-api/src/openai-compat/types.ts
+  s_6712c90ba5505e::t_e7be6e854b0eda 35-40
+packages/cli-api/tests/gemini-client.test.ts
+  s_6712c90ba5505e::t_eca37d10f20b8c 5,9,17,60-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9d4f52df381240f4e0d033cc8cef8cf010c80287",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    },
+    "s_6712c90ba5505e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06363-463f-7713-8afe-053ffe4e17cc",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
