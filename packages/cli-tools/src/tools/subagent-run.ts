@@ -9,10 +9,10 @@ import {
   type UsageTotals,
   CompletionPolicy,
   ConversationRuntime,
-  addUsage,
+  RuntimeBudget,
   buildSystemPrompt,
   emptyUsage,
-  estimatedCostUsd,
+  totalTokens,
 } from '@orchentra/cli-core'
 import { isRateLimitError } from '@orchentra/cli-api'
 import type { SubagentRole } from './subagent-roles'
@@ -30,9 +30,9 @@ export interface SubagentRunOutcome {
   traceId?: string
   /** Completion-gate decision when the child ran under a CompletionPolicy. */
   gate?: GateDecisionRecord
-  /** This child's own provider spend (also fed into the parent budget live). */
+  /** This child and all of its descendants' provider spend, fed into the parent budget live. */
   usage: UsageTotals
-  /** Estimated dollar cost of `usage`, or undefined when the child's model has no published pricing. */
+  /** Per-model estimated cost, or undefined when any participating model has no published pricing. */
   costUsd: number | undefined
 }
 
@@ -76,8 +76,14 @@ export async function runSubagent(
   }
 
   let usage = emptyUsage()
+  let costUsd: number | undefined
   try {
     const abort = new AbortController()
+    const childBudget = new RuntimeBudget({
+      maxSteps: MAX_ITERATIONS_PER_SUBAGENT,
+      maxTokens: 200_000,
+      model,
+    })
     // Let an external caller (agent_control interrupt) cancel the run: link its
     // signal into the same controller the budget-exhaustion path already uses.
     if (options.signal) {
@@ -119,6 +125,7 @@ export async function runSubagent(
         // sink). Unset in production so each sub-agent builds its own on-disk
         // trace dir and lastTraceId links back into the parent manifest.
         ...(ctx.traceSink ? { traceSink: ctx.traceSink } : {}),
+        budget: childBudget,
         signal: abort.signal,
       },
     )
@@ -130,6 +137,20 @@ export async function runSubagent(
     let doneReason: DoneReason = 'stop'
     let errorMessage = ''
     let gate: GateDecisionRecord | undefined
+    let chargedByModel = new Map<string, UsageTotals>()
+    const syncParentUsage = (): void => {
+      const currentByModel = childBudget.currentUsageByModel
+      for (const [usageModel, current] of Array.from(currentByModel)) {
+        const delta = usageDifference(current, chargedByModel.get(usageModel) ?? emptyUsage())
+        if (totalTokens(delta) > 0) ctx.budget?.addUsage(delta, usageModel)
+      }
+      chargedByModel = new Map(currentByModel)
+      usage = childBudget.currentUsage
+      costUsd = childBudget.snapshot().costUsd
+      // Do not relabel a provider failure as an abort. This preserves the
+      // rate-limit classification used by the sub-agent pool.
+      if (!errorMessage && ctx.budget?.snapshot().exhausted) abort.abort()
+    }
 
     for await (const ev of runtime.run({
       userMessage: prompt,
@@ -147,22 +168,19 @@ export async function runSubagent(
       } else if (ev.kind === 'gate_decision') {
         gate = ev.decision
       } else if (ev.kind === 'usage') {
-        // Children draw the parent's live budget: spend lands as it happens,
-        // and an exhausted parent aborts the child mid-run. Skip the abort
-        // when the turn already failed — aborting here would relabel a
-        // provider error (e.g. a 429 the pool wants to classify) as 'aborted'.
-        usage = addUsage(usage, ev.turn)
-        ctx.budget?.addUsage(ev.turn)
-        if (!errorMessage && ctx.budget?.snapshot().exhausted) abort.abort()
+        // Synchronize the child's per-model ledger, including spend from
+        // nested descendants, without charging any entry twice.
+        syncParentUsage()
       } else if (ev.kind === 'error') {
         errorMessage = ev.message
       } else if (ev.kind === 'done') {
         doneReason = ev.reason
+        syncParentUsage()
       }
     }
+    syncParentUsage()
     if (buf) resultText = buf
     const traceId = runtime.lastTraceId ?? undefined
-    const costUsd = estimatedCostUsd(usage, model)
 
     if (doneReason === 'error') {
       return {
@@ -228,7 +246,16 @@ export async function runSubagent(
       doneReason: 'error',
       toolCalls: 0,
       usage,
-      costUsd: estimatedCostUsd(usage, model),
+      costUsd,
     }
+  }
+}
+
+function usageDifference(current: UsageTotals, previous: UsageTotals): UsageTotals {
+  return {
+    inputTokens: Math.max(0, current.inputTokens - previous.inputTokens),
+    outputTokens: Math.max(0, current.outputTokens - previous.outputTokens),
+    cacheReadTokens: Math.max(0, current.cacheReadTokens - previous.cacheReadTokens),
+    cacheCreationTokens: Math.max(0, current.cacheCreationTokens - previous.cacheCreationTokens),
   }
 }

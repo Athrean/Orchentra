@@ -6,6 +6,24 @@ import { QuirkCounters, type ToolDefinition, type ToolContext } from '@orchentra
 const mockCtx: ToolContext = { sessionId: 'test', cwd: '/tmp' }
 
 describe('DefaultToolRegistry', () => {
+  test('scheduling metadata fails safe and preserves explicit declarations', () => {
+    const registry = new DefaultToolRegistry()
+    expect(registry.scheduling('bash')).toMatchObject({
+      pure: false,
+      idempotent: false,
+      concurrencySafe: false,
+      speculativeSafe: false,
+      resourceClass: 'unknown',
+    })
+    expect(registry.scheduling('grep_search')).toMatchObject({
+      pure: true,
+      idempotent: true,
+      concurrencySafe: true,
+      speculativeSafe: true,
+      resourceClass: 'filesystem',
+    })
+    expect(registry.scheduling('missing')).toEqual(registry.scheduling('bash'))
+  })
   test('registers all builtin tools', () => {
     const registry = new DefaultToolRegistry()
     const schemas = registry.list()

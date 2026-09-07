@@ -7,6 +7,8 @@ import {
   type ToolResult,
   type ProviderToolSchema,
   type PermissionMode,
+  type ToolSchedulingMetadata,
+  normalizeToolScheduling,
 } from '@orchentra/cli-core'
 import { bashTool } from './tools/bash-tool'
 import { fileReadTool } from './tools/file-read-tool'
@@ -87,6 +89,10 @@ export class DefaultToolRegistry implements ToolRegistry {
       requirements[tool.name] = requiredModeForLevel(tool.level)
     }
     return requirements
+  }
+
+  scheduling(name: string): ToolSchedulingMetadata {
+    return normalizeToolScheduling(this.tools.get(name)?.scheduling)
   }
 
   has(name: string): boolean {

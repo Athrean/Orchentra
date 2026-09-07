@@ -18,6 +18,13 @@ export const grepTool: ToolDefinition = {
   name: 'grep_search',
   description: 'Search file contents with a regex pattern.',
   level: 'read',
+  scheduling: {
+    pure: true,
+    idempotent: true,
+    concurrencySafe: true,
+    speculativeSafe: true,
+    resourceClass: 'filesystem',
+  },
   inputSchema: {
     type: 'object',
     properties: {

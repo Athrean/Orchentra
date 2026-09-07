@@ -423,28 +423,58 @@ describe('agentTool recursion cap', () => {
 
   test('allows one nested level under the cap and increments depth for the child', async () => {
     const depthLog: number[] = []
+    const budget = new RuntimeBudget({
+      maxSteps: 10,
+      maxTokens: 100_000,
+      model: 'claude-haiku-4',
+    })
     const turns: ProviderStreamEvent[][] = [
       [
-        { kind: 'tool-use', call: { id: 'a1', name: 'agent', input: { prompt: 'inner' } } },
+        {
+          kind: 'tool-use',
+          call: { id: 'a1', name: 'agent', input: { prompt: 'inner', model: 'claude-opus-5' } },
+        },
         { kind: 'finish', stopReason: 'tool_use' },
       ],
       [
         { kind: 'text-delta', delta: 'inner-ran' },
+        {
+          kind: 'usage',
+          usage: { inputTokens: 0, outputTokens: 1_000, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        },
         { kind: 'finish', stopReason: 'end_turn' },
       ],
       [
         { kind: 'text-delta', delta: 'outer-done' },
+        {
+          kind: 'usage',
+          usage: { inputTokens: 0, outputTokens: 1_000, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        },
         { kind: 'finish', stopReason: 'end_turn' },
       ],
     ]
     const result = await agentTool.execute(
       { prompt: 'outer' },
-      baseCtx({ provider: scriptedProvider(turns), tools: recursiveRegistry(depthLog) }),
+      baseCtx({
+        model: 'claude-haiku-4',
+        provider: scriptedProvider(turns),
+        tools: recursiveRegistry(depthLog),
+        budget,
+      }),
     )
     expect(result.isError).toBe(false)
     expect(result.content).toBe('outer-done')
     // Root ctx is depth 0, so the spawned sub-agent runs its tool calls at depth 1.
     expect(depthLog).toEqual([1])
+    // Parent and returned fan-out totals include both generations, while the
+    // cost ledger keeps each generation attributed to the model that ran it.
+    expect(budget.currentUsage.outputTokens).toBe(2_000)
+    expect(budget.currentUsageByModel.get('claude-haiku-4')?.outputTokens).toBe(1_000)
+    expect(budget.currentUsageByModel.get('claude-opus-5')?.outputTokens).toBe(1_000)
+    expect(budget.snapshot().costUsd).toBeCloseTo(0.03)
+    const fanout = (result.data as { fanout: { usage: UsageTotals; costUsd: number } }).fanout
+    expect(fanout.usage.outputTokens).toBe(2_000)
+    expect(fanout.costUsd).toBeCloseTo(0.03)
   })
 
   test('a sub-agent at the cap depth refuses to recurse further', async () => {

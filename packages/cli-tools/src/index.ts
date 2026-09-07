@@ -69,6 +69,14 @@ export { webFetchTool } from './tools/web-fetch-tool'
 export { webSearchTool } from './tools/web-search-tool'
 export { askUserTool } from './tools/ask-user-tool'
 export { todoWriteTool } from './tools/todo-write-tool'
+export {
+  contextTools,
+  contextListTool,
+  contextReadTool,
+  contextSearchTool,
+  contextStoreTool,
+} from './tools/context-tools'
+export { rlmExecuteTool } from './tools/rlm-execute-tool'
 export { agentTool, createAgentTool, type SubagentCaps } from './tools/agent-tool'
 export {
   discoverAgentDefinitions,

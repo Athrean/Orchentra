@@ -11,6 +11,15 @@ export const fileReadTool: ToolDefinition = {
   name: 'read_file',
   description: 'Read a text file from the workspace.',
   level: 'read',
+  scheduling: {
+    pure: true,
+    idempotent: true,
+    concurrencySafe: true,
+    // A read updates the harness's file-read hash ledger, so do not launch it
+    // speculatively even though concurrent committed reads are safe.
+    speculativeSafe: false,
+    resourceClass: 'filesystem',
+  },
   inputSchema: {
     type: 'object',
     properties: {

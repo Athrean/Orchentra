@@ -10,6 +10,13 @@ export const globTool: ToolDefinition = {
   name: 'glob_search',
   description: 'Find files by glob pattern.',
   level: 'read',
+  scheduling: {
+    pure: true,
+    idempotent: true,
+    concurrencySafe: true,
+    speculativeSafe: true,
+    resourceClass: 'filesystem',
+  },
   inputSchema: {
     type: 'object',
     properties: {
