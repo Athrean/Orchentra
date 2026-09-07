@@ -40,6 +40,8 @@ import type {
   UndoFileEditsResult,
   UsageTotals,
   RunState,
+  ExecutionProfile,
+  ContextSeed,
 } from '@orchentra/cli-core'
 import {
   UsageTracker,
@@ -59,6 +61,7 @@ import {
   prepareMemoryContext,
   captureMemoryFromTurn,
   activeProfileMode,
+  executionProfilePrompt,
   profileFor,
   spinePrompt,
   PatternStore,
@@ -105,6 +108,13 @@ import { thinkingTokenBudgetForEffort } from './provider-factory'
 
 export type ModelResolver = (raw: string) => { model: string; provider: Provider; providerName: string }
 
+/**
+ * Per-turn output cap. Reasoning models spend this budget before emitting any
+ * answer, so a large input can consume the whole cap and return empty text —
+ * raise it via `maxOutputTokens` in config when running such a model.
+ */
+export const DEFAULT_MAX_OUTPUT_TOKENS = 4096
+
 /** Outcome of a single turn: `ok` only when the runtime finished with a clean stop. */
 export interface TurnRunResult {
   readonly ok: boolean
@@ -118,6 +128,8 @@ export interface TurnRunOptions {
   readonly completionPolicy?: CompletionPolicy
   /** Continue a persisted autonomous objective after `/resume`. */
   readonly resume?: boolean
+  /** Context objects seeded into the run's store before the first model call. */
+  readonly contextItems?: readonly ContextSeed[]
 }
 
 export type RuntimeEventSink = (event: RuntimeEvent) => void
@@ -144,6 +156,7 @@ export class LiveCli implements SessionControl {
   /** Run-wide per-model deviation counters, surfaced in each trace manifest. */
   private readonly quirks = new QuirkCounters()
   private readonly resolveModel: ModelResolver
+  private readonly resolveNestedModel?: ModelResolver
   private readonly tools: ToolRegistry
   private cwd: string
   private sessionId: string
@@ -178,6 +191,10 @@ export class LiveCli implements SessionControl {
   private readonly permissionStore: PermissionStore
   private startupNotices: string[] = []
   private goal: SessionGoal | null = null
+  private readonly executionProfile: ExecutionProfile
+  private readonly speculativeToolCalls: boolean
+  private readonly modelFunctionLimits?: ConversationDeps['modelFunctionLimits']
+  private readonly maxOutputTokens: number
   /** Last emitted autonomous checkpoint; session events restore this after interruption. */
   private runState: RunState | null = null
   private pendingFileUndoSnapshots = new Map<string, FileUndoSnapshot>()
@@ -191,6 +208,7 @@ export class LiveCli implements SessionControl {
     provider: Provider
     providerName?: string
     resolveModel: ModelResolver
+    resolveNestedModel?: ModelResolver
     tools: ToolRegistry
     effort?: EffortTier
     terseMode?: TerseMode
@@ -200,14 +218,20 @@ export class LiveCli implements SessionControl {
     memoryConfig?: MemoryFeatureConfig
     budgetConfig?: BudgetFeatureConfig
     hookRunner?: HookRunner
+    executionProfile?: ExecutionProfile
+    speculativeToolCalls?: boolean
+    modelFunctionLimits?: ConversationDeps['modelFunctionLimits']
+    maxOutputTokens?: number
   }) {
     this.model = deps.model
     this.permissionMode = deps.permissionMode
     this.effort = deps.effort ?? 'medium'
+    this.maxOutputTokens = deps.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
     this.terseMode = deps.terseMode ?? 'off'
     this.provider = deps.provider
     this.providerName = deps.providerName ?? 'unknown'
     this.resolveModel = deps.resolveModel
+    this.resolveNestedModel = deps.resolveNestedModel
     this.tools = deps.tools
     this.cwd = deps.cwd
     this.sessionId = deps.sessionId
@@ -215,6 +239,9 @@ export class LiveCli implements SessionControl {
     this.memoryConfig = deps.memoryConfig ?? null
     this.budgetConfig = deps.budgetConfig ?? null
     this.hookRunner = deps.hookRunner ?? null
+    this.executionProfile = deps.executionProfile ?? 'direct'
+    this.speculativeToolCalls = deps.speculativeToolCalls ?? false
+    this.modelFunctionLimits = deps.modelFunctionLimits
     this.tracker = new UsageTracker()
     this.spinner = new Spinner()
     this.permissionStore = createPermissionStore({
@@ -725,7 +752,7 @@ export class LiveCli implements SessionControl {
       // The summarizer is runtime infrastructure (invoked from inside a run
       // via deps.compactionSummarizer), but its spend is real — land it in
       // the run budget so dollar caps and warnings see it.
-      this.runBudget?.addUsage(usage)
+      this.runBudget?.addUsage(usage, model)
       return text
     }
   }
@@ -744,19 +771,21 @@ export class LiveCli implements SessionControl {
 
     if (!sink) this.spinner.start('Thinking...')
 
-    // Build dynamic prompt parts (memory context)
-    const dynamicParts: string[] = []
+    // Trusted state remains system text. RLM mode moves retrieved memory into
+    // a delimited user-role reference so data cannot masquerade as policy.
+    const trustedDynamicParts: string[] = []
+    const untrustedReferenceParts: string[] = []
     if (this.sharedState.planMode) {
-      dynamicParts.push(
+      trustedDynamicParts.push(
         'PLANNING MODE ACTIVE: Do not execute any tools. Only reason and plan. The user will call exit_plan_mode when ready to execute.',
       )
     }
     if (this.goal) {
-      dynamicParts.push(`CURRENT SESSION GOAL: ${this.goal.objective}`)
+      trustedDynamicParts.push(`CURRENT SESSION GOAL: ${this.goal.objective}`)
     }
     const workspaceRoots = this.getWorkspaceRoots()
     if (workspaceRoots.length > 1) {
-      dynamicParts.push(`READABLE WORKSPACE ROOTS: ${workspaceRoots.join(', ')}`)
+      trustedDynamicParts.push(`READABLE WORKSPACE ROOTS: ${workspaceRoots.join(', ')}`)
     }
     if (this.memoryConfig?.enabled) {
       try {
@@ -769,7 +798,10 @@ export class LiveCli implements SessionControl {
           'default',
           input,
         )
-        if (memCtx.text) dynamicParts.push(memCtx.text)
+        if (memCtx.text) {
+          if (this.executionProfile === 'rlm') untrustedReferenceParts.push(memCtx.text)
+          else trustedDynamicParts.push(memCtx.text)
+        }
       } catch {
         // Gracefully degrade if memory/embedding is unavailable
       }
@@ -777,7 +809,7 @@ export class LiveCli implements SessionControl {
 
     const config: ConversationConfig = {
       model: this.model,
-      maxOutputTokens: 4096,
+      maxOutputTokens: this.maxOutputTokens,
       contextWindowTokens: 200_000,
       compactionThreshold: this.compactionThreshold,
       keepRecentOnCompact: this.keepRecentOnCompact,
@@ -797,6 +829,8 @@ export class LiveCli implements SessionControl {
       thinkingTokenBudget: thinkingTokenBudgetForEffort(this.effort),
       providerName: this.providerName,
       harnessVersion: CLI_VERSION,
+      executionProfile: this.executionProfile,
+      speculativeToolCalls: this.speculativeToolCalls,
     }
 
     if (this.runBudget) {
@@ -821,8 +855,10 @@ export class LiveCli implements SessionControl {
         // Per-family specialization (M5): empty string for every family until
         // a counter-justified profile ships a fragment.
         profileFor(this.model, activeProfileMode()).systemPromptFragment ?? '',
+        executionProfilePrompt(this.executionProfile),
       ],
-      dynamicParts,
+      trustedDynamicParts,
+      untrustedReferenceParts,
     })
 
     const askUser: AskUserHandler = async (request) => {
@@ -885,6 +921,8 @@ export class LiveCli implements SessionControl {
       compactionSummarizer: this.buildCompactionSummarizer(),
       workspaceRoots,
       quirks: this.quirks,
+      resolveNestedModel: this.resolveNestedModel,
+      modelFunctionLimits: this.modelFunctionLimits,
     }
 
     this.runtime = new ConversationRuntime(config, deps)
@@ -899,6 +937,7 @@ export class LiveCli implements SessionControl {
       for await (const event of this.runtime.run({
         userMessage: input,
         priorMessages: this.messages,
+        contextItems: options.contextItems,
         forceCompaction,
         completionPolicy,
         runState: options.resume ? (this.runState ?? undefined) : undefined,
@@ -1087,7 +1126,7 @@ export class LiveCli implements SessionControl {
       if (event.kind === 'tool_result' && !event.result.isError) {
         for (const item of event.result.evidence ?? []) evidenceKinds.add(item.kind)
       } else if (event.kind === 'usage') {
-        this.runBudget?.addUsage(event.turn)
+        this.runBudget?.addUsage(event.turn, this.model)
         if (this.runBudget?.snapshot().exhausted) abort.abort()
       } else if (event.kind === 'done') {
         reason = event.reason

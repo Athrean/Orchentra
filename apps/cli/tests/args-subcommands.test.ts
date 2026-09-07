@@ -68,6 +68,7 @@ describe('parseArgs — subcommands', () => {
     const help = renderHelp()
     expect(help).toMatch(/orchentra mcp list/)
     expect(help).toMatch(/orchentra update/)
-    expect(help).not.toMatch(/graph|triage|investigate|watch/)
+    expect(help).not.toMatch(/orchentra (?:graph|triage|investigate|watch)\b/)
+    expect(help).toContain('orchentra trace <id> [--watch]')
   })
 })

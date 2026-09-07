@@ -124,7 +124,17 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
     subagents: extractSubagentsConfig(merged),
     rlm: extractRlmConfig(merged),
     executionProfile: extractExecutionProfile(merged),
+    maxOutputTokens: extractMaxOutputTokens(merged),
   }
+}
+
+function extractMaxOutputTokens(merged: Record<string, unknown>): number | undefined {
+  const raw = merged.maxOutputTokens
+  if (raw === undefined) return undefined
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 1) {
+    throw new Error(`invalid maxOutputTokens ${JSON.stringify(raw)}; expected a positive integer`)
+  }
+  return raw
 }
 
 function extractRlmConfig(merged: Record<string, unknown>): RuntimeFeatureConfig['rlm'] {

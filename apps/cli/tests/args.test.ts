@@ -116,6 +116,18 @@ describe('parseArgs', () => {
     }
   })
 
+  test('--execution-profile selects RLM explicitly and rejects unknown profiles', () => {
+    expect(parseArgs(['node', 'orchentra', '--execution-profile', 'rlm'])).toMatchObject({
+      kind: 'repl',
+      executionProfile: 'rlm',
+    })
+    expect(parseArgs(['node', 'orchentra', '-p', 'task', '--execution-profile=direct'])).toMatchObject({
+      kind: 'prompt',
+      executionProfile: 'direct',
+    })
+    expect(() => parseArgs(['node', 'orchentra', '--execution-profile', 'unknown'])).toThrow(/expected direct or rlm/)
+  })
+
   test('--resume returns resume action', () => {
     const action = parseArgs(['node', 'orchentra', '--resume', '/path/to/session.jsonl'])
     expect(action.kind).toBe('resume')

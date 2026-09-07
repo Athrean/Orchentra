@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'
-import type { PermissionMode } from '@orchentra/cli-core'
+import type { ExecutionProfile, PermissionMode } from '@orchentra/cli-core'
 import { loadSkills } from '@orchentra/cli-core'
 import { tryLoadKeytar } from '@orchentra/cli-api'
 import { CLI_NAME, CLI_VERSION } from './version'
@@ -24,6 +24,7 @@ export interface ReplOptions {
   permissionMode: PermissionMode
   cwd: string
   prompt?: string
+  executionProfile?: ExecutionProfile
 }
 
 export async function runRepl(options: ReplOptions): Promise<number> {
@@ -47,6 +48,7 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     model: options.model,
     permissionMode: options.permissionMode,
     cwd: options.cwd,
+    executionProfile: options.executionProfile,
   })
   const { cli, resolvedModel, resolvedPermissionMode: resolvedMode, sessionId, sessionPath, providerName } = cliCtx
 

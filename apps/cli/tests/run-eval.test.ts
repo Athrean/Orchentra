@@ -60,16 +60,28 @@ describe('parseArgs: eval', () => {
       out: 'sb.json',
       against: undefined,
       abProfiles: false,
+      executionProfile: undefined,
+      abExecutionProfiles: false,
     })
     const inline = parseArgs(argv('eval', '--corpus=evals/', '--id=coding-bugfix-off-by-one', '--model=m'))
     expect(inline).toMatchObject({ kind: 'eval', corpus: 'evals/', id: 'coding-bugfix-off-by-one', model: 'm' })
     expect(parseArgs(argv('eval', '--ab-profiles'))).toMatchObject({ kind: 'eval', abProfiles: true })
+    expect(parseArgs(argv('eval', '--execution-profile=rlm'))).toMatchObject({
+      kind: 'eval',
+      executionProfile: 'rlm',
+    })
+    expect(parseArgs(argv('eval', '--ab-execution-profiles'))).toMatchObject({
+      kind: 'eval',
+      abExecutionProfiles: true,
+    })
   })
 
   test('rejects unknown args and non-positive k', () => {
     expect(() => parseArgs(argv('eval', '--bogus'))).toThrow(/unknown argument/)
     expect(() => parseArgs(argv('eval', '--k', '0'))).toThrow(/positive integer/)
     expect(() => parseArgs(argv('eval', '--k', 'abc'))).toThrow(/positive integer/)
+    expect(() => parseArgs(argv('eval', '--execution-profile', 'invalid'))).toThrow(/expected direct or rlm/)
+    expect(() => parseArgs(argv('eval', '--ab-profiles', '--ab-execution-profiles'))).toThrow(/choose only one/)
   })
 })
 
@@ -90,8 +102,9 @@ describe('orchentra eval → scoreboard (v0.6.0 exit criterion)', () => {
       expect(code).toBe(0)
 
       const board = JSON.parse(out.text()) as Scoreboard
-      expect(board.version).toBe(1)
+      expect(board.version).toBe(3)
       expect(board.model).toBe('test-model')
+      expect(board.executionProfile).toBe('direct')
       expect(board.evals).toHaveLength(20)
       expect(board.summary.total).toBe(20)
 
@@ -149,4 +162,32 @@ describe('orchentra eval → scoreboard (v0.6.0 exit criterion)', () => {
     })
     expect(code).toBe(1)
   })
+
+  test('labels an explicitly selected RLM profile in the scoreboard and trial input', async () => {
+    const corpus = await makeCorpus()
+    const observed: string[] = []
+    const recording: HarnessRunner = async (input) => {
+      observed.push(input.executionProfile)
+      return fakeHarness(input)
+    }
+    try {
+      const out = capture()
+      const code = await runEvalCommand({
+        corpus,
+        id: 'coding-fixture-1',
+        model: 'm',
+        k: 1,
+        executionProfile: 'rlm',
+        harness: recording,
+        grade: codingPasses,
+        stdout: out.sink,
+        stderr: () => {},
+      })
+      expect(code).toBe(0)
+      expect(observed).toEqual(['rlm'])
+      expect((JSON.parse(out.text()) as Scoreboard).executionProfile).toBe('rlm')
+    } finally {
+      await rm(corpus, { recursive: true, force: true })
+    }
+  }, 20000)
 })

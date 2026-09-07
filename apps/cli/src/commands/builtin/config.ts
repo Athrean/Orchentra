@@ -29,6 +29,7 @@ export class ConfigCommand implements CommandHandler {
         rows: [
           { key: 'model', value: fc.model ?? '(default)' },
           { key: 'permissionMode', value: fc.permissionMode ?? '(default)' },
+          { key: 'executionProfile', value: fc.executionProfile },
         ],
       },
       {

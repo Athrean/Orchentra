@@ -22,6 +22,12 @@ describe('initializeRepo', () => {
 
     expect(existsSync(join(TMP, '.orchentra'))).toBe(true)
     expect(existsSync(join(TMP, '.orchentra', 'settings.json'))).toBe(true)
+    const settings = JSON.parse(readFileSync(join(TMP, '.orchentra', 'settings.json'), 'utf8')) as Record<
+      string,
+      unknown
+    >
+    expect(settings.version).toBe(2)
+    expect(settings.executionProfile).toBe('direct')
     expect(existsSync(join(TMP, '.orchentra', 'sessions'))).toBe(true)
     expect(existsSync(join(TMP, '.gitignore'))).toBe(true)
     expect(existsSync(join(TMP, 'CLAUDE.md'))).toBe(true)

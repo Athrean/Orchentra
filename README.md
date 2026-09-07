@@ -58,7 +58,7 @@ orchentra doctor                  # environment preflight
 orchentra session replay latest   # replay the latest workspace session
 ```
 
-Bring your own model key. The CLI supports Anthropic, Gemini, OpenAI-compatible providers, OpenRouter, xAI, and DashScope.
+Bring your own model key. The CLI supports Anthropic, Gemini, OpenAI-compatible providers, OpenRouter, xAI, DashScope, and the opencode Zen gateway (`ZEN_API_KEY`, model ids prefixed `zen/` so a bare id never routes there by accident).
 
 ## CLI
 
@@ -104,7 +104,9 @@ Example:
 
 ```json
 {
+  "version": 2,
   "model": "claude-sonnet-4-6",
+  "executionProfile": "direct",
   "effort": "medium",
   "terseMode": "lite",
   "budget": {
@@ -113,6 +115,8 @@ Example:
   }
 }
 ```
+
+`executionProfile` is `direct` by default. `rlm` selects the experimental Recursive Language Model profile; the same choice is available per invocation with `--execution-profile rlm`. Compare the profiles on one model and corpus with `orchentra eval --ab-execution-profiles -m <model>`.
 
 ## Skills And Hooks
 

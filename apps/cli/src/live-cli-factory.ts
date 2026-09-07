@@ -8,6 +8,8 @@ import {
   defaultEstimator,
   isKnownModel,
   profileFor,
+  resolveExecutionProfile,
+  type ExecutionProfile,
   type PermissionMode,
   type Provider,
   type SharedToolState,
@@ -16,6 +18,8 @@ import { getActiveTerseMode, getSessionsDirForWorkspace } from './session-config
 import { BrowserSessionManager } from '@orchentra/cli-browser'
 import {
   BUILTIN_TOOLS,
+  contextTools,
+  rlmExecuteTool,
   DefaultToolRegistry,
   McpManager,
   DEFAULT_MCP_DEFER_TOKENS,
@@ -42,6 +46,9 @@ export interface CliContextOptions {
   readonly model: string
   readonly permissionMode: PermissionMode
   readonly cwd: string
+  readonly executionProfile?: ExecutionProfile
+  /** Overrides the configured per-turn output cap (experiment harnesses). */
+  readonly maxOutputTokens?: number
 }
 
 export interface CliContext {
@@ -51,37 +58,45 @@ export interface CliContext {
   readonly resolvedModel: string
   readonly resolvedPermissionMode: PermissionMode
   readonly providerName: string
+  readonly executionProfile: ExecutionProfile
   close(): Promise<void>
 }
 
 export async function createCliContext(options: CliContextOptions): Promise<CliContext> {
   const config = ConfigLoader.defaultFor(options.cwd).load()
+  const executionProfile = resolveExecutionProfile({
+    override: options.executionProfile,
+    configured: config.featureConfig.executionProfile,
+  })
   const userAliases = config.featureConfig.aliases as Record<string, string> | undefined
   // Discover user/project agent definitions once per process, not per tool-call,
   // and build the `agent` tool over the merged role set so custom types are
   // spawnable by name and the depth/fan-out caps honor config.
   const agentRoles = await resolveAgentRoles(options.cwd)
-  const tools = buildToolRegistry(agentRoles, config.featureConfig.subagents)
-  const resolveModel: ModelResolver = (raw: string) => {
+  const tools = buildToolRegistry(agentRoles, config.featureConfig.subagents, executionProfile)
+  const resolveNestedModel: ModelResolver = (raw: string) => {
     const model = resolveModelAlias(raw, userAliases)
     if (!isKnownModel(model)) {
       process.stderr.write(
         `[orchentra] warn: model '${model}' is not in the known-model list. Provider will still try to call it, but typos here usually surface as opaque API errors. Aliases: ${builtinModelAliases().join(', ')}.\n`,
       )
     }
-    // Every model resolution (startup and mid-session /model switches) keeps
-    // the registry in sync with the active profile's edit dialect and
-    // vocabulary. ORCHENTRA_MODEL_PROFILES=generic (the eval A/B toggle)
-    // strips specializations while keeping provider routing.
-    applyModelProfile(tools, profileFor(model, activeProfileMode()))
     return { model, ...createProvider(model) }
+  }
+  const resolveModel: ModelResolver = (raw: string) => {
+    const resolved = resolveNestedModel(raw)
+    // Root model resolution keeps the shared registry in sync. Nested model
+    // overrides deliberately use resolveNestedModel above so they cannot
+    // mutate the root tool dialect while a child is running.
+    const model = resolved.model
+    applyModelProfile(tools, profileFor(model, activeProfileMode()))
+    return resolved
   }
 
   const rawModel = config.featureConfig.model ?? options.model
   const initial = resolveModel(rawModel)
   const resolvedPermissionMode = config.featureConfig.permissionMode ?? options.permissionMode
   const resolvedTerseMode = getActiveTerseMode() ?? config.featureConfig.terseMode
-
   const rawMcp = (config.merged as Record<string, unknown>).mcp
   const mcpManager = McpManager.fromRaw(rawMcp, {
     onLog: (level, message) => {
@@ -120,6 +135,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     provider: initial.provider,
     providerName: initial.providerName,
     resolveModel,
+    resolveNestedModel,
     tools,
     cwd: options.cwd,
     sessionId,
@@ -129,6 +145,10 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     memoryConfig: config.featureConfig.memory,
     budgetConfig: config.featureConfig.budget,
     hookRunner,
+    executionProfile,
+    speculativeToolCalls: config.featureConfig.rlm.speculativeToolCalls,
+    maxOutputTokens: options.maxOutputTokens ?? config.featureConfig.maxOutputTokens,
+    modelFunctionLimits: config.featureConfig.subagents,
   })
   hookProgress.emit = (u) => cli.emitHookProgress(u)
 
@@ -146,6 +166,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     resolvedModel: initial.model,
     resolvedPermissionMode,
     providerName: initial.providerName,
+    executionProfile,
     async close(): Promise<void> {
       // Tear down the browser (no zombie Chromium) and any background dev
       // servers before the session ends — no zombies.
@@ -157,8 +178,16 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   }
 }
 
-function buildToolRegistry(roles: Record<string, SubagentRole>, caps: SubagentCaps): DefaultToolRegistry {
+export function buildToolRegistry(
+  roles: Record<string, SubagentRole>,
+  caps: SubagentCaps,
+  executionProfile: ExecutionProfile,
+): DefaultToolRegistry {
   // The dynamic `agent` tool (built over the merged roles) overrides the static
   // one baked into BUILTIN_TOOLS — same tool name, so the registry Map dedups.
-  return new DefaultToolRegistry([...BUILTIN_TOOLS, createAgentTool(roles, caps)])
+  return new DefaultToolRegistry([
+    ...BUILTIN_TOOLS,
+    createAgentTool(roles, caps),
+    ...(executionProfile === 'rlm' ? [...contextTools, rlmExecuteTool] : []),
+  ])
 }

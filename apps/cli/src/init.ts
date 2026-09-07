@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { DEFAULT_MODEL_ID } from './model-catalog'
+import { CURRENT_CONFIG_VERSION } from '@orchentra/cli-core'
 
 export type InitStatus = 'created' | 'updated' | 'skipped'
 
@@ -17,7 +18,9 @@ export interface InitReport {
 const STARTER_SETTINGS =
   JSON.stringify(
     {
+      version: CURRENT_CONFIG_VERSION,
       model: DEFAULT_MODEL_ID,
+      executionProfile: 'direct',
       permissionMode: 'workspace-write',
       permissions: {
         allow: [],

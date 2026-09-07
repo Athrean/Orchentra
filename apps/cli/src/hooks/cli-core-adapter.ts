@@ -113,6 +113,10 @@ export class CliCoreHookAdapter extends CoreHookRunner {
     this.inner = createHookRunner({ cwd, onProgress })
   }
 
+  override allowsSpeculativeTool(toolName: string): boolean {
+    return this.inner.allowsSpeculativeTool(toolName)
+  }
+
   override async runPreToolUse(toolName: string, toolInput: string): Promise<HookRunResult> {
     const args = parseArgs(toolInput)
     const result = await this.inner.firePreToolUse(toolName, args)

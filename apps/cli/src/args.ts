@@ -1,4 +1,10 @@
-import type { PermissionMode, RegressionCategory } from '@orchentra/cli-core'
+import {
+  isExecutionProfile,
+  type ExecutionProfile,
+  type LearningSplit,
+  type PermissionMode,
+  type RegressionCategory,
+} from '@orchentra/cli-core'
 import { getDefaultModel } from './session-config'
 import { DEFAULT_MODEL_ID } from './model-catalog'
 
@@ -13,10 +19,30 @@ export type CliAction =
       prompt: string
       model: string
       permissionMode: PermissionMode
+      executionProfile?: ExecutionProfile
     }
-  | { kind: 'repl'; model: string; permissionMode: PermissionMode }
+  | { kind: 'repl'; model: string; permissionMode: PermissionMode; executionProfile?: ExecutionProfile }
   | { kind: 'resume'; sessionPath: string }
   | { kind: 'session-replay'; idOrLatest: string }
+  | {
+      kind: 'trace'
+      traceId: string
+      json: boolean
+      events: boolean
+      watch: boolean
+      training: boolean
+      reward?: string
+    }
+  | {
+      kind: 'curriculum'
+      seed: number
+      split?: LearningSplit
+      executionProfile?: ExecutionProfile
+      maxOutputTokens?: number
+      model: string
+      out?: string
+      list: boolean
+    }
   | { kind: 'doctor' }
   | { kind: 'mcp'; sub: 'list' }
   | { kind: 'mcp'; sub: 'test'; name: string }
@@ -34,6 +60,8 @@ export type CliAction =
       out?: string
       against?: string
       abProfiles?: boolean
+      executionProfile?: ExecutionProfile
+      abExecutionProfiles?: boolean
     }
   | {
       kind: 'regressions'
@@ -85,6 +113,41 @@ export function parseArgs(argv: string[]): CliAction {
     return { kind: 'doctor' }
   }
 
+  if (first === 'trace') {
+    const traceId = args[1]
+    if (!traceId || !/^[A-Za-z0-9_-]{1,160}$/.test(traceId)) throw new Error('trace: expected a trace id')
+    const rest = args.slice(2)
+    const flags: string[] = []
+    let reward: string | undefined
+    for (let i = 0; i < rest.length; i++) {
+      const arg = rest[i]
+      if (arg === '--reward') reward = rest[++i]
+      else if (arg.startsWith('--reward=')) reward = arg.slice('--reward='.length)
+      else if (['--json', '--events', '--watch', '--training'].includes(arg)) flags.push(arg)
+      else throw new Error(`trace: unknown argument ${arg}`)
+    }
+    if (reward !== undefined && !reward) throw new Error('trace: --reward expects a verifier-input JSON path')
+    if (reward !== undefined && flags.length > 0)
+      throw new Error('trace: --reward cannot combine with other output modes')
+    if (flags.includes('--training') && flags.some((flag) => flag !== '--training'))
+      throw new Error('trace: --training cannot combine with other output modes')
+    if (flags.includes('--events') && (flags.includes('--json') || flags.includes('--watch')))
+      throw new Error('trace: --events cannot combine with --json or --watch')
+    return {
+      kind: 'trace',
+      traceId,
+      json: flags.includes('--json'),
+      events: flags.includes('--events'),
+      watch: flags.includes('--watch'),
+      training: flags.includes('--training'),
+      reward,
+    }
+  }
+
+  if (first === 'curriculum') {
+    return parseCurriculumArgs(args.slice(1))
+  }
+
   if (first === 'eval') {
     return parseEvalArgs(args.slice(1))
   }
@@ -119,6 +182,7 @@ export function parseArgs(argv: string[]): CliAction {
   let permissionMode: PermissionMode = 'workspace-write'
   let prompt = ''
   let resumePath: string | undefined
+  let executionProfile: ExecutionProfile | undefined
 
   let i = 0
   while (i < args.length) {
@@ -136,6 +200,10 @@ export function parseArgs(argv: string[]): CliAction {
       permissionMode = val as PermissionMode
     } else if (arg === '--dangerously-skip-permissions') {
       permissionMode = 'allow'
+    } else if (arg === '--execution-profile') {
+      executionProfile = parseExecutionProfileFlag(args[++i])
+    } else if (arg.startsWith('--execution-profile=')) {
+      executionProfile = parseExecutionProfileFlag(arg.slice('--execution-profile='.length))
     } else if (arg === '-p' || arg === '--prompt') {
       prompt = args[++i] ?? ''
     } else if (arg.startsWith('-p=')) {
@@ -156,10 +224,10 @@ export function parseArgs(argv: string[]): CliAction {
   }
 
   if (prompt.length > 0) {
-    return { kind: 'prompt', prompt, model, permissionMode }
+    return { kind: 'prompt', prompt, model, permissionMode, ...(executionProfile ? { executionProfile } : {}) }
   }
 
-  return { kind: 'repl', model, permissionMode }
+  return { kind: 'repl', model, permissionMode, ...(executionProfile ? { executionProfile } : {}) }
 }
 
 export function renderHelp(): string {
@@ -170,6 +238,11 @@ USAGE
   orchentra -p <prompt> [flags]           One-shot prompt
   orchentra init                          Scaffold project config
   orchentra session replay <id|latest>    Replay a recorded session as JSONL events
+  orchentra trace <id> [--watch]          Inspect every recursive branch from local traces
+  orchentra trace <id> --json|--events    Inspect structured nodes or exact redacted events
+  orchentra trace <id> --training         Export sealed redacted learning records (local stdout)
+  orchentra trace <id> --reward <file>    Score an exported trajectory against verifier labels
+  orchentra curriculum [--list] [--split] Run the short-task RLM curriculum (needs a model)
   orchentra doctor                        Check auth, provider, and workspace health
   orchentra mcp list                      List configured MCP servers + connection status
   orchentra mcp test <name>               Connect to one MCP server and print its tools
@@ -187,6 +260,7 @@ FLAGS
   -m, --model <model>                 Model to use (overrides saved default)
       --permission-mode <mode>        Permission mode: read-only, workspace-write, danger-full-access
       --dangerously-skip-permissions  Shortcut for --permission-mode allow
+      --execution-profile <profile>   Inference profile: direct (default) or rlm (experimental)
       --resume <path>                 Resume a previous session
       --corpus <dir>                  eval: corpus directory (default evals/)
       --id <id>                       eval: run a single eval by id
@@ -194,6 +268,7 @@ FLAGS
       --out <path>                    eval/regressions: write the JSON to a file
       --against <bin>                 eval: second harness build → diff scoreboards
       --ab-profiles                   eval: A/B generic vs profiled model profiles → diff scoreboards
+      --ab-execution-profiles         eval: A/B direct vs experimental RLM profile
       --summary <path>                regressions: write the markdown quarantine/blocker summary
       --suite <dir>                   regressions: suite directory (default evals/regressions/)
       --category <c>                  regressions: run one shard only (harness|browser)
@@ -266,6 +341,8 @@ function parseEvalArgs(rest: string[]): CliAction {
   let out: string | undefined
   let against: string | undefined
   let abProfiles = false
+  let executionProfile: ExecutionProfile | undefined
+  let abExecutionProfiles = false
 
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]
@@ -285,10 +362,77 @@ function parseEvalArgs(rest: string[]): CliAction {
     else if (arg === '--against') against = rest[++i]
     else if (inline('--against') !== undefined) against = inline('--against')
     else if (arg === '--ab-profiles') abProfiles = true
+    else if (arg === '--execution-profile') executionProfile = parseExecutionProfileFlag(rest[++i])
+    else if (inline('--execution-profile') !== undefined)
+      executionProfile = parseExecutionProfileFlag(inline('--execution-profile'))
+    else if (arg === '--ab-execution-profiles') abExecutionProfiles = true
     else throw new Error(`eval: unknown argument: ${arg}`)
   }
 
-  return { kind: 'eval', corpus, id, model, k, out, against, abProfiles }
+  const comparisons = Number(Boolean(against)) + Number(abProfiles) + Number(abExecutionProfiles)
+  if (comparisons > 1) {
+    throw new Error('eval: choose only one comparison mode: --against, --ab-profiles, or --ab-execution-profiles')
+  }
+  return { kind: 'eval', corpus, id, model, k, out, against, abProfiles, executionProfile, abExecutionProfiles }
+}
+
+const LEARNING_SPLITS: LearningSplit[] = ['train', 'length-transfer', 'domain-transfer']
+
+function parseCurriculumArgs(rest: string[]): CliAction {
+  let seed = 1
+  let split: LearningSplit | undefined
+  let executionProfile: ExecutionProfile | undefined
+  let maxOutputTokens: number | undefined
+  let model = defaultModel()
+  let out: string | undefined
+  let list = false
+
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i]
+    const inline = (name: string): string | undefined =>
+      arg.startsWith(`${name}=`) ? arg.slice(name.length + 1) : undefined
+
+    if (arg === '--seed') seed = parseSeed(rest[++i])
+    else if (inline('--seed') !== undefined) seed = parseSeed(inline('--seed'))
+    else if (arg === '--split') split = parseLearningSplit(rest[++i])
+    else if (inline('--split') !== undefined) split = parseLearningSplit(inline('--split'))
+    else if (arg === '-m' || arg === '--model') model = rest[++i] ?? model
+    else if (inline('--model') !== undefined) model = inline('--model') as string
+    else if (arg === '--out') out = rest[++i]
+    else if (inline('--out') !== undefined) out = inline('--out')
+    else if (arg === '--execution-profile') executionProfile = parseExecutionProfileFlag(rest[++i])
+    else if (inline('--execution-profile') !== undefined)
+      executionProfile = parseExecutionProfileFlag(inline('--execution-profile'))
+    else if (arg === '--max-output-tokens') maxOutputTokens = parsePositiveInt('--max-output-tokens', rest[++i])
+    else if (inline('--max-output-tokens') !== undefined)
+      maxOutputTokens = parsePositiveInt('--max-output-tokens', inline('--max-output-tokens'))
+    else if (arg === '--list') list = true
+    else throw new Error(`curriculum: unknown argument: ${arg}`)
+  }
+
+  return { kind: 'curriculum', seed, split, executionProfile, maxOutputTokens, model, out, list }
+}
+
+function parseSeed(value: string | undefined): number {
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 0 || n > 0xffffffff) {
+    throw new Error(`curriculum: --seed expects a uint32, got '${value ?? ''}'`)
+  }
+  return n
+}
+
+function parseLearningSplit(value: string | undefined): LearningSplit {
+  if (!value || !LEARNING_SPLITS.includes(value as LearningSplit)) {
+    throw new Error(`curriculum: invalid split: ${value ?? ''}. valid: ${LEARNING_SPLITS.join(', ')}`)
+  }
+  return value as LearningSplit
+}
+
+function parseExecutionProfileFlag(value: string | undefined): ExecutionProfile {
+  if (!isExecutionProfile(value)) {
+    throw new Error(`--execution-profile: expected direct or rlm, got '${value ?? ''}'`)
+  }
+  return value
 }
 
 const REGRESSION_CATEGORIES: RegressionCategory[] = ['harness', 'browser']

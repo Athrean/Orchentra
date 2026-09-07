@@ -13,12 +13,13 @@ import {
   buildScoreboard,
   discoverEvals,
   metricsFromManifest,
+  parseTraceManifest,
   runEvalDirs,
   type EvalMeta,
   type GradeResult,
   type HarnessRunner,
-  type TraceManifest,
   type TrialMetrics,
+  type ExecutionProfile,
 } from '@orchentra/cli-core'
 import { CLI_VERSION } from '../version'
 
@@ -28,6 +29,7 @@ export interface RunEvalArgs {
   model: string
   k?: number
   out?: string
+  executionProfile?: ExecutionProfile
   /** Injected harness (tests); defaults to the real subprocess harness. */
   harness?: HarnessRunner
   /** Injected grader (tests); defaults to cli-core's real subprocess grader. */
@@ -56,8 +58,20 @@ export async function runEvalCommand(args: RunEvalArgs): Promise<number> {
   }
 
   const harness = args.harness ?? subprocessHarness()
-  const runs = await runEvalDirs(evalDirs, { harness, model: args.model, k: args.k, grade: args.grade })
-  const board = buildScoreboard(runs, { model: args.model, harness: CLI_VERSION, corpus: corpusDir })
+  const executionProfile = args.executionProfile ?? 'direct'
+  const runs = await runEvalDirs(evalDirs, {
+    harness,
+    model: args.model,
+    executionProfile,
+    k: args.k,
+    grade: args.grade,
+  })
+  const board = buildScoreboard(runs, {
+    model: args.model,
+    harness: CLI_VERSION,
+    corpus: corpusDir,
+    executionProfile,
+  })
   const json = `${JSON.stringify(board, null, 2)}\n`
 
   if (args.out) {
@@ -80,11 +94,21 @@ export async function runEvalCommand(args: RunEvalArgs): Promise<number> {
  * overrides for same-binary A/B runs (profiled vs generic model profiles).
  */
 export function subprocessHarness(binEntry = process.argv[1] ?? '', env?: Record<string, string>): HarnessRunner {
-  return ({ taskPrompt, workdir, model }) =>
+  return ({ taskPrompt, workdir, model, executionProfile }) =>
     new Promise<TrialMetrics>((resolvePromise) => {
       const child = spawn(
         process.execPath,
-        [binEntry, '-p', taskPrompt, '-m', model, '--permission-mode', 'workspace-write'],
+        [
+          binEntry,
+          '-p',
+          taskPrompt,
+          '-m',
+          model,
+          '--permission-mode',
+          'workspace-write',
+          '--execution-profile',
+          executionProfile,
+        ],
         { cwd: workdir, stdio: 'ignore', env: env ? { ...process.env, ...env } : undefined },
       )
       child.on('close', () => resolvePromise(readTrialMetrics(workdir)))
@@ -111,7 +135,7 @@ function readTrialMetrics(workdir: string): TrialMetrics {
   }
   if (!newest) return erroredMetrics()
   try {
-    return metricsFromManifest(JSON.parse(readFileSync(newest.path, 'utf8')) as TraceManifest)
+    return metricsFromManifest(parseTraceManifest(JSON.parse(readFileSync(newest.path, 'utf8'))))
   } catch {
     return erroredMetrics()
   }

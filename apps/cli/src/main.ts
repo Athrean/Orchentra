@@ -69,6 +69,24 @@ async function main(argv: string[]): Promise<number> {
       })
     }
 
+    case 'trace': {
+      const { runTraceCommand } = await import('./commands/run-trace')
+      return runTraceCommand(action)
+    }
+
+    case 'curriculum': {
+      const { runCurriculumCommand } = await import('./commands/run-curriculum')
+      return runCurriculumCommand({
+        seed: action.seed,
+        split: action.split,
+        executionProfile: action.executionProfile,
+        maxOutputTokens: action.maxOutputTokens,
+        model: action.model,
+        out: action.out,
+        list: action.list,
+      })
+    }
+
     case 'prompt': {
       const { runRepl } = await import('./repl')
       return runRepl({
@@ -137,4 +155,14 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-main(process.argv).then((code) => process.exit(code))
+/**
+ * Bun's `process.exit()` drops stdout still queued in the pipe buffer, which
+ * silently truncated large piped output (a scoreboard, a trajectory tree, a
+ * learning export read through `| jq`) at ~64 KiB with a zero exit code.
+ * Setting `exitCode` lets the loop drain first. The unref'd fallback only fires
+ * if some other handle is still holding the process open.
+ */
+main(process.argv).then((code) => {
+  process.exitCode = code
+  setTimeout(() => process.exit(code), 2000).unref()
+})

@@ -68,3 +68,5 @@ skills-lock.json
 # Heavy media kept locally for a future animated hero bg — not committed
 back-frames
 *.mp4
+.omo/
+.serena/

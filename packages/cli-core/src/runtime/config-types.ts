@@ -63,6 +63,12 @@ export interface RuntimeFeatureConfig {
   rlm: RlmFeatureConfig
   /** Inference architecture. `direct` remains the default/control. */
   executionProfile: ExecutionProfile
+  /**
+   * Per-turn output cap. Reasoning models spend this budget before emitting
+   * any answer, so a fixed low cap silently truncates them to empty output on
+   * large inputs. Undefined keeps the runtime default.
+   */
+  maxOutputTokens: number | undefined
 }
 
 export type ResolvedPermissionMode = 'read-only' | 'workspace-write' | 'danger-full-access'

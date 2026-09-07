@@ -3,7 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { HarnessRunner, HarnessTrialInput, ScoreboardDiff, TrialMetrics } from '@orchentra/cli-core'
-import { runEvalDiffCommand, runEvalProfilesAbCommand } from '../src/commands/run-eval-diff'
+import {
+  runEvalDiffCommand,
+  runEvalExecutionProfilesAbCommand,
+  runEvalProfilesAbCommand,
+} from '../src/commands/run-eval-diff'
 
 const zeroMetrics: TrialMetrics = {
   billedTokens: 50,
@@ -120,6 +124,8 @@ describe('orchentra eval --ab-profiles → generic vs profiled diff (M5 A/B harn
       expect(diff.before).toEndWith('#generic')
       expect(diff.after).toEndWith('#profiled')
       expect(diff.model).toBe('m')
+      expect(diff.beforeExecutionProfile).toBe('direct')
+      expect(diff.afterExecutionProfile).toBe('direct')
       // The scoreboard diff is the justification artifact: a profiled win
       // shows up as a fix on the same corpus, same k.
       expect(diff.fixes).toContain('coding-bugfix-off-by-one')
@@ -135,6 +141,50 @@ describe('orchentra eval --ab-profiles → generic vs profiled diff (M5 A/B harn
       model: 'm',
       harnessGeneric: brokenBuild,
       harnessProfiled: fixedBuild,
+      stderr: () => {},
+    })
+    expect(code).toBe(1)
+  })
+})
+
+describe('orchentra eval --ab-execution-profiles → direct vs RLM diff', () => {
+  test('same corpus/model/k both ways; only the named execution profile changes', async () => {
+    const corpus = await makeCorpus()
+    try {
+      const out = capture()
+      const code = await runEvalExecutionProfilesAbCommand({
+        corpus,
+        id: 'coding-bugfix-off-by-one',
+        model: 'm',
+        k: 1,
+        harnessDirect: brokenBuild,
+        harnessRlm: fixedBuild,
+        stdout: out.sink,
+        stderr: () => {},
+      })
+      expect(code).toBe(0)
+      const diff = JSON.parse(out.text()) as ScoreboardDiff
+      expect(diff.before).toEndWith('#direct')
+      expect(diff.after).toEndWith('#rlm')
+      expect(diff.beforeExecutionProfile).toBe('direct')
+      expect(diff.afterExecutionProfile).toBe('rlm')
+      const evidence = JSON.parse(out.text())
+      expect(evidence.measurements.direct.version).toBe(3)
+      expect(evidence.measurements.rlm.evals[0].trialResults).toBeArray()
+      expect(evidence.promotion.eligible).toBe(false)
+      expect(evidence.promotion.reasons).toContain('live_provider_evidence_missing')
+      expect(diff.fixes).toContain('coding-bugfix-off-by-one')
+    } finally {
+      await rm(corpus, { recursive: true, force: true })
+    }
+  }, 30000)
+
+  test('missing corpus → exit 1', async () => {
+    const code = await runEvalExecutionProfilesAbCommand({
+      corpus: '/nonexistent/xyz',
+      model: 'm',
+      harnessDirect: brokenBuild,
+      harnessRlm: fixedBuild,
       stderr: () => {},
     })
     expect(code).toBe(1)

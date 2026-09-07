@@ -25,8 +25,7 @@ export interface TranscriptProps {
 }
 
 type StaticItem =
-  | { readonly kind: 'banner'; readonly props: BannerOptions }
-  | { readonly kind: 'row'; readonly row: TranscriptRow }
+  { readonly kind: 'banner'; readonly props: BannerOptions } | { readonly kind: 'row'; readonly row: TranscriptRow }
 
 /**
  * Append-only transcript. Completed rows go through `<Static>` (Ink prints

@@ -28,6 +28,7 @@ export interface HookRunnerOptions {
 }
 
 export interface HookRunner {
+  allowsSpeculativeTool(toolName: string): boolean
   firePreToolUse(toolName: string, args: unknown): Promise<HookFireResult>
   firePostToolUse(toolName: string, args: unknown, resultOrError: string | Error): Promise<HookFireResult>
   /**
@@ -58,6 +59,12 @@ export function createHookRunner(options: HookRunnerOptions): HookRunner {
   }
 
   return {
+    allowsSpeculativeTool(toolName): boolean {
+      return (
+        matchHooks(config, 'pre_tool_use', toolName).length === 0 &&
+        matchHooks(config, 'post_tool_use', toolName).length === 0
+      )
+    },
     async firePreToolUse(toolName, args): Promise<HookFireResult> {
       const hooks = matchHooks(config, 'pre_tool_use', toolName)
       if (hooks.length === 0) return NOOP_RESULT
