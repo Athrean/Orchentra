@@ -157,6 +157,8 @@ export function createEnforcer(): Enforcer {
 
       if (isReadAllowed(ctx, toolCall)) return { kind: 'allow' }
 
+      if (modeGrants(ctx, toolCall)) return { kind: 'allow' }
+
       if (ctx.store) {
         const verdict = ctx.store.decide(toolCall.name, toolCall.input)
         if (verdict === 'deny') return { kind: 'deny', reason: 'denied by stored rule' }
@@ -207,6 +209,27 @@ function checkFileWrite(ctx: EnforcerContext, toolCall: ToolCall): Decision | nu
     return { kind: 'deny', reason: `path '${path}' is outside workspace root '${ctx.workspaceRoot}'` }
   }
   return null
+}
+
+/**
+ * Whether the active mode authorizes this call on its own, the way
+ * `danger-full-access` is documented to and `workspace-write` is named for.
+ * Everything that must outrank a mode grant has already run by the time this
+ * is consulted: destructive bash patterns, the read-only and outside-workspace
+ * write denials, hook deny/ask, and policy deny/ask. A per-tool requirement
+ * above the active mode still forces the escalation prompt.
+ *
+ * `workspace-write` grants file writes because `checkFileWrite` has already
+ * confined them to the workspace root. It deliberately does not grant
+ * arbitrary `bash`: a shell command cannot be bounded to the workspace the way
+ * a write path can, so it stays prompt-gated unless `isBashReadOnly` cleared it
+ * earlier.
+ */
+function modeGrants(ctx: EnforcerContext, toolCall: ToolCall): boolean {
+  if (needsEscalation(ctx, toolCall)) return false
+  if (ctx.mode === 'allow' || ctx.mode === 'danger-full-access') return true
+  if (ctx.mode === 'workspace-write') return WRITE_TOOLS.has(normalizeToolName(toolCall.name))
+  return false
 }
 
 function needsEscalation(ctx: EnforcerContext, toolCall: ToolCall): boolean {
