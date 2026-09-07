@@ -35,6 +35,7 @@ describe('OpenAiCompatProvider effort', () => {
     await drain(provider.stream(request({ effort: 'high' })))
 
     expect(bodies[0]).toMatchObject({ reasoning_effort: 'high' })
+    expect(bodies[0]).toMatchObject({ stream_options: { include_usage: true } })
   })
 
   test('does not send reasoning_effort to non-OpenAI compatible providers', async () => {
@@ -114,6 +115,43 @@ describe('OpenAiCompatProvider local (Ollama) preset', () => {
     await drain(provider.stream(request({ model: 'ollama/qwen2.5-coder', effort: 'high' })))
 
     expect(bodies[0]).not.toHaveProperty('reasoning_effort')
+    expect(bodies[0]).not.toHaveProperty('stream_options')
+  })
+})
+
+describe('OpenAiCompatProvider cache accounting', () => {
+  const originalFetch = globalThis.fetch
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  test('reports cached prompt tokens as a disjoint category', async () => {
+    const sse = [
+      'data: {"model":"gpt-5","choices":[{"delta":{"content":"ok"}}]}',
+      'data: {"model":"gpt-5","choices":[],"usage":{"prompt_tokens":100,"completion_tokens":5,"total_tokens":105,"prompt_tokens_details":{"cached_tokens":80}}}',
+      'data: [DONE]',
+      '',
+    ].join('\n\n')
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(sse))
+            controller.close()
+          },
+        }),
+      }) as Response) as typeof globalThis.fetch
+
+    const provider = new OpenAiCompatProvider(OPENAI_CONFIG, 'key', 'https://example.test/v1')
+    const events: Array<{ kind: string; usage?: unknown }> = []
+    for await (const event of provider.stream(request())) events.push(event)
+    expect(events.find((event) => event.kind === 'usage' && event.usage)).toMatchObject({
+      cacheReadReported: true,
+      usage: { inputTokens: 20, outputTokens: 5, cacheReadTokens: 80, cacheCreationTokens: 0 },
+    })
   })
 })
 
@@ -182,6 +220,24 @@ describe('OpenAiCompatProvider model provenance', () => {
     const provider = new OpenAiCompatProvider(LOCAL_CONFIG)
     const text = await collectText(provider.stream(request({ model: 'ollama/llama3' })))
     expect(text).toBe('ok')
+  })
+
+  test('rejects mismatched provenance before attributing a usage-only chunk', async () => {
+    globalThis.fetch = streamFetch(
+      [
+        'data: {"model":"gpt-5.5","choices":[],"usage":{"prompt_tokens":100,"completion_tokens":5}}',
+        'data: [DONE]',
+        '',
+      ].join('\n\n'),
+    )
+    const provider = new OpenAiCompatProvider(OPENAI_CONFIG, 'key', 'https://example.test/v1')
+    const events: string[] = []
+    await expect(
+      (async () => {
+        for await (const event of provider.stream(request({ model: 'gpt-5' }))) events.push(event.kind)
+      })(),
+    ).rejects.toMatchObject({ name: 'ModelProvenanceError' })
+    expect(events).toEqual([])
   })
 })
 

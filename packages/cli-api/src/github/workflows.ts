@@ -1,15 +1,7 @@
 import type { GitHubClient } from './octokit'
 
 export type WorkflowConclusion =
-  | 'success'
-  | 'failure'
-  | 'cancelled'
-  | 'skipped'
-  | 'timed_out'
-  | 'action_required'
-  | 'neutral'
-  | 'stale'
-  | null
+  'success' | 'failure' | 'cancelled' | 'skipped' | 'timed_out' | 'action_required' | 'neutral' | 'stale' | null
 
 export interface WorkflowRun {
   readonly id: number

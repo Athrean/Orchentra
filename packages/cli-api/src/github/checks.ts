@@ -1,13 +1,7 @@
 import type { GitHubClient } from './octokit'
 
 export type CheckConclusion =
-  | 'success'
-  | 'failure'
-  | 'neutral'
-  | 'cancelled'
-  | 'timed_out'
-  | 'action_required'
-  | 'skipped'
+  'success' | 'failure' | 'neutral' | 'cancelled' | 'timed_out' | 'action_required' | 'skipped'
 
 export interface CreateCheckRunInput {
   readonly name: string

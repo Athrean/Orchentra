@@ -105,6 +105,7 @@ export class GeminiProvider implements Provider {
     let inputTokens = 0
     let outputTokens = 0
     let cacheReadTokens = 0
+    let cacheReadReported = false
     let stopReason: StopReason = 'end_turn'
     let toolCounter = 0
     let sawToolCall = false
@@ -132,6 +133,7 @@ export class GeminiProvider implements Provider {
             inputTokens = chunk.usageMetadata.promptTokenCount ?? inputTokens
             outputTokens = chunk.usageMetadata.candidatesTokenCount ?? outputTokens
             cacheReadTokens = chunk.usageMetadata.cachedContentTokenCount ?? cacheReadTokens
+            cacheReadReported ||= chunk.usageMetadata.cachedContentTokenCount !== undefined
           }
 
           const candidate = chunk.candidates?.[0]
@@ -163,7 +165,15 @@ export class GeminiProvider implements Provider {
 
       yield {
         kind: 'usage',
-        usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens: 0 },
+        cacheReadReported,
+        // Gemini's cachedContentTokenCount is a subset of promptTokenCount;
+        // keep Orchentra's accounting categories disjoint.
+        usage: {
+          inputTokens: Math.max(0, inputTokens - cacheReadTokens),
+          outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens: 0,
+        },
       }
       yield { kind: 'finish', stopReason }
     } finally {

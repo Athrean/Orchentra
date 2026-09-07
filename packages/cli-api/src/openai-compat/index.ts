@@ -3,6 +3,7 @@ export {
   XAI_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
+  ZEN_CONFIG,
   DASHSCOPE_CONFIG,
   LOCAL_CONFIG,
 } from './client'

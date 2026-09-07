@@ -25,6 +25,12 @@ export interface OpenAiCompatConfig {
    * bare `llama3` it actually knows.
    */
   modelPrefix?: string
+  /**
+   * Whether to require the server to echo the requested model id. Defaults to
+   * off when a `modelPrefix` is set (local servers rewrite tags), but a hosted
+   * gateway that routes by prefix still echoes ids verbatim and keeps the check.
+   */
+  enforceProvenance?: boolean
 }
 
 const XAI_CONFIG: OpenAiCompatConfig = {
@@ -70,7 +76,19 @@ const LOCAL_CONFIG: OpenAiCompatConfig = {
   modelPrefix: 'ollama/',
 }
 
-export { XAI_CONFIG, OPENAI_CONFIG, OPENROUTER_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG }
+// opencode's Zen gateway: one OpenAI-compatible endpoint fronting many
+// families, including free/contributor tiers. Routed by an explicit `zen/`
+// prefix so a bare model id never silently lands on someone else's credits.
+const ZEN_CONFIG: OpenAiCompatConfig = {
+  providerName: 'Zen',
+  apiKeyEnv: 'ZEN_API_KEY',
+  baseUrlEnv: 'ZEN_BASE_URL',
+  defaultBaseUrl: 'https://opencode.ai/zen/v1',
+  modelPrefix: 'zen/',
+  enforceProvenance: true,
+}
+
+export { XAI_CONFIG, OPENAI_CONFIG, OPENROUTER_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG, ZEN_CONFIG }
 
 export class OpenAiCompatProvider implements Provider {
   private readonly apiKey: string
@@ -97,8 +115,12 @@ export class OpenAiCompatProvider implements Provider {
     // there — enforce the `sent === returned` check only for hosted providers,
     // which echo the requested model id verbatim. Local stays request-side
     // verified only (no fake certainty).
-    const enforceProvenance = !this.config.modelPrefix
-    const body = buildRequestBody({ ...request, model: wireModel }, supportsReasoningEffort(this.config, wireModel))
+    const enforceProvenance = this.config.enforceProvenance ?? !this.config.modelPrefix
+    const body = buildRequestBody(
+      { ...request, model: wireModel },
+      supportsReasoningEffort(this.config, wireModel),
+      this.config.providerName === 'OpenAI',
+    )
 
     const response = await fetch(url, {
       method: 'POST',
@@ -153,14 +175,28 @@ export class OpenAiCompatProvider implements Provider {
         }
 
         const chunk = safeParseJson(data) as OpenAiStreamDelta | null
-        if (!chunk?.choices?.length) continue
-
-        // Verify provenance on the first chunk that reports a model — before any
-        // text is yielded — so a rerouted response can't leak as the selected one.
-        if (enforceProvenance && !providerVerified && chunk.model) {
+        // Usage-only terminal chunks can report provenance too. Validate
+        // before emitting either content or model-attributed accounting.
+        if (enforceProvenance && !providerVerified && chunk?.model) {
           assertModelProvenance(wireModel, chunk.model, this.config.providerName)
           providerVerified = true
         }
+        if (chunk?.usage) {
+          const cacheReadTokens = chunk.usage.prompt_tokens_details?.cached_tokens ?? 0
+          yield {
+            kind: 'usage',
+            cacheReadReported: chunk.usage.prompt_tokens_details?.cached_tokens !== undefined,
+            usage: {
+              // OpenAI reports cached input as a subset of prompt_tokens;
+              // Orchentra stores disjoint categories to avoid double billing.
+              inputTokens: Math.max(0, (chunk.usage.prompt_tokens ?? 0) - cacheReadTokens),
+              outputTokens: chunk.usage.completion_tokens ?? 0,
+              cacheReadTokens,
+              cacheCreationTokens: 0,
+            },
+          }
+        }
+        if (!chunk?.choices?.length) continue
 
         const choice = chunk.choices[0]
         const delta = choice.delta
@@ -184,24 +220,16 @@ export class OpenAiCompatProvider implements Provider {
             }
           }
         }
-
-        if (chunk.usage) {
-          yield {
-            kind: 'usage',
-            usage: {
-              inputTokens: chunk.usage.prompt_tokens ?? 0,
-              outputTokens: chunk.usage.completion_tokens ?? 0,
-              cacheReadTokens: 0,
-              cacheCreationTokens: 0,
-            },
-          }
-        }
       }
     }
   }
 }
 
-function buildRequestBody(request: ProviderRequest, includeReasoningEffort = false): Record<string, unknown> {
+function buildRequestBody(
+  request: ProviderRequest,
+  includeReasoningEffort = false,
+  includeUsage = false,
+): Record<string, unknown> {
   assertVisionSupport(request.messages, request.model)
   const messages: OpenAiMessage[] = []
 
@@ -219,6 +247,8 @@ function buildRequestBody(request: ProviderRequest, includeReasoningEffort = fal
     messages,
     stream: true,
   }
+
+  if (includeUsage) body.stream_options = { include_usage: true }
 
   if (request.maxOutputTokens) {
     body.max_tokens = request.maxOutputTokens

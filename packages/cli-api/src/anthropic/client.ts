@@ -204,6 +204,7 @@ export class AnthropicProvider implements Provider {
       cache_creation_input_tokens: 0,
       cache_read_input_tokens: 0,
     }
+    let cacheReadReported = false
     let stopReason: StopReason = 'end_turn'
 
     const reader = body.getReader()
@@ -232,6 +233,7 @@ export class AnthropicProvider implements Provider {
               // difference is a routing/contract drift, not a resolved alias.
               assertModelProvenance(requestedModel, event.message?.model, 'anthropic', requestId)
               if (event.message?.usage) {
+                cacheReadReported ||= event.message.usage.cache_read_input_tokens !== undefined
                 lastUsage = mergeUsage(lastUsage, event.message.usage)
               }
               break
@@ -290,6 +292,7 @@ export class AnthropicProvider implements Provider {
 
             case 'message_delta': {
               if (event.usage) {
+                cacheReadReported ||= event.usage.cache_read_input_tokens !== undefined
                 lastUsage = mergeUsage(lastUsage, event.usage)
               }
               if (event.delta?.stop_reason) {
@@ -301,6 +304,7 @@ export class AnthropicProvider implements Provider {
             case 'message_stop': {
               yield {
                 kind: 'usage',
+                cacheReadReported,
                 usage: {
                   inputTokens: lastUsage.input_tokens,
                   outputTokens: lastUsage.output_tokens,
@@ -330,6 +334,7 @@ export class AnthropicProvider implements Provider {
 
       yield {
         kind: 'usage',
+        cacheReadReported,
         usage: {
           inputTokens: lastUsage.input_tokens,
           outputTokens: lastUsage.output_tokens,
