@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import type { ChatMessage, ProviderRequest, ProviderToolSchema } from '@orchentra/cli-core'
 
-import { OpenAiCompatProvider, OPENAI_CONFIG, XAI_CONFIG, LOCAL_CONFIG } from '../src/openai-compat'
+import { OpenAiCompatProvider, OPENAI_CONFIG, XAI_CONFIG, LOCAL_CONFIG, ZEN_CONFIG } from '../src/openai-compat'
 import { convertMessage, convertTool } from '../src/openai-compat/client'
 
 function request(overrides?: Partial<ProviderRequest>): ProviderRequest {
@@ -327,3 +327,22 @@ async function drain(iterable: AsyncIterable<unknown>): Promise<void> {
     void event
   }
 }
+
+test('Zen requests carry the gateway session header the gateway requires', async () => {
+  // The gateway rejects a session-less request with MissingSessionID, which
+  // surfaced as an empty answer and a bare `error` done reason, not as a
+  // provider failure a reader could act on.
+  const seen: Record<string, string>[] = []
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = (async (_url: string, init: RequestInit) => {
+    seen.push(init.headers as Record<string, string>)
+    return new Response(successStream(), { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+  }) as unknown as typeof fetch
+  try {
+    const provider = new OpenAiCompatProvider(ZEN_CONFIG, 'k')
+    await drain(provider.stream(request({ model: 'zen/glm-5.2' })))
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+  expect(seen[0]?.['x-opencode-session']).toMatch(/^ses_[0-9a-f]{32}$/)
+})

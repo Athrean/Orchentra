@@ -69,6 +69,7 @@ export {
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
   ZEN_CONFIG,
+  ZEN_RESPONSES_CONFIG,
   DASHSCOPE_CONFIG,
   LOCAL_CONFIG,
   type OpenAiCompatConfig,
@@ -130,3 +131,5 @@ export {
   type PullRequestRef,
   type CreatePullRequestInput,
 } from './github'
+
+export { ResponsesProvider, buildResponsesBody, type ResponsesConfig } from './responses/index'

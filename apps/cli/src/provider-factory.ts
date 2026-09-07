@@ -7,6 +7,9 @@ import {
   OpenAiCompatProvider,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
+  ResponsesProvider,
+  ZEN_CONFIG,
+  ZEN_RESPONSES_CONFIG,
   XAI_CONFIG,
 } from '@orchentra/cli-api'
 import { DEFAULT_MODEL_ID, DEFAULT_OPUS_MODEL_ID, DEFAULT_HAIKU_MODEL_ID } from './model-catalog'
@@ -53,6 +56,8 @@ export function createProvider(model: string): CreatedProvider {
       return { providerName, provider: new OpenAiCompatProvider(XAI_CONFIG) }
     case 'dashscope':
       return { providerName, provider: new OpenAiCompatProvider(DASHSCOPE_CONFIG) }
+    case 'zen':
+      return { providerName, provider: zenProvider(model) }
     case 'local':
       return { providerName, provider: new OpenAiCompatProvider(LOCAL_CONFIG) }
     case 'gemini':
@@ -60,6 +65,23 @@ export function createProvider(model: string): CreatedProvider {
     case 'anthropic':
       return { providerName, provider: new AnthropicProvider() }
   }
+}
+
+/**
+ * The Zen gateway serves each family on its own endpoint. GPT/Grok/Muse Spark
+ * are Responses-only; DeepSeek/GLM/Kimi/MiniMax and the free tier speak
+ * chat/completions. Claude/Qwen (Anthropic `/messages`) and Gemini (Google
+ * `/models/*`) are not wired yet, and saying so beats an opaque gateway error.
+ */
+function zenProvider(model: string): Provider {
+  const id = model.replace(/^zen\//i, '')
+  if (/^(gpt-|grok-|muse-spark-)/i.test(id)) return new ResponsesProvider(ZEN_RESPONSES_CONFIG)
+  if (/^(claude-|qwen|gemini-)/i.test(id)) {
+    throw new Error(
+      `zen/${id} is served on an endpoint Orchentra does not implement yet (Anthropic messages or Google). Use a GPT, Grok, Muse Spark, DeepSeek, GLM, Kimi, MiniMax, or free-tier model id.`,
+    )
+  }
+  return new OpenAiCompatProvider(ZEN_CONFIG)
 }
 
 export function thinkingTokenBudgetForEffort(effort: EffortTier): number {

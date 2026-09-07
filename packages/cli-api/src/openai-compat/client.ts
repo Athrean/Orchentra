@@ -12,6 +12,9 @@ import type { OpenAiContentPart, OpenAiMessage, OpenAiToolCall, OpenAiToolDefini
 import { getCredential, type ProviderKey } from '../credential-store'
 import { parseToolArguments } from '../tool-arguments'
 import { assertModelProvenance } from '../model-provenance'
+import { newSessionId } from '../session-id'
+import { isRetryableStatus } from '../errors'
+import { fetchWithRetry } from '../retry'
 
 export interface OpenAiCompatConfig {
   providerName: string
@@ -31,6 +34,13 @@ export interface OpenAiCompatConfig {
    * gateway that routes by prefix still echoes ids verbatim and keeps the check.
    */
   enforceProvenance?: boolean
+  /**
+   * Header carrying a per-conversation routing id. The Zen gateway rejects a
+   * request without one ("Request is missing x-opencode-session and cannot be
+   * routed efficiently"), and the id is what gives a conversation cache
+   * affinity, so it is generated once per provider instance, not per request.
+   */
+  sessionHeader?: string
 }
 
 const XAI_CONFIG: OpenAiCompatConfig = {
@@ -86,14 +96,26 @@ const ZEN_CONFIG: OpenAiCompatConfig = {
   defaultBaseUrl: 'https://opencode.ai/zen/v1',
   modelPrefix: 'zen/',
   enforceProvenance: true,
+  sessionHeader: 'x-opencode-session',
 }
 
 export { XAI_CONFIG, OPENAI_CONFIG, OPENROUTER_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG, ZEN_CONFIG }
+
+/** Same gateway and key, reached at `/responses` for the families served there. */
+export const ZEN_RESPONSES_CONFIG = {
+  providerName: 'Zen',
+  apiKeyEnv: 'ZEN_API_KEY',
+  baseUrlEnv: 'ZEN_BASE_URL',
+  defaultBaseUrl: 'https://opencode.ai/zen/v1',
+  modelPrefix: 'zen/',
+  sessionHeader: 'x-opencode-session',
+}
 
 export class OpenAiCompatProvider implements Provider {
   private readonly apiKey: string
   private readonly baseUrl: string
   private readonly config: OpenAiCompatConfig
+  private readonly sessionId = newSessionId()
 
   constructor(config: OpenAiCompatConfig, apiKey?: string, baseUrl?: string) {
     this.config = config
@@ -122,15 +144,21 @@ export class OpenAiCompatProvider implements Provider {
       this.config.providerName === 'OpenAI',
     )
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: request.signal,
-    })
+    const response = await fetchWithRetry(
+      () =>
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+            ...(this.config.sessionHeader ? { [this.config.sessionHeader]: this.sessionId } : {}),
+          },
+          body: JSON.stringify(body),
+          signal: request.signal,
+        }),
+      isRetryableStatus,
+      { ...(request.signal ? { signal: request.signal } : {}) },
+    )
 
     if (!response.ok) {
       const text = await response.text().catch(() => '')
