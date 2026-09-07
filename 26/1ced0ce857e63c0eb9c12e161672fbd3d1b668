@@ -1,0 +1,151 @@
+bun.lock
+  s_3c801265ec4edd::t_9707be648a0372 23,108-110,230-239,954-957,1156-1157,1230-1231
+packages/cli-core/package.json
+  s_3c801265ec4edd::t_9048e2c4714638 22-24
+packages/cli-core/src/evals/learning-curriculum.ts
+  s_27c10fe9731fec::t_5d0aa88d318b98 1-121
+packages/cli-core/src/evals/learning-rewards.ts
+  s_3c801265ec4edd::t_54b9cc2c058d9a 1-150
+packages/cli-core/src/evals/runner.ts
+  s_6712c90ba5505e::t_a47cf359a7ad5e 14,23-24,34-38,69
+packages/cli-core/src/evals/scoreboard.ts
+  s_6712c90ba5505e::t_d72416aa33115f 8-9,23,59,66,70,77-90,110-111,145-146
+packages/cli-core/src/memory/types.ts
+  s_27c10fe9731fec::t_0744c3f10db13c 2
+packages/cli-core/src/render/graph-diff.ts
+  s_27c10fe9731fec::t_47d02211f84225 34
+packages/cli-core/src/runtime/context-store.ts
+  s_3c801265ec4edd::t_835a0a7a1f5ff8 1-429
+packages/cli-core/src/runtime/conversation.ts
+  s_3c801265ec4edd::t_c807024d712a8b 6,13,25,27,44-51,54-79,114-119,192-201,206-207,220,226,261-266,274-291,331,334-338,341-346,351-353,359-364,383-449,476-482,486-524,584-591,608,776,778-801,803,815-825,883,888,904,908-911,920-924,946-949,955,960-974,978,997-998,1034,1078-1094,1107-1445,1552,1568-1571,1643-1649,1683-1684,1690,1692,1702-1704,1729-1749
+packages/cli-core/src/runtime/events.ts
+  s_3c801265ec4edd::t_16b9ee66a448a1 105-136,242-259,289-292,304-306
+packages/cli-core/src/runtime/model-functions.ts
+  s_27c10fe9731fec::t_a07ccb8b112667 1-485
+packages/cli-core/src/runtime/model-profile.ts
+  s_27c10fe9731fec::t_7fcb154fd2fb2a 19,85-87
+packages/cli-core/src/runtime/optimization.ts
+  s_6712c90ba5505e::t_a78d22b3ddf7b3 1-67
+packages/cli-core/src/runtime/permissions.ts
+  s_27c10fe9731fec::t_445329bb60d20c 53
+packages/cli-core/src/runtime/program-capabilities.ts
+  s_6712c90ba5505e::t_c95955c25ecbc0 1-116
+packages/cli-core/src/runtime/skills/frontmatter.ts
+  s_27c10fe9731fec::t_b99af3d2950673 2
+packages/cli-core/src/runtime/skills/validator.ts
+  s_27c10fe9731fec::t_c69470ee1ee1d7 9
+packages/cli-core/src/runtime/speculative-tools.ts
+  s_3c801265ec4edd::t_797839c726aceb 1-252
+packages/cli-core/src/runtime/tools.ts
+  s_3c801265ec4edd::t_c3815e56f0a6bd 9-10,138-141,163-197,203-204,211-212
+packages/cli-core/src/runtime/trace.ts
+  s_3c801265ec4edd::t_e906ace1957e82 1,8,10-11,57-59,69-70,73-78,123-135,165-166,173-185,189,199-204,209,212,217
+packages/cli-core/src/runtime/trajectory.ts
+  s_3c801265ec4edd::t_9867fc83fdf683 1-221
+packages/cli-core/tests/context-store.test.ts
+  s_3c801265ec4edd::t_6c367338bdb55c 1-140
+packages/cli-core/tests/evals/learning-curriculum.test.ts
+  s_6712c90ba5505e::t_b3296669bb6579 1-95
+packages/cli-core/tests/evals/learning.test.ts
+  s_3c801265ec4edd::t_6c6f1e043fe577 1-198
+packages/cli-core/tests/evals/promotion.test.ts
+  s_6712c90ba5505e::t_0533f7c85c4ca8 1-114
+packages/cli-core/tests/graph-diff.test.ts
+  s_27c10fe9731fec::t_35cb8e1ea0f7c4 81
+packages/cli-core/tests/model-functions.test.ts
+  s_27c10fe9731fec::t_4f8e9b4cedff4b 1-210
+packages/cli-core/tests/model-profile.test.ts
+  s_27c10fe9731fec::t_2f4e046fbc6d41 21-22
+packages/cli-core/tests/optimization.test.ts
+  s_6712c90ba5505e::t_5a35423c3d3081 1-37
+packages/cli-core/tests/rlm-model-functions.integration.test.ts
+  s_3c801265ec4edd::t_9c3c792f50a2fc 1-496
+packages/cli-core/tests/speculative-tools.test.ts
+  s_3c801265ec4edd::t_d6032535817d23 1-154
+packages/cli-core/tests/trace.test.ts
+  s_3c801265ec4edd::t_143e0c4bfd579c 17-18,25,27-31,72-79
+packages/cli-core/tests/trajectory.test.ts
+  s_3c801265ec4edd::t_8b8f01be9f91c5 1-158
+packages/cli-core/src/evals/index.ts
+  s_6712c90ba5505e::t_130efb064f28c0 7-10
+packages/cli-core/src/evals/learning-export.ts
+  s_6712c90ba5505e::t_69401ce3d8f812 1-168
+packages/cli-core/src/evals/promotion.ts
+  s_6712c90ba5505e::t_28929bf52869f2 1-109
+packages/cli-core/src/evals/types.ts
+  s_6712c90ba5505e::t_2570efe2d574e7 8-9,35-37,55,83-84,116,121
+packages/cli-core/src/runtime/budget.ts
+  s_6712c90ba5505e::t_9ea515d5c64397 32,75,77-78,83-91,131-135,137-138
+packages/cli-core/src/runtime/config-types.ts
+  s_6712c90ba5505e::t_6010d6111f2bc0 3,47-51,63-65
+packages/cli-core/src/runtime/config.ts
+  s_6712c90ba5505e::t_215eec16d26c5d 16,21,26-30,125-126,130-140
+packages/cli-core/src/runtime/execution-profile.ts
+  s_6712c90ba5505e::t_0c6cf91f0ea2b1 1-49
+packages/cli-core/src/runtime/hooks.ts
+  s_6712c90ba5505e::t_88c030738aa5e8 309-317
+packages/cli-core/src/runtime/index.ts
+  s_6712c90ba5505e::t_e16d8c0102f679 15,24-29,37-56,131-138,155-156,159-169,230,337,339,342,352,410,413-451
+packages/cli-core/src/runtime/program-environment.ts
+  s_6712c90ba5505e::t_9f52b29b2338d4 1-711
+packages/cli-core/src/runtime/program-scheduler.ts
+  s_6712c90ba5505e::t_50d0621def934e 1-128
+packages/cli-core/src/runtime/provider.ts
+  s_6712c90ba5505e::t_1a0692faafdc18 93-94
+packages/cli-core/src/runtime/system-prompt.ts
+  s_6712c90ba5505e::t_fc3b8f4e781224 3-8,14,20-21,25-34
+packages/cli-core/src/runtime/usage.ts
+  s_6712c90ba5505e::t_9b0427c8a1ec42 221-239
+packages/cli-core/tests/budget.test.ts
+  s_6712c90ba5505e::t_765510d7ac67ce 41-62
+packages/cli-core/tests/config.test.ts
+  s_6712c90ba5505e::t_10c58a990eac75 41,71-84,101,105,111,113-128
+packages/cli-core/tests/conversation.test.ts
+  s_6712c90ba5505e::t_8fee4109d8e8d9 5,92-154,177-399,1180-1181,1213,1215-1217
+packages/cli-core/tests/evals/diff.test.ts
+  s_6712c90ba5505e::t_9c231f6283253c 35,74-81
+packages/cli-core/tests/evals/runner.test.ts
+  s_6712c90ba5505e::t_03c84e52210313 170-183
+packages/cli-core/tests/evals/scoreboard.test.ts
+  s_6712c90ba5505e::t_c8c0f2e0570b0c 112,114,117
+packages/cli-core/tests/execution-profile.test.ts
+  s_6712c90ba5505e::t_b7675e4a6d83fa 1-43
+packages/cli-core/tests/program-environment.test.ts
+  s_6712c90ba5505e::t_455ecb2c5467d0 1-421
+packages/cli-core/tests/system-prompt.test.ts
+  s_6712c90ba5505e::t_3f31ae3774f115 2,12,22-42
+packages/cli-core/tests/usage.test.ts
+  s_6712c90ba5505e::t_2421a46443cd66 9,308-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "261ced0ce857e63c0eb9c12e161672fbd3d1b668",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    },
+    "s_3c801265ec4edd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a06363-463f-7713-8afe-053ffe4e17cc",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    },
+    "s_6712c90ba5505e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06363-463f-7713-8afe-053ffe4e17cc",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
