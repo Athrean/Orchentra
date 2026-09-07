@@ -1,0 +1,23 @@
+packages/cli-core/src/runtime/conversation.ts
+  s_27c10fe9731fec::t_8d4de27660791a 724-735
+packages/cli-core/src/runtime/events.ts
+  s_27c10fe9731fec::t_fbdadfa804492c 62-69
+packages/cli-core/tests/conversation.test.ts
+  s_27c10fe9731fec::t_86012caabc2e85 1423-1443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "19d49a7137add5b019df26825bff6ddaef45e528",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
