@@ -1,0 +1,81 @@
+apps/cli/src/commands/run-auth.ts
+  s_27c10fe9731fec::t_a1379f25a51cd3 7-8,10-13,16,24-35,40-42,44,47,62-67,107-109,131,149,170-251
+apps/cli/src/login/state-machine.ts
+  s_27c10fe9731fec::t_8d7fe6c9b4f711 2-3,7-11,18,20-22,28-29,46-66,74-91,99,112-117,159-168,170-192,206,225
+apps/cli/src/provider-factory.ts
+  s_27c10fe9731fec::t_9207244143b0ba 4,6,8-10,57-61,74-85
+apps/cli/src/tui/components/AnthropicLoginCard.tsx
+  s_27c10fe9731fec::t_dbfc4ae6ff4669 1-213
+apps/cli/src/tui/components/CodexLoginCard.tsx
+  s_27c10fe9731fec::t_6ca0e6f963d526 1-133
+apps/cli/src/tui/components/GeminiLoginCard.tsx
+  s_27c10fe9731fec::t_4d58d00c233aca 1-126
+apps/cli/src/tui/components/LoginPickerCard.tsx
+  s_27c10fe9731fec::t_9ab8c537045a0a 8-10,16,18,64-67,74-88,137-149,178-204,231
+apps/cli/src/ui/anthropic-login-flow.ts
+  s_27c10fe9731fec::t_29057cdeefe294 1-205
+apps/cli/src/ui/clipboard.ts
+  s_27c10fe9731fec::t_52ca3bdaac8493 3-28
+apps/cli/tests/run-auth.test.ts
+  s_27c10fe9731fec::t_44c6c65dcd6e8d 10,15-16,21,25,33-37,55,61-80
+packages/cli-api/src/anthropic/claude-code-creds.ts
+  s_27c10fe9731fec::t_eee8af9808d0b1 1-86
+packages/cli-api/src/anthropic/client.ts
+  s_27c10fe9731fec::t_21057cfc1c0ecc 17-18,30-31,38-40,59-61,63-66,70-71,119,122-123,165
+packages/cli-api/src/anthropic/oauth.ts
+  s_27c10fe9731fec::t_7820578e06523b 1-290
+packages/cli-api/src/credential-store.ts
+  s_27c10fe9731fec::t_c4edb4bf8708cd 6-21
+packages/cli-api/src/gemini/antigravity.ts
+  s_27c10fe9731fec::t_a3966d86196a64 1-268
+packages/cli-api/src/gemini/code-assist.ts
+  s_27c10fe9731fec::t_f44eb08b27c3e0 1-323
+packages/cli-api/src/index.ts
+  s_27c10fe9731fec::t_a323cdcefa2f91 7-66
+packages/cli-api/src/keychain.ts
+  s_27c10fe9731fec::t_69fc29f247011f 1-76
+packages/cli-api/src/openai-compat/client.ts
+  s_27c10fe9731fec::t_74865c87d82d6e 102,115
+packages/cli-api/src/openai/codex-backend.ts
+  s_27c10fe9731fec::t_e1bdcc256a61c4 1-423
+packages/cli-api/src/openai/codex-oauth.ts
+  s_27c10fe9731fec::t_d467dd73a862b6 1-447
+packages/cli-api/src/responses/client.ts
+  s_27c10fe9731fec::t_75c97f220d6c76 23,42-46,80-81
+packages/cli-api/tests/antigravity.test.ts
+  s_27c10fe9731fec::t_15c7cdcc474e21 1-96
+packages/cli-api/tests/claude-code-creds.test.ts
+  s_27c10fe9731fec::t_f7d123aaa0f60a 1-129
+packages/cli-api/tests/codex-backend.test.ts
+  s_27c10fe9731fec::t_4f47736a4772a9 1-244
+packages/cli-api/tests/codex-oauth.test.ts
+  s_27c10fe9731fec::t_46762917dfd1eb 1-232
+packages/cli-api/tests/gemini-code-assist.test.ts
+  s_27c10fe9731fec::t_90239716b22592 1-154
+packages/cli-api/tests/keychain.test.ts
+  s_27c10fe9731fec::t_2389b71a86b392 1-92
+packages/cli-api/tests/oauth.test.ts
+  s_27c10fe9731fec::t_4eb821c2d4ec43 1-350
+turbo.json
+  s_27c10fe9731fec::t_c30793b013ae91 6-15,17-18,24-25,27-32,35-38,40,42,44-46,49-53,56
+apps/cli/src/tui/components/AntigravityLoginCard.tsx
+  s_27c10fe9731fec::t_7d8f2513cd81b1 1-136
+apps/cli/tests/login/state-machine.test.ts
+  s_27c10fe9731fec::t_43a533381365e7 2-20,31-38,44-48,54,56-57,61-62,67-92,94-135,147,149,153,163,173,183,194,199-200,202,213,215,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "46d201c5f0998a8a5cd838a5ddf2e0a656d9fe91",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
