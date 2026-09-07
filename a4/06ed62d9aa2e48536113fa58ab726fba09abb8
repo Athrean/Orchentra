@@ -1,0 +1,41 @@
+packages/cli-tools/src/tools/rlm-execute-tool.ts
+  s_6712c90ba5505e::t_992e734d8691e3 1-46
+packages/cli-tools/src/index.ts
+  s_6712c90ba5505e::t_0d92cbc1208c04 72-79
+packages/cli-tools/src/tool-registry.ts
+  s_6712c90ba5505e::t_3c760a157d3b9d 10-11,94-97
+packages/cli-tools/src/tools/context-tools.ts
+  s_6712c90ba5505e::t_c325f06dd5c4e0 1-197
+packages/cli-tools/src/tools/file-read-tool.ts
+  s_6712c90ba5505e::t_f5106fb6eb06be 14-22
+packages/cli-tools/src/tools/glob-tool.ts
+  s_6712c90ba5505e::t_eea43753113a58 13-19
+packages/cli-tools/src/tools/grep-tool.ts
+  s_6712c90ba5505e::t_b195a0baa9139a 21-27
+packages/cli-tools/src/tools/subagent-run.ts
+  s_6712c90ba5505e::t_47acd87729f6fd 12,15,33,35,79,82-86,128,140-153,171-173,178,181,249,253-261
+packages/cli-tools/tests/agent-tool.test.ts
+  s_6712c90ba5505e::t_7727e977f202dc 426-430,433-436,441-444,449-452,458-463,469-477
+packages/cli-tools/tests/context-tools.test.ts
+  s_6712c90ba5505e::t_0bc1451a3e819c 1-54
+packages/cli-tools/tests/rlm-execute-tool.test.ts
+  s_6712c90ba5505e::t_4348e349a3e180 1-410
+packages/cli-tools/tests/tool-registry.test.ts
+  s_6712c90ba5505e::t_67cab5b4cba3f7 9-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a406ed62d9aa2e48536113fa58ab726fba09abb8",
+  "prompts": {},
+  "sessions": {
+    "s_6712c90ba5505e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06363-463f-7713-8afe-053ffe4e17cc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
