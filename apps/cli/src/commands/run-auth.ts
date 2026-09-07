@@ -4,9 +4,16 @@ import {
   clearCredential,
   credentialsPath,
   getCredential,
+  importAntigravityCliAuth,
+  importCodexCliAuth,
   listCredentialProviders,
+  loadClaudeCodeOauth,
+  loginAnthropic,
+  loginAntigravity,
+  loginCodex,
   loginGemini,
   loginWithDeviceFlow,
+  MacKeychain,
   saveCredentialAsync,
   tryLoadKeytar,
   type ProviderKey,
@@ -14,19 +21,30 @@ import {
 import { promptSelect } from '../ui/select'
 import { authStateHint } from './auth-state'
 
-const OAUTH_PROVIDERS: readonly ProviderKey[] = ['gemini', 'github']
-const API_KEY_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope']
-export const LOGIN_PROVIDERS: readonly ProviderKey[] = [...OAUTH_PROVIDERS, ...API_KEY_PROVIDERS]
+/**
+ * Providers signed in through a browser rather than a pasted key. `anthropic`
+ * and `openai` appear here *and* in the API-key list: both accept a
+ * subscription sign-in (Claude Pro/Max, ChatGPT Plus/Pro) or a console key, and
+ * `--api-key` picks the latter without a second provider name.
+ */
+const OAUTH_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'antigravity', 'gemini', 'github']
+const API_KEY_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope', 'zen']
+export const LOGIN_PROVIDERS: readonly ProviderKey[] = [
+  ...OAUTH_PROVIDERS,
+  ...API_KEY_PROVIDERS.filter((p) => !OAUTH_PROVIDERS.includes(p)),
+]
 
 const GITHUB_OAUTH_CLIENT_ID = process.env['ORCHENTRA_GITHUB_OAUTH_CLIENT_ID'] ?? 'Iv1.b507a08c87ecfe98'
 
 const PROVIDER_LABELS: Partial<Record<ProviderKey, string>> = {
-  anthropic: 'Anthropic (Claude)',
-  gemini: 'Gemini (Google)',
+  anthropic: 'Anthropic (Claude Pro/Max or API key)',
+  antigravity: 'Google Antigravity (AI Pro/Ultra)',
+  gemini: 'Gemini (Google API)',
   github: 'GitHub',
-  openai: 'OpenAI',
+  openai: 'OpenAI (ChatGPT Plus/Pro or API key)',
   xai: 'xAI (Grok)',
   dashscope: 'DashScope (Qwen)',
+  zen: 'opencode Zen / Go',
 }
 
 export interface LoginProviderOption {
@@ -41,6 +59,12 @@ export interface LoginIo {
   pickProvider(options: readonly LoginProviderOption[]): Promise<ProviderKey | null>
   promptApiKey(provider: ProviderKey): Promise<string | null>
   openBrowser(url: string): Promise<void>
+  /**
+   * Read a pasted authorization code. Anthropic's console flow redirects to a
+   * page that displays the code rather than to a loopback port, so that one
+   * provider needs a paste step the others do not.
+   */
+  promptCode(label: string): Promise<string | null>
   saveApiKey(provider: ProviderKey, apiKey: string): Promise<void>
   out(message: string): void
   error(message: string): void
@@ -80,6 +104,9 @@ export async function runLogin(provider: string | undefined, io: LoginIo): Promi
       return true
     }
 
+    if (selected === 'anthropic') return await signInAnthropic(io)
+    if (selected === 'openai') return await signInCodex(io)
+    if (selected === 'antigravity') return await signInAntigravity(io)
     if (selected === 'gemini') return await signInGemini(io)
     if (selected === 'github') return await signInGitHub(io)
     return await signInWithApiKey(selected, io)
@@ -101,6 +128,7 @@ export function createTerminalLoginIo(apiKey?: string): LoginIo {
       return result.type === 'cancelled' ? null : result.value
     },
     promptApiKey: async (provider) => readLineFromStdin(`API key for ${PROVIDER_LABELS[provider] ?? provider}: `),
+    promptCode: async (label) => readLineFromStdin(label),
     openBrowser: openInBrowser,
     saveApiKey: saveLoginApiKey,
     out: (message) => process.stdout.write(withNewline(message)),
@@ -118,6 +146,7 @@ export function createNonInteractiveLoginIo(options: {
     canPrompt: false,
     pickProvider: async () => null,
     promptApiKey: async () => null,
+    promptCode: async () => null,
     openBrowser: async () => {},
     saveApiKey: saveLoginApiKey,
     out: options.out,
@@ -136,6 +165,88 @@ function providerOptions(): LoginProviderOption[] {
     label: PROVIDER_LABELS[value] ?? value,
     hint: authStateHint(value),
   }))
+}
+
+/**
+ * Claude Pro/Max sign-in. An existing Claude Code login on this machine is
+ * adopted first: the credential is already on the keychain, and reusing it
+ * spares the user a second browser round-trip.
+ */
+async function signInAnthropic(io: LoginIo): Promise<boolean> {
+  if (MacKeychain.available()) {
+    const existing = await loadClaudeCodeOauth(new MacKeychain()).catch(() => null)
+    if (existing?.accessToken) {
+      const shim = await tryLoadKeytar()
+      await saveCredentialAsync('anthropic', existing, undefined, shim)
+      io.out('✓ Imported the Claude Code sign-in already on this machine')
+      return true
+    }
+  }
+  io.out('Sign in with Claude — use your Claude Pro or Max subscription.')
+  const result = await loginAnthropic({
+    onAuthUrl: async (url) => {
+      await io.openBrowser(url)
+      io.out(`Approve access in your browser. If it did not open, visit:\n${url}`)
+    },
+    promptForCode: async () => {
+      const pasted = await io.promptCode('Paste the code shown after approving: ')
+      if (!pasted?.trim()) throw new Error('no authorization code provided')
+      return pasted.trim()
+    },
+  })
+  const where = result.persistedPath ? ` (${result.persistedPath})` : ''
+  io.out(`✓ Connected to Claude${where}`)
+  return true
+}
+
+/**
+ * ChatGPT sign-in. Plans with a platform organization mint a normal API key;
+ * personal Plus/Pro plans cannot, and run through the ChatGPT backend instead —
+ * `loginCodex` reports which happened.
+ */
+async function signInCodex(io: LoginIo): Promise<boolean> {
+  const imported = importCodexCliAuth()
+  if (imported) {
+    io.out('✓ Imported the Codex CLI sign-in already on this machine')
+    return true
+  }
+  io.out('Sign in with ChatGPT — use your ChatGPT Plus or Pro subscription.')
+  const result = await loginCodex({
+    onAuthUrl: async (url) => {
+      await io.openBrowser(url)
+      io.out(`Approve access in your browser. If it did not open, visit:\n${url}\nWaiting for browser…`)
+    },
+  })
+  const account = result.email ? ` (${result.email})` : ''
+  io.out(
+    result.mode === 'api-key'
+      ? `✓ Connected to OpenAI${account} — minted a platform API key`
+      : `✓ Connected to ChatGPT${account} — running through the ChatGPT backend`,
+  )
+  return true
+}
+
+/**
+ * Antigravity sign-in — the successor to Google's retired free coding tier. An
+ * existing Antigravity CLI login is adopted from the keychain first, the same
+ * way the Claude and ChatGPT flows adopt theirs.
+ */
+async function signInAntigravity(io: LoginIo): Promise<boolean> {
+  const imported = await importAntigravityCliAuth().catch(() => null)
+  if (imported) {
+    io.out('✓ Imported the Antigravity CLI sign-in already on this machine')
+    return true
+  }
+  io.out('Sign in with Google — use the account carrying your Antigravity (AI Pro/Ultra) plan.')
+  const result = await loginAntigravity({
+    onAuthUrl: async (url) => {
+      await io.openBrowser(url)
+      io.out(`Approve access in your browser. If it did not open, visit:\n${url}\nWaiting for browser…`)
+    },
+  })
+  const account = result.accountEmail ? ` (${result.accountEmail})` : ''
+  io.out(`✓ Connected to Antigravity${account}`)
+  return true
 }
 
 async function signInGemini(io: LoginIo): Promise<boolean> {

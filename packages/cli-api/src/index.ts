@@ -4,6 +4,66 @@ export { injectCacheBoundary } from './anthropic/cache'
 export { GeminiProvider, type GeminiConfig } from './gemini'
 export { loginGemini, resolveGeminiAccessToken, type GeminiLoginOptions, type GeminiLoginResult } from './gemini/oauth'
 
+// ---- Subscription sign-in (Claude Pro/Max, ChatGPT, Antigravity) ----
+export {
+  startAnthropicLogin,
+  completeAnthropicLogin,
+  loginAnthropic,
+  logoutAnthropic,
+  resolveAnthropicAuthToken,
+  type AnthropicLoginOptions,
+  type AnthropicLoginResult,
+  type AnthropicPendingLogin,
+} from './anthropic/oauth'
+export {
+  loginCodex,
+  buildCodexAuthorizeUrl,
+  completeCodexLogin,
+  refreshCodexTokens,
+  importCodexCliAuth,
+  readCodexCliAuth,
+  isCodexBackendLogin,
+  logoutCodex,
+  resolveCodexBackendAuth,
+  resolveOpenAiApiKeyFromCodex,
+  parseCodexIdToken,
+  CODEX_CHATGPT_SOURCE,
+  type CodexLoginOptions,
+  type CodexLoginResult,
+  type CodexClaims,
+} from './openai/codex-oauth'
+export { CodexBackendProvider, CODEX_BACKEND_URL, type CodexBackendConfig } from './openai/codex-backend'
+export {
+  GeminiCodeAssistProvider,
+  CODE_ASSIST_ENDPOINT,
+  type GeminiCodeAssistConfig,
+  type CodeAssistVariant,
+} from './gemini/code-assist'
+export { MacKeychain, defaultKeychainExec, type KeychainExec, type KeychainEntry } from './keychain'
+export {
+  loginAntigravity,
+  importAntigravityCliAuth,
+  resolveAntigravityAccessToken,
+  isAntigravityLogin,
+  isAntigravityCliInstalled,
+  logoutAntigravity,
+  parseAntigravityCliCredential,
+  unwrapGoKeyring,
+  antigravityHome,
+  ANTIGRAVITY_ENDPOINT,
+  ANTIGRAVITY_CLI_SOURCE,
+  ANTIGRAVITY_KEYCHAIN_SERVICE,
+  ANTIGRAVITY_KEYCHAIN_ACCOUNT,
+  type AntigravityLoginOptions,
+  type AntigravityLoginResult,
+} from './gemini/antigravity'
+export {
+  loadClaudeCodeOauth,
+  loadAllClaudeCodeOauth,
+  CLAUDE_CODE_KEYCHAIN_SERVICE,
+} from './anthropic/claude-code-creds'
+// ---- end subscription sign-in ----
+
 export {
   credentialsPath,
   loadCredentials,

@@ -20,6 +20,7 @@ import { parseToolArguments } from '../tool-arguments'
 import { SseParser } from '../sse'
 import { newSessionId } from '../session-id'
 import { isRetryableStatus } from '../errors'
+import { getCredential, type ProviderKey } from '../credential-store'
 import { fetchWithRetry, resolveRetryConfig, type RetryConfig } from '../retry'
 
 export interface ResponsesConfig {
@@ -38,6 +39,11 @@ export interface ResponsesConfig {
   readonly sessionHeader?: string
   /** Retry budget override; env and defaults fill in what is not set here. */
   readonly retries?: Partial<RetryConfig>
+  /**
+   * Credential-store entry to fall back on when the env var is unset, so a key
+   * saved by `orchentra login` works without exporting anything.
+   */
+  readonly credentialKey?: ProviderKey
 }
 
 interface ResponsesUsage {
@@ -71,7 +77,8 @@ export class ResponsesProvider implements Provider {
     apiKey?: string,
     baseUrl?: string,
   ) {
-    this.apiKey = apiKey ?? process.env[config.apiKeyEnv] ?? ''
+    const stored = config.credentialKey ? getCredential(config.credentialKey) : null
+    this.apiKey = apiKey ?? process.env[config.apiKeyEnv] ?? stored?.apiKey ?? ''
     this.baseUrl = (baseUrl ?? process.env[config.baseUrlEnv] ?? config.defaultBaseUrl).replace(/\/$/, '')
   }
 

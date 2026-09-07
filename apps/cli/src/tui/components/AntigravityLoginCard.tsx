@@ -1,0 +1,136 @@
+import React, { useEffect, useRef, useState } from 'react'
+import { Box, Text, useInput } from 'ink'
+import { spawn } from 'node:child_process'
+import { importAntigravityCliAuth, loginAntigravity } from '@orchentra/cli-api'
+import { THEME } from '../theme'
+
+const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+
+export interface AntigravityLoginCardProps {
+  readonly onComplete: (result: { ok: boolean; message: string; path?: string }) => void
+}
+
+type Phase = { kind: 'waiting' } | { kind: 'exchanging' } | { kind: 'done'; ok: boolean; message: string }
+
+export function AntigravityLoginCard(props: AntigravityLoginCardProps): React.ReactElement {
+  const [phase, setPhase] = useState<Phase>({ kind: 'waiting' })
+  const [spinnerFrame, setSpinnerFrame] = useState(0)
+  const [authUrl, setAuthUrl] = useState<string | null>(null)
+  const completedRef = useRef(false)
+  const startedRef = useRef(false)
+
+  // Loopback OAuth — the browser redirect returns to a localhost server
+  // automatically, so there's no code to paste.
+  useEffect(() => {
+    if (startedRef.current) return
+    startedRef.current = true
+
+    // Zero-friction: adopt an existing `agy auth login` when one is present,
+    // exactly as the Claude Code and Codex cards do for their own CLIs.
+    void importAntigravityCliAuth()
+      .then((imported) => {
+        if (imported) {
+          finish({ ok: true, message: 'Imported existing Antigravity CLI login' })
+          return null
+        }
+        return loginAntigravity({
+          onAuthUrl: (url) => {
+            setAuthUrl(url)
+            openInBrowser(url)
+          },
+        })
+      })
+      .then((r) => {
+        if (!r) return
+        const who = r.accountEmail ? ` (${r.accountEmail})` : ''
+        finish({
+          ok: true,
+          message: `Connected to Antigravity${who} — run /model gemini-3.8-flash-tiered to use it`,
+          ...(r.persistedPath ? { path: r.persistedPath } : {}),
+        })
+      })
+      .catch((err: unknown) => {
+        finish({ ok: false, message: err instanceof Error ? err.message : String(err) })
+      })
+  }, [])
+
+  useEffect(() => {
+    if (phase.kind === 'done') return
+    const id = setInterval(() => setSpinnerFrame((f) => (f + 1) % SPINNER.length), 100)
+    return () => clearInterval(id)
+  }, [phase.kind])
+
+  function finish(result: { ok: boolean; message: string; path?: string }): void {
+    if (completedRef.current) return
+    completedRef.current = true
+    setPhase({ kind: 'done', ok: result.ok, message: result.message })
+    setTimeout(() => props.onComplete(result), result.ok ? 600 : 1200)
+  }
+
+  useInput(
+    (input, key) => {
+      if (phase.kind === 'done') {
+        if (key.return || key.escape) props.onComplete({ ok: phase.ok, message: phase.message })
+        return
+      }
+      if (input === 'q' || key.escape || (key.ctrl && input === 'c')) {
+        completedRef.current = true
+        props.onComplete({ ok: false, message: 'cancelled' })
+      }
+    },
+    { isActive: true },
+  )
+
+  return (
+    <Box flexDirection="column" borderStyle="round" borderColor={THEME.brand} paddingX={1}>
+      <Text color={THEME.brand} bold>
+        Sign in with Google (Antigravity)
+      </Text>
+      <Box height={1} />
+      {renderPhase(phase, spinnerFrame, authUrl)}
+      <Box height={1} />
+      <Text dimColor>
+        {phase.kind === 'done' ? (phase.ok ? 'Press Enter to continue' : 'Press Enter to dismiss') : '[q] cancel'}
+      </Text>
+    </Box>
+  )
+}
+
+function renderPhase(phase: Phase, spinnerFrame: number, authUrl: string | null): React.ReactElement {
+  if (phase.kind === 'done') {
+    return (
+      <Text>
+        <Text color={phase.ok ? THEME.brand : THEME.danger}>{phase.ok ? '✓' : '✗'}</Text>{' '}
+        <Text color={phase.ok ? THEME.brand : THEME.danger}>{phase.message}</Text>
+      </Text>
+    )
+  }
+  return (
+    <Box flexDirection="column">
+      <Text>
+        <Text color={THEME.accent}>{SPINNER[spinnerFrame]}</Text>{' '}
+        {authUrl ? 'Approve access in the browser…' : 'Opening browser to Google…'}
+      </Text>
+      <Text dimColor>Use the account carrying your AI Pro or Ultra plan.</Text>
+      {authUrl ? <Text dimColor>{`If the browser didn't open: ${authUrl}`}</Text> : null}
+    </Box>
+  )
+}
+
+function openInBrowser(url: string): void {
+  const platform = process.platform
+  const cmd = platform === 'darwin' ? 'open' : platform === 'win32' ? 'start' : 'xdg-open'
+  try {
+    const child = spawn(cmd, platform === 'win32' ? ['', url] : [url], {
+      stdio: 'ignore',
+      detached: true,
+      shell: platform === 'win32',
+    })
+    child.on('error', () => {
+      /* ignore — user can copy URL manually */
+    })
+    child.unref()
+  } catch {
+    /* ignore */
+  }
+}

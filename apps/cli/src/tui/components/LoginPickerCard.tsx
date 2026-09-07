@@ -5,12 +5,17 @@ import { THEME } from '../theme'
 import { ApiKeyPickerCard } from './ApiKeyPickerCard'
 import { ApiKeyInputCard } from './ApiKeyInputCard'
 import { ThirdPartyPickerCard } from './ThirdPartyPickerCard'
+import { AnthropicLoginCard } from './AnthropicLoginCard'
+import { CodexLoginCard } from './CodexLoginCard'
+import { AntigravityLoginCard } from './AntigravityLoginCard'
 import { spawn } from 'node:child_process'
 import {
   apiKeyProviderToCredentialKey,
   initialLoginState,
   loginReducer,
+  SUBSCRIPTION_PROVIDERS,
   THIRD_PARTY_PROVIDERS,
+  TOP_ROWS,
   type ApiKeyProvider,
   type LoginState,
 } from '../../login/state-machine'
@@ -23,16 +28,6 @@ export interface LoginPickerResult {
 export interface LoginPickerCardProps {
   readonly onComplete: (result: LoginPickerResult) => void
 }
-
-interface TopRow {
-  readonly label: string
-  readonly hint: string
-}
-
-const TOP_ROWS: readonly TopRow[] = [
-  { label: 'API key', hint: 'Anthropic Console, OpenAI, OpenRouter, Gemini, xAI, DashScope' },
-  { label: '3rd-party platform', hint: 'Amazon Bedrock, Microsoft Foundry, Vertex AI, Azure' },
-]
 
 export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement {
   const [state, setState] = useState<LoginState>(initialLoginState())
@@ -66,10 +61,29 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
         // Terminal states own their own input.
         return
       }
+      if (state.kind === 'subscriptionLogin') {
+        // The mounted login card handles its own keys, cancel included.
+        return
+      }
       if (saving) return
       if (key.escape || (key.ctrl && input === 'c')) {
         const event = state.kind === 'top' ? { type: 'cancel' as const } : { type: 'back' as const }
         dispatch(event)
+        return
+      }
+      if (state.kind === 'subscriptionPicker') {
+        if (key.upArrow) {
+          dispatch({ type: 'cursor-up' })
+          return
+        }
+        if (key.downArrow) {
+          dispatch({ type: 'cursor-down' })
+          return
+        }
+        if (key.return) {
+          dispatch({ type: 'select' })
+          return
+        }
         return
       }
       if (state.kind === 'thirdPartyPicker') {
@@ -120,6 +134,19 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
     { isActive: true },
   )
 
+  if (state.kind === 'subscriptionPicker') {
+    return <SubscriptionPickerCard cursor={state.cursor} />
+  }
+
+  if (state.kind === 'subscriptionLogin') {
+    const onComplete = (result: { ok: boolean; message: string }): void => {
+      dispatch(result.ok ? { type: 'success', message: result.message } : { type: 'fail', error: result.message })
+    }
+    if (state.provider === 'anthropic') return <AnthropicLoginCard onComplete={onComplete} />
+    if (state.provider === 'codex') return <CodexLoginCard onComplete={onComplete} />
+    return <AntigravityLoginCard onComplete={onComplete} />
+  }
+
   if (state.kind === 'apiKeyPicker') {
     return <ApiKeyPickerCard cursor={state.cursor} signedIn={new Set()} />
   }
@@ -144,6 +171,33 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
       {renderTop(state)}
       <Box height={1} />
       <Text dimColor>↑/↓ to move · Enter to select · Esc to cancel</Text>
+    </Box>
+  )
+}
+
+function SubscriptionPickerCard(props: { readonly cursor: number }): React.ReactElement {
+  const labelW = SUBSCRIPTION_PROVIDERS.reduce((m, r) => Math.max(m, r.label.length), 0)
+  return (
+    <Box flexDirection="column" borderStyle="round" borderColor={THEME.brand} paddingX={1}>
+      <Text color={THEME.brand} bold>
+        Sign in with a subscription
+      </Text>
+      <Text dimColor>Use a plan you already pay for — no API key, no per-token billing.</Text>
+      <Box height={1} />
+      {SUBSCRIPTION_PROVIDERS.map((row, i) => {
+        const active = i === props.cursor
+        return (
+          <Box key={row.provider} flexDirection="row">
+            <Text color={active ? THEME.brand : undefined}>{active ? '❯ ' : '  '}</Text>
+            <Text color={active ? THEME.brand : undefined} bold={active}>
+              {row.label.padEnd(labelW, ' ')}
+            </Text>
+            <Text dimColor>{`  ${row.hint}`}</Text>
+          </Box>
+        )
+      })}
+      <Box height={1} />
+      <Text dimColor>↑/↓ to move · Enter to select · Esc to go back</Text>
     </Box>
   )
 }
@@ -174,7 +228,7 @@ function renderTop(state: LoginState): React.ReactElement | null {
       {TOP_ROWS.map((row, i) => {
         const active = i === state.cursor
         return (
-          <Box key={row.label} flexDirection="row">
+          <Box key={row.tier} flexDirection="row">
             <Text color={active ? THEME.brand : undefined}>{active ? '❯ ' : '  '}</Text>
             <Text color={active ? THEME.brand : undefined} bold={active}>
               {row.label.padEnd(labelW, ' ')}

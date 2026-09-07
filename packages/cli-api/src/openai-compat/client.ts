@@ -99,6 +99,7 @@ const ZEN_CONFIG: OpenAiCompatConfig = {
   modelPrefix: 'zen/',
   enforceProvenance: true,
   sessionHeader: 'x-opencode-session',
+  credentialKey: 'zen',
 }
 
 export { XAI_CONFIG, OPENAI_CONFIG, OPENROUTER_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG, ZEN_CONFIG }
@@ -111,6 +112,7 @@ export const ZEN_RESPONSES_CONFIG = {
   defaultBaseUrl: 'https://opencode.ai/zen/v1',
   modelPrefix: 'zen/',
   sessionHeader: 'x-opencode-session',
+  credentialKey: 'zen' as const,
 }
 
 export class OpenAiCompatProvider implements Provider {

@@ -3,7 +3,22 @@ import { join, dirname } from 'node:path'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
 
 export type ProviderKey =
-  'anthropic' | 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'github' | 'aws' | 'gcp' | 'azure'
+  | 'anthropic'
+  | 'openai'
+  | 'openrouter'
+  | 'xai'
+  | 'dashscope'
+  | 'gemini'
+  // Google Antigravity — the subscription successor to Google's retired free
+  // coding tier. Kept separate from `gemini` because the two use different
+  // OAuth clients and different Code Assist hosts.
+  | 'antigravity'
+  // opencode Zen / opencode Go — one API key fronting many model families.
+  | 'zen'
+  | 'github'
+  | 'aws'
+  | 'gcp'
+  | 'azure'
 
 export interface StoredCredential {
   readonly apiKey?: string

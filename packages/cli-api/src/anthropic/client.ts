@@ -14,6 +14,8 @@ import { injectCacheBoundary } from './cache'
 import type { ContentBlock, MessageRequest, StreamEvent, ToolDefinition, Usage } from './types'
 import { parseToolArguments } from '../tool-arguments'
 import { assertModelProvenance } from '../model-provenance'
+// local-only oauth graft — never commit (see oauth-dev worktree docs)
+import { resolveAnthropicAuthToken } from './oauth'
 
 export interface AnthropicConfig {
   apiKey?: string
@@ -25,13 +27,17 @@ export interface AnthropicConfig {
 
 interface AuthHeaders {
   'x-api-key'?: string
-  authSource: 'api_key'
+  authorization?: string
+  authSource: 'api_key' | 'bearer'
 }
 
 const ANTHROPIC_VERSION = '2023-06-01'
 // Public-only beta set used when authenticating with a console.anthropic.com
 // API key. Safe for any client.
 const ANTHROPIC_BETA_API_KEY = 'prompt-caching-scope-2026-01-05'
+// OAuth bearer (sk-ant-oat01-*) requires the oauth beta flag alongside the
+// public set. local-only graft, never shipped.
+const ANTHROPIC_BETA_OAUTH = `oauth-2025-04-20,${ANTHROPIC_BETA_API_KEY}`
 const DEFAULT_USER_AGENT = 'OrchentraCLI/1.0'
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
@@ -50,16 +56,19 @@ export class AnthropicProvider implements Provider {
     this.explicitApiKey = config.apiKey
   }
 
-  // Console API key only — Orchentra does not ship subscription-OAuth sign-in
-  // for any provider.
-  private resolveAuthHeaders(): AuthHeaders {
+  // local-only oauth graft: API key wins; otherwise fall back to a stored /
+  // env / Keychain OAuth bearer via resolveAnthropicAuthToken (handles refresh).
+  private async resolveAuthHeaders(): Promise<AuthHeaders> {
     const apiKey = this.explicitApiKey ?? process.env['ANTHROPIC_API_KEY']
-    return apiKey ? { 'x-api-key': apiKey, authSource: 'api_key' } : { authSource: 'api_key' }
+    if (apiKey) return { 'x-api-key': apiKey, authSource: 'api_key' }
+    const token = await resolveAnthropicAuthToken()
+    if (token) return { authorization: `Bearer ${token}`, authSource: 'bearer' }
+    return { authSource: 'api_key' }
   }
 
   async *stream(request: ProviderRequest): AsyncIterable<ProviderStreamEvent> {
-    const authHeaders = this.resolveAuthHeaders()
-    if (!authHeaders['x-api-key']) {
+    const authHeaders = await this.resolveAuthHeaders()
+    if (!authHeaders['x-api-key'] && !authHeaders.authorization) {
       yield { kind: 'finish', stopReason: 'error' as StopReason }
       throw missingCredentialsError()
     }
@@ -107,10 +116,11 @@ export class AnthropicProvider implements Provider {
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'anthropic-version': ANTHROPIC_VERSION,
-      'anthropic-beta': ANTHROPIC_BETA_API_KEY,
+      'anthropic-beta': authHeaders.authSource === 'bearer' ? ANTHROPIC_BETA_OAUTH : ANTHROPIC_BETA_API_KEY,
       'user-agent': DEFAULT_USER_AGENT,
-      'x-api-key': authHeaders['x-api-key'],
     }
+    if (authHeaders['x-api-key']) headers['x-api-key'] = authHeaders['x-api-key']
+    if (authHeaders.authorization) headers['authorization'] = authHeaders.authorization
 
     let lastError: AnthropicApiError | null = null
 
@@ -152,7 +162,7 @@ export class AnthropicProvider implements Provider {
 
         const apiError = classifyError(response.status, responseBody, errorType)
         const requestId = response.headers.get('request-id') ?? undefined
-        const rawToken = authHeaders['x-api-key']
+        const rawToken = authHeaders['x-api-key'] ?? authHeaders.authorization?.replace(/^Bearer /, '')
         const withRequestId = new AnthropicApiError({
           status: apiError.status,
           errorType: apiError.errorType,

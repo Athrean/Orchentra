@@ -1,8 +1,13 @@
 import { profileFor, type EffortTier, type Provider, type ProviderName } from '@orchentra/cli-core'
 import {
   AnthropicProvider,
+  CodexBackendProvider,
   DASHSCOPE_CONFIG,
+  GeminiCodeAssistProvider,
   GeminiProvider,
+  getCredential,
+  isAntigravityLogin,
+  isCodexBackendLogin,
   LOCAL_CONFIG,
   OpenAiCompatProvider,
   OPENAI_CONFIG,
@@ -49,6 +54,11 @@ export function createProvider(model: string): CreatedProvider {
   const providerName: ProviderName = profileFor(model).provider
   switch (providerName) {
     case 'openai':
+      // A stored ChatGPT (Codex) subscription login routes through the ChatGPT
+      // backend; an explicit OPENAI_API_KEY still wins via the compat path.
+      if (!process.env['OPENAI_API_KEY'] && isCodexBackendLogin()) {
+        return { providerName, provider: new CodexBackendProvider() }
+      }
       return { providerName, provider: new OpenAiCompatProvider(OPENAI_CONFIG) }
     case 'openrouter':
       return { providerName, provider: new OpenAiCompatProvider(OPENROUTER_CONFIG) }
@@ -61,6 +71,18 @@ export function createProvider(model: string): CreatedProvider {
     case 'local':
       return { providerName, provider: new OpenAiCompatProvider(LOCAL_CONFIG) }
     case 'gemini':
+      // An explicit GEMINI_API_KEY always wins — it is the unambiguous signal
+      // that the caller wants the public API and its own billing. Otherwise a
+      // subscription sign-in drives Code Assist: Antigravity first, since the
+      // older Google OAuth client it replaced is no longer accepted.
+      if (!process.env['GEMINI_API_KEY']) {
+        if (isAntigravityLogin()) {
+          return { providerName, provider: new GeminiCodeAssistProvider({ variant: 'antigravity' }) }
+        }
+        if (getCredential('gemini')?.accessToken) {
+          return { providerName, provider: new GeminiCodeAssistProvider() }
+        }
+      }
       return { providerName, provider: new GeminiProvider({ model }) }
     case 'anthropic':
       return { providerName, provider: new AnthropicProvider() }
