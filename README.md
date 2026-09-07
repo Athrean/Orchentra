@@ -60,6 +60,15 @@ orchentra session replay latest   # replay the latest workspace session
 
 Bring your own model key. The CLI supports Anthropic, Gemini, OpenAI-compatible providers, OpenRouter, xAI, DashScope, and the opencode Zen gateway (`ZEN_API_KEY`, model ids prefixed `zen/` so a bare id never routes there by accident).
 
+Rate-limited and transient provider responses (408, 409, 429, 5xx) are retried with exponential backoff, honouring `Retry-After`. The default budget suits an interactive turn — waiting out a rate limit beats failing the request — but it is wrong for a batch sweep, where eight retries reaching a 128s ceiling is over four minutes of sleeping per model call. Override it per run:
+
+```bash
+ORCHENTRA_RETRY_MAX_ATTEMPTS=4 ORCHENTRA_RETRY_INITIAL_MS=250 ORCHENTRA_RETRY_MAX_MS=16000 \
+  orchentra eval --corpus evals/
+```
+
+`ORCHENTRA_RETRY_MAX_ATTEMPTS=0` disables retrying. A malformed or out-of-range value fails loudly rather than falling back to the default, so a typo cannot leave a sweep quietly sleeping.
+
 ## CLI
 
 ### Shell Verbs

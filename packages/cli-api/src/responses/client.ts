@@ -20,7 +20,7 @@ import { parseToolArguments } from '../tool-arguments'
 import { SseParser } from '../sse'
 import { newSessionId } from '../session-id'
 import { isRetryableStatus } from '../errors'
-import { fetchWithRetry } from '../retry'
+import { fetchWithRetry, resolveRetryConfig, type RetryConfig } from '../retry'
 
 export interface ResponsesConfig {
   readonly providerName: string
@@ -36,6 +36,8 @@ export interface ResponsesConfig {
    * affinity, so it is generated once per provider instance, not per request.
    */
   readonly sessionHeader?: string
+  /** Retry budget override; env and defaults fill in what is not set here. */
+  readonly retries?: Partial<RetryConfig>
 }
 
 interface ResponsesUsage {
@@ -88,7 +90,7 @@ export class ResponsesProvider implements Provider {
           signal: request.signal,
         }),
       isRetryableStatus,
-      { ...(request.signal ? { signal: request.signal } : {}) },
+      { config: resolveRetryConfig(this.config.retries), ...(request.signal ? { signal: request.signal } : {}) },
     )
 
     if (!response.ok || !response.body) {

@@ -59,7 +59,15 @@ export {
   AnthropicApiError,
   type FailureClass,
 } from './errors'
-export { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from './retry'
+export {
+  computeBackoff,
+  resolveRetryConfig,
+  parseRetryAfter,
+  fetchWithRetry,
+  DEFAULT_RETRY_CONFIG,
+  RETRY_ENV_VARS,
+  type RetryConfig,
+} from './retry'
 export { validateApiKey } from './preflight'
 export { parseToolArguments, type ParseToolArgumentsResult } from './tool-arguments'
 

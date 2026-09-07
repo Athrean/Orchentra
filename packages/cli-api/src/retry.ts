@@ -10,6 +10,59 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxMs: 128000,
 }
 
+/**
+ * Environment overrides for the retry budget. The defaults suit an interactive
+ * turn, where waiting out a rate limit beats failing the user's request. They
+ * are wrong for a batch sweep: eight retries reaching a 128s ceiling is over
+ * four minutes of sleeping per model call, which turned a ten-case eval on a
+ * rate-limited tier into a run that produced nothing before its timeout.
+ *
+ * Env is the right knob because the eval harness drives the CLI as a
+ * subprocess, so a caller can set the budget for a whole sweep without
+ * threading it through every layer.
+ */
+export const RETRY_ENV_VARS = {
+  maxRetries: 'ORCHENTRA_RETRY_MAX_ATTEMPTS',
+  initialMs: 'ORCHENTRA_RETRY_INITIAL_MS',
+  maxMs: 'ORCHENTRA_RETRY_MAX_MS',
+} as const
+
+const RETRY_BOUNDS: Record<keyof RetryConfig, { min: number; max: number }> = {
+  maxRetries: { min: 0, max: 20 },
+  initialMs: { min: 0, max: 60_000 },
+  maxMs: { min: 0, max: 600_000 },
+}
+
+/**
+ * Resolve the retry budget from explicit overrides, then the environment, then
+ * the defaults. A malformed or out-of-range value throws rather than falling
+ * back: a retry budget that is silently ignored is indistinguishable from one
+ * that is being honoured, and the caller would never learn its sweep was still
+ * sleeping for four minutes a call.
+ */
+export function resolveRetryConfig(
+  overrides?: Partial<RetryConfig>,
+  env: Record<string, string | undefined> = process.env,
+): RetryConfig {
+  const resolved = { ...DEFAULT_RETRY_CONFIG }
+  for (const key of Object.keys(RETRY_BOUNDS) as (keyof RetryConfig)[]) {
+    const raw = env[RETRY_ENV_VARS[key]]
+    if (raw !== undefined && raw !== '') {
+      const parsed = Number(raw)
+      const { min, max } = RETRY_BOUNDS[key]
+      if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+        throw new Error(`${RETRY_ENV_VARS[key]} must be an integer between ${min} and ${max}; received '${raw}'`)
+      }
+      resolved[key] = parsed
+    }
+    const override = overrides?.[key]
+    if (override !== undefined) resolved[key] = override
+  }
+  // A ceiling below the first step would silently shorten every wait.
+  if (resolved.maxMs < resolved.initialMs) resolved.maxMs = resolved.initialMs
+  return resolved
+}
+
 export function computeBackoff(attempt: number, config: RetryConfig): number {
   const base = Math.min(config.initialMs * Math.pow(2, attempt - 1), config.maxMs)
   const jitter = Math.floor(Math.random() * base * 0.25)
@@ -61,7 +114,7 @@ export async function fetchWithRetry(
   isRetryableStatus: (status: number) => boolean,
   options: FetchRetryOptions = {},
 ): Promise<Response> {
-  const config = options.config ?? DEFAULT_RETRY_CONFIG
+  const config = options.config ?? resolveRetryConfig()
   const sleep = options.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)))
   let lastError: unknown
 

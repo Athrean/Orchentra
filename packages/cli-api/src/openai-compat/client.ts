@@ -14,7 +14,7 @@ import { parseToolArguments } from '../tool-arguments'
 import { assertModelProvenance } from '../model-provenance'
 import { newSessionId } from '../session-id'
 import { isRetryableStatus } from '../errors'
-import { fetchWithRetry } from '../retry'
+import { fetchWithRetry, resolveRetryConfig, type RetryConfig } from '../retry'
 
 export interface OpenAiCompatConfig {
   providerName: string
@@ -41,6 +41,8 @@ export interface OpenAiCompatConfig {
    * affinity, so it is generated once per provider instance, not per request.
    */
   sessionHeader?: string
+  /** Retry budget override; env and defaults fill in what is not set here. */
+  retries?: Partial<RetryConfig>
 }
 
 const XAI_CONFIG: OpenAiCompatConfig = {
@@ -157,7 +159,7 @@ export class OpenAiCompatProvider implements Provider {
           signal: request.signal,
         }),
       isRetryableStatus,
-      { ...(request.signal ? { signal: request.signal } : {}) },
+      { config: resolveRetryConfig(this.config.retries), ...(request.signal ? { signal: request.signal } : {}) },
     )
 
     if (!response.ok) {

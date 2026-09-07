@@ -9,7 +9,7 @@ import type {
 import { assertVisionSupport } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { AnthropicApiError, classifyError, enrichAuthError, missingCredentialsError } from '../errors'
-import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
+import { computeBackoff, resolveRetryConfig, type RetryConfig } from '../retry'
 import { injectCacheBoundary } from './cache'
 import type { ContentBlock, MessageRequest, StreamEvent, ToolDefinition, Usage } from './types'
 import { parseToolArguments } from '../tool-arguments'
@@ -46,7 +46,7 @@ export class AnthropicProvider implements Provider {
     this.baseUrl = (config.baseUrl ?? 'https://api.anthropic.com').replace(/\/$/, '')
     this.model = config.model ?? DEFAULT_MODEL
     this.maxTokens = config.maxTokens ?? 64000
-    this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config.retries }
+    this.retryConfig = resolveRetryConfig(config.retries)
     this.explicitApiKey = config.apiKey
   }
 
