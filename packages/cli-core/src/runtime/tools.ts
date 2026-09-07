@@ -6,6 +6,8 @@ import type { ImageContent } from './image'
 import type { QuirkCounters } from './quirks'
 import type { ProcessSupervisor } from './process-supervisor'
 import type { BrowserRunSession } from './browser'
+import type { RunContextStore } from './context-store'
+import type { RlmProgramEnvironment } from './program-environment'
 
 export interface TaskHandle {
   taskId: string
@@ -133,6 +135,10 @@ export interface ToolContext {
    * Left unset in production so each sub-agent gets its own on-disk trace.
    */
   traceSink?: import('./trace').TraceSink
+  /** RLM-only, run-scoped addressable context. Absent in the direct profile. */
+  contextStore?: RunContextStore
+  /** Capability-empty QuickJS/Wasm environment, present only in RLM mode. */
+  programEnvironment?: RlmProgramEnvironment
 }
 
 export interface ToolResult {
@@ -154,17 +160,56 @@ export interface ToolResult {
   evidence?: ToolEvidence[]
 }
 
+export type ToolResourceClass =
+  'context' | 'filesystem' | 'process' | 'network' | 'browser' | 'model' | 'interactive' | 'unknown'
+
+/**
+ * Scheduling facts are deliberately independent of permission level. A tool
+ * is parallel/speculative only when every required bit is explicitly true.
+ */
+export interface ToolSchedulingMetadata {
+  readonly pure: boolean
+  readonly idempotent: boolean
+  readonly concurrencySafe: boolean
+  readonly speculativeSafe: boolean
+  readonly resourceClass: ToolResourceClass
+}
+
+export const DEFAULT_TOOL_SCHEDULING: ToolSchedulingMetadata = {
+  pure: false,
+  idempotent: false,
+  concurrencySafe: false,
+  speculativeSafe: false,
+  resourceClass: 'unknown',
+}
+
+export function normalizeToolScheduling(metadata?: Partial<ToolSchedulingMetadata>): ToolSchedulingMetadata {
+  return { ...DEFAULT_TOOL_SCHEDULING, ...metadata }
+}
+
+export function isParallelSafe(metadata: ToolSchedulingMetadata): boolean {
+  return metadata.pure && metadata.idempotent && metadata.concurrencySafe
+}
+
+export function isSpeculativeSafe(metadata: ToolSchedulingMetadata): boolean {
+  return isParallelSafe(metadata) && metadata.speculativeSafe
+}
+
 export interface ToolDefinition {
   name: string
   description: string
   level: ToolLevel
   inputSchema: Record<string, unknown>
+  /** Optional; absence always means serial and non-speculative. */
+  scheduling?: Partial<ToolSchedulingMetadata>
   execute(args: unknown, ctx: ToolContext): Promise<ToolResult>
 }
 
 export interface ToolRegistry {
   list(): ProviderToolSchema[]
   requirements?(): Readonly<Record<string, import('./permissions').PermissionMode>>
+  /** Normalized scheduling facts. Optional so injected legacy registries fail safe. */
+  scheduling?(name: string): ToolSchedulingMetadata
   has(name: string): boolean
   execute(name: string, args: unknown, ctx: ToolContext): Promise<ToolResult>
   register(tool: ToolDefinition): void

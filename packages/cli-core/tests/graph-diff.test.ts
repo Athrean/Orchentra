@@ -78,10 +78,7 @@ describe('diffExecutionGraphs', () => {
     // b: same kinds but the "child" is now a root (no parent)
     // Even though kind/integration/round line up, the parent-chain shape
     // differs, so the moved node should be add+remove, not unchanged.
-    const a = [
-      n({ id: 'a-root' }),
-      n({ id: 'a-child', kind: 'synthesis', round: 2, parentNodeId: 'a-root' }),
-    ]
+    const a = [n({ id: 'a-root' }), n({ id: 'a-child', kind: 'synthesis', round: 2, parentNodeId: 'a-root' })]
     const b = [n({ id: 'b-root' }), n({ id: 'b-orphan', kind: 'synthesis', round: 2, parentNodeId: null })]
     const result = diffExecutionGraphs(a, b)
     // Roots match, but the moved synthesis node has different parent shape.

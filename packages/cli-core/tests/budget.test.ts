@@ -38,6 +38,28 @@ describe('RuntimeBudget', () => {
     })
   })
 
+  test('prices mixed nested-model usage per model instead of as the root model', () => {
+    const b = new RuntimeBudget({
+      maxSteps: 100,
+      maxTokens: 1_000_000,
+      model: 'claude-sonnet-4-20250514',
+    })
+    b.addUsage({ inputTokens: 0, outputTokens: 1_000, cacheReadTokens: 0, cacheCreationTokens: 0 }, 'claude-haiku-4')
+    b.addUsage({ inputTokens: 0, outputTokens: 1_000, cacheReadTokens: 0, cacheCreationTokens: 0 }, 'claude-opus-5')
+
+    expect(b.snapshot().costUsd).toBeCloseTo(0.03)
+    expect(b.currentUsageByModel.get('claude-haiku-4')?.outputTokens).toBe(1_000)
+    expect(b.currentUsageByModel.get('claude-opus-5')?.outputTokens).toBe(1_000)
+  })
+
+  test('mixed usage stays honestly unpriced when any nested model is unknown', () => {
+    const b = new RuntimeBudget({ maxSteps: 100, maxTokens: 1_000_000, model: 'claude-sonnet-4-20250514' })
+    b.addUsage({ inputTokens: 10, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 })
+    b.addUsage({ inputTokens: 10, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0 }, 'unknown-local')
+
+    expect(b.snapshot().costUsd).toBeUndefined()
+  })
+
   test('rejects non-positive maxSteps', () => {
     expect(() => new RuntimeBudget({ maxSteps: 0, maxTokens: 100 })).toThrow('maxSteps')
   })

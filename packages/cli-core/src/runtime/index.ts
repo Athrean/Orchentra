@@ -12,6 +12,7 @@ export type {
   ToolResultEvent,
   UsageEvent,
   CompactedEvent,
+  ContextInvalidatedEvent,
   LoopDetectedEvent,
   PermissionDecisionEvent,
   HookProgressRuntimeEvent,
@@ -20,6 +21,12 @@ export type {
   RunStateEvent,
   GateDecisionEvent,
   RecoveryDecisionEvent,
+  ProgramOperationEvent,
+  ModelJobEvent,
+  RecursiveLinkEvent,
+  ContextAccessEvent,
+  RunIdentityEvent,
+  SpeculativeToolEvent,
   SpanAttributeValue,
   SpanStartEvent,
   SpanEndEvent,
@@ -27,6 +34,26 @@ export type {
 } from './events'
 
 export { emptyUsage, addUsage, totalTokens } from './events'
+export { OptimizationTracker } from './optimization'
+export type { OptimizationMetrics } from './optimization'
+export { parseTraceManifest } from './trace'
+export { loadTrajectory, parseTraceEvents, readTraceEvents, readTraceManifest, renderTrajectory } from './trajectory'
+export type { Trajectory, TrajectoryNode } from './trajectory'
+
+export type {
+  ModelFunctionKind,
+  ModelJobStatus,
+  ModelFunctionRequestOptions,
+  NormalizedModelFunctionOptions,
+  ModelFunctionLimits,
+  ModelJobSnapshot,
+  ModelJobResult,
+  ModelFunctionOutcome,
+  ModelJobRunRequest,
+  ModelFunctionHost,
+  ModelJobManagerOptions,
+} from './model-functions'
+export { DEFAULT_MODEL_FUNCTION_LIMITS, ModelFunctionError, ModelJobManager } from './model-functions'
 
 export type { QuirkKind } from './quirks'
 export { QuirkCounters } from './quirks'
@@ -101,6 +128,14 @@ export { EFFORT_TIERS, isEffortTier } from './provider'
 
 export type { TerseMode } from './terse'
 export { TERSE_MODES, isTerseMode, terseModePrompt } from './terse'
+export type { ExecutionProfile } from './execution-profile'
+export {
+  EXECUTION_PROFILES,
+  EXECUTION_PROFILE_ENV,
+  isExecutionProfile,
+  resolveExecutionProfile,
+  executionProfilePrompt,
+} from './execution-profile'
 export type { SpineBudgetControls, SpinePromptOptions } from './spine'
 export { spinePrompt } from './spine'
 export type { PlanLevel } from './plan-level'
@@ -117,8 +152,21 @@ export type {
   ToolContext,
   ToolResult,
   ToolDefinition,
+  ToolResourceClass,
+  ToolSchedulingMetadata,
   ToolRegistry,
 } from './tools'
+export { DEFAULT_TOOL_SCHEDULING, normalizeToolScheduling, isParallelSafe, isSpeculativeSafe } from './tools'
+export type { ProgramSchedulePolicy, ProgramSchedulerSnapshot } from './program-scheduler'
+export { ProgramOperationScheduler } from './program-scheduler'
+export type {
+  SpeculativeToolStatus,
+  SpeculativeToolAttemptRecord,
+  SpeculativeExecution,
+  SpeculativeToolBrokerOptions,
+  SpeculativeBinding,
+} from './speculative-tools'
+export { SpeculativeToolBroker, parseSpeculativeProgramCall } from './speculative-tools'
 
 export type { ContextFile } from './context-files'
 export { collectContextFiles } from './context-files'
@@ -179,7 +227,7 @@ export { findStreamSafeBoundary, MarkdownStreamState } from './markdown/stream-b
 export { InMemoryTaskStore } from './task-store'
 
 export type { SystemPromptInput, SystemPrompt } from './system-prompt'
-export { buildSystemPrompt } from './system-prompt'
+export { buildSystemPrompt, formatUntrustedReference } from './system-prompt'
 
 export type { SessionMeta, SessionRecord, SessionWriterOptions } from './session'
 export { SessionWriter, replaySession, resolveSessionPath, defaultSessionDir } from './session'
@@ -286,11 +334,12 @@ export type {
   MemoryFeatureConfig,
   BudgetFeatureConfig,
   SubagentsFeatureConfig,
+  RlmFeatureConfig,
 } from './config-types'
-export { ConfigLoader, defaultConfigHome } from './config'
+export { ConfigLoader, CURRENT_CONFIG_VERSION, defaultConfigHome } from './config'
 export { runMigrations, MigrationError, type Migration, type MigrationSpec } from './migrations'
 
-export type { ModelPricing, UsageCostEstimate, TerseModeUsage, SpineSavings } from './usage'
+export type { ModelPricing, UsageCostEstimate, TerseModeUsage, SpineSavings, CacheUsageMetrics } from './usage'
 export {
   pricingForModel,
   estimateCost,
@@ -300,6 +349,7 @@ export {
   UsageTracker,
   billedTokens,
   cachedTokens,
+  cacheUsageMetrics,
 } from './usage'
 
 export { compactionNotesPath, renderCompactionNote, appendCompactionNote } from './compaction-notes'
@@ -357,7 +407,47 @@ export {
   traceManifestPath,
   traceArtifactsDir,
   reconstructTranscript,
+  redactPersistedData,
 } from './trace'
+
+export type {
+  ContextTrust,
+  ContextKind,
+  ContextProvenanceKind,
+  ContextProvenance,
+  ContextValue,
+  ContextSeed,
+  ContextDescriptor,
+  ContextReadResult,
+  ContextSearchMatch,
+  ContextSearchResult,
+  ContextStoreLimits,
+  ContextStoreSnapshot,
+  ContextManifest,
+} from './context-store'
+export type {
+  ProgramEnvironmentLimits,
+  ProgramOperationRecord,
+  ProgramEffects,
+  ProgramExecutionResult,
+  ProgramEnvironmentOptions,
+} from './program-environment'
+export type { ProgramCapabilityContract, ProgramOperationKind } from './program-capabilities'
+export { PROGRAM_CAPABILITY_CONTRACTS, PROGRAM_CAPABILITY_SIGNATURES } from './program-capabilities'
+export {
+  DEFAULT_PROGRAM_ENVIRONMENT_LIMITS,
+  ProgramEnvironmentError,
+  RlmProgramEnvironment,
+} from './program-environment'
+export {
+  CURRENT_CONTEXT_MANIFEST_VERSION,
+  DEFAULT_CONTEXT_STORE_LIMITS,
+  ContextStoreError,
+  RunContextStore,
+  contextStoreRoot,
+  expireContextHandles,
+  loadContextManifest,
+} from './context-store'
 
 export type { SummaryCompressionBudget, SummaryCompressionResult } from './summary-compression'
 export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'

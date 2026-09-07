@@ -16,7 +16,7 @@
 
 import type { QuirkKind } from './quirks'
 
-export type ProviderName = 'anthropic' | 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'local'
+export type ProviderName = 'anthropic' | 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'local' | 'zen'
 
 /** A counter-backed deviation from generic harness behavior. */
 export interface ProfileDivergence {
@@ -82,6 +82,9 @@ export const GENERIC_PROFILE: ModelProfile = {
  */
 export const MODEL_PROFILES: readonly ModelProfile[] = [
   { family: 'local', match: [/^ollama\//i], provider: 'local', divergences: [] },
+  // Explicitly routed gateway: `zen/<id>` reaches the opencode Zen gateway,
+  // which fronts many families under ids we deliberately do not enumerate.
+  { family: 'generic', match: [/^zen\//i], provider: 'zen', divergences: [] },
   // OpenRouter-hosted families keep their real family name so per-family
   // specialization applies regardless of route.
   { family: 'claude', match: [/^anthropic\//i], provider: 'openrouter', vision: true, divergences: [] },

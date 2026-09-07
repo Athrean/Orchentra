@@ -1,5 +1,6 @@
 import type { EffortTier } from './provider'
 import type { TerseMode } from './terse'
+import type { ExecutionProfile } from './execution-profile'
 
 export type ConfigSource = 'user' | 'project' | 'local'
 
@@ -43,6 +44,11 @@ export interface SubagentsFeatureConfig {
   maxConcurrent: number | undefined
 }
 
+export interface RlmFeatureConfig {
+  /** Default-off streaming-time speculation for explicitly safe tool calls. */
+  speculativeToolCalls: boolean
+}
+
 export interface RuntimeFeatureConfig {
   hooks: RuntimeHookConfig
   model: string | undefined
@@ -54,6 +60,9 @@ export interface RuntimeFeatureConfig {
   memory: MemoryFeatureConfig
   budget: BudgetFeatureConfig
   subagents: SubagentsFeatureConfig
+  rlm: RlmFeatureConfig
+  /** Inference architecture. `direct` remains the default/control. */
+  executionProfile: ExecutionProfile
 }
 
 export type ResolvedPermissionMode = 'read-only' | 'workspace-write' | 'danger-full-access'

@@ -5,6 +5,8 @@
 // read straight off the run's trace manifest — never re-derived.
 
 import type { DoneReason } from '../runtime/events'
+import type { ExecutionProfile } from '../runtime/execution-profile'
+import type { OptimizationMetrics } from '../runtime/optimization'
 
 export type EvalCategory = 'coding' | 'browser'
 export type EvalGrader = 'test' | 'playwright' | 'diff'
@@ -30,6 +32,9 @@ export interface EvalMeta {
  * re-derived from raw events by the scoreboard.
  */
 export interface TrialMetrics {
+  latencyMs?: number
+  optimization?: OptimizationMetrics | null
+  evidenceGatePassed?: boolean | null
   billedTokens: number
   cachedTokens: number
   /** Undefined when the model has no published pricing. */
@@ -47,6 +52,7 @@ export interface HarnessTrialInput {
   /** A fresh working copy of the eval's `fixture/` the harness may mutate. */
   workdir: string
   model: string
+  executionProfile: ExecutionProfile
   /** 0-based trial index. */
   trial: number
 }
@@ -74,6 +80,8 @@ export interface EvalRun {
 
 /** Per-eval scoreboard entry aggregated across k trials. */
 export interface EvalScore {
+  /** Retained per-trial observations; null on migrated historical scoreboards. */
+  trialResults?: TrialResult[] | null
   id: string
   category: EvalCategory
   grader: EvalGrader
@@ -105,11 +113,12 @@ export interface ScoreboardSummary {
 
 /** One scoreboard per run (docs/evals/01-EVAL-STRATEGY.md "How versions are compared"). */
 export interface Scoreboard {
-  version: 1
+  version: 2 | 3
   createdAt: string
   model: string
   /** Harness build label (e.g. version or binary path). */
   harness: string
+  executionProfile: ExecutionProfile
   corpus: string
   evals: EvalScore[]
   summary: ScoreboardSummary

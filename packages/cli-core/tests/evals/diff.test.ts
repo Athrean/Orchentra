@@ -32,7 +32,7 @@ function run(id: string, passed: boolean, cost = 0.01): EvalRun {
   return { meta: meta(id), trials: [trial(passed, cost)] }
 }
 function board(runs: EvalRun[], ctx: Partial<ScoreboardContext> = {}): Scoreboard {
-  return buildScoreboard(runs, { model: 'm', harness: 'x', corpus: 'evals/', ...ctx })
+  return buildScoreboard(runs, { model: 'm', harness: 'x', corpus: 'evals/', executionProfile: 'direct', ...ctx })
 }
 
 describe('diffScoreboards', () => {
@@ -70,5 +70,13 @@ describe('diffScoreboards', () => {
     const after = board([run('a', true), run('only-after', true)])
     const d = diffScoreboards(before, after)
     expect(d.evals.map((e) => e.id)).toEqual(['a'])
+  })
+
+  test('names both execution profiles so a same-build mode comparison is attributable', () => {
+    const before = board([run('a', true)], { harness: '0.9.0#direct', executionProfile: 'direct' })
+    const after = board([run('a', true)], { harness: '0.9.0#rlm', executionProfile: 'rlm' })
+    const diff = diffScoreboards(before, after)
+    expect(diff.beforeExecutionProfile).toBe('direct')
+    expect(diff.afterExecutionProfile).toBe('rlm')
   })
 })

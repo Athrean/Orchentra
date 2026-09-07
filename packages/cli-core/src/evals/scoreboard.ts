@@ -5,6 +5,8 @@
 // included) against the successes — the honest efficiency read.
 
 import type { EvalRun, EvalScore, Scoreboard, ScoreboardSummary } from './types'
+import type { ExecutionProfile } from '../runtime/execution-profile'
+import { runMigrations } from '../runtime/migrations'
 
 export function scoreEval(run: EvalRun): EvalScore {
   const { meta, trials } = run
@@ -18,6 +20,7 @@ export function scoreEval(run: EvalRun): EvalScore {
   const looped = trials.filter((t) => t.metrics.loopDetections > 0).length
   return {
     id: meta.id,
+    trialResults: trials,
     category: meta.category,
     grader: meta.grader,
     split: meta.split ?? 'dev',
@@ -53,20 +56,36 @@ export interface ScoreboardContext {
   /** Harness build label (version or binary path). */
   harness: string
   corpus: string
+  executionProfile: ExecutionProfile
 }
 
 /** Score a set of runs into one scoreboard — the "one file per run" artifact. */
 export function buildScoreboard(runs: EvalRun[], ctx: ScoreboardContext): Scoreboard {
   const evals = runs.map(scoreEval)
   return {
-    version: 1,
+    version: 3,
     createdAt: new Date().toISOString(),
     model: ctx.model,
     harness: ctx.harness,
+    executionProfile: ctx.executionProfile,
     corpus: ctx.corpus,
     evals,
     summary: summarize(evals),
   }
+}
+
+export function parseScoreboard(value: unknown): Scoreboard {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid scoreboard')
+  const board = runMigrations<Scoreboard>(value as Record<string, unknown>, {
+    current: 3,
+    migrations: {
+      1: (old) => ({ ...old, executionProfile: 'direct' }),
+      2: (old) => ({ ...old, evals: (old.evals as EvalScore[]).map((entry) => ({ ...entry, trialResults: null })) }),
+    },
+  })
+  if (!Array.isArray(board.evals) || typeof board.model !== 'string' || typeof board.corpus !== 'string')
+    throw new Error('invalid scoreboard fields')
+  return board
 }
 
 // ── Version diff ────────────────────────────────────────────────────────────
@@ -88,6 +107,8 @@ export interface ScoreboardDiff {
   before: string
   after: string
   model: string
+  beforeExecutionProfile: ExecutionProfile
+  afterExecutionProfile: ExecutionProfile
   passHatKRateDelta: number
   passAt1RateDelta: number
   regressions: string[]
@@ -121,6 +142,8 @@ export function diffScoreboards(before: Scoreboard, after: Scoreboard): Scoreboa
     before: before.harness,
     after: after.harness,
     model: after.model,
+    beforeExecutionProfile: before.executionProfile,
+    afterExecutionProfile: after.executionProfile,
     passHatKRateDelta: after.summary.passHatKRate - before.summary.passHatKRate,
     passAt1RateDelta: after.summary.passAt1Rate - before.summary.passAt1Rate,
     regressions: evals.filter((e) => e.regressed).map((e) => e.id),

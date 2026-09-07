@@ -90,6 +90,8 @@ export interface ToolArgsDelta {
 export interface UsageDelta {
   kind: 'usage'
   usage: UsageTotals
+  /** True only when the provider explicitly included cache-read accounting. */
+  cacheReadReported?: boolean
 }
 
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'error'

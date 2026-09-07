@@ -109,10 +109,12 @@ describe('buildScoreboard', () => {
       model: 'claude-x',
       harness: '0.6.0',
       corpus: 'evals/',
+      executionProfile: 'direct',
     })
-    expect(board.version).toBe(1)
+    expect(board.version).toBe(3)
     expect(board.model).toBe('claude-x')
     expect(board.harness).toBe('0.6.0')
+    expect(board.executionProfile).toBe('direct')
     expect(board.corpus).toBe('evals/')
     expect(board.evals).toHaveLength(2)
     expect(board.summary.total).toBe(2)

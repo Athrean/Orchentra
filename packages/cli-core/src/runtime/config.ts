@@ -13,16 +13,21 @@ import type {
 } from './config-types'
 import { isEffortTier } from './provider'
 import { isTerseMode } from './terse'
+import { isExecutionProfile } from './execution-profile'
 import { runMigrations, type Migration } from './migrations'
 
 /** Current settings schema version. Bump when a settings shape changes and add
  * the matching `vN -> vN+1` transform to CONFIG_MIGRATIONS below. */
-export const CURRENT_CONFIG_VERSION = 1
+export const CURRENT_CONFIG_VERSION = 2
 
 /** Ordered `vN -> vN+1` settings transforms, keyed by from-version. Empty today:
  * the shape is in place so the next settings change adds a migration step here
  * instead of a silent breaking change. */
-const CONFIG_MIGRATIONS: Record<number, Migration> = {}
+const CONFIG_MIGRATIONS: Record<number, Migration> = {
+  // v2 adds the optional executionProfile setting. Existing files retain the
+  // direct-mode default; the migration only advances the explicit schema stamp.
+  1: (value) => value,
+}
 
 export class ConfigLoader {
   constructor(
@@ -117,7 +122,20 @@ function extractFeatureConfig(merged: Record<string, unknown>): RuntimeFeatureCo
     memory: extractMemoryConfig(merged),
     budget: extractBudgetConfig(merged),
     subagents: extractSubagentsConfig(merged),
+    rlm: extractRlmConfig(merged),
+    executionProfile: extractExecutionProfile(merged),
   }
+}
+
+function extractRlmConfig(merged: Record<string, unknown>): RuntimeFeatureConfig['rlm'] {
+  const rlm = isPlainObject(merged.rlm) ? (merged.rlm as Record<string, unknown>) : {}
+  return { speculativeToolCalls: rlm.speculativeToolCalls === true }
+}
+
+function extractExecutionProfile(merged: Record<string, unknown>): RuntimeFeatureConfig['executionProfile'] {
+  if (merged.executionProfile === undefined) return 'direct'
+  if (isExecutionProfile(merged.executionProfile)) return merged.executionProfile
+  throw new Error(`invalid executionProfile ${JSON.stringify(merged.executionProfile)}; expected direct or rlm`)
 }
 
 function extractSubagentsConfig(merged: Record<string, unknown>): SubagentsFeatureConfig {

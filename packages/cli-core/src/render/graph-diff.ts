@@ -31,10 +31,7 @@ export interface ExecutionGraphDiff {
  * `changed`. Once aligned, we compare `argsJson` / `resultJson` to decide
  * whether the pair is `changed` or `unchanged`.
  */
-export function diffExecutionGraphs(
-  a: readonly DiffGraphNode[],
-  b: readonly DiffGraphNode[],
-): ExecutionGraphDiff {
+export function diffExecutionGraphs(a: readonly DiffGraphNode[], b: readonly DiffGraphNode[]): ExecutionGraphDiff {
   const layoutA = buildGraphLayout(a)
   const layoutB = buildGraphLayout(b)
 

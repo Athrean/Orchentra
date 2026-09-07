@@ -6,8 +6,7 @@ export interface ValidatedSkillFrontmatter {
 }
 
 export type ValidateSkillResult =
-  | { kind: 'ok'; value: ValidatedSkillFrontmatter }
-  | { kind: 'error'; field: string; message: string }
+  { kind: 'ok'; value: ValidatedSkillFrontmatter } | { kind: 'error'; field: string; message: string }
 
 export function validateSkillFrontmatter(meta: Record<string, unknown>): ValidateSkillResult {
   const name = requireString(meta, 'name')

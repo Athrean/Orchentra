@@ -6,6 +6,7 @@ import {
   summaryLines,
   UsageTracker,
   billedTokens,
+  cacheUsageMetrics,
   cachedTokens,
 } from '../src/runtime/usage'
 import { emptyUsage, type UsageTotals } from '../src/runtime/events'
@@ -303,5 +304,15 @@ describe('billed-vs-cache token split', () => {
 
   test('cachedTokens is the cache-read count', () => {
     expect(cachedTokens(usage)).toBe(90_000)
+  })
+
+  test('cache hit rate uses only disjoint provider-reported input categories', () => {
+    expect(cacheUsageMetrics(usage)).toEqual({
+      eligibleInputTokens: 91_200,
+      readTokens: 90_000,
+      creationTokens: 200,
+      hitRate: 90_000 / 91_200,
+    })
+    expect(cacheUsageMetrics(emptyUsage()).hitRate).toBeNull()
   })
 })

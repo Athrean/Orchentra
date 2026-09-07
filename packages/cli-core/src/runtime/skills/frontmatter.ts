@@ -1,6 +1,5 @@
 export type ParseFrontmatterResult =
-  | { kind: 'ok'; meta: Record<string, unknown>; body: string }
-  | { kind: 'error'; message: string }
+  { kind: 'ok'; meta: Record<string, unknown>; body: string } | { kind: 'error'; message: string }
 
 const FENCE = '---'
 

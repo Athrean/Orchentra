@@ -1,11 +1,14 @@
-import { mkdir, appendFile, writeFile } from 'node:fs/promises'
+import { mkdir, appendFile, writeFile, rename } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { RuntimeEvent, UsageTotals, DoneReason, ToolCall, ToolArtifact } from './events'
 import type { ChatMessage } from './provider'
 import type { QuirkKind } from './quirks'
 import type { ConsoleErrorEntry, FailedRequestEntry } from './browser'
 import type { GateDecisionRecord } from './run-state'
+import type { ExecutionProfile } from './execution-profile'
 import { redactSecrets } from '../memory/failure-signature'
+import type { OptimizationMetrics } from './optimization'
+import { runMigrations } from './migrations'
 
 /** Browser session summary for the manifest — populated once browser ops run. */
 export interface BrowserStateSummary {
@@ -51,6 +54,9 @@ export type TraceEvent = RuntimeEvent | TranscriptSnapshotEvent
  */
 
 export interface TraceManifest {
+  /** Absent on pre-SG5 manifests; readers normalize through parseTraceManifest. */
+  schemaVersion?: 2
+  optimization?: OptimizationMetrics | null
   traceId: string
   sessionId: string
   /** The user message that started the run. */
@@ -60,8 +66,16 @@ export interface TraceManifest {
   provider: string | null
   /** Harness (CLI) version; null when the host did not supply it. */
   harnessVersion: string | null
+  /** Inference architecture used for this run. */
+  executionProfile: ExecutionProfile
   /** sha256 (first 12 hex chars) of the static system prompt. */
   systemPromptVersion: string
+  /** Independent hashes keep cache/trust partition changes attributable. */
+  promptPartitionHashes: {
+    static: string
+    trustedDynamic: string
+    untrustedReference: string
+  }
   /** sha256 (first 12 hex chars) of the advertised tool schemas JSON. */
   toolDefinitionsHash: string
   startedAt: string
@@ -106,6 +120,19 @@ export interface TraceManifest {
   failureCategory: string | null
 }
 
+export function parseTraceManifest(value: unknown): TraceManifest {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid trace manifest')
+  const migrated = runMigrations<TraceManifest>(value as Record<string, unknown>, {
+    current: 2,
+    versionKey: 'schemaVersion',
+    migrations: { 1: (old) => ({ ...old, optimization: null }) },
+  })
+  if (typeof migrated.traceId !== 'string' || !migrated.usage || typeof migrated.usage !== 'object') {
+    throw new Error('invalid trace manifest identity or usage')
+  }
+  return migrated
+}
+
 export interface TraceSink {
   append(event: TraceEvent): void | Promise<void>
   finalize(manifest: TraceManifest): void | Promise<void>
@@ -135,22 +162,31 @@ export function traceArtifactsDir(cwd: string, traceId: string): string {
 
 export class FileTraceSink implements TraceSink {
   private dirReady = false
+  private sequence = 0
+  private pending: Promise<void> = Promise.resolve()
 
   constructor(
     private readonly cwd: string,
     private readonly traceId: string,
   ) {}
 
-  async append(event: TraceEvent): Promise<void> {
-    const path = traceEventsPath(this.cwd, this.traceId)
-    if (!this.dirReady) {
-      await mkdir(dirname(path), { recursive: true })
-      this.dirReady = true
-    }
-    await appendFile(path, `${JSON.stringify(redactTraceData(event))}\n`, 'utf8')
+  append(event: TraceEvent): Promise<void> {
+    const line = JSON.stringify(
+      redactPersistedData({ ...event, traceVersion: 2, sequence: ++this.sequence, traceId: this.traceId }),
+    )
+    this.pending = this.pending.then(async () => {
+      const path = traceEventsPath(this.cwd, this.traceId)
+      if (!this.dirReady) {
+        await mkdir(dirname(path), { recursive: true })
+        this.dirReady = true
+      }
+      await appendFile(path, `${line}\n`, 'utf8')
+    })
+    return this.pending
   }
 
   async finalize(manifest: TraceManifest): Promise<void> {
+    await this.pending
     const path = traceManifestPath(this.cwd, this.traceId)
     if (!this.dirReady) {
       await mkdir(dirname(path), { recursive: true })
@@ -160,20 +196,25 @@ export class FileTraceSink implements TraceSink {
     // nothing writes into it yet — an empty dir means "no artifacts", which
     // is distinct from "layout not yet migrated".
     await mkdir(traceArtifactsDir(this.cwd, this.traceId), { recursive: true })
-    await writeFile(path, `${JSON.stringify(redactTraceData(manifest), null, 2)}\n`, 'utf8')
+    await writeFile(
+      `${path}.tmp`,
+      `${JSON.stringify(redactPersistedData({ ...manifest, schemaVersion: 2, optimization: manifest.optimization ?? null }), null, 2)}\n`,
+      'utf8',
+    )
+    await rename(`${path}.tmp`, path)
   }
 }
 
 /** Redact strings and secret-shaped object fields immediately before disk I/O. */
-function redactTraceData(value: unknown, key?: string): unknown {
+export function redactPersistedData(value: unknown, key?: string): unknown {
   if (key && isSensitiveKey(key)) return '<REDACTED>'
   if (typeof value === 'string') return redactSecrets(value)
-  if (Array.isArray(value)) return value.map((item) => redactTraceData(item))
+  if (Array.isArray(value)) return value.map((item) => redactPersistedData(item))
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([entryKey, entryValue]) => [
         entryKey,
-        redactTraceData(entryValue, entryKey),
+        redactPersistedData(entryValue, entryKey),
       ]),
     )
   }

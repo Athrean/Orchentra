@@ -218,6 +218,25 @@ export function cachedTokens(u: UsageTotals): number {
   return u.cacheReadTokens
 }
 
+export interface CacheUsageMetrics {
+  /** Disjoint input categories reported by the provider. */
+  eligibleInputTokens: number
+  readTokens: number
+  creationTokens: number
+  /** Null when no provider-reported input category exists. */
+  hitRate: number | null
+}
+
+export function cacheUsageMetrics(u: UsageTotals): CacheUsageMetrics {
+  const eligibleInputTokens = u.inputTokens + u.cacheReadTokens + u.cacheCreationTokens
+  return {
+    eligibleInputTokens,
+    readTokens: u.cacheReadTokens,
+    creationTokens: u.cacheCreationTokens,
+    hitRate: eligibleInputTokens > 0 ? u.cacheReadTokens / eligibleInputTokens : null,
+  }
+}
+
 /**
  * Total estimated spend for `usage`, or undefined when the model has no
  * published pricing in the table.

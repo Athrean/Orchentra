@@ -29,6 +29,7 @@ export interface CostWarning {
 export class RuntimeBudget {
   private steps = 0
   private usage: UsageTotals = emptyUsage()
+  private readonly usageByModel = new Map<string, UsageTotals>()
   private turnStartTokens = 0
   private warned = false
   private readonly limits: BudgetConfig
@@ -71,13 +72,23 @@ export class RuntimeBudget {
     this.steps += 1
   }
 
-  addUsage(turn: UsageTotals): void {
+  addUsage(turn: UsageTotals, model = this.limits.model): void {
     this.usage = addUsage(this.usage, turn)
+    const key = model ?? UNSPECIFIED_MODEL
+    this.usageByModel.set(key, addUsage(this.usageByModel.get(key) ?? emptyUsage(), turn))
   }
 
   /** Undefined when the model has no published pricing — see `estimatedCostUsd`. */
   private costUsd(): number | undefined {
-    return estimatedCostUsd(this.usage, this.limits.model)
+    if (this.usageByModel.size === 0) return estimatedCostUsd(this.usage, this.limits.model)
+    let total = 0
+    for (const [model, usage] of Array.from(this.usageByModel)) {
+      if (model === UNSPECIFIED_MODEL) return undefined
+      const cost = estimatedCostUsd(usage, model)
+      if (cost === undefined) return undefined
+      total += cost
+    }
+    return total
   }
 
   snapshot(): BudgetState {
@@ -117,4 +128,11 @@ export class RuntimeBudget {
   get currentUsage(): UsageTotals {
     return this.usage
   }
+
+  /** Per-model accounting for nested calls; returned as copies, never live mutable state. */
+  get currentUsageByModel(): ReadonlyMap<string, UsageTotals> {
+    return new Map(Array.from(this.usageByModel, ([model, usage]) => [model, { ...usage }]))
+  }
 }
+
+const UNSPECIFIED_MODEL = '<unspecified>'

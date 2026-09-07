@@ -14,13 +14,21 @@ import {
 import type { RuntimeEvent } from '../src/runtime/events'
 
 const manifest: TraceManifest = {
+  schemaVersion: 2,
+  optimization: null,
   traceId: 't1',
   sessionId: 's1',
   task: 'do the thing',
   model: 'test-model',
   provider: 'anthropic',
   harnessVersion: '0.1.0',
+  executionProfile: 'direct',
   systemPromptVersion: 'abc123def456',
+  promptPartitionHashes: {
+    static: 'abc123def456',
+    trustedDynamic: 'def456abc123',
+    untrustedReference: '000000000000',
+  },
   toolDefinitionsHash: '123abc456def',
   startedAt: '2026-07-13T00:00:00.000Z',
   endedAt: '2026-07-13T00:00:05.000Z',
@@ -61,8 +69,14 @@ describe('FileTraceSink', () => {
 
     const lines = readFileSync(traceEventsPath(cwd, 't1'), 'utf8').trim().split('\n')
     expect(lines).toHaveLength(2)
-    expect(JSON.parse(lines[0]!)).toEqual({ kind: 'user_message', content: 'hello' })
-    expect(JSON.parse(lines[1]!)).toEqual({ kind: 'text', delta: 'world' })
+    expect(JSON.parse(lines[0]!)).toEqual({
+      kind: 'user_message',
+      content: 'hello',
+      traceVersion: 2,
+      sequence: 1,
+      traceId: 't1',
+    })
+    expect(JSON.parse(lines[1]!)).toEqual({ kind: 'text', delta: 'world', traceVersion: 2, sequence: 2, traceId: 't1' })
 
     const written = JSON.parse(readFileSync(traceManifestPath(cwd, 't1'), 'utf8')) as TraceManifest
     expect(written).toEqual(manifest)

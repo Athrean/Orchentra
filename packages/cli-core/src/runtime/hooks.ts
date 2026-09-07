@@ -306,6 +306,15 @@ export class HookRunner {
     }
   }
 
+  /** Speculation is safe only when no pre/post tool hook can run. */
+  allowsSpeculativeTool(_toolName: string): boolean {
+    return (
+      this.config.preToolUse.length === 0 &&
+      this.config.postToolUse.length === 0 &&
+      this.config.postToolUseFailure.length === 0
+    )
+  }
+
   /**
    * Fire a lifecycle event (session/compaction/sub-agent). No-op in the base
    * runner, which sources only per-tool hooks; adapters whose config carries

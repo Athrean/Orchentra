@@ -11,6 +11,7 @@ import { cp, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { TraceManifest } from '../runtime/trace'
+import type { ExecutionProfile } from '../runtime/execution-profile'
 import { loadEvalMeta, discoverEvals, effectiveK } from './corpus'
 import { runGrader, type GradeResult } from './grader'
 import type { EvalMeta, EvalRun, HarnessRunner, TrialMetrics, TrialResult } from './types'
@@ -19,6 +20,8 @@ export interface RunOptions {
   /** Drives the harness against one trial's fixture copy (real or scripted). */
   harness: HarnessRunner
   model: string
+  /** Inference architecture under measurement; defaults to the direct control. */
+  executionProfile?: ExecutionProfile
   /** Trial-count override; otherwise per-eval {@link effectiveK}. */
   k?: number
   /** Injected grader (tests); defaults to the real subprocess grader. */
@@ -28,6 +31,11 @@ export interface RunOptions {
 /** Project the scoreboard's trial metrics off a run's trace manifest. */
 export function metricsFromManifest(m: TraceManifest): TrialMetrics {
   return {
+    latencyMs: m.latencyMs,
+    optimization: m.optimization ?? null,
+    evidenceGatePassed: m.gateDecisions?.length
+      ? m.gateDecisions[m.gateDecisions.length - 1]!.outcome === 'pass'
+      : null,
     billedTokens: m.billedTokens,
     cachedTokens: m.cachedTokens,
     estimatedCostUsd: m.estimatedCostUsd,
@@ -58,6 +66,7 @@ export async function runEvalTrials(evalDir: string, opts: RunOptions): Promise<
         taskPrompt,
         workdir: join(idCopy, 'fixture'),
         model: opts.model,
+        executionProfile: opts.executionProfile ?? 'direct',
         trial,
       })
       const g = await grade(idCopy, meta)

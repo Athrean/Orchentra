@@ -18,6 +18,8 @@ describe('profileFor — provider routing parity with the retired heuristics', (
     ['grok-4.3', 'grok', 'xai'],
     ['qwen-max', 'qwen', 'dashscope'],
     ['gemini-3.1-pro-preview', 'gemini', 'gemini'],
+    ['zen/muse-spark-1.3-contributor-free', 'generic', 'zen'],
+    ['zen/claude-opus-5', 'generic', 'zen'],
     ['ollama/gpt-oss:120b', 'local', 'local'],
     ['ollama/llama3', 'local', 'local'],
     ['anthropic/claude-sonnet-5', 'claude', 'openrouter'],

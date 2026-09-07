@@ -38,6 +38,7 @@ describe('ConfigLoader', () => {
     expect(config.loadedEntries).toHaveLength(0)
     expect(config.featureConfig.model).toBeUndefined()
     expect(config.featureConfig.aliases).toEqual({})
+    expect(config.featureConfig.executionProfile).toBe('direct')
     cleanup()
   })
 
@@ -67,6 +68,20 @@ describe('ConfigLoader', () => {
     cleanup()
   })
 
+  test('RLM speculative tool calls are a separate default-off feature flag', () => {
+    setupTmp({})
+    let loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    expect(loader.load().featureConfig.rlm).toEqual({ speculativeToolCalls: false })
+    cleanup()
+
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ rlm: { speculativeToolCalls: true } }),
+    })
+    loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    expect(loader.load().featureConfig.rlm).toEqual({ speculativeToolCalls: true })
+    cleanup()
+  })
+
   test('reads positive integer subagents caps and ignores invalid values', () => {
     setupTmp({
       'home/.orchentra/settings.json': JSON.stringify({ subagents: { maxDepth: 3, maxConcurrent: 0 } }),
@@ -83,18 +98,34 @@ describe('ConfigLoader', () => {
     setupTmp({})
     const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
     const config = loader.load()
-    expect(config.configVersion).toBe(1)
+    expect(config.configVersion).toBe(2)
     cleanup()
   })
 
-  test('a settings file at the current version loads normally', () => {
+  test('a v1 settings file migrates to v2 and preserves direct-mode behavior', () => {
     setupTmp({
       'home/.orchentra/settings.json': JSON.stringify({ version: 1, model: 'sonnet' }),
     })
     const loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
     const config = loader.load()
-    expect(config.configVersion).toBe(1)
+    expect(config.configVersion).toBe(2)
     expect(config.featureConfig.model).toBe('sonnet')
+    expect(config.featureConfig.executionProfile).toBe('direct')
+    cleanup()
+  })
+
+  test('reads a valid execution profile and fails loudly on invalid values', () => {
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ version: 2, executionProfile: 'rlm' }),
+    })
+    let loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    expect(loader.load().featureConfig.executionProfile).toBe('rlm')
+
+    setupTmp({
+      'home/.orchentra/settings.json': JSON.stringify({ version: 2, executionProfile: 'unknown' }),
+    })
+    loader = new ConfigLoader(join(TMP, 'cwd'), join(TMP, 'home', '.orchentra'))
+    expect(() => loader.load()).toThrow(/invalid executionProfile/)
     cleanup()
   })
 

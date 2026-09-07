@@ -102,6 +102,38 @@ export interface UsageEvent {
   step: number
   turn: UsageTotals
   cumulative: UsageTotals
+  cacheReadReported?: boolean
+}
+
+export interface ContextInvalidatedEvent {
+  kind: 'context_invalidated'
+  reason: 'forced_compaction' | 'threshold_compaction' | 'browser_snapshot_superseded'
+  region: 'messages'
+  messagesAffected: number
+  /** The tools/static-system prefix is outside the mutated message region. */
+  stablePrefixChanged: false
+}
+
+export interface RecursiveLinkEvent {
+  kind: 'recursive_link'
+  jobId: string
+  attempt: number
+  childTraceId: string
+  depth: number
+}
+
+export interface RunIdentityEvent {
+  kind: 'run_identity'
+  traceId: string
+  model: string
+  startedAt: string
+}
+
+export interface ContextAccessEvent {
+  kind: 'context_access'
+  operationId: string
+  operation: 'read' | 'search' | 'store'
+  handle: string
 }
 
 export interface CompactedEvent {
@@ -207,6 +239,24 @@ export interface RecoveryDecisionEvent {
   decision: import('./recovery').RecoveryDecision
 }
 
+/** One capability crossing inside the RLM program environment. */
+export interface ProgramOperationEvent {
+  kind: 'program_operation'
+  operation: import('./program-environment').ProgramOperationRecord
+}
+
+/** Run-scoped lifecycle transition for an RLM leaf or recursive model job. */
+export interface ModelJobEvent {
+  kind: 'model_job'
+  job: import('./model-functions').ModelJobSnapshot
+}
+
+/** Final disposition of one default-off speculative programmatic tool call. */
+export interface SpeculativeToolEvent {
+  kind: 'speculative_tool'
+  attempt: import('./speculative-tools').SpeculativeToolAttemptRecord
+}
+
 export type SpanAttributeValue = string | number | boolean
 
 export interface SpanStartEvent {
@@ -236,6 +286,10 @@ export type RuntimeEvent =
   | ToolResultEvent
   | UsageEvent
   | CompactedEvent
+  | ContextInvalidatedEvent
+  | RecursiveLinkEvent
+  | RunIdentityEvent
+  | ContextAccessEvent
   | CostWarningEvent
   | ToolOutputBudgetedEvent
   | LoopDetectedEvent
@@ -247,6 +301,9 @@ export type RuntimeEvent =
   | RunStateEvent
   | GateDecisionEvent
   | RecoveryDecisionEvent
+  | ProgramOperationEvent
+  | ModelJobEvent
+  | SpeculativeToolEvent
   | SpanStartEvent
   | SpanEndEvent
 

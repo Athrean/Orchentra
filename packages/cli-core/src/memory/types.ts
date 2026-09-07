@@ -1,10 +1,5 @@
 export type FailureType =
-  | 'flaky_test'
-  | 'env_missing'
-  | 'dependency_conflict'
-  | 'infra_timeout'
-  | 'code_bug'
-  | 'unknown'
+  'flaky_test' | 'env_missing' | 'dependency_conflict' | 'infra_timeout' | 'code_bug' | 'unknown'
 
 export type EmbeddingVector = number[]
 export type MemoryFeedback = 'accepted' | 'rejected'

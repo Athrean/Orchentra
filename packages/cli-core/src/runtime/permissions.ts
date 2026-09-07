@@ -50,9 +50,7 @@ export interface PermissionPrompter {
 export type PermissionOutcome = { kind: 'allow' } | { kind: 'deny'; reason: string }
 
 export type PermissionRuleMatcher =
-  | { kind: 'any' }
-  | { kind: 'exact'; value: string }
-  | { kind: 'prefix'; prefix: string }
+  { kind: 'any' } | { kind: 'exact'; value: string } | { kind: 'prefix'; prefix: string }
 
 export interface PermissionRuleConfig {
   allow: string[]

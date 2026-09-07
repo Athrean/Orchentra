@@ -167,4 +167,18 @@ describe('runEvalTrials — real grader dispatch is bidirectional', () => {
       await rm(corpus, { recursive: true, force: true })
     }
   }, 20000)
+
+  test('passes the named execution profile into every harness trial', async () => {
+    const { corpus, dir } = await makeEval('test')
+    const observed: string[] = []
+    const recording = harness(async (input) => {
+      observed.push(input.executionProfile)
+    })
+    try {
+      await runEvalTrials(dir, { ...opts(recording, 2), executionProfile: 'rlm' })
+      expect(observed).toEqual(['rlm', 'rlm'])
+    } finally {
+      await rm(corpus, { recursive: true, force: true })
+    }
+  }, 20000)
 })
