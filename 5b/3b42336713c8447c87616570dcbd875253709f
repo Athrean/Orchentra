@@ -1,0 +1,31 @@
+packages/cli-core/src/extensions/index.ts
+  s_1af4fa2151c0e1::t_88ac5d8e0e01b2 1-2
+packages/cli-core/src/extensions/manifest.ts
+  s_1af4fa2151c0e1::t_bcfe3b15c620a7 1-90
+packages/cli-core/src/extensions/source.ts
+  s_1af4fa2151c0e1::t_f36a2d133b0441 1-79
+packages/cli-core/src/extensions/store.ts
+  s_1af4fa2151c0e1::t_2e3925aa9bf838 1-173
+packages/cli-core/src/extensions/validate.ts
+  s_1af4fa2151c0e1::t_a3dd826a782d11 1-63
+packages/cli-core/src/index.ts
+  s_1af4fa2151c0e1::t_a9caac2a17be18 11
+packages/cli-core/tests/extensions-lifecycle.test.ts
+  s_1af4fa2151c0e1::t_daa19790e82808 1-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5b3b42336713c8447c87616570dcbd875253709f",
+  "prompts": {},
+  "sessions": {
+    "s_1af4fa2151c0e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf98559e-71c3-48e5-a3d5-a0be08d7c972",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
