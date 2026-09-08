@@ -78,7 +78,7 @@ describe('DefaultToolRegistry', () => {
     expect(requirements.write_file).toBe('workspace-write')
     expect(requirements.bash).toBe('danger-full-access')
     expect(requirements.todo_write).toBe('workspace-write')
-    expect(requirements.web_fetch).toBe('danger-full-access')
+    expect(requirements.web_fetch).toBe('read-only')
   })
 
   test('requirements() includes custom registrations', () => {

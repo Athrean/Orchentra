@@ -12,8 +12,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@orchentra/cli-api": "workspace:*",
-    "@orchentra/cli-core": "workspace:*"
+    "@orchentra/cli-core": "workspace:*",
+    "linkedom": "^0.18.13",
+    "robots-parser": "^3.0.1"
   },
   "devDependencies": {
     "@orchentra/eslint-config": "workspace:*",

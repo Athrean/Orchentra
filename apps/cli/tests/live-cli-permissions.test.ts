@@ -13,7 +13,7 @@ describe('LiveCli permissions', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'orchentra-live-perms-'))
     const provider = fakeProvider([
       [
-        { kind: 'tool-use', call: { id: 'tc1', name: 'web_fetch', input: { url: 'https://example.com' } } },
+        { kind: 'tool-use', call: { id: 'tc1', name: 'admin_probe', input: { url: 'https://example.com' } } },
         { kind: 'finish', stopReason: 'tool_use' },
       ],
       [{ kind: 'finish', stopReason: 'end_turn' }],
@@ -24,7 +24,15 @@ describe('LiveCli permissions', () => {
       permissionMode: 'workspace-write',
       provider,
       resolveModel,
-      tools: new DefaultToolRegistry(),
+      tools: new DefaultToolRegistry([
+        {
+          name: 'admin_probe',
+          description: 'test permission escalation',
+          level: 'admin',
+          inputSchema: { type: 'object' },
+          execute: async () => ({ content: 'ran', isError: false }),
+        },
+      ]),
       cwd,
       sessionId: 'test-session',
       sharedState: sharedState(),
@@ -42,7 +50,7 @@ describe('LiveCli permissions', () => {
 
     await cli.runTurn('fetch a page')
 
-    expect(prompt?.toolName).toBe('web_fetch')
+    expect(prompt?.toolName).toBe('admin_probe')
     expect(prompt?.requiredMode).toBe('danger-full-access')
     expect(prompt?.currentMode).toBe('workspace-write')
     const result = events.find((event) => event.kind === 'tool_result')

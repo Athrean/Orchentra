@@ -17,7 +17,7 @@ import { fileEditTool } from './tools/file-edit-tool'
 import { globTool } from './tools/glob-tool'
 import { grepTool } from './tools/grep-tool'
 import { diagnosticsTool } from './tools/diagnostics-tool'
-import { webFetchTool } from './tools/web-fetch-tool'
+import { webFetchTool, webSearchTool, webCrawlTool } from './web/tools'
 import { askUserTool } from './tools/ask-user-tool'
 import { todoWriteTool } from './tools/todo-write-tool'
 import { agentTool } from './tools/agent-tool'
@@ -39,6 +39,8 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   grepTool,
   diagnosticsTool,
   webFetchTool,
+  webSearchTool,
+  webCrawlTool,
   askUserTool,
   todoWriteTool,
   agentTool,
@@ -98,6 +100,7 @@ export class DefaultToolRegistry implements ToolRegistry {
   }
 
   async execute(name: string, args: unknown, ctx: ToolContext): Promise<ToolResult> {
+    if (ctx.signal?.aborted) return { content: 'Tool call cancelled', isError: true, data: { code: 'cancelled' } }
     const tool = this.tools.get(name)
     if (!tool) {
       ctx.quirks?.record(ctx.model ?? 'unknown', 'unknown_tool')
