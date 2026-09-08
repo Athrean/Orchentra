@@ -1,0 +1,55 @@
+apps/cli/src/login/state-machine.ts
+  s_27c10fe9731fec::t_1e5a2f22dd5c06 64-74,95-97,103,113
+apps/cli/src/model-catalog.ts
+  s_27c10fe9731fec::t_675132e605f9e9 4,7-8,11-26,28-31,36,38-124,138,141-169,173-174
+apps/cli/src/provider-factory.ts
+  s_27c10fe9731fec::t_a89fd1e2e71ac7 16-17,27,29-30,33-34,73-77,82-87,96-99,101-109
+apps/cli/src/tui/app/ActiveFlowHost.tsx
+  s_27c10fe9731fec::t_9af022ab8b66f5 70-84,119-122
+apps/cli/src/tui/components/EffortSlider.tsx
+  s_27c10fe9731fec::t_85ff65735dd1bb 12-55,60-61,78-79,85-86,89,94,96-98,100-105,107-108
+apps/cli/src/tui/components/LoginPickerCard.tsx
+  s_27c10fe9731fec::t_e3f44ab1b9ff9f 12,17,28-33,45,49-52
+apps/cli/src/tui/components/ModelPickerCard.tsx
+  s_27c10fe9731fec::t_d986ad425ba8a8 1,3,16-69,73-81,83,85-88,90-141,144-154,156-163,166-176,178-223
+apps/cli/tests/gateway-routing.test.ts
+  s_27c10fe9731fec::t_50de88f8d5e964 1-53
+apps/cli/tests/login/sign-in-model.test.ts
+  s_27c10fe9731fec::t_71aae924e96e7d 1-73
+apps/cli/tests/provider-factory.test.ts
+  s_27c10fe9731fec::t_b8643cc8cfdfb4 7-8,13-21
+apps/cli/tests/tui/effort-slider.test.tsx
+  s_27c10fe9731fec::t_feb13115c39281 1-103
+apps/cli/tests/tui/model-picker-card.test.tsx
+  s_27c10fe9731fec::t_c4e6d01ab2e2ff 4-11,13-42,45-56,60-134,136,139-140,143-145,149-151,155-159,162-163,167-169,173-176,178-180
+packages/cli-api/src/anthropic/client.ts
+  s_27c10fe9731fec::t_73cab9fa0555d5 38,41-52,70-71,88-90
+packages/cli-api/src/index.ts
+  s_27c10fe9731fec::t_0843fa690919d8 140-141
+packages/cli-api/src/openai-compat/client.ts
+  s_27c10fe9731fec::t_3973f1da44ee55 105-131
+packages/cli-api/src/openai-compat/index.ts
+  s_27c10fe9731fec::t_9dc881fd92e98d 7-8
+packages/cli-api/tests/client.test.ts
+  s_27c10fe9731fec::t_dc54336f39a58a 793-855
+packages/cli-core/src/runtime/model-profile.ts
+  s_27c10fe9731fec::t_6acafb6d04c23e 19-20,89-95,229
+packages/cli-core/tests/model-profile.test.ts
+  s_27c10fe9731fec::t_b27d1f10c3fd45 195-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "bff25b3b5c25c569cdd3d0bd96018b63c1d50dff",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
