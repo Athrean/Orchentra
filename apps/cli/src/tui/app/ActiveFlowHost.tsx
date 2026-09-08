@@ -67,6 +67,21 @@ export function ActiveFlowHost(props: ActiveFlowHostProps): React.ReactElement |
                 ? { kind: 'system', id: randomUUID(), text: `${okGlyph()} ${result.message}`, tone: 'info' }
                 : { kind: 'system', id: randomUUID(), text: result.message, tone: 'info' },
             })
+            // Point the session at a model the account we just signed into can
+            // actually serve. Without this the sign-in succeeds and the very
+            // next prompt still goes to the previous provider.
+            if (!result.model || result.model === cli.getModel()) return
+            const resolved = cli.setModel(result.model)
+            dispatch({ type: 'model/set', model: resolved })
+            dispatch({
+              type: 'transcript/push',
+              row: {
+                kind: 'system',
+                id: randomUUID(),
+                text: `${okGlyph()} model -> ${resolved} (session)`,
+                tone: 'info',
+              },
+            })
           }}
         />
       )
@@ -101,6 +116,10 @@ export function ActiveFlowHost(props: ActiveFlowHostProps): React.ReactElement |
       return (
         <ModelPickerCard
           current={flow.current}
+          effort={cli.getEffort?.()}
+          onEffort={(effort) => {
+            cli.setEffort?.(effort)
+          }}
           onPick={(modelId, scope) => {
             const resolved = cli.setModel(modelId)
             if (scope === 'default') setDefaultModel(resolved)

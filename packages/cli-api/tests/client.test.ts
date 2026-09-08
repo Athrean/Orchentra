@@ -790,3 +790,66 @@ describe('toAnthropicMessages', () => {
     })
   })
 })
+
+describe('AnthropicProvider OAuth identity block', () => {
+  const originalFetch = globalThis.fetch
+  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalApiKey = process.env['ANTHROPIC_API_KEY']
+  const originalAuthToken = process.env['ANTHROPIC_AUTH_TOKEN']
+  let configHome: string
+  let bodies: { system?: unknown }[] = []
+
+  beforeEach(() => {
+    configHome = mkdtempSync(join(tmpdir(), 'orchentra-oauth-system-'))
+    process.env['ORCHENTRA_CONFIG_HOME'] = configHome
+    process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = '1'
+    process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = '1'
+    delete process.env['ANTHROPIC_API_KEY']
+    bodies = []
+    globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)) as { system?: unknown })
+      return new Response('event: message_stop\ndata: {"type":"message_stop"}\n\n', {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      })
+    }) as typeof globalThis.fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    if (existsSync(configHome)) rmSync(configHome, { recursive: true, force: true })
+    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
+    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalApiKey === undefined) delete process.env['ANTHROPIC_API_KEY']
+    else process.env['ANTHROPIC_API_KEY'] = originalApiKey
+    if (originalAuthToken === undefined) delete process.env['ANTHROPIC_AUTH_TOKEN']
+    else process.env['ANTHROPIC_AUTH_TOKEN'] = originalAuthToken
+    delete process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']
+    delete process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
+  })
+
+  const IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
+
+  function firstSystemText(): string {
+    const system = bodies[0]?.system as { text: string }[]
+    return system[0]?.text ?? ''
+  }
+
+  // Anthropic reads the caller's identity off the first system block and
+  // answers a bearer request that lacks it with a 429 the retry loop then
+  // stalls on. Verified against the live API 2026-09-07.
+  test('a bearer request leads with the Claude Code identity block', async () => {
+    process.env['ANTHROPIC_AUTH_TOKEN'] = 'sk-ant-oat01-test'
+    await collectEvents(new AnthropicProvider(), buildRequest())
+    expect(firstSystemText()).toBe(IDENTITY)
+    // Orchentra's own spine still ships, right after it.
+    const system = bodies[0]?.system as { text: string }[]
+    expect(system[1]?.text).toBe('You are a helpful assistant.')
+  })
+
+  test('an API-key request does not send the identity block', async () => {
+    process.env['ANTHROPIC_API_KEY'] = 'sk-ant-api-test'
+    await collectEvents(new AnthropicProvider(), buildRequest())
+    expect(firstSystemText()).toBe('You are a helpful assistant.')
+  })
+})

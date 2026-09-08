@@ -4,12 +4,21 @@ import { createProvider, resolveModelAlias, thinkingTokenBudgetForEffort } from 
 
 describe('provider factory', () => {
   test.each([
-    ['opus', 'claude-opus-4-8', 'anthropic'],
+    ['opus', 'claude-opus-5', 'anthropic'],
+    ['fable', 'claude-fable-5-1', 'anthropic'],
     ['gpt-5.5', 'gpt-5.5', 'openai'],
     ['grok', 'grok-4.3', 'xai'],
     ['qwen-max', 'qwen-max', 'dashscope'],
     ['qwen', 'qwen/qwen3.6-35b-a3b', 'openrouter'],
-    ['gemini-pro', 'gemini-3.1-pro-preview', 'gemini'],
+    // Bare `gemini-*` is the public API; Antigravity's overlapping ids sit
+    // behind the prefix and route to its own host.
+    ['gemini-pro', 'antigravity/gemini-3.1-pro-low', 'antigravity'],
+    ['gemini-3.1-pro-preview', 'gemini-3.1-pro-preview', 'gemini'],
+    ['antigravity/claude-sonnet-4-6', 'antigravity/claude-sonnet-4-6', 'antigravity'],
+    // Same opencode key, two hosts: `go/` bills the flat plan, `zen/` credits.
+    ['go', 'go/omen-alpha', 'zen-go'],
+    ['go/qwen3.8-flash', 'go/qwen3.8-flash', 'zen-go'],
+    ['zen', 'zen/muse-spark-1.3-contributor-free', 'zen'],
     ['glm', 'z-ai/glm-5.2', 'openrouter'],
     ['mistral', 'mistralai/mistral-medium-3-5', 'openrouter'],
     ['deepseek', 'deepseek/deepseek-v4-pro', 'openrouter'],

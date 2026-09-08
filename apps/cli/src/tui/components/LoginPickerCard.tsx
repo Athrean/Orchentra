@@ -9,10 +9,12 @@ import { AnthropicLoginCard } from './AnthropicLoginCard'
 import { CodexLoginCard } from './CodexLoginCard'
 import { AntigravityLoginCard } from './AntigravityLoginCard'
 import { spawn } from 'node:child_process'
+import { SIGN_IN_DEFAULT_MODEL } from '../../model-catalog'
 import {
   apiKeyProviderToCredentialKey,
   initialLoginState,
   loginReducer,
+  signedInProvider,
   SUBSCRIPTION_PROVIDERS,
   THIRD_PARTY_PROVIDERS,
   TOP_ROWS,
@@ -23,6 +25,12 @@ import {
 export interface LoginPickerResult {
   readonly ok: boolean
   readonly message: string
+  /**
+   * Model the session should switch to now that this account is signed in.
+   * Undefined on cancel, on a failure, and for the third-party tier (which
+   * only opens docs). The host applies it — the card has no session handle.
+   */
+  readonly model?: string
 }
 
 export interface LoginPickerCardProps {
@@ -34,10 +42,14 @@ export function LoginPickerCard(props: LoginPickerCardProps): React.ReactElement
   const [saving, setSaving] = useState(false)
 
   function dispatch(event: Parameters<typeof loginReducer>[1]): LoginState {
+    const provider = signedInProvider(state)
     const next = loginReducer(state, event)
     setState(next)
     if (next.kind === 'closed') props.onComplete({ ok: false, message: 'cancelled' })
-    if (next.kind === 'done') props.onComplete({ ok: next.ok, message: next.message })
+    if (next.kind === 'done') {
+      const model = next.ok && provider ? SIGN_IN_DEFAULT_MODEL[provider] : undefined
+      props.onComplete({ ok: next.ok, message: next.message, model })
+    }
     return next
   }
 

@@ -102,7 +102,33 @@ const ZEN_CONFIG: OpenAiCompatConfig = {
   credentialKey: 'zen',
 }
 
-export { XAI_CONFIG, OPENAI_CONFIG, OPENROUTER_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG, ZEN_CONFIG }
+// opencode Go: the flat monthly plan. Same key as Zen, different host —
+// `/zen/go/v1` bills against the plan while `/zen/v1` bills prepaid credits,
+// so a Go subscriber hitting the Zen host gets `401 CreditsError` on a plan
+// they already pay for. Routed by an explicit `go/` prefix.
+const ZEN_GO_CONFIG: OpenAiCompatConfig = {
+  providerName: 'opencode Go',
+  apiKeyEnv: 'ZEN_API_KEY',
+  baseUrlEnv: 'ZEN_GO_BASE_URL',
+  defaultBaseUrl: 'https://opencode.ai/zen/go/v1',
+  modelPrefix: 'go/',
+  enforceProvenance: true,
+  sessionHeader: 'x-opencode-session',
+  credentialKey: 'zen',
+}
+
+export { XAI_CONFIG, OPENAI_CONFIG, OPENROUTER_CONFIG, DASHSCOPE_CONFIG, LOCAL_CONFIG, ZEN_CONFIG, ZEN_GO_CONFIG }
+
+/** Same host and key, reached at `/responses` for the families served there. */
+export const ZEN_GO_RESPONSES_CONFIG = {
+  providerName: 'opencode Go',
+  apiKeyEnv: 'ZEN_API_KEY',
+  baseUrlEnv: 'ZEN_GO_BASE_URL',
+  defaultBaseUrl: 'https://opencode.ai/zen/go/v1',
+  modelPrefix: 'go/',
+  sessionHeader: 'x-opencode-session',
+  credentialKey: 'zen' as const,
+}
 
 /** Same gateway and key, reached at `/responses` for the families served there. */
 export const ZEN_RESPONSES_CONFIG = {

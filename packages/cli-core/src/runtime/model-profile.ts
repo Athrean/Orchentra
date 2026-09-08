@@ -16,7 +16,8 @@
 
 import type { QuirkKind } from './quirks'
 
-export type ProviderName = 'anthropic' | 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'local' | 'zen'
+export type ProviderName =
+  'anthropic' | 'openai' | 'openrouter' | 'xai' | 'dashscope' | 'gemini' | 'antigravity' | 'local' | 'zen' | 'zen-go'
 
 /** A counter-backed deviation from generic harness behavior. */
 export interface ProfileDivergence {
@@ -85,6 +86,13 @@ export const MODEL_PROFILES: readonly ModelProfile[] = [
   // Explicitly routed gateway: `zen/<id>` reaches the opencode Zen gateway,
   // which fronts many families under ids we deliberately do not enumerate.
   { family: 'generic', match: [/^zen\//i], provider: 'zen', divergences: [] },
+  // opencode Go is a different host from Zen on the same key — `/zen/go/v1`
+  // bills the flat plan, `/zen/v1` bills prepaid credits.
+  { family: 'generic', match: [/^go\//i], provider: 'zen-go', divergences: [] },
+  // Google Antigravity's Code Assist host. Prefixed because its namespace
+  // overlaps both the public Gemini API and Anthropic: it serves its own
+  // `claude-*` and `gpt-oss-*` ids that are NOT the vendors' own endpoints.
+  { family: 'gemini', match: [/^antigravity\//i], provider: 'antigravity', vision: true, divergences: [] },
   // OpenRouter-hosted families keep their real family name so per-family
   // specialization applies regardless of route.
   { family: 'claude', match: [/^anthropic\//i], provider: 'openrouter', vision: true, divergences: [] },
@@ -218,6 +226,7 @@ const KNOWN_MODEL_PATTERNS: RegExp[] = [
   /^gpt-oss-\d/i,
   /^o\d(-mini)?$/i,
   /^gemini-\d/i,
+  /^(antigravity|go|zen)\//i,
   /^grok-\d(-mini)?/i,
   /^qwen[\d-]/i,
   /^deepseek/i,

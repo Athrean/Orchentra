@@ -6,7 +6,6 @@ import {
   GeminiCodeAssistProvider,
   GeminiProvider,
   getCredential,
-  isAntigravityLogin,
   isCodexBackendLogin,
   LOCAL_CONFIG,
   OpenAiCompatProvider,
@@ -14,6 +13,8 @@ import {
   OPENROUTER_CONFIG,
   ResponsesProvider,
   ZEN_CONFIG,
+  ZEN_GO_CONFIG,
+  ZEN_GO_RESPONSES_CONFIG,
   ZEN_RESPONSES_CONFIG,
   XAI_CONFIG,
 } from '@orchentra/cli-api'
@@ -23,12 +24,14 @@ const BUILTIN_MODEL_ALIASES: Record<string, string> = {
   opus: DEFAULT_OPUS_MODEL_ID,
   sonnet: DEFAULT_MODEL_ID,
   haiku: DEFAULT_HAIKU_MODEL_ID,
-  fable: 'claude-fable-5',
+  fable: 'claude-fable-5-1',
   grok: 'grok-4.3',
-  gemini: 'gemini-3.1-pro-preview',
-  'gemini-pro': 'gemini-3.1-pro-preview',
+  gemini: 'antigravity/gemini-3.6-flash-high',
+  'gemini-pro': 'antigravity/gemini-3.1-pro-low',
   qwen: 'qwen/qwen3.6-35b-a3b',
   glm: 'z-ai/glm-5.2',
+  go: 'go/omen-alpha',
+  zen: 'zen/muse-spark-1.3-contributor-free',
   mistral: 'mistralai/mistral-medium-3-5',
   deepseek: 'deepseek/deepseek-v4-pro',
   'gpt-oss': 'openai/gpt-oss-120b',
@@ -67,21 +70,21 @@ export function createProvider(model: string): CreatedProvider {
     case 'dashscope':
       return { providerName, provider: new OpenAiCompatProvider(DASHSCOPE_CONFIG) }
     case 'zen':
-      return { providerName, provider: zenProvider(model) }
+      return { providerName, provider: gatewayProvider(model, 'zen/', ZEN_CONFIG, ZEN_RESPONSES_CONFIG) }
+    case 'zen-go':
+      return { providerName, provider: gatewayProvider(model, 'go/', ZEN_GO_CONFIG, ZEN_GO_RESPONSES_CONFIG) }
+    case 'antigravity':
+      return { providerName, provider: new GeminiCodeAssistProvider({ variant: 'antigravity' }) }
     case 'local':
       return { providerName, provider: new OpenAiCompatProvider(LOCAL_CONFIG) }
     case 'gemini':
       // An explicit GEMINI_API_KEY always wins — it is the unambiguous signal
-      // that the caller wants the public API and its own billing. Otherwise a
-      // subscription sign-in drives Code Assist: Antigravity first, since the
-      // older Google OAuth client it replaced is no longer accepted.
-      if (!process.env['GEMINI_API_KEY']) {
-        if (isAntigravityLogin()) {
-          return { providerName, provider: new GeminiCodeAssistProvider({ variant: 'antigravity' }) }
-        }
-        if (getCredential('gemini')?.accessToken) {
-          return { providerName, provider: new GeminiCodeAssistProvider() }
-        }
+      // that the caller wants the public API and its own billing. Bare
+      // `gemini-*` ids are the PUBLIC namespace; Antigravity's overlapping ids
+      // live behind the `antigravity/` prefix above, because the two hosts 404
+      // on each other's names.
+      if (!process.env['GEMINI_API_KEY'] && getCredential('gemini')?.accessToken) {
+        return { providerName, provider: new GeminiCodeAssistProvider() }
       }
       return { providerName, provider: new GeminiProvider({ model }) }
     case 'anthropic':
@@ -90,20 +93,20 @@ export function createProvider(model: string): CreatedProvider {
 }
 
 /**
- * The Zen gateway serves each family on its own endpoint. GPT/Grok/Muse Spark
- * are Responses-only; DeepSeek/GLM/Kimi/MiniMax and the free tier speak
- * chat/completions. Claude/Qwen (Anthropic `/messages`) and Gemini (Google
- * `/models/*`) are not wired yet, and saying so beats an opaque gateway error.
+ * Both opencode hosts split by model family, not by endpoint preference: GPT,
+ * Grok and Muse Spark are served on `/responses` and everything else on
+ * `/chat/completions`. Verified against both hosts on 2026-09-07 — the same id
+ * returns a 500 on the wrong one, so this is routing, not a fallback.
  */
-function zenProvider(model: string): Provider {
-  const id = model.replace(/^zen\//i, '')
-  if (/^(gpt-|grok-|muse-spark-)/i.test(id)) return new ResponsesProvider(ZEN_RESPONSES_CONFIG)
-  if (/^(claude-|qwen|gemini-)/i.test(id)) {
-    throw new Error(
-      `zen/${id} is served on an endpoint Orchentra does not implement yet (Anthropic messages or Google). Use a GPT, Grok, Muse Spark, DeepSeek, GLM, Kimi, MiniMax, or free-tier model id.`,
-    )
-  }
-  return new OpenAiCompatProvider(ZEN_CONFIG)
+function gatewayProvider(
+  model: string,
+  prefix: string,
+  chatConfig: typeof ZEN_CONFIG,
+  responsesConfig: typeof ZEN_RESPONSES_CONFIG,
+): Provider {
+  const id = model.slice(prefix.length)
+  if (/^(gpt-|grok-|muse-spark-)/i.test(id)) return new ResponsesProvider(responsesConfig)
+  return new OpenAiCompatProvider(chatConfig)
 }
 
 export function thinkingTokenBudgetForEffort(effort: EffortTier): number {

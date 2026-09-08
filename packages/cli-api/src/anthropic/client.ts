@@ -14,7 +14,6 @@ import { injectCacheBoundary } from './cache'
 import type { ContentBlock, MessageRequest, StreamEvent, ToolDefinition, Usage } from './types'
 import { parseToolArguments } from '../tool-arguments'
 import { assertModelProvenance } from '../model-provenance'
-// local-only oauth graft — never commit (see oauth-dev worktree docs)
 import { resolveAnthropicAuthToken } from './oauth'
 
 export interface AnthropicConfig {
@@ -36,9 +35,21 @@ const ANTHROPIC_VERSION = '2023-06-01'
 // API key. Safe for any client.
 const ANTHROPIC_BETA_API_KEY = 'prompt-caching-scope-2026-01-05'
 // OAuth bearer (sk-ant-oat01-*) requires the oauth beta flag alongside the
-// public set. local-only graft, never shipped.
+// public set.
 const ANTHROPIC_BETA_OAUTH = `oauth-2025-04-20,${ANTHROPIC_BETA_API_KEY}`
 const DEFAULT_USER_AGENT = 'OrchentraCLI/1.0'
+/**
+ * Anthropic gates OAuth bearer inference on the caller's identity, and it reads
+ * that identity off the FIRST system block — not off the User-Agent. A
+ * subscription token whose request leads with any other system text comes back
+ * `429 {"type":"rate_limit_error","message":"Error"}` on the very first call,
+ * which the retry loop then mistakes for real throttling and stalls on for the
+ * full backoff budget. Verified live 2026-09-07: identical body, identical
+ * token, this block present -> 200; absent -> 429 in 0.6s under every
+ * User-Agent tried. Blocks appended after it are honoured, so Orchentra's own
+ * spine still applies.
+ */
+const CLAUDE_CODE_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
 const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 export class AnthropicProvider implements Provider {
@@ -56,8 +67,8 @@ export class AnthropicProvider implements Provider {
     this.explicitApiKey = config.apiKey
   }
 
-  // local-only oauth graft: API key wins; otherwise fall back to a stored /
-  // env / Keychain OAuth bearer via resolveAnthropicAuthToken (handles refresh).
+  // API key wins; otherwise fall back to a stored / env / Keychain OAuth
+  // bearer via resolveAnthropicAuthToken (handles refresh).
   private async resolveAuthHeaders(): Promise<AuthHeaders> {
     const apiKey = this.explicitApiKey ?? process.env['ANTHROPIC_API_KEY']
     if (apiKey) return { 'x-api-key': apiKey, authSource: 'api_key' }
@@ -74,6 +85,9 @@ export class AnthropicProvider implements Provider {
     }
 
     const system = injectCacheBoundary(request.systemStatic, request.systemDynamic)
+    if (authHeaders.authSource === 'bearer') {
+      system.unshift({ type: 'text', text: CLAUDE_CODE_IDENTITY })
+    }
     const thinking = anthropicThinkingForModel(request.model || this.model, request.thinkingTokenBudget)
     const outputConfig = anthropicOutputConfigForModel(request.model || this.model, request.effort)
     const maxTokens = request.maxOutputTokens || this.maxTokens

@@ -61,6 +61,17 @@ export const TOP_ROWS: readonly TopTierRow[] = [
 ]
 export const TOP_ROW_COUNT = TOP_ROWS.length
 
+/**
+ * Which account a `success` is about. It has to be read off the state being
+ * LEFT: `done` keeps only ok/message, so by the time the result reaches the
+ * host the provider is gone — which is why a successful sign-in used to leave
+ * the session pointed at the previous provider.
+ */
+export function signedInProvider(state: LoginState): SubscriptionProvider | ApiKeyProvider | undefined {
+  if (state.kind === 'subscriptionLogin' || state.kind === 'apiKeyInput') return state.provider
+  return undefined
+}
+
 function topRow(tier: TopTier): number {
   return TOP_ROWS.findIndex((row) => row.tier === tier)
 }
@@ -81,12 +92,15 @@ export interface SubscriptionProviderRow {
  * `zen` sits here because opencode Go is a subscription in every sense the user
  * cares about — a flat monthly plan, not per-token billing — even though it is
  * redeemed with a key. Selecting it hands off to the API-key input.
+ *
+ * The one key reaches two hosts: `go/<id>` bills the plan, `zen/<id>` bills
+ * prepaid credits. Sign-in lands on `go/` because that is the row's promise.
  */
 export const SUBSCRIPTION_PROVIDERS: readonly SubscriptionProviderRow[] = [
   { provider: 'anthropic', label: 'Claude', hint: 'Claude Pro or Max · sign in with Anthropic' },
   { provider: 'codex', label: 'ChatGPT', hint: 'ChatGPT Plus or Pro · sign in with OpenAI' },
   { provider: 'antigravity', label: 'Antigravity', hint: 'Google AI Pro or Ultra · sign in with Google' },
-  { provider: 'zen', label: 'opencode Go', hint: 'opencode Zen · flat monthly plan, paste key' },
+  { provider: 'zen', label: 'opencode Go', hint: 'flat monthly plan · paste key' },
 ]
 
 export const API_KEY_PROVIDERS: readonly ApiKeyProviderRow[] = [
@@ -96,7 +110,7 @@ export const API_KEY_PROVIDERS: readonly ApiKeyProviderRow[] = [
   { provider: 'gemini', label: 'Gemini', hint: 'GEMINI_API_KEY (skips Google OAuth)' },
   { provider: 'xai', label: 'xAI (Grok)', hint: 'XAI_API_KEY' },
   { provider: 'dashscope', label: 'DashScope (Qwen)', hint: 'DASHSCOPE_API_KEY' },
-  { provider: 'zen', label: 'opencode Zen', hint: 'ZEN_API_KEY · Go plan or pay-as-you-go' },
+  { provider: 'zen', label: 'opencode Zen', hint: 'ZEN_API_KEY · one key, Go plan and credits' },
 ]
 
 /**

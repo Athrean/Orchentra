@@ -192,3 +192,13 @@ describe('isKnownModel (folded in from model-availability)', () => {
     expect(isKnownModel('typo-claude-opus')).toBe(false)
   })
 })
+
+describe('gateway prefixes are known models', () => {
+  test('zen/, go/ and antigravity/ ids do not trigger the unknown-model warning', () => {
+    // `zen/` was missing, so selecting a Zen model printed the "unknown model,
+    // try one of these aliases" hint on a model that routes fine.
+    expect(isKnownModel('zen/muse-spark-1.3-contributor-free')).toBe(true)
+    expect(isKnownModel('go/omen-alpha')).toBe(true)
+    expect(isKnownModel('antigravity/gemini-3.8-flash-tiered')).toBe(true)
+  })
+})
