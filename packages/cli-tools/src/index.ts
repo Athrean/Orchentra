@@ -180,3 +180,4 @@ export type {
   McpContentBlock,
   McpInitializeResult,
 } from './mcp'
+export { createSkillTool } from './skills/tool'
