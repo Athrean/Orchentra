@@ -1,3 +1,4 @@
+import { PluginsCommand } from '../../extensions/commands'
 import { CommandRegistry } from '../registry'
 import { HelpCommand } from './help'
 import { StatusCommand } from './status'
@@ -89,6 +90,7 @@ export function createBuiltinRegistry(): CommandRegistry {
 
   // Skills meta-command (lists user-authored skills + load errors)
   registry.register(new SkillsCommand())
+  registry.register(new PluginsCommand())
 
   // Re-exec the CLI to pick up code/config changes (dev workflow)
   registry.register(new RestartCommand())

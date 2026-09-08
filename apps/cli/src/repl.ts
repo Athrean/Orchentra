@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import type { ExecutionProfile, PermissionMode } from '@orchentra/cli-core'
-import { loadSkills } from '@orchentra/cli-core'
+import { PluginsCommand } from './extensions/commands'
+import type { SkillTurnOptions } from './commands/builtin/skills-adapter'
 import { tryLoadKeytar } from '@orchentra/cli-api'
 import { CLI_NAME, CLI_VERSION } from './version'
 import { createCliContext } from './live-cli-factory'
@@ -57,27 +58,25 @@ export async function runRepl(options: ReplOptions): Promise<number> {
   })
   const { cli, resolvedModel, resolvedPermissionMode: resolvedMode, sessionId, sessionPath, providerName } = cliCtx
 
-  const skillLoadOptions = {
-    workspaceRoot: options.cwd,
-    configHome: process.env.ORCHENTRA_CONFIG_HOME ?? (process.env.HOME ? `${process.env.HOME}/.orchentra` : undefined),
-  }
   const runTurnDep = {
-    runTurn: async (text: string): Promise<void> => {
-      await cli.runTurn(text)
+    runTurn: async (text: string, opts?: SkillTurnOptions): Promise<void> => {
+      await cli.runTurn(text, opts)
     },
   }
 
-  const { skills, errors: skillErrors } = await loadSkills(skillLoadOptions)
-  registerSkillCommands(registry, skills, runTurnDep)
+  const { skills, errors: skillErrors } = cliCtx.extensionSkills
+  const collisions = registerSkillCommands(registry, skills, runTurnDep)
+  skillErrors.push(...collisions.map((message) => ({ path: 'commands', message })))
   recordLoadErrors(skillErrors)
   for (const err of skillErrors) {
     process.stderr.write(`[orchentra] skill '${err.path}' invalid: ${err.message}\n`)
   }
 
-  recordSkillsReloadCallback(async () => {
+  const reload = async (): Promise<{ added: number; removed: number; errors: number }> => {
     const before = new Set(getLoadedSkills().map((s) => s.name))
-    const fresh = await loadSkills(skillLoadOptions)
-    registerSkillCommands(registry, fresh.skills, runTurnDep)
+    const fresh = await cliCtx.reloadExtensions()
+    const collisions = registerSkillCommands(registry, fresh.skills, runTurnDep)
+    fresh.errors.push(...collisions.map((message) => ({ path: 'commands', message })))
     recordLoadErrors(fresh.errors)
     const after = new Set(fresh.skills.map((s) => s.name))
     let added = 0
@@ -85,7 +84,9 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     for (const name of Array.from(after)) if (!before.has(name)) added++
     for (const name of Array.from(before)) if (!after.has(name)) removed++
     return { added, removed, errors: fresh.errors.length }
-  })
+  }
+  recordSkillsReloadCallback(reload)
+  registry.register(new PluginsCommand(cliCtx.extensionStore, reload))
 
   for (const notice of cli.consumeStartupNotices()) {
     process.stderr.write(`${notice}\n`)

@@ -42,6 +42,30 @@ export class CommandRegistry {
     }
   }
 
+  private groups = new Map<string, CommandHandler[]>()
+
+  /** Replace one extension contribution group without overwriting built-ins or other owners. */
+  replaceGroup(group: string, handlers: CommandHandler[]): string[] {
+    for (const handler of this.groups.get(group) ?? []) {
+      for (const name of [handler.spec.name, ...handler.spec.aliases]) {
+        if (this.handlers.get(name) === handler) this.handlers.delete(name)
+      }
+    }
+    const registered: CommandHandler[] = []
+    const errors: string[] = []
+    for (const handler of handlers) {
+      const collision = [handler.spec.name, ...handler.spec.aliases].find((name) => this.handlers.has(name))
+      if (collision) {
+        errors.push(`/${handler.spec.name} conflicts with existing command /${collision}`)
+        continue
+      }
+      this.register(handler)
+      registered.push(handler)
+    }
+    this.groups.set(group, registered)
+    return errors
+  }
+
   resolve(input: string): { handler: CommandHandler; args: string[] } | null | Error {
     if (!input.startsWith('/')) return null
     const parts = input.trim().split(/\s+/)

@@ -1,5 +1,6 @@
+import { manageExtensions } from '../../extensions/commands'
 import type { ParsedSkill, PermissionRuleConfig, SkillLoadError } from '@orchentra/cli-core'
-import { substituteSkillArguments, translateAllowedTools } from '@orchentra/cli-core'
+import { renderSkill, userInvocable, translateAllowedTools } from '@orchentra/cli-core'
 import type { CommandHandler, CommandContext, CommandRegistry, SlashCommandSpec } from '../registry'
 import type { UiKVRow } from '../ui-output'
 import { THEME } from '../../tui/theme'
@@ -16,11 +17,16 @@ let loadedSkills: ParsedSkill[] = []
 let loadErrors: SkillLoadError[] = []
 let reloadCallback: SkillsCommandDeps['reload'] | undefined
 
-export function registerSkillCommands(registry: CommandRegistry, skills: ParsedSkill[], deps: SkillAdapterDeps): void {
+export function registerSkillCommands(
+  registry: CommandRegistry,
+  skills: ParsedSkill[],
+  deps: SkillAdapterDeps,
+): string[] {
   loadedSkills = skills.slice()
-  for (const skill of skills) {
-    registry.register(buildSkillHandler(skill, deps))
-  }
+  return registry.replaceGroup(
+    'skills',
+    skills.filter(userInvocable).map((skill) => buildSkillHandler(skill, deps)),
+  )
 }
 
 export function recordLoadErrors(errors: SkillLoadError[]): void {
@@ -49,7 +55,7 @@ function buildSkillHandler(skill: ParsedSkill, deps: SkillAdapterDeps): CommandH
   return {
     spec,
     async execute(args: string[], _ctx: CommandContext): Promise<boolean> {
-      const resolvedBody = substituteSkillArguments(skill.body, args)
+      const resolvedBody = renderSkill(skill, args)
       const { config: permissionOverlay, warnings } = translateAllowedTools(skill.allowedTools)
       for (const warning of warnings) {
         process.stderr.write(`[orchentra] skill '${skill.name}': ${warning}\n`)
@@ -68,8 +74,8 @@ export class SkillsCommand implements CommandHandler {
   spec: SlashCommandSpec = {
     name: 'skills',
     aliases: [],
-    summary: 'List loaded skills · /skills reload to rescan',
-    argumentHint: '[reload]',
+    summary: 'Discover, install, update and reload skills',
+    argumentHint: '[reload|install|update|remove|enable|disable|rollback]',
   }
 
   private readonly deps: SkillsCommandDeps
@@ -84,6 +90,18 @@ export class SkillsCommand implements CommandHandler {
 
   async execute(args: string[], ctx: CommandContext): Promise<boolean> {
     if (args[0] === 'reload') return this.handleReload(ctx)
+    if (args.length && args[0] !== 'list') {
+      let text: string
+      try {
+        text = await manageExtensions('skill', args)
+        await this.effectiveReload()?.()
+      } catch (error) {
+        text = `Skill error: ${error instanceof Error ? error.message : String(error)}`
+      }
+      if (ctx.ui) ctx.ui({ kind: 'note', text })
+      else process.stdout.write(text + '\n')
+      return true
+    }
     return this.handleList(ctx)
   }
 

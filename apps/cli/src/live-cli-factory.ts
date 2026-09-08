@@ -1,3 +1,5 @@
+import { ExtensionStore, type ParsedSkill, type SkillLoadError } from '@orchentra/cli-core'
+import { loadExtensionCatalog } from './extensions/catalog'
 import { randomUUID } from 'node:crypto'
 import {
   ConfigLoader,
@@ -25,6 +27,7 @@ import {
   DEFAULT_MCP_DEFER_TOKENS,
   applyModelProfile,
   createAgentTool,
+  createSkillTool,
   resolveAgentRoles,
   type SubagentCaps,
   type SubagentRole,
@@ -59,6 +62,9 @@ export interface CliContext {
   readonly resolvedPermissionMode: PermissionMode
   readonly providerName: string
   readonly executionProfile: ExecutionProfile
+  readonly extensionSkills: { skills: ParsedSkill[]; errors: SkillLoadError[] }
+  readonly extensionStore: ExtensionStore
+  reloadExtensions(): Promise<{ skills: ParsedSkill[]; errors: SkillLoadError[] }>
   close(): Promise<void>
 }
 
@@ -72,7 +78,9 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   // Discover user/project agent definitions once per process, not per tool-call,
   // and build the `agent` tool over the merged role set so custom types are
   // spawnable by name and the depth/fan-out caps honor config.
-  const agentRoles = await resolveAgentRoles(options.cwd)
+  const extensionStore = new ExtensionStore()
+  let extensionCatalog = await loadExtensionCatalog(options.cwd, extensionStore)
+  const agentRoles = { ...(await resolveAgentRoles(options.cwd)), ...extensionCatalog.agents }
   const tools = buildToolRegistry(agentRoles, config.featureConfig.subagents, executionProfile)
   const resolveNestedModel: ModelResolver = (raw: string) => {
     const model = resolveModelAlias(raw, userAliases)
@@ -98,7 +106,13 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   const resolvedPermissionMode = config.featureConfig.permissionMode ?? options.permissionMode
   const resolvedTerseMode = getActiveTerseMode() ?? config.featureConfig.terseMode
   const rawMcp = (config.merged as Record<string, unknown>).mcp
-  const mcpManager = McpManager.fromRaw(rawMcp, {
+  const mcpRaw = (): unknown => ({
+    servers: {
+      ...((rawMcp as { servers?: Record<string, unknown> } | undefined)?.servers ?? {}),
+      ...extensionCatalog.servers,
+    },
+  })
+  let mcpManager = McpManager.fromRaw(mcpRaw(), {
     onLog: (level, message) => {
       if (level !== 'info') process.stderr.write(`[mcp] ${level}: ${message}\n`)
     },
@@ -110,6 +124,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     deferOverTokens: DEFAULT_MCP_DEFER_TOKENS,
     estimateTokens: defaultEstimator,
   })
+  tools.register(createSkillTool(extensionCatalog.skills))
   const sessionId = randomUUID()
 
   const sharedState: SharedToolState = {
@@ -128,6 +143,7 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
   // progress through a mutable holder that we point at the cli once it exists.
   const hookProgress = { emit: (_u: HookProgressUpdate) => {} }
   const hookRunner = new CliCoreHookAdapter(options.cwd, (u) => hookProgress.emit(u))
+  hookRunner.setExtensionHooks(extensionCatalog.hooks)
 
   const cli = new LiveCli({
     model: initial.model,
@@ -167,6 +183,31 @@ export async function createCliContext(options: CliContextOptions): Promise<CliC
     resolvedPermissionMode,
     providerName: initial.providerName,
     executionProfile,
+    extensionSkills: { skills: extensionCatalog.skills, errors: extensionCatalog.errors },
+    extensionStore,
+    async reloadExtensions() {
+      extensionCatalog = await loadExtensionCatalog(cli.getCwd(), extensionStore)
+      await mcpManager.shutdown()
+      for (const tool of tools.list()) {
+        if (tool.name.startsWith('mcp__') || tool.name === 'mcp_tool_search') tools.unregister(tool.name)
+      }
+      mcpManager = McpManager.fromRaw(mcpRaw(), {
+        onLog: (level, message) => {
+          if (level !== 'info') process.stderr.write(`[mcp] ${level}: ${message}\n`)
+        },
+      })
+      await mcpManager.connectAll()
+      mcpManager.registerInto(tools, { deferOverTokens: DEFAULT_MCP_DEFER_TOKENS, estimateTokens: defaultEstimator })
+      tools.register(createSkillTool(extensionCatalog.skills))
+      tools.register(
+        createAgentTool(
+          { ...(await resolveAgentRoles(cli.getCwd())), ...extensionCatalog.agents },
+          config.featureConfig.subagents,
+        ),
+      )
+      hookRunner.setExtensionHooks(extensionCatalog.hooks)
+      return { skills: extensionCatalog.skills, errors: extensionCatalog.errors }
+    },
     async close(): Promise<void> {
       // Tear down the browser (no zombie Chromium) and any background dev
       // servers before the session ends — no zombies.

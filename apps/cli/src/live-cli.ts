@@ -1,3 +1,5 @@
+import { skillPolicy } from './commands/skill-policy'
+import type { PermissionRuleConfig } from '@orchentra/cli-core'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
@@ -69,7 +71,6 @@ import {
   createEnforcer,
   createPermissionStore,
   loadPolicy,
-  evaluate as evaluatePolicy,
   replaySession,
   SessionWriter,
   QuirkCounters,
@@ -122,6 +123,7 @@ export interface TurnRunResult {
 }
 
 export interface TurnRunOptions {
+  readonly permissionOverlay?: PermissionRuleConfig
   /** One-shot/autonomous path: completion needs executable evidence and a gate decision. */
   readonly verify?: boolean
   /** Explicit policy wins over the default one-shot policy. */
@@ -849,8 +851,8 @@ export class LiveCli implements SessionControl {
           'Help with code, tests, pull-request review, GitHub issues/PRs, and local debugging. ' +
           'When asked about GitHub issues, pull requests, or pasted github.com URLs, ' +
           'always use github_list_issues, github_get_issue, github_list_pulls, github_get_pull, ' +
-          'or github_search_issues. Never use web_fetch on github.com — it returns raw HTML and ' +
-          'fails on private repos. Pass repos as "owner/repo" or the full URL; the tools parse both.',
+          'or github_search_issues. Prefer these authenticated API tools for github.com; web_fetch ' +
+          'cannot access private repos. Pass repos as "owner/repo" or the full URL; the tools parse both.',
         spinePrompt({ terseMode: this.terseMode, budget: this.getBudgetControls(), taskFocus: 'runtime agent' }),
         // Per-family specialization (M5): empty string for every family until
         // a counter-justified profile ships a fragment.
@@ -907,7 +909,7 @@ export class LiveCli implements SessionControl {
         if (this.notifyDenyOverride) return this.notifyDenyOverride(info)
         process.stderr.write(`\nBlocked ${info.toolName}: ${info.reason}\n`)
       },
-      enforcerPolicy: (call) => evaluatePolicy(call, this.policyHandle.ruleset),
+      enforcerPolicy: (call) => skillPolicy(call, this.policyHandle.ruleset, options.permissionOverlay),
       enforcerNotifyPolicy: async (info) => {
         if (this.notifyPolicyOverride) return this.notifyPolicyOverride(info)
         const verb = info.kind === 'allow' ? 'auto-allowed' : 'denied'

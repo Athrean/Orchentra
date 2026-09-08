@@ -12,6 +12,17 @@ async function main(argv: string[]): Promise<number> {
   }
 
   switch (action.kind) {
+    case 'extensions': {
+      const { manageExtensions } = await import('./extensions/commands')
+      try {
+        process.stdout.write((await manageExtensions(action.extensionKind, action.args)) + '\n')
+        return 0
+      } catch (error) {
+        process.stderr.write(`error: ${error instanceof Error ? error.message : String(error)}\n`)
+        return 1
+      }
+    }
+
     case 'version':
       process.stdout.write(`${CLI_NAME} ${CLI_VERSION}\n`)
       return 0

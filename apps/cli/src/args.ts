@@ -11,6 +11,7 @@ import { DEFAULT_MODEL_ID } from './model-catalog'
 export type UpdateTag = 'alpha' | 'beta' | 'latest'
 
 export type CliAction =
+  | { kind: 'extensions'; extensionKind: 'plugin' | 'skill'; args: string[] }
   | { kind: 'version' }
   | { kind: 'help' }
   | { kind: 'init' }
@@ -89,6 +90,8 @@ export function parseArgs(argv: string[]): CliAction {
   }
 
   const first = args[0]
+  if (first === 'plugins' || first === 'skills')
+    return { kind: 'extensions', extensionKind: first === 'plugins' ? 'plugin' : 'skill', args: args.slice(1) }
 
   if (first === '--version' || first === '-V' || first === 'version') {
     return { kind: 'version' }
