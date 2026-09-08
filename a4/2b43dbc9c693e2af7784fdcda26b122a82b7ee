@@ -1,0 +1,27 @@
+packages/cli-core/src/runtime/conversation.ts
+  s_80f9f3b03e1b7c::t_054025b4b684fb 25,615-621
+packages/cli-core/src/runtime/index.ts
+  s_80f9f3b03e1b7c::t_7c619755a079f2 37-38
+packages/cli-core/src/runtime/optimization.ts
+  s_80f9f3b03e1b7c::t_6a7f5b2d640a31 1,4-64,67-68,79-89,103-105,109-121,142,152-157
+packages/cli-core/tests/conversation.test.ts
+  s_80f9f3b03e1b7c::t_9d39b872c57181 126-129
+packages/cli-core/tests/optimization.test.ts
+  s_80f9f3b03e1b7c::t_af86a5911e91d4 2,5-8,35-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a42b43dbc9c693e2af7784fdcda26b122a82b7ee",
+  "prompts": {},
+  "sessions": {
+    "s_80f9f3b03e1b7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f7571f-d881-4242-ba61-5baf09fcc695",
+        "model": "unknown"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
