@@ -1,0 +1,23 @@
+packages/cli-api/src/gemini/client.ts
+  s_80f9f3b03e1b7c::t_6938e6ac5631cc 13-20,113,137,160,168-206
+packages/cli-api/src/gemini/code-assist.ts
+  s_80f9f3b03e1b7c::t_00a9604863ee93 4,202,218,239
+packages/cli-api/tests/gemini-code-assist.test.ts
+  s_80f9f3b03e1b7c::t_94aae38abbf71e 6,154-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "458ae1e53310f15c18f842058946b85270485515",
+  "prompts": {},
+  "sessions": {
+    "s_80f9f3b03e1b7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f7571f-d881-4242-ba61-5baf09fcc695",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
