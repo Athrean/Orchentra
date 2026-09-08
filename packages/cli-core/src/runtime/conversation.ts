@@ -1015,6 +1015,7 @@ export class ConversationRuntime {
       traceSink: this.deps.traceSink,
       contextStore: this.contextStore ?? undefined,
       programEnvironment: this.programEnvironment ?? undefined,
+      signal: this.deps.signal,
     }
 
     if (this.deps.sharedState?.planMode && !PLAN_MODE_ALLOWED_TOOLS.has(call.name)) {

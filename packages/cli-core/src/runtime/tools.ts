@@ -76,6 +76,8 @@ export interface AskUserRequest {
 export type AskUserHandler = (request: string | AskUserRequest) => Promise<string>
 
 export interface ToolContext {
+  /** Cancellation owned by the executing runtime. */
+  signal?: AbortSignal
   sessionId: string
   cwd: string
   /**
