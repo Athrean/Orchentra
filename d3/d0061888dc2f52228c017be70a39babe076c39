@@ -1,0 +1,23 @@
+apps/cli/src/hooks/cli-core-adapter.ts
+  s_1af4fa2151c0e1::t_bc566a315eb53d 110-114,118
+apps/cli/src/hooks/hook-runner.ts
+  s_1af4fa2151c0e1::t_a7ea16ca523db1 21,54,66-67,71,92-94,119
+apps/cli/src/hooks/types.ts
+  s_1af4fa2151c0e1::t_2aa9a505112595 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d3d0061888dc2f52228c017be70a39babe076c39",
+  "prompts": {},
+  "sessions": {
+    "s_1af4fa2151c0e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf98559e-71c3-48e5-a3d5-a0be08d7c972",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
