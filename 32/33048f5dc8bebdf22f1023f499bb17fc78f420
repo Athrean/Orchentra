@@ -1,0 +1,19 @@
+scripts/trace-inventory.ts
+  s_80f9f3b03e1b7c::t_24cdd8b8891f2d 1-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3233048f5dc8bebdf22f1023f499bb17fc78f420",
+  "prompts": {},
+  "sessions": {
+    "s_80f9f3b03e1b7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f7571f-d881-4242-ba61-5baf09fcc695",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
