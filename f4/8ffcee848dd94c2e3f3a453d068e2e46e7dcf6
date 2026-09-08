@@ -1,0 +1,41 @@
+apps/cli/src/args.ts
+  s_1af4fa2151c0e1::t_d0d0e933ea9d71 14,93-94
+apps/cli/src/commands/builtin/index.ts
+  s_1af4fa2151c0e1::t_912831017f51eb 1,93
+apps/cli/src/commands/builtin/skills-adapter.ts
+  s_1af4fa2151c0e1::t_5e82bcabd52054 1,3,20-24,26-29,58,77-78,93-104
+apps/cli/src/commands/registry.ts
+  s_1af4fa2151c0e1::t_fee9e4f57bb832 45-68
+apps/cli/src/commands/skill-policy.ts
+  s_1af4fa2151c0e1::t_26f63e62b5cb9c 1-43
+apps/cli/src/extensions/catalog.ts
+  s_1af4fa2151c0e1::t_7a57828754fcd4 1-135
+apps/cli/src/extensions/commands.ts
+  s_1af4fa2151c0e1::t_f1087033536bef 1-64
+apps/cli/src/live-cli-factory.ts
+  s_1af4fa2151c0e1::t_32c2c70a22ad80 1-2,30,65-67,81-83,109-115,127,146,186-210
+apps/cli/src/live-cli.ts
+  s_1af4fa2151c0e1::t_956d38949670ed 1-2,126,854-855,912
+apps/cli/src/main.ts
+  s_1af4fa2151c0e1::t_f45ac249ecba5d 15-25
+apps/cli/src/repl.ts
+  s_1af4fa2151c0e1::t_c5f3f917f6b51f 4-5,62-63,67-69,75,77-79,87-89
+apps/cli/tests/extensions-catalog.test.ts
+  s_1af4fa2151c0e1::t_4dad996cd12829 1-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f48ffcee848dd94c2e3f3a453d068e2e46e7dcf6",
+  "prompts": {},
+  "sessions": {
+    "s_1af4fa2151c0e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf98559e-71c3-48e5-a3d5-a0be08d7c972",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
