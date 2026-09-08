@@ -9,6 +9,13 @@ export interface ToolCall {
   id: string
   name: string
   input: unknown
+  /**
+   * Opaque provider continuation token for this call, replayed verbatim when
+   * the call is sent back as history. Gemini 3 signs every `functionCall` and
+   * rejects the whole request if a replayed one arrives unsigned; other
+   * providers leave this unset.
+   */
+  providerSignature?: string
 }
 
 /**

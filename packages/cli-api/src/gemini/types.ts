@@ -1,10 +1,13 @@
 export interface GeminiPart {
   text?: string
   functionCall?: {
+    /** Server-issued call id when present; Gemini 3 pairs responses by it. */
+    id?: string
     name: string
     args: Record<string, unknown>
   }
   functionResponse?: {
+    id?: string
     name: string
     response: Record<string, unknown>
   }
@@ -12,6 +15,12 @@ export interface GeminiPart {
     mimeType: string
     data: string
   }
+  /**
+   * Gemini 3 signs the reasoning behind each part. A signed part must be
+   * replayed with its signature intact or the next request fails with
+   * `400 Function call is missing a thought_signature in functionCall parts`.
+   */
+  thoughtSignature?: string
 }
 
 export interface GeminiContent {
@@ -29,11 +38,17 @@ export interface GeminiTool {
   functionDeclarations: GeminiFunctionDeclaration[]
 }
 
+export interface GeminiThinkingConfig {
+  /** Tokens the model may spend thinking. 0 disables thinking entirely. */
+  thinkingBudget?: number
+}
+
 export interface GeminiGenerationConfig {
   maxOutputTokens?: number
   temperature?: number
   topP?: number
   topK?: number
+  thinkingConfig?: GeminiThinkingConfig
 }
 
 export interface GeminiRequest {

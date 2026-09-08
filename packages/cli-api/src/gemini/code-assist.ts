@@ -1,7 +1,7 @@
 import type { Provider, ProviderRequest, ProviderStreamEvent, StopReason } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { getCredential, saveCredential, type ProviderKey } from '../credential-store'
-import { buildGeminiRequest } from './client'
+import { buildGeminiRequest, toolCallFromPart } from './client'
 import { resolveGeminiAccessToken } from './oauth'
 import { ANTIGRAVITY_ENDPOINT, resolveAntigravityAccessToken } from './antigravity'
 import type { GeminiStreamChunk } from './types'
@@ -83,7 +83,9 @@ export class GeminiCodeAssistProvider implements Provider {
 
     const project = await this.resolveProject(token)
     const body = {
-      model: request.model,
+      // `antigravity/` is Orchentra's routing prefix — Code Assist knows the
+      // bare id and 404s on the prefixed one.
+      model: request.model.replace(/^antigravity\//i, ''),
       project,
       request: buildGeminiRequest(request, this.maxTokens),
     }
@@ -228,17 +230,11 @@ async function* consumeCodeAssistStream(body: ReadableStream<Uint8Array>): Async
           if (typeof part.text === 'string' && part.text.length > 0) {
             yield { kind: 'text-delta', delta: part.text }
           }
-          if (part.functionCall) {
+          const call = toolCallFromPart(part, toolCounter + 1)
+          if (call) {
             sawToolCall = true
             toolCounter += 1
-            yield {
-              kind: 'tool-use',
-              call: {
-                id: `gemini-tool-${Date.now().toString(36)}-${toolCounter}`,
-                name: part.functionCall.name,
-                input: part.functionCall.args ?? {},
-              },
-            }
+            yield { kind: 'tool-use', call }
           }
         }
 

@@ -5,6 +5,7 @@ import type {
   StopReason,
   ChatMessage,
   ProviderToolSchema,
+  ToolCall,
 } from '@orchentra/cli-core'
 import { assertVisionSupport } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
@@ -143,17 +144,11 @@ export class GeminiProvider implements Provider {
             if (typeof part.text === 'string' && part.text.length > 0) {
               yield { kind: 'text-delta', delta: part.text }
             }
-            if (part.functionCall) {
+            const call = toolCallFromPart(part, toolCounter + 1)
+            if (call) {
               sawToolCall = true
               toolCounter += 1
-              yield {
-                kind: 'tool-use',
-                call: {
-                  id: `gemini-tool-${Date.now().toString(36)}-${toolCounter}`,
-                  name: part.functionCall.name,
-                  input: part.functionCall.args ?? {},
-                },
-              }
+              yield { kind: 'tool-use', call }
             }
           }
 
@@ -185,10 +180,18 @@ export class GeminiProvider implements Provider {
 export function buildGeminiRequest(request: ProviderRequest, defaultMaxTokens: number): GeminiRequest {
   assertVisionSupport(request.messages, request.model)
   const body: GeminiRequest = {
-    contents: convertMessages(request.messages),
+    contents: convertMessages(request.messages, request.model),
     generationConfig: {
       maxOutputTokens: request.maxOutputTokens || defaultMaxTokens,
     },
+  }
+
+  // Effort is meant to be provider-agnostic, and Google is the only backend
+  // that expresses it as a token budget rather than a named level — without
+  // this the /effort dial and the model picker's ←/→ were silently inert on
+  // Gemini and Antigravity while working everywhere else.
+  if (request.thinkingTokenBudget && request.thinkingTokenBudget > 0) {
+    body.generationConfig!.thinkingConfig = { thinkingBudget: request.thinkingTokenBudget }
   }
 
   const systemParts: GeminiPart[] = []
@@ -209,7 +212,38 @@ function imageParts(msg: ChatMessage): GeminiPart[] {
   return (msg.images ?? []).map((img) => ({ inlineData: { mimeType: img.mediaType, data: img.data } }))
 }
 
-function convertMessages(messages: ChatMessage[]): GeminiContent[] {
+/**
+ * Sentinel Google documents for replaying a `functionCall` whose signature is
+ * genuinely gone — a resumed session, a rewound history, a turn recorded
+ * before this field existed. Without it any gap is an unrecoverable 400 that
+ * kills the run on the next tool call; with it the turn degrades to unsigned
+ * reasoning instead of dying.
+ */
+const SKIP_THOUGHT_SIGNATURE = 'skip_thought_signature_validator'
+
+/** Gemini 3 rejects an unsigned replayed `functionCall`; 2.x does not sign at all. */
+export function requiresThoughtSignature(model: string): boolean {
+  // Substring, not anchored: ids reach here carrying Orchentra's routing
+  // prefix (`antigravity/gemini-3.6-flash-high`).
+  return /gemini-3[.-]/i.test(model)
+}
+
+/** One tool call off a streamed part, carrying its signature if the model signed it. */
+export function toolCallFromPart(part: GeminiPart, counter: number): ToolCall | null {
+  if (!part.functionCall) return null
+  return {
+    id: part.functionCall.id ?? `gemini-tool-${Date.now().toString(36)}-${counter}`,
+    name: part.functionCall.name,
+    input: part.functionCall.args ?? {},
+    ...(part.thoughtSignature ? { providerSignature: part.thoughtSignature } : {}),
+  }
+}
+
+function convertMessages(messages: ChatMessage[], model: string): GeminiContent[] {
+  const needsSignature = requiresThoughtSignature(model)
+  // A functionResponse is matched to its call by name (and id) — never by the
+  // harness's own tool-call id, which is what used to be sent as the name.
+  const callNames = new Map<string, string>()
   const result: GeminiContent[] = []
   for (const msg of messages) {
     if (msg.role === 'user') {
@@ -218,15 +252,20 @@ function convertMessages(messages: ChatMessage[]): GeminiContent[] {
       const parts: GeminiPart[] = []
       if (msg.content) parts.push({ text: msg.content })
       for (const call of msg.toolCalls ?? []) {
+        callNames.set(call.id, call.name)
+        const signature = call.providerSignature ?? (needsSignature ? SKIP_THOUGHT_SIGNATURE : undefined)
         parts.push({
           functionCall: {
+            id: call.id,
             name: call.name,
             args: typeof call.input === 'object' && call.input !== null ? (call.input as Record<string, unknown>) : {},
           },
+          ...(signature ? { thoughtSignature: signature } : {}),
         })
       }
       if (parts.length > 0) result.push({ role: 'model', parts })
     } else if (msg.role === 'tool') {
+      const name = (msg.toolCallId ? callNames.get(msg.toolCallId) : undefined) ?? 'tool'
       // Image results ride as sibling inlineData parts in the same user content
       // as the functionResponse — Gemini accepts multiple parts per turn.
       result.push({
@@ -234,8 +273,9 @@ function convertMessages(messages: ChatMessage[]): GeminiContent[] {
         parts: [
           {
             functionResponse: {
-              name: msg.toolCallId ?? 'tool',
-              response: { content: msg.content },
+              ...(msg.toolCallId ? { id: msg.toolCallId } : {}),
+              name,
+              response: { name, content: msg.content },
             },
           },
           ...imageParts(msg),
