@@ -1,0 +1,31 @@
+packages/cli-core/src/runtime/skills/index.ts
+  s_27c10fe9731fec::t_49be080db70c1c 2
+packages/cli-core/src/runtime/skills/loader.ts
+  s_27c10fe9731fec::t_0423c8ae144aa6 2,9-10,13,16-24,31-38,40-41,43,52-53
+packages/cli-core/src/runtime/skills/types.ts
+  s_27c10fe9731fec::t_0128a23f788db8 20-23
+packages/cli-core/tests/skills-cache.test.ts
+  s_27c10fe9731fec::t_b5174b84fab897 51,64,71,81,88,94,98,105,109,115,127-130,142,152,165,175
+packages/cli-core/tests/skills-frontmatter.test.ts
+  s_27c10fe9731fec::t_739045628734d2 39-110
+packages/cli-core/tests/skills-loader.test.ts
+  s_27c10fe9731fec::t_0b5417a79a0ad0 44,52,65,77,87,97,104-157
+packages/cli-core/src/runtime/skills/frontmatter.ts
+  s_27c10fe9731fec::t_02ba2a085a209f 6-24,40-41,43,50-61,67-108,113-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c3d4f758063884fa8b528f54efde506a3d10389b",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
