@@ -453,3 +453,4 @@ export type { SummaryCompressionBudget, SummaryCompressionResult } from './summa
 export { compressSummary, compressSummaryText, defaultCompressionBudget } from './summary-compression'
 
 export * from '../memory/index'
+export { userInvocable, modelInvocable, renderSkill } from './skills'

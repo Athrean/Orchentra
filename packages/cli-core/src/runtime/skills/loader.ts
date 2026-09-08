@@ -1,6 +1,8 @@
-import { readdir, readFile, stat } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { userPaths } from '../../platform/paths'
+import { discoverSkillFiles } from './discovery'
 import { computeDirHash, readCached, writeCached } from './cache'
 import { parseFrontmatter } from './frontmatter'
 import { validateSkillFrontmatter } from './validator'
@@ -20,7 +22,7 @@ interface DiscoveredRoot {
  * here rather than having to keep a second copy in sync. Lowest precedence:
  * anything in Orchentra's own user or workspace tree shadows them silently.
  */
-export const INTEROP_SKILL_ROOTS: readonly string[] = ['.claude/skills', '.codex/skills']
+export const INTEROP_SKILL_ROOTS: readonly string[] = ['.claude/skills', '.codex/skills', '.agents/skills']
 
 interface RootResult {
   skills: ParsedSkill[]
@@ -37,14 +39,25 @@ export async function loadSkills(opts: LoadSkillsOptions): Promise<LoadSkillsRes
   if (opts.interop !== false) {
     for (const rel of INTEROP_SKILL_ROOTS) ordered.push({ path: join(home, rel), scope: 'interop' })
   }
-  if (opts.configHome) ordered.push({ path: join(opts.configHome, 'skills'), scope: 'user' })
+  ordered.push({ path: join(home, '.orchentra', 'skills'), scope: 'user' })
+  ordered.push({ path: join(opts.configHome ?? userPaths({ home }).config, 'skills'), scope: 'user' })
+  if (opts.interop !== false) {
+    for (const rel of INTEROP_SKILL_ROOTS) ordered.push({ path: join(opts.workspaceRoot, rel), scope: 'interop' })
+  }
+  for (const path of opts.extraRoots ?? []) ordered.push({ path, scope: 'user' })
   ordered.push({ path: join(opts.workspaceRoot, '.orchentra', 'skills'), scope: 'workspace' })
 
   const byName = new Map<string, { skill: ParsedSkill; scope: SkillScope }>()
   const errors: LoadError[] = []
 
   for (const root of ordered) {
-    const result = await loadRoot(root.path)
+    let result: RootResult
+    try {
+      result = opts.cache === false ? await walkRoot(root.path) : await loadRoot(root.path)
+    } catch (error) {
+      errors.push({ path: root.path, message: error instanceof Error ? error.message : String(error) })
+      continue
+    }
     errors.push(...result.errors)
 
     for (const skill of result.skills) {
@@ -79,7 +92,13 @@ async function loadRoot(rootPath: string): Promise<RootResult> {
   if (cached !== null) return { skills: cached, errors: [] }
 
   const fresh = await walkRoot(rootPath)
-  if (fresh.errors.length === 0) writeCached(rootPath, dirState, fresh.skills)
+  if (fresh.errors.length === 0) {
+    try {
+      writeCached(rootPath, dirState, fresh.skills)
+    } catch {
+      /* Cache is optional, including on read-only installs. */
+    }
+  }
   return fresh
 }
 
@@ -87,11 +106,11 @@ async function walkRoot(rootPath: string): Promise<RootResult> {
   const skills: ParsedSkill[] = []
   const errors: LoadError[] = []
 
-  for (const entry of await readdir(rootPath, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    const skillFile = join(rootPath, entry.name, 'SKILL.md')
-    if (!(await fileExists(skillFile))) continue
-
+  for (const skillFile of await discoverSkillFiles(rootPath)) {
+    if ((await stat(skillFile)).size > 256 * 1024) {
+      errors.push({ path: skillFile, message: 'SKILL.md exceeds 256 KiB' })
+      continue
+    }
     const text = await readFile(skillFile, 'utf-8')
     const parsed = parseFrontmatter(text)
     if (parsed.kind === 'error') {
@@ -117,13 +136,4 @@ async function walkRoot(rootPath: string): Promise<RootResult> {
   }
 
   return { skills, errors }
-}
-
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    const s = await stat(path)
-    return s.isFile()
-  } catch {
-    return false
-  }
 }

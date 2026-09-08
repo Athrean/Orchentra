@@ -15,13 +15,13 @@ beforeEach(() => {
   // Isolate the skill index file so these tests don't write to the real
   // `~/.config/orchentra/skills.idx` on the developer's box.
   cacheHome = mkdtempSync(join(tmpdir(), 'orchentra-skills-cache-'))
-  originalCacheHome = process.env.ORCHENTRA_CONFIG_HOME
-  process.env.ORCHENTRA_CONFIG_HOME = cacheHome
+  originalCacheHome = process.env.XDG_CACHE_HOME
+  process.env.XDG_CACHE_HOME = cacheHome
 })
 
 afterEach(() => {
-  if (originalCacheHome === undefined) delete process.env.ORCHENTRA_CONFIG_HOME
-  else process.env.ORCHENTRA_CONFIG_HOME = originalCacheHome
+  if (originalCacheHome === undefined) delete process.env.XDG_CACHE_HOME
+  else process.env.XDG_CACHE_HOME = originalCacheHome
   rmSync(workspaceRoot, { recursive: true, force: true })
   rmSync(configHome, { recursive: true, force: true })
   rmSync(cacheHome, { recursive: true, force: true })

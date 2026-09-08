@@ -30,13 +30,13 @@ const validSkill = (name: string): string =>
 beforeEach(() => {
   workspaceRoot = mkdtempSync(join(tmpdir(), 'orchentra-skills-cache-ws-'))
   configHome = mkdtempSync(join(tmpdir(), 'orchentra-skills-cache-home-'))
-  originalConfigHome = process.env.ORCHENTRA_CONFIG_HOME
-  process.env.ORCHENTRA_CONFIG_HOME = configHome
+  originalConfigHome = process.env.XDG_CACHE_HOME
+  process.env.XDG_CACHE_HOME = configHome
 })
 
 afterEach(() => {
-  if (originalConfigHome === undefined) delete process.env.ORCHENTRA_CONFIG_HOME
-  else process.env.ORCHENTRA_CONFIG_HOME = originalConfigHome
+  if (originalConfigHome === undefined) delete process.env.XDG_CACHE_HOME
+  else process.env.XDG_CACHE_HOME = originalConfigHome
   rmSync(workspaceRoot, { recursive: true, force: true })
   rmSync(configHome, { recursive: true, force: true })
 })
@@ -54,7 +54,7 @@ describe('skill loader cache', () => {
     expect(existsSync(cacheFile)).toBe(true)
     const text = readFileSync(cacheFile, 'utf-8')
     const parsed = JSON.parse(text) as { version: number; entries: Record<string, unknown> }
-    expect(parsed.version).toBe(1)
+    expect(parsed.version).toBe(2)
     expect(Object.keys(parsed.entries)).toHaveLength(1)
   })
 

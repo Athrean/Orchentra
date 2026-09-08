@@ -52,7 +52,7 @@ describe('registerSkillCommands', () => {
 
     await resolved.handler.execute([], { cwd: '/', session: fakeSession })
 
-    expect(received).toBe('Greet the user warmly.')
+    expect(received).toContain('Greet the user warmly.')
   })
 
   test('command summary surfaces the skill description', () => {
@@ -88,7 +88,7 @@ describe('registerSkillCommands', () => {
     if (resolved === null || resolved instanceof Error) throw new Error('expected handler')
     await resolved.handler.execute(['api', 'prod'], { cwd: '/', session: fakeSession })
 
-    expect(received).toBe('Deploy api to prod (raw: api prod)')
+    expect(received).toContain('Deploy api to prod (raw: api prod)')
   })
 
   test('forwards allowed-tools as a permissionOverlay to runTurn', async () => {

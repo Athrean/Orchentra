@@ -21,6 +21,9 @@ export interface LoadSkillsOptions {
   homeDir?: string
   /** Set false to load only Orchentra's own skill trees. Defaults to true. */
   interop?: boolean
+  /** Additional explicitly installed contribution roots. */
+  extraRoots?: readonly string[]
+  cache?: boolean
 }
 
 export interface LoadSkillsResult {

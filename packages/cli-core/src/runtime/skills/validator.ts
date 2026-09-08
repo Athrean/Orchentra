@@ -14,7 +14,20 @@ export function validateSkillFrontmatter(meta: Record<string, unknown>): Validat
   const description = requireString(meta, 'description')
   if (description.kind === 'error') return description
 
-  const allowedTools = optionalStringArray(meta, 'allowed-tools')
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(name.value))
+    return { kind: 'error', field: 'name', message: 'name must contain 1–64 letters, digits, hyphens or underscores' }
+  for (const field of ['user-invocable', 'disable-model-invocation']) {
+    if (meta[field] !== undefined && ![true, false, 'true', 'false'].includes(meta[field] as string | boolean))
+      return { kind: 'error', field, message: `${field} must be a boolean` }
+  }
+  const allowedTools = optionalStringArray(
+    {
+      ...meta,
+      'allowed-tools':
+        typeof meta['allowed-tools'] === 'string' ? splitToolList(meta['allowed-tools']) : meta['allowed-tools'],
+    },
+    'allowed-tools',
+  )
   if (allowedTools.kind === 'error') return allowedTools
   const argumentNames = optionalStringArray(meta, 'arguments')
   if (argumentNames.kind === 'error') return argumentNames
@@ -49,7 +62,7 @@ function requireString(meta: Record<string, unknown>, field: string): FieldResul
   if (typeof value !== 'string') {
     return { kind: 'error', field, message: `'${field}' must be a string` }
   }
-  return { kind: 'ok', value }
+  return { kind: 'ok', value: value.trim() }
 }
 
 function optionalStringArray(meta: Record<string, unknown>, field: string): FieldResult<string[]> {
@@ -64,4 +77,9 @@ function optionalStringArray(meta: Record<string, unknown>, field: string): Fiel
     }
   }
   return { kind: 'ok', value: value as string[] }
+}
+
+/** Split comma/space lists while preserving spaces inside Bash(...) selectors. */
+function splitToolList(raw: string): string[] {
+  return raw.match(/[^,\s()]+(?:\([^)]*\))?/g) ?? []
 }

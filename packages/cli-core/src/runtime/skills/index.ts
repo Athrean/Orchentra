@@ -4,3 +4,4 @@ export { validateSkillFrontmatter, type ValidatedSkillFrontmatter, type Validate
 export { substituteSkillArguments } from './arguments'
 export { translateAllowedTools, type TranslateAllowedToolsResult } from './permissions'
 export type { ParsedSkill, LoadError, LoadSkillsOptions, LoadSkillsResult } from './types'
+export { userInvocable, modelInvocable, renderSkill } from './activation'

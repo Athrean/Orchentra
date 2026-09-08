@@ -1,7 +1,8 @@
+import { discoverSkillFiles } from './discovery'
 import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
-import { readdir, stat } from 'node:fs/promises'
-import { homedir } from 'node:os'
+import { stat } from 'node:fs/promises'
+import { userPaths } from '../../platform/paths'
 import { dirname, join } from 'node:path'
 import type { ParsedSkill } from './types'
 
@@ -14,7 +15,7 @@ import type { ParsedSkill } from './types'
  * Layout mirrors `apps/cli/src/session-config.ts`: 0600 file, atomic write
  * via tmp + rename, JSON object with a stable `version` envelope.
  *
- * Path: `~/.config/orchentra/skills.idx` (override via `ORCHENTRA_CONFIG_HOME`).
+ * Path: `~/.cache/orchentra/skills.idx`.
  *
  * Invalidation: an entry is reused only when both the directory's `mtimeMs`
  * and the hash of contained file mtimes match. Touching a single SKILL.md
@@ -23,7 +24,7 @@ import type { ParsedSkill } from './types'
 
 const FILE_MODE = 0o600
 const DIR_MODE = 0o700
-const VERSION = 1
+const VERSION = 2
 
 interface CacheEntry {
   rootPath: string
@@ -38,9 +39,7 @@ interface CacheFile {
 }
 
 export function skillsCachePath(): string {
-  const override = process.env.ORCHENTRA_CONFIG_HOME
-  if (override && override.length > 0) return join(override, 'skills.idx')
-  return join(homedir(), '.config', 'orchentra', 'skills.idx')
+  return join(userPaths().cache, 'skills.idx')
 }
 
 export function rootKey(rootPath: string): string {
@@ -103,17 +102,10 @@ export async function computeDirHash(rootPath: string): Promise<{ mtimeMs: numbe
   }
   if (!rootStat.isDirectory()) return null
 
-  const entries = await readdir(rootPath, { withFileTypes: true })
   const items: Array<{ name: string; mtimeMs: number }> = []
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue
-    const skillFile = join(rootPath, entry.name, 'SKILL.md')
-    try {
-      const s = await stat(skillFile)
-      if (s.isFile()) items.push({ name: entry.name, mtimeMs: s.mtimeMs })
-    } catch {
-      /* skip missing or unreadable SKILL.md */
-    }
+  for (const skillFile of await discoverSkillFiles(rootPath)) {
+    const s = await stat(skillFile)
+    items.push({ name: `${skillFile}:${s.size}:${s.ctimeMs}`, mtimeMs: s.mtimeMs })
   }
   items.sort((a, b) => a.name.localeCompare(b.name))
 
