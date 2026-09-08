@@ -125,11 +125,6 @@ export function createEnforcer(): Enforcer {
         return promptUser(toolCall, ctx, { reason: hook.reason })
       }
 
-      if (toolName === 'bash' && !hook) {
-        const cmd = extractBashCommand(toolCall.input)
-        if (cmd && isBashReadOnly(cmd)) return { kind: 'allow' }
-      }
-
       if (ctx.policy) {
         const v = ctx.policy(toolCall)
         if (v.kind === 'deny') {
@@ -158,6 +153,11 @@ export function createEnforcer(): Enforcer {
       if (isReadAllowed(ctx, toolCall)) return { kind: 'allow' }
 
       if (modeGrants(ctx, toolCall)) return { kind: 'allow' }
+
+      if (toolName === 'bash' && !hook) {
+        const cmd = extractBashCommand(toolCall.input)
+        if (cmd && isBashReadOnly(cmd)) return { kind: 'allow' }
+      }
 
       if (ctx.store) {
         const verdict = ctx.store.decide(toolCall.name, toolCall.input)
