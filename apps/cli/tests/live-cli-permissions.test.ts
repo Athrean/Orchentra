@@ -13,7 +13,7 @@ describe('LiveCli permissions', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'orchentra-live-perms-'))
     const provider = fakeProvider([
       [
-        { kind: 'tool-use', call: { id: 'tc1', name: 'web_search', input: { query: 'orchentra' } } },
+        { kind: 'tool-use', call: { id: 'tc1', name: 'web_fetch', input: { url: 'https://example.com' } } },
         { kind: 'finish', stopReason: 'tool_use' },
       ],
       [{ kind: 'finish', stopReason: 'end_turn' }],
@@ -40,9 +40,9 @@ describe('LiveCli permissions', () => {
       return 'deny'
     }) as AskUser)
 
-    await cli.runTurn('search the web')
+    await cli.runTurn('fetch a page')
 
-    expect(prompt?.toolName).toBe('web_search')
+    expect(prompt?.toolName).toBe('web_fetch')
     expect(prompt?.requiredMode).toBe('danger-full-access')
     expect(prompt?.currentMode).toBe('workspace-write')
     const result = events.find((event) => event.kind === 'tool_result')

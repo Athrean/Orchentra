@@ -66,7 +66,6 @@ export {
   type Severity,
 } from './diagnostics'
 export { webFetchTool } from './tools/web-fetch-tool'
-export { webSearchTool } from './tools/web-search-tool'
 export { askUserTool } from './tools/ask-user-tool'
 export { todoWriteTool } from './tools/todo-write-tool'
 export {

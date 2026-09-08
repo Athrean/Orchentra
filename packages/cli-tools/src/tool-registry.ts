@@ -18,7 +18,6 @@ import { globTool } from './tools/glob-tool'
 import { grepTool } from './tools/grep-tool'
 import { diagnosticsTool } from './tools/diagnostics-tool'
 import { webFetchTool } from './tools/web-fetch-tool'
-import { webSearchTool } from './tools/web-search-tool'
 import { askUserTool } from './tools/ask-user-tool'
 import { todoWriteTool } from './tools/todo-write-tool'
 import { agentTool } from './tools/agent-tool'
@@ -40,7 +39,6 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
   grepTool,
   diagnosticsTool,
   webFetchTool,
-  webSearchTool,
   askUserTool,
   todoWriteTool,
   agentTool,
