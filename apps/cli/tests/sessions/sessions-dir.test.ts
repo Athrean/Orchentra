@@ -10,19 +10,19 @@ let tmpHome: string
 
 beforeEach(() => {
   tmpHome = mkdtempSync(join(tmpdir(), 'orchentra-sessions-dir-'))
-  savedHome = process.env['ORCHENTRA_HOME']
-  process.env['ORCHENTRA_HOME'] = tmpHome
+  savedHome = process.env['XDG_STATE_HOME']
+  process.env['XDG_STATE_HOME'] = tmpHome
 })
 
 afterEach(() => {
-  if (savedHome === undefined) delete process.env['ORCHENTRA_HOME']
-  else process.env['ORCHENTRA_HOME'] = savedHome
+  if (savedHome === undefined) delete process.env['XDG_STATE_HOME']
+  else process.env['XDG_STATE_HOME'] = savedHome
   rmSync(tmpHome, { recursive: true, force: true })
 })
 
 describe('getSessionsRootDir', () => {
-  test('respects ORCHENTRA_HOME override', () => {
-    expect(getSessionsRootDir()).toBe(join(tmpHome, '.orchentra', 'sessions'))
+  test('respects XDG_STATE_HOME override', () => {
+    expect(getSessionsRootDir()).toBe(join(tmpHome, 'orchentra', 'sessions'))
   })
 })
 
@@ -31,7 +31,7 @@ describe('getSessionsDirForWorkspace', () => {
     const workspace = '/Users/foo/repo-x'
     const dir = getSessionsDirForWorkspace(workspace)
     const fp = fingerprintWorkspace(workspace)
-    expect(dir).toBe(join(tmpHome, '.orchentra', 'sessions', fp))
+    expect(dir).toBe(join(tmpHome, 'orchentra', 'sessions', fp))
   })
 
   test('different workspaces map to different bucket dirs', () => {
@@ -41,7 +41,7 @@ describe('getSessionsDirForWorkspace', () => {
   })
 
   test('opportunistically migrates legacy flat-dir sessions on first call', () => {
-    const sessionsRoot = join(tmpHome, '.orchentra', 'sessions')
+    const sessionsRoot = join(tmpHome, 'orchentra', 'sessions')
     mkdirSync(sessionsRoot, { recursive: true })
     writeFileSync(join(sessionsRoot, 'legacy-a.jsonl'), '{}\n')
 

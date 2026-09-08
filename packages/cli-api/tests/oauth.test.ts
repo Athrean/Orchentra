@@ -36,7 +36,7 @@ const snapshot: Record<string, string | undefined> = {}
 
 beforeEach(() => {
   configHome = mkdtempSync(join(tmpdir(), 'orchentra-oauth-'))
-  process.env['ORCHENTRA_CONFIG_HOME'] = configHome
+  process.env['XDG_CONFIG_HOME'] = configHome
   for (const k of ENV_KEYS) {
     snapshot[k] = process.env[k]
     delete process.env[k]
@@ -49,7 +49,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(configHome, { recursive: true, force: true })
-  delete process.env['ORCHENTRA_CONFIG_HOME']
+  delete process.env['XDG_CONFIG_HOME']
   for (const k of ENV_KEYS) {
     if (snapshot[k] === undefined) delete process.env[k]
     else process.env[k] = snapshot[k]

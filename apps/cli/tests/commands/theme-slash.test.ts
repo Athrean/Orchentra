@@ -34,13 +34,13 @@ describe('/theme slash handler', () => {
   let tempHome: string
   let prevHome: string | undefined
   beforeEach(() => {
-    prevHome = process.env['ORCHENTRA_CONFIG_HOME']
+    prevHome = process.env['XDG_CONFIG_HOME']
     tempHome = mkdtempSync(join(tmpdir(), 'orchentra-theme-slash-test-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = tempHome
+    process.env['XDG_CONFIG_HOME'] = tempHome
   })
   afterEach(() => {
-    if (prevHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = prevHome
+    if (prevHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = prevHome
     rmSync(tempHome, { recursive: true, force: true })
   })
 

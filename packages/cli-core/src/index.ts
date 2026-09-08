@@ -1,4 +1,5 @@
 export * from './runtime/index'
+export { userPaths, type UserPaths } from './platform/paths'
 export * from './render/index'
 export * from './permissions/enforcer'
 export * from './permissions/store'

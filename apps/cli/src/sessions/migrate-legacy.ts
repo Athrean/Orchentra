@@ -26,7 +26,10 @@ export interface MigrateResult {
  * CLI startup.
  */
 export function migrateLegacySessions(homedirPath: string): MigrateResult {
-  const sessions = join(homedirPath, '.orchentra', 'sessions')
+  return migrateFlatSessions(join(homedirPath, '.orchentra', 'sessions'))
+}
+
+export function migrateFlatSessions(sessions: string): MigrateResult {
   if (!existsSync(sessions)) return { moved: 0 }
 
   let entries: string[]

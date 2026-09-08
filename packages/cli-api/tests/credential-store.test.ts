@@ -128,11 +128,11 @@ describe('resolveApiKey', () => {
 })
 
 describe('sync Keychain fallback', () => {
-  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalConfigHome = process.env['XDG_CONFIG_HOME']
 
   afterEach(() => {
-    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalConfigHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = originalConfigHome
   })
 
   // `/login` writes through keytar, so getCredential falls back to reading the
@@ -140,7 +140,7 @@ describe('sync Keychain fallback', () => {
   // a test run would read (and be steered by) the developer's own Keychain.
   test('a redirected credential root never reaches the Keychain', () => {
     const dir = mkdtempSync(join(tmpdir(), 'orchentra-cred-guard-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = dir
+    process.env['XDG_CONFIG_HOME'] = dir
     try {
       expect(getCredential('zen')).toBeNull()
       expect(getCredential('anthropic')).toBeNull()

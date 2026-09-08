@@ -1,9 +1,8 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { isTerseMode, type TerseMode } from '@orchentra/cli-core'
+import { isTerseMode, userPaths, type TerseMode } from '@orchentra/cli-core'
 import { fingerprintWorkspace } from './sessions/workspace-fingerprint'
-import { LEGACY_FINGERPRINT, migrateLegacySessions } from './sessions/migrate-legacy'
+import { LEGACY_FINGERPRINT, migrateFlatSessions } from './sessions/migrate-legacy'
 import { DEFAULT_STATUSLINE_CONFIG, normalizeStatuslineConfig, type StatuslineConfig } from './statusline'
 
 /**
@@ -11,7 +10,7 @@ import { DEFAULT_STATUSLINE_CONFIG, normalizeStatuslineConfig, type StatuslineCo
  * doesn't have to re-pass `--repo` on every command.
  *
  * Stored at `~/.config/orchentra/session.json` (override via
- * `ORCHENTRA_CONFIG_HOME` for tests / containers). Disk layout mirrors the
+ * standard `XDG_CONFIG_HOME`). Disk layout mirrors the
  * credential-store convention: 0600 file mode, JSON object with a stable
  * `version` envelope, atomic write via tmp + rename.
  */
@@ -30,20 +29,17 @@ const FILE_MODE = 0o600
 const DIR_MODE = 0o700
 
 export function sessionConfigPath(): string {
-  const override = process.env['ORCHENTRA_CONFIG_HOME']
-  if (override && override.length > 0) return join(override, 'session.json')
-  return join(homedir(), '.config', 'orchentra', 'session.json')
+  return join(userPaths().config, 'session.json')
 }
 
-/**
- * Root directory for all session JSONLs across every workspace this user
- * has invoked the CLI in. `ORCHENTRA_HOME` overrides the home directory
- * (used by tests and container setups).
- */
+/** Default local session storage. Existing installations keep their readable history. */
 export function getSessionsRootDir(): string {
-  const override = process.env['ORCHENTRA_HOME']
-  const base = override && override.length > 0 ? override : homedir()
-  return join(base, '.orchentra', 'sessions')
+  const paths = userPaths()
+  // Reuse established history without moving or duplicating user transcripts.
+  // An explicit XDG root is isolated (containers and tests must not import host state).
+  const legacy = join(paths.legacy, 'sessions')
+  if (!process.env.XDG_STATE_HOME && existsSync(legacy)) return legacy
+  return join(paths.state, 'sessions')
 }
 
 const legacyMigrated = new Set<string>()
@@ -63,12 +59,11 @@ const legacyMigrated = new Set<string>()
  * dirs for every workspace ever queried.
  */
 export function getSessionsDirForWorkspace(workspaceRoot: string): string {
-  const override = process.env['ORCHENTRA_HOME']
-  const base = override && override.length > 0 ? override : homedir()
+  const base = getSessionsRootDir()
   if (!legacyMigrated.has(base)) {
     legacyMigrated.add(base)
     try {
-      migrateLegacySessions(base)
+      migrateFlatSessions(base)
     } catch {
       // Migration failure should never block session writes; if a user's
       // legacy/ couldn't be created we'll just leave the flat files alone.

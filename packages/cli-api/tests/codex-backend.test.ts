@@ -34,13 +34,13 @@ async function collect(iter: AsyncIterable<ProviderStreamEvent>): Promise<Provid
 
 describe('CodexBackendProvider', () => {
   const originalFetch = globalThis.fetch
-  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalConfigHome = process.env['XDG_CONFIG_HOME']
   const originalOpenAiKey = process.env['OPENAI_API_KEY']
   let configHome: string
 
   beforeEach(() => {
     configHome = mkdtempSync(join(tmpdir(), 'codex-backend-test-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = configHome
+    process.env['XDG_CONFIG_HOME'] = configHome
     delete process.env['OPENAI_API_KEY']
     // A ChatGPT-backend login: access token, no api key, source marker.
     saveCredential('openai', {
@@ -53,8 +53,8 @@ describe('CodexBackendProvider', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
     rmSync(configHome, { recursive: true, force: true })
-    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalConfigHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = originalConfigHome
     if (originalOpenAiKey === undefined) delete process.env['OPENAI_API_KEY']
     else process.env['OPENAI_API_KEY'] = originalOpenAiKey
   })

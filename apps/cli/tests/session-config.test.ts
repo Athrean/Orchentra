@@ -22,13 +22,13 @@ let savedEnv: string | undefined
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), 'orchentra-session-config-'))
-  savedEnv = process.env.ORCHENTRA_CONFIG_HOME
-  process.env.ORCHENTRA_CONFIG_HOME = tempDir
+  savedEnv = process.env.XDG_CONFIG_HOME
+  process.env.XDG_CONFIG_HOME = tempDir
 })
 
 afterEach(() => {
-  if (savedEnv === undefined) delete process.env.ORCHENTRA_CONFIG_HOME
-  else process.env.ORCHENTRA_CONFIG_HOME = savedEnv
+  if (savedEnv === undefined) delete process.env.XDG_CONFIG_HOME
+  else process.env.XDG_CONFIG_HOME = savedEnv
   rmSync(tempDir, { recursive: true, force: true })
 })
 
@@ -38,7 +38,7 @@ describe('session-config: activeRepo', () => {
   })
 
   test('returns null when file exists but field is absent', () => {
-    mkdirSync(tempDir, { recursive: true })
+    mkdirSync(join(tempDir, 'orchentra'), { recursive: true })
     writeFileSync(sessionConfigPath(), JSON.stringify({ version: 1 }))
     expect(getActiveRepo()).toBeNull()
   })
@@ -75,7 +75,7 @@ describe('session-config: activeRepo', () => {
   })
 
   test('survives a corrupted on-disk JSON payload by treating it as empty', () => {
-    mkdirSync(tempDir, { recursive: true })
+    mkdirSync(join(tempDir, 'orchentra'), { recursive: true })
     writeFileSync(sessionConfigPath(), 'not json {')
     expect(getActiveRepo()).toBeNull()
     setActiveRepo('acme/api')

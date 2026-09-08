@@ -1,5 +1,5 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { userPaths } from '@orchentra/cli-core'
 import { dirname, join } from 'node:path'
 
 /**
@@ -481,9 +481,7 @@ const FILE_MODE = 0o600
 const DIR_MODE = 0o700
 
 function sessionFilePath(): string {
-  const override = process.env['ORCHENTRA_CONFIG_HOME']
-  if (override && override.length > 0) return join(override, 'session.json')
-  return join(homedir(), '.config', 'orchentra', 'session.json')
+  return join(userPaths().config, 'session.json')
 }
 
 function readSession(): SessionFileShape {

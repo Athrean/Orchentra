@@ -14,13 +14,13 @@ let userHome: string
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'orchentra-agents-'))
   userHome = join(root, 'home')
-  prevConfigHome = process.env.ORCHESTRA_CONFIG_HOME
-  process.env.ORCHESTRA_CONFIG_HOME = userHome
+  prevConfigHome = process.env.XDG_CONFIG_HOME
+  process.env.XDG_CONFIG_HOME = userHome
 })
 
 afterEach(async () => {
-  if (prevConfigHome === undefined) delete process.env.ORCHESTRA_CONFIG_HOME
-  else process.env.ORCHESTRA_CONFIG_HOME = prevConfigHome
+  if (prevConfigHome === undefined) delete process.env.XDG_CONFIG_HOME
+  else process.env.XDG_CONFIG_HOME = prevConfigHome
   resetActiveRolesForTests()
   await rm(root, { recursive: true, force: true })
 })
@@ -77,7 +77,7 @@ tools: read-only
 body`,
       )
     await mk(join(cwd, '.claude', 'agents'), 'from-claude')
-    await mk(join(userHome, 'agents'), 'from-user')
+    await mk(join(userHome, 'orchentra', 'agents'), 'from-user')
     await mk(join(cwd, '.orchentra', 'agents'), 'from-project')
 
     const merged = mergeAgentRoles(await discoverAgentDefinitions(cwd))
@@ -88,7 +88,7 @@ body`,
     const cwd = join(root, 'proj')
     await mkdir(cwd, { recursive: true })
     await writeAgent(
-      join(userHome, 'agents'),
+      join(userHome, 'orchentra', 'agents'),
       'global.md',
       `---
 name: global-agent

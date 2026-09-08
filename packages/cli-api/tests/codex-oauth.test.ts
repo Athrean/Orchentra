@@ -31,21 +31,21 @@ const ID_TOKEN = fakeJwt({
 
 describe('codex oauth', () => {
   const originalFetch = globalThis.fetch
-  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalConfigHome = process.env['XDG_CONFIG_HOME']
   const originalCodexHome = process.env['CODEX_HOME']
   let configHome: string
 
   beforeEach(() => {
     configHome = mkdtempSync(join(tmpdir(), 'codex-oauth-test-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = configHome
+    process.env['XDG_CONFIG_HOME'] = configHome
     delete process.env['CODEX_HOME']
   })
 
   afterEach(() => {
     globalThis.fetch = originalFetch
     rmSync(configHome, { recursive: true, force: true })
-    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalConfigHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = originalConfigHome
     if (originalCodexHome === undefined) delete process.env['CODEX_HOME']
     else process.env['CODEX_HOME'] = originalCodexHome
   })

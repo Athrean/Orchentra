@@ -35,13 +35,13 @@ async function collect(iter: AsyncIterable<ProviderStreamEvent>): Promise<Provid
 
 describe('GeminiCodeAssistProvider', () => {
   const originalFetch = globalThis.fetch
-  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalConfigHome = process.env['XDG_CONFIG_HOME']
   const savedEnv = new Map<string, string | undefined>()
   let configHome: string
 
   beforeEach(() => {
     configHome = mkdtempSync(join(tmpdir(), 'gemini-ca-test-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = configHome
+    process.env['XDG_CONFIG_HOME'] = configHome
     for (const k of ENV_KEYS) {
       savedEnv.set(k, process.env[k])
       delete process.env[k]
@@ -57,8 +57,8 @@ describe('GeminiCodeAssistProvider', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
     rmSync(configHome, { recursive: true, force: true })
-    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalConfigHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = originalConfigHome
     for (const k of ENV_KEYS) {
       const v = savedEnv.get(k)
       if (v === undefined) delete process.env[k]

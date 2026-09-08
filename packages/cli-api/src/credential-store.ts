@@ -1,3 +1,4 @@
+import { userPaths } from '@orchentra/cli-core'
 import { spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join, dirname } from 'node:path'
@@ -40,15 +41,7 @@ const FILE_MODE = 0o600
 const DIR_MODE = 0o700
 
 export function credentialsPath(home: string = homedir()): string {
-  // ORCHENTRA_CONFIG_HOME overrides the default $HOME/.config root —
-  // matches the convention used elsewhere (cli-core runtime config) and
-  // gives tests an isolated path so they don't read or mutate a
-  // developer's real OAuth bundle.
-  const override = process.env['ORCHENTRA_CONFIG_HOME']
-  if (override && override.length > 0) {
-    return join(override, 'credentials.json')
-  }
-  return join(home, '.config', 'orchentra', 'credentials.json')
+  return join(userPaths({ home }).config, 'credentials.json')
 }
 
 export function loadCredentials(home: string = homedir()): CredentialsFile {
@@ -110,7 +103,7 @@ export function invalidateKeychainCache(provider: ProviderKey): void {
  */
 function readKeychainSync(provider: ProviderKey, home: string): StoredCredential | null {
   if (process.platform !== 'darwin') return null
-  if (process.env['ORCHENTRA_CONFIG_HOME']) return null
+  if (process.env['XDG_CONFIG_HOME']) return null
   if (home !== homedir()) return null
   if (keychainUnavailable) return null
   const cached = keychainCache.get(provider)

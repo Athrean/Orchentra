@@ -8,19 +8,19 @@ describe('loadUserBindings', () => {
   let home: string
   let prev: string | undefined
   beforeEach(() => {
-    prev = process.env['ORCHENTRA_CONFIG_HOME']
+    prev = process.env['XDG_CONFIG_HOME']
     home = mkdtempSync(join(tmpdir(), 'orchentra-kb-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = home
+    process.env['XDG_CONFIG_HOME'] = home
   })
   afterEach(() => {
-    if (prev === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = prev
+    if (prev === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = prev
     rmSync(home, { recursive: true, force: true })
   })
 
   const write = (body: string): void => {
-    mkdirSync(home, { recursive: true })
-    writeFileSync(join(home, 'keybindings.json'), body)
+    mkdirSync(join(home, 'orchentra'), { recursive: true })
+    writeFileSync(join(home, 'orchentra', 'keybindings.json'), body)
   }
 
   test('no file yields no overrides', () => {

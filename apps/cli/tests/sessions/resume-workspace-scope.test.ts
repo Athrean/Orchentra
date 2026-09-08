@@ -14,13 +14,13 @@ let tmpHome: string
 
 beforeEach(() => {
   tmpHome = mkdtempSync(join(tmpdir(), 'orchentra-resume-ws-'))
-  savedHome = process.env['ORCHENTRA_HOME']
-  process.env['ORCHENTRA_HOME'] = tmpHome
+  savedHome = process.env['XDG_STATE_HOME']
+  process.env['XDG_STATE_HOME'] = tmpHome
 })
 
 afterEach(() => {
-  if (savedHome === undefined) delete process.env['ORCHENTRA_HOME']
-  else process.env['ORCHENTRA_HOME'] = savedHome
+  if (savedHome === undefined) delete process.env['XDG_STATE_HOME']
+  else process.env['XDG_STATE_HOME'] = savedHome
   rmSync(tmpHome, { recursive: true, force: true })
 })
 
@@ -47,7 +47,7 @@ function writeSession(bucketDir: string, id: string, lines: object[]): void {
 }
 
 function sessionsRoot(): string {
-  return join(tmpHome, '.orchentra', 'sessions')
+  return join(tmpHome, 'orchentra', 'sessions')
 }
 
 function notes(events: UiOutput[]): string[] {

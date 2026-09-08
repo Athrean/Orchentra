@@ -15,6 +15,7 @@ import { isEffortTier } from './provider'
 import { isTerseMode } from './terse'
 import { isExecutionProfile } from './execution-profile'
 import { runMigrations, type Migration } from './migrations'
+import { userPaths } from '../platform/paths'
 
 /** Current settings schema version. Bump when a settings shape changes and add
  * the matching `vN -> vN+1` transform to CONFIG_MIGRATIONS below. */
@@ -33,17 +34,21 @@ export class ConfigLoader {
   constructor(
     private readonly cwd: string,
     private readonly configHome: string,
+    private readonly legacyPaths?: string[],
   ) {}
 
   static defaultFor(cwd: string): ConfigLoader {
-    return new ConfigLoader(cwd, defaultConfigHome())
+    return new ConfigLoader(cwd, defaultConfigHome(), [
+      join(userPaths().home, '.orchentra.json'),
+      join(userPaths().legacy, 'settings.json'),
+    ])
   }
 
   discover(): ConfigEntry[] {
     const legacyPath =
       dirname(this.configHome) !== '.' ? join(dirname(this.configHome), '.orchentra.json') : '.orchentra.json'
     return [
-      { source: 'user', path: legacyPath },
+      ...(this.legacyPaths ?? [legacyPath]).map((path) => ({ source: 'user' as const, path })),
       { source: 'user', path: join(this.configHome, 'settings.json') },
       { source: 'project', path: join(this.cwd, '.orchentra.json') },
       { source: 'project', path: join(this.cwd, '.orchentra', 'settings.json') },
@@ -73,11 +78,7 @@ export class ConfigLoader {
 }
 
 export function defaultConfigHome(): string {
-  const env = process.env.ORCHESTRA_CONFIG_HOME
-  if (env) return env
-  const home = process.env.HOME
-  if (home) return join(home, '.orchentra')
-  return '.orchentra'
+  return userPaths().config
 }
 
 function readOptionalJsonObject(path: string): Record<string, unknown> | null {
@@ -177,7 +178,7 @@ function extractEffort(merged: Record<string, unknown>): RuntimeFeatureConfig['e
 
 function extractMemoryConfig(merged: Record<string, unknown>): MemoryFeatureConfig {
   const mem = isPlainObject(merged.memory) ? (merged.memory as Record<string, unknown>) : {}
-  const envApiKey = process.env.ORCHENTRA_MEMORY_API_KEY ?? process.env.OPENAI_API_KEY
+  const envApiKey = process.env.OPENAI_API_KEY
   return {
     enabled: typeof mem.enabled === 'boolean' ? mem.enabled : true,
     embeddingModel: typeof mem.embeddingModel === 'string' ? mem.embeddingModel : 'text-embedding-3-small',

@@ -97,13 +97,13 @@ describe('AnthropicProvider', () => {
 
   // Isolate from a developer's real ~/.config/orchentra/credentials.json
   // and from any leftover state in /tmp by using a fresh tmpdir per test.
-  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalConfigHome = process.env['XDG_CONFIG_HOME']
   const originalNoImport = process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']
   const originalNoBanner = process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
   let configHome: string
   beforeEach(() => {
     configHome = mkdtempSync(join(tmpdir(), 'orchentra-client-test-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = configHome
+    process.env['XDG_CONFIG_HOME'] = configHome
     process.env['ANTHROPIC_API_KEY'] = 'test-key-123'
     // Block Keychain auto-import so the host's real Claude Code login can't
     // mask the missing-credentials path.
@@ -115,8 +115,8 @@ describe('AnthropicProvider', () => {
     globalThis.fetch = originalFetch
     delete process.env['ANTHROPIC_API_KEY']
     if (existsSync(configHome)) rmSync(configHome, { recursive: true, force: true })
-    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalConfigHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = originalConfigHome
     if (originalNoImport === undefined) delete process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT']
     else process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = originalNoImport
     if (originalNoBanner === undefined) delete process.env['ORCHENTRA_NO_KEYCHAIN_BANNER']
@@ -793,7 +793,7 @@ describe('toAnthropicMessages', () => {
 
 describe('AnthropicProvider OAuth identity block', () => {
   const originalFetch = globalThis.fetch
-  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+  const originalConfigHome = process.env['XDG_CONFIG_HOME']
   const originalApiKey = process.env['ANTHROPIC_API_KEY']
   const originalAuthToken = process.env['ANTHROPIC_AUTH_TOKEN']
   let configHome: string
@@ -801,7 +801,7 @@ describe('AnthropicProvider OAuth identity block', () => {
 
   beforeEach(() => {
     configHome = mkdtempSync(join(tmpdir(), 'orchentra-oauth-system-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = configHome
+    process.env['XDG_CONFIG_HOME'] = configHome
     process.env['ORCHENTRA_NO_CLAUDE_CODE_IMPORT'] = '1'
     process.env['ORCHENTRA_NO_KEYCHAIN_BANNER'] = '1'
     delete process.env['ANTHROPIC_API_KEY']
@@ -818,8 +818,8 @@ describe('AnthropicProvider OAuth identity block', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
     if (existsSync(configHome)) rmSync(configHome, { recursive: true, force: true })
-    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+    if (originalConfigHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = originalConfigHome
     if (originalApiKey === undefined) delete process.env['ANTHROPIC_API_KEY']
     else process.env['ANTHROPIC_API_KEY'] = originalApiKey
     if (originalAuthToken === undefined) delete process.env['ANTHROPIC_AUTH_TOKEN']

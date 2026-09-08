@@ -32,13 +32,13 @@ describe('theme registry', () => {
   let tempHome: string
   let prevHome: string | undefined
   beforeEach(() => {
-    prevHome = process.env['ORCHENTRA_CONFIG_HOME']
+    prevHome = process.env['XDG_CONFIG_HOME']
     tempHome = mkdtempSync(join(tmpdir(), 'orchentra-theme-test-'))
-    process.env['ORCHENTRA_CONFIG_HOME'] = tempHome
+    process.env['XDG_CONFIG_HOME'] = tempHome
   })
   afterEach(() => {
-    if (prevHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
-    else process.env['ORCHENTRA_CONFIG_HOME'] = prevHome
+    if (prevHome === undefined) delete process.env['XDG_CONFIG_HOME']
+    else process.env['XDG_CONFIG_HOME'] = prevHome
     rmSync(tempHome, { recursive: true, force: true })
   })
 
@@ -146,8 +146,8 @@ describe('theme registry', () => {
   })
 
   test('saveActiveTheme leaves other keys intact (does not clobber activeRepo)', () => {
-    const path = join(tempHome, 'session.json')
-    mkdirSync(tempHome, { recursive: true })
+    const path = join(tempHome, 'orchentra', 'session.json')
+    mkdirSync(join(tempHome, 'orchentra'), { recursive: true })
     writeFileSync(path, JSON.stringify({ version: 1, activeRepo: 'foo/bar' }))
     saveActiveTheme('light')
     expect(existsSync(path)).toBe(true)
@@ -157,15 +157,15 @@ describe('theme registry', () => {
   })
 
   test('loadActiveTheme defaults to dark on malformed json', () => {
-    const path = join(tempHome, 'session.json')
-    mkdirSync(tempHome, { recursive: true })
+    const path = join(tempHome, 'orchentra', 'session.json')
+    mkdirSync(join(tempHome, 'orchentra'), { recursive: true })
     writeFileSync(path, '{not json')
     expect(loadActiveTheme()).toBe('dark')
   })
 
   test('loadActiveTheme defaults to dark when activeTheme is unknown', () => {
-    const path = join(tempHome, 'session.json')
-    mkdirSync(tempHome, { recursive: true })
+    const path = join(tempHome, 'orchentra', 'session.json')
+    mkdirSync(join(tempHome, 'orchentra'), { recursive: true })
     writeFileSync(path, JSON.stringify({ version: 1, activeTheme: 'nonsense' }))
     expect(loadActiveTheme()).toBe('dark')
   })

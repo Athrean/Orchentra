@@ -148,18 +148,18 @@ describe('parseArgs', () => {
 })
 
 function withConfigHome(fn: () => void): void {
-  const prevConfig = process.env.ORCHENTRA_CONFIG_HOME
+  const prevConfig = process.env.XDG_CONFIG_HOME
   const prevModel = process.env.ORCHENTRA_MODEL
   const prevLegacyModel = process.env.ORCHESTRA_MODEL
   const dir = mkdtempSync(join(tmpdir(), 'orchentra-args-'))
   delete process.env.ORCHENTRA_MODEL
   delete process.env.ORCHESTRA_MODEL
-  process.env.ORCHENTRA_CONFIG_HOME = dir
+  process.env.XDG_CONFIG_HOME = dir
   try {
     fn()
   } finally {
-    if (prevConfig === undefined) delete process.env.ORCHENTRA_CONFIG_HOME
-    else process.env.ORCHENTRA_CONFIG_HOME = prevConfig
+    if (prevConfig === undefined) delete process.env.XDG_CONFIG_HOME
+    else process.env.XDG_CONFIG_HOME = prevConfig
     if (prevModel === undefined) delete process.env.ORCHENTRA_MODEL
     else process.env.ORCHENTRA_MODEL = prevModel
     if (prevLegacyModel === undefined) delete process.env.ORCHESTRA_MODEL
