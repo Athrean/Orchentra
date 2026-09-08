@@ -1,0 +1,19 @@
+turbo.json
+  s_1af4fa2151c0e1::t_36a8fa17e08b57 18,52-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3f0c8fa77f65d6de606f153c978077d24039eede",
+  "prompts": {},
+  "sessions": {
+    "s_1af4fa2151c0e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf98559e-71c3-48e5-a3d5-a0be08d7c972",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
