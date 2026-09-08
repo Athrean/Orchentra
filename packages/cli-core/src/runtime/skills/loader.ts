@@ -1,14 +1,26 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { computeDirHash, readCached, writeCached } from './cache'
 import { parseFrontmatter } from './frontmatter'
 import { validateSkillFrontmatter } from './validator'
 import type { LoadError, LoadSkillsOptions, LoadSkillsResult, ParsedSkill } from './types'
 
+type SkillScope = 'workspace' | 'user' | 'interop'
+
 interface DiscoveredRoot {
   path: string
-  scope: 'workspace' | 'user'
+  scope: SkillScope
 }
+
+/**
+ * Skill trees other agent CLIs install into, relative to the home directory.
+ * They hold the same SKILL.md format Orchentra parses, and a user who has
+ * already installed a skill globally reasonably expects it to be available
+ * here rather than having to keep a second copy in sync. Lowest precedence:
+ * anything in Orchentra's own user or workspace tree shadows them silently.
+ */
+export const INTEROP_SKILL_ROOTS: readonly string[] = ['.claude/skills', '.codex/skills']
 
 interface RootResult {
   skills: ParsedSkill[]
@@ -16,15 +28,19 @@ interface RootResult {
 }
 
 export async function loadSkills(opts: LoadSkillsOptions): Promise<LoadSkillsResult> {
-  const roots: DiscoveredRoot[] = [{ path: join(opts.workspaceRoot, '.orchentra', 'skills'), scope: 'workspace' }]
-  if (opts.configHome) {
-    roots.push({ path: join(opts.configHome, 'skills'), scope: 'user' })
+  // Lowest precedence first: a later root's skill replaces an earlier one of
+  // the same name. Ordering the list this way is what makes precedence
+  // readable — the previous sort-based version only worked because there
+  // were exactly two roots.
+  const home = opts.homeDir ?? homedir()
+  const ordered: DiscoveredRoot[] = []
+  if (opts.interop !== false) {
+    for (const rel of INTEROP_SKILL_ROOTS) ordered.push({ path: join(home, rel), scope: 'interop' })
   }
+  if (opts.configHome) ordered.push({ path: join(opts.configHome, 'skills'), scope: 'user' })
+  ordered.push({ path: join(opts.workspaceRoot, '.orchentra', 'skills'), scope: 'workspace' })
 
-  // Read user first, then workspace; workspace overrides on collision.
-  const ordered = [...roots].sort((a) => (a.scope === 'user' ? -1 : 1))
-
-  const byName = new Map<string, { skill: ParsedSkill; scope: 'workspace' | 'user' }>()
+  const byName = new Map<string, { skill: ParsedSkill; scope: SkillScope }>()
   const errors: LoadError[] = []
 
   for (const root of ordered) {
@@ -33,14 +49,13 @@ export async function loadSkills(opts: LoadSkillsOptions): Promise<LoadSkillsRes
 
     for (const skill of result.skills) {
       const existing = byName.get(skill.name)
+      // Shadowing an interop skill is the expected case, not a problem worth
+      // reporting; shadowing the user's own Orchentra skill is worth a note.
       if (existing && existing.scope === 'user' && root.scope === 'workspace') {
         errors.push({
           path: skill.source,
           message: `workspace skill '${skill.name}' overrides user skill at ${existing.skill.source}`,
         })
-      } else if (existing && existing.scope === 'workspace' && root.scope === 'user') {
-        // Workspace already won; ignore user duplicate silently.
-        continue
       }
       byName.set(skill.name, { skill, scope: root.scope })
     }

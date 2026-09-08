@@ -48,7 +48,7 @@ describe('skill loader cache', () => {
     const cacheFile = skillsCachePath()
     expect(existsSync(cacheFile)).toBe(false)
 
-    const result = await loadSkills({ workspaceRoot })
+    const result = await loadSkills({ workspaceRoot, interop: false })
     expect(result.skills.map((s) => s.name)).toEqual(['hello'])
 
     expect(existsSync(cacheFile)).toBe(true)
@@ -61,14 +61,14 @@ describe('skill loader cache', () => {
   test('warm cache: second call reuses cached entries (cache file mtime unchanged)', async () => {
     writeSkill('hello', validSkill('hello'))
 
-    await loadSkills({ workspaceRoot })
+    await loadSkills({ workspaceRoot, interop: false })
     const cacheMtimeAfterCold = statSync(skillsCachePath()).mtimeMs
 
     // A small delay so a write would produce a measurably different
     // mtime. (Bun on macOS resolves mtime to roughly the millisecond.)
     await new Promise((r) => setTimeout(r, 20))
 
-    const second = await loadSkills({ workspaceRoot })
+    const second = await loadSkills({ workspaceRoot, interop: false })
     expect(second.skills.map((s) => s.name)).toEqual(['hello'])
 
     // Cache file mtime stays put: a warm hit must not touch the index.
@@ -78,41 +78,41 @@ describe('skill loader cache', () => {
   test('invalidation: touching a skill file forces a re-walk', async () => {
     const skillPath = writeSkill('hello', validSkill('hello'))
 
-    await loadSkills({ workspaceRoot })
+    await loadSkills({ workspaceRoot, interop: false })
 
     // Mutate the file (new mtime + new content). The dir hash will flip.
     writeFileSync(skillPath, validSkill('hello').replace('body', 'updated body'))
     const fresh = statSync(skillPath)
     utimesSync(skillPath, fresh.atime, new Date(fresh.mtimeMs + 5000))
 
-    const result = await loadSkills({ workspaceRoot })
+    const result = await loadSkills({ workspaceRoot, interop: false })
     expect(result.skills[0].body.trim()).toBe('updated body')
   })
 
   test('invalidation: adding a new skill forces a re-walk', async () => {
     writeSkill('alpha', validSkill('alpha'))
-    const first = await loadSkills({ workspaceRoot })
+    const first = await loadSkills({ workspaceRoot, interop: false })
     expect(first.skills.map((s) => s.name).sort()).toEqual(['alpha'])
 
     writeSkill('beta', validSkill('beta'))
-    const second = await loadSkills({ workspaceRoot })
+    const second = await loadSkills({ workspaceRoot, interop: false })
     expect(second.skills.map((s) => s.name).sort()).toEqual(['alpha', 'beta'])
   })
 
   test('invalidation: removing a skill forces a re-walk', async () => {
     writeSkill('alpha', validSkill('alpha'))
     writeSkill('beta', validSkill('beta'))
-    const first = await loadSkills({ workspaceRoot })
+    const first = await loadSkills({ workspaceRoot, interop: false })
     expect(first.skills.map((s) => s.name).sort()).toEqual(['alpha', 'beta'])
 
     rmSync(join(workspaceRoot, '.orchentra', 'skills', 'beta'), { recursive: true })
-    const second = await loadSkills({ workspaceRoot })
+    const second = await loadSkills({ workspaceRoot, interop: false })
     expect(second.skills.map((s) => s.name)).toEqual(['alpha'])
   })
 
   test('cache file is created with 0600 mode', async () => {
     writeSkill('hello', validSkill('hello'))
-    await loadSkills({ workspaceRoot })
+    await loadSkills({ workspaceRoot, interop: false })
 
     const stat = statSync(skillsCachePath())
     // mode bits — strip the file-type bits via & 0o777.
@@ -124,7 +124,10 @@ describe('skill loader cache', () => {
 
     // Two parallel loads against the same root. Both must complete with
     // the same skills, and the on-disk file must parse cleanly afterwards.
-    const [a, b] = await Promise.all([loadSkills({ workspaceRoot }), loadSkills({ workspaceRoot })])
+    const [a, b] = await Promise.all([
+      loadSkills({ workspaceRoot, interop: false }),
+      loadSkills({ workspaceRoot, interop: false }),
+    ])
     expect(a.skills.map((s) => s.name)).toEqual(['hello'])
     expect(b.skills.map((s) => s.name)).toEqual(['hello'])
 
@@ -136,7 +139,7 @@ describe('skill loader cache', () => {
   test('errors are not cached: a fixed broken skill loads on the next call', async () => {
     writeSkill('broken', '---\nname: broken\n---\nno description')
 
-    const first = await loadSkills({ workspaceRoot })
+    const first = await loadSkills({ workspaceRoot, interop: false })
     expect(first.errors).toHaveLength(1)
     expect(first.skills).toHaveLength(0)
 
@@ -146,7 +149,7 @@ describe('skill loader cache', () => {
     writeFileSync(skillPath, validSkill('broken'))
     utimesSync(skillPath, new Date(), new Date(Date.now() + 5000))
 
-    const second = await loadSkills({ workspaceRoot })
+    const second = await loadSkills({ workspaceRoot, interop: false })
     expect(second.errors).toHaveLength(0)
     expect(second.skills.map((s) => s.name)).toEqual(['broken'])
   })
@@ -159,7 +162,7 @@ describe('skill loader cache', () => {
     mkdirSync(userSkillsDir, { recursive: true })
     writeFileSync(join(userSkillsDir, 'SKILL.md'), validSkill('user-only'))
 
-    const first = await loadSkills({ workspaceRoot, configHome })
+    const first = await loadSkills({ workspaceRoot, configHome, interop: false })
     expect(first.skills.map((s) => s.name).sort()).toEqual(['user-only', 'ws'])
 
     // Adding a user skill must invalidate the user-root cache but reuse
@@ -169,7 +172,7 @@ describe('skill loader cache', () => {
     mkdirSync(newUserSkill, { recursive: true })
     writeFileSync(join(newUserSkill, 'SKILL.md'), validSkill('another'))
 
-    const second = await loadSkills({ workspaceRoot, configHome })
+    const second = await loadSkills({ workspaceRoot, configHome, interop: false })
     expect(second.skills.map((s) => s.name).sort()).toEqual(['another', 'user-only', 'ws'])
   })
 })

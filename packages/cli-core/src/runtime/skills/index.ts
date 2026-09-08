@@ -1,5 +1,5 @@
 export { parseFrontmatter, type ParseFrontmatterResult } from './frontmatter'
-export { loadSkills } from './loader'
+export { loadSkills, INTEROP_SKILL_ROOTS } from './loader'
 export { validateSkillFrontmatter, type ValidatedSkillFrontmatter, type ValidateSkillResult } from './validator'
 export { substituteSkillArguments } from './arguments'
 export { translateAllowedTools, type TranslateAllowedToolsResult } from './permissions'

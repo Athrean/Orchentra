@@ -17,6 +17,10 @@ export interface LoadError {
 export interface LoadSkillsOptions {
   workspaceRoot: string
   configHome?: string
+  /** Home directory to resolve interop skill roots against. Defaults to os.homedir(). */
+  homeDir?: string
+  /** Set false to load only Orchentra's own skill trees. Defaults to true. */
+  interop?: boolean
 }
 
 export interface LoadSkillsResult {
