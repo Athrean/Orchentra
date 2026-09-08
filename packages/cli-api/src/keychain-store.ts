@@ -2,6 +2,8 @@ import { homedir } from 'node:os'
 import {
   clearCredential,
   getCredential,
+  invalidateKeychainCache,
+  KEYCHAIN_SERVICE,
   listCredentialProviders,
   type ProviderKey,
   saveCredential,
@@ -21,7 +23,7 @@ export interface KeychainShim {
   findCredentials(service: string): Promise<Array<{ account: string; password: string }>>
 }
 
-export const KEYCHAIN_SERVICE = 'Orchentra-credentials'
+export { KEYCHAIN_SERVICE }
 
 /**
  * Try to lazy-load keytar. Returns null if the native module is missing or
@@ -49,6 +51,7 @@ export async function saveCredentialAsync(
   if (shim) {
     try {
       await shim.setPassword(KEYCHAIN_SERVICE, provider, JSON.stringify(credential))
+      invalidateKeychainCache(provider)
       return
     } catch {
       // fall through to file
@@ -91,6 +94,7 @@ export async function clearCredentialAsync(
   if (shim) {
     try {
       if (await shim.deletePassword(KEYCHAIN_SERVICE, provider)) removed = true
+      invalidateKeychainCache(provider)
     } catch {
       // ignore
     }

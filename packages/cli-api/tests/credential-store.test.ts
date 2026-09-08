@@ -126,3 +126,26 @@ describe('resolveApiKey', () => {
     expect(resolveApiKey('anthropic', ['ANTHROPIC_API_KEY'], home)).toBeNull()
   })
 })
+
+describe('sync Keychain fallback', () => {
+  const originalConfigHome = process.env['ORCHENTRA_CONFIG_HOME']
+
+  afterEach(() => {
+    if (originalConfigHome === undefined) delete process.env['ORCHENTRA_CONFIG_HOME']
+    else process.env['ORCHENTRA_CONFIG_HOME'] = originalConfigHome
+  })
+
+  // `/login` writes through keytar, so getCredential falls back to reading the
+  // login Keychain — but only for the real credential root. Without this guard
+  // a test run would read (and be steered by) the developer's own Keychain.
+  test('a redirected credential root never reaches the Keychain', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orchentra-cred-guard-'))
+    process.env['ORCHENTRA_CONFIG_HOME'] = dir
+    try {
+      expect(getCredential('zen')).toBeNull()
+      expect(getCredential('anthropic')).toBeNull()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})

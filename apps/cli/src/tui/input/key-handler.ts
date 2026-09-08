@@ -251,8 +251,12 @@ export function handleMainInput(args: MainInputHandlerArgs): void {
  * Insert a printable burst at the cursor. Pasted/drag-dropped text (anything
  * carrying embedded newlines, or a huge single line) collapses to a chip so
  * raw multi-line content never reaches the rendered buffer.
+ *
+ * Exported for the bracketed-paste channel, which hands over a whole paste in
+ * one string. The keystroke path still routes here for terminals that do not
+ * support bracketed paste, where the same heuristic is all we have.
  */
-function insertPrintable(cur: TuiState, input: string, dispatch: Dispatch<TuiAction>): void {
+export function insertPrintable(cur: TuiState, input: string, dispatch: Dispatch<TuiAction>): void {
   const paste = evaluatePaste(input)
   if (paste) {
     dispatch({

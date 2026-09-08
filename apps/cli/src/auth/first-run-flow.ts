@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline/promises'
 import {
+  getCredential,
   saveCredential,
   saveCredentialAsync,
   tryLoadKeytar,
@@ -11,15 +12,36 @@ import { renderBannerFrame } from '../render/banner'
 import { CLI_NAME, CLI_VERSION } from '../version'
 import { DEFAULT_MODEL_ID } from '../model-catalog'
 
-export const LLM_PROVIDERS: readonly ProviderKey[] = ['anthropic', 'openai', 'xai', 'dashscope', 'gemini']
+/**
+ * Every provider first run can set up, in the order it offers them. This used
+ * to be five API-key providers, which left the two that are pure
+ * subscriptions unreachable from the flow that exists to make the CLI usable:
+ * Antigravity has no key at all, and opencode Go's key is what the `go/`
+ * models bill against — without it every Go model answers
+ * `401 {"type":"AuthError","message":"Missing API key."}`.
+ */
+export const LLM_PROVIDERS: readonly ProviderKey[] = [
+  'anthropic',
+  'openai',
+  'antigravity',
+  'gemini',
+  'zen',
+  'xai',
+  'dashscope',
+]
 
 const PROVIDER_LABELS: Partial<Record<ProviderKey, string>> = {
-  anthropic: 'Anthropic (Claude)',
-  openai: 'OpenAI',
-  xai: 'xAI (Grok)',
-  dashscope: 'DashScope (Qwen)',
-  gemini: 'Gemini (Google)',
+  anthropic: 'Claude — Pro/Max subscription or API key',
+  openai: 'ChatGPT — Plus/Pro subscription or API key',
+  antigravity: 'Google Antigravity — AI Pro/Ultra subscription',
+  gemini: 'Gemini — Google account or API key',
+  zen: 'opencode Go / Zen — paste plan key',
+  xai: 'xAI (Grok) — API key',
+  dashscope: 'DashScope (Qwen) — API key',
 }
+
+/** How much of the provider list to walk on first run. */
+export type SetupMode = 'all' | 'one' | 'skip'
 
 // Match the THEME.brand hex (#10A37F) but expressed as a 24-bit ANSI escape
 // so the raw-ANSI overlay we render here (before Ink mounts) stays on-brand
@@ -37,6 +59,17 @@ export type FirstRunResult = { readonly kind: 'saved'; readonly provider: Provid
 
 export interface FirstRunDeps {
   onStart?(): Promise<void>
+  /**
+   * Set every provider up now, pick one, or skip. Omit to keep the
+   * single-provider flow (what the non-interactive and test paths want).
+   */
+  pickMode?(): Promise<SetupMode | null>
+  /** Sign one provider in end to end, browser flow or key, as that provider requires. */
+  signIn?(provider: ProviderKey): Promise<boolean>
+  /** Providers `pickMode: 'all'` walks. Defaults to {@link LLM_PROVIDERS}. */
+  providers?: readonly ProviderKey[]
+  /** Already-configured providers, skipped by the walk. */
+  configured?(provider: ProviderKey): boolean
   pickProvider(): Promise<ProviderKey | null>
   pickAuthMethod?(provider: ProviderKey): Promise<AuthMethod | null>
   runOAuth?(provider: ProviderKey): Promise<{ ok: boolean; message?: string }>
@@ -47,6 +80,18 @@ export interface FirstRunDeps {
 
 export async function runFirstRunFlow(deps: FirstRunDeps): Promise<FirstRunResult> {
   await deps.onStart?.()
+
+  if (deps.pickMode && deps.signIn) {
+    const mode = await deps.pickMode()
+    if (mode === null || mode === 'skip') return { kind: 'cancelled' }
+    if (mode === 'all') return await setUpEveryProvider(deps)
+  }
+
+  if (deps.signIn) {
+    const chosen = await deps.pickProvider()
+    if (!chosen) return { kind: 'cancelled' }
+    return (await deps.signIn(chosen)) ? { kind: 'saved', provider: chosen } : { kind: 'cancelled' }
+  }
 
   const provider = await deps.pickProvider()
   if (!provider) return { kind: 'cancelled' }
@@ -75,9 +120,44 @@ export async function runFirstRunFlow(deps: FirstRunDeps): Promise<FirstRunResul
   return { kind: 'saved', provider }
 }
 
+/**
+ * Walk the whole provider list. One refusal is not the end of the walk — a
+ * user setting up four accounts will abandon some of them, and the run still
+ * counts as successful if anything got configured.
+ */
+async function setUpEveryProvider(deps: FirstRunDeps): Promise<FirstRunResult> {
+  const providers = deps.providers ?? LLM_PROVIDERS
+  let last: ProviderKey | null = null
+  for (const provider of providers) {
+    if (deps.configured?.(provider)) {
+      deps.out?.(`${provider} already signed in — skipping.`)
+      last = last ?? provider
+      continue
+    }
+    if (await deps.signIn!(provider)) last = provider
+  }
+  return last ? { kind: 'saved', provider: last } : { kind: 'cancelled' }
+}
+
 export function makeDefaultFirstRunDeps(home?: string, shim?: KeychainShim | null): FirstRunDeps {
   return {
     onStart: async () => renderFirstRunBanner(),
+    pickMode: async () => brandedPickMode(),
+    providers: LLM_PROVIDERS,
+    configured: (provider) => getCredential(provider, home) !== null,
+    // Delegates to the same `runLogin` the `orchentra login` verb uses, so
+    // first run offers each provider whatever it actually supports — the
+    // browser flow for Claude/ChatGPT/Antigravity/Gemini, a pasted key for
+    // opencode and the rest — instead of demanding an API key for everything.
+    signIn: async (provider) => {
+      process.stdout.write(`\n  ${C.dim}────${C.reset} ${C.bold}${PROVIDER_LABELS[provider] ?? provider}${C.reset}\n`)
+      const { runLogin, createTerminalLoginIo } = await import('../commands/run-auth')
+      try {
+        return await runLogin(provider, createTerminalLoginIo())
+      } catch {
+        return false
+      }
+    },
     pickProvider: async () => brandedPickProvider(),
     promptApiKey: async (provider) => brandedPromptApiKey(provider),
     save: async (provider, apiKey) => {
@@ -120,6 +200,19 @@ async function renderFirstRunBanner(): Promise<void> {
   process.stdout.write('\n')
   process.stdout.write(`  ${C.bold}${C.brand}Sign in to start${C.reset}\n`)
   process.stdout.write(`  ${C.dim}Arrow keys + Enter, Esc to cancel.${C.reset}\n\n`)
+}
+
+async function brandedPickMode(): Promise<SetupMode | null> {
+  const result = await promptSelect<SetupMode>({
+    title: `  ${C.dim}Set up providers${C.reset}`,
+    options: [
+      { value: 'all', label: 'Sign in to everything now — walk me through each provider' },
+      { value: 'one', label: 'Just one for now — pick a provider' },
+      { value: 'skip', label: 'Skip — I will run /login myself' },
+    ],
+  })
+  if (result.type === 'cancelled') return null
+  return result.value
 }
 
 async function brandedPickProvider(): Promise<ProviderKey | null> {

@@ -213,6 +213,179 @@ const highContrast: Theme = {
   spinner: SPINNER,
 }
 
+// ── Named community palettes ───────────────────────────────────────────────
+// Ports of the palettes users already know from other terminal tools. Each
+// maps that palette's own roles onto Orchentra's tokens rather than tinting
+// the default theme a new hue.
+
+const tokyoNight: Theme = {
+  brand: '#7AA2F7',
+  brandDim: '#3D59A1',
+  fg: '#C0CAF5',
+  muted: '#565F89',
+  accent: '#7DCFFF',
+  warn: '#E0AF68',
+  danger: '#F7768E',
+  heading: '#7AA2F7',
+  headingAlt: '#C0CAF5',
+  emphasis: '#7DCFFF',
+  strong: '#BB9AF7',
+  link: '#7DCFFF',
+  quote: '#565F89',
+  codeBorder: '#3B4261',
+  inlineCode: '#7AA2F7',
+  diffAdd: '#9ECE6A',
+  diffDel: '#F7768E',
+  diffHunk: '#7DCFFF',
+  diffFile: '#BB9AF7',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+const catppuccinMocha: Theme = {
+  brand: '#89B4FA',
+  brandDim: '#585B70',
+  fg: '#CDD6F4',
+  muted: '#6C7086',
+  accent: '#94E2D5',
+  warn: '#F9E2AF',
+  danger: '#F38BA8',
+  heading: '#89B4FA',
+  headingAlt: '#CDD6F4',
+  emphasis: '#94E2D5',
+  strong: '#CBA6F7',
+  link: '#89DCEB',
+  quote: '#6C7086',
+  codeBorder: '#45475A',
+  inlineCode: '#89B4FA',
+  diffAdd: '#A6E3A1',
+  diffDel: '#F38BA8',
+  diffHunk: '#89DCEB',
+  diffFile: '#CBA6F7',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+const gruvboxDark: Theme = {
+  brand: '#B8BB26',
+  brandDim: '#79740E',
+  fg: '#EBDBB2',
+  muted: '#928374',
+  accent: '#8EC07C',
+  warn: '#FABD2F',
+  danger: '#FB4934',
+  heading: '#B8BB26',
+  headingAlt: '#EBDBB2',
+  emphasis: '#8EC07C',
+  strong: '#FE8019',
+  link: '#83A598',
+  quote: '#928374',
+  codeBorder: '#504945',
+  inlineCode: '#B8BB26',
+  diffAdd: '#B8BB26',
+  diffDel: '#FB4934',
+  diffHunk: '#8EC07C',
+  diffFile: '#D3869B',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+const nord: Theme = {
+  brand: '#88C0D0',
+  brandDim: '#5E81AC',
+  fg: '#ECEFF4',
+  muted: '#4C566A',
+  accent: '#8FBCBB',
+  warn: '#EBCB8B',
+  danger: '#BF616A',
+  heading: '#88C0D0',
+  headingAlt: '#ECEFF4',
+  emphasis: '#8FBCBB',
+  strong: '#B48EAD',
+  link: '#81A1C1',
+  quote: '#4C566A',
+  codeBorder: '#434C5E',
+  inlineCode: '#88C0D0',
+  diffAdd: '#A3BE8C',
+  diffDel: '#BF616A',
+  diffHunk: '#88C0D0',
+  diffFile: '#B48EAD',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+const dracula: Theme = {
+  brand: '#BD93F9',
+  brandDim: '#6272A4',
+  fg: '#F8F8F2',
+  muted: '#6272A4',
+  accent: '#8BE9FD',
+  warn: '#F1FA8C',
+  danger: '#FF5555',
+  heading: '#BD93F9',
+  headingAlt: '#F8F8F2',
+  emphasis: '#8BE9FD',
+  strong: '#FF79C6',
+  link: '#8BE9FD',
+  quote: '#6272A4',
+  codeBorder: '#44475A',
+  inlineCode: '#BD93F9',
+  diffAdd: '#50FA7B',
+  diffDel: '#FF5555',
+  diffHunk: '#8BE9FD',
+  diffFile: '#FF79C6',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+const oneDark: Theme = {
+  brand: '#61AFEF',
+  brandDim: '#4B5263',
+  fg: '#ABB2BF',
+  muted: '#5C6370',
+  accent: '#56B6C2',
+  warn: '#E5C07B',
+  danger: '#E06C75',
+  heading: '#61AFEF',
+  headingAlt: '#ABB2BF',
+  emphasis: '#56B6C2',
+  strong: '#C678DD',
+  link: '#56B6C2',
+  quote: '#5C6370',
+  codeBorder: '#3E4451',
+  inlineCode: '#61AFEF',
+  diffAdd: '#98C379',
+  diffDel: '#E06C75',
+  diffHunk: '#56B6C2',
+  diffFile: '#C678DD',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
+const matrix: Theme = {
+  brand: '#00FF41',
+  brandDim: '#008F11',
+  fg: '#00E33D',
+  muted: '#005F0B',
+  accent: '#39FF6A',
+  warn: '#B6FF00',
+  danger: '#FF3131',
+  heading: '#00FF41',
+  headingAlt: '#00E33D',
+  emphasis: '#39FF6A',
+  strong: '#B9FFC4',
+  link: '#39FF6A',
+  quote: '#005F0B',
+  codeBorder: '#00500A',
+  inlineCode: '#00FF41',
+  diffAdd: '#00FF41',
+  diffDel: '#FF3131',
+  diffHunk: '#39FF6A',
+  diffFile: '#B9FFC4',
+  ...GLYPHS,
+  spinner: SPINNER,
+}
+
 export const THEMES = {
   dark,
   light,
@@ -220,6 +393,13 @@ export const THEMES = {
   'solarized-dark': solarizedDark,
   'solarized-light': solarizedLight,
   'high-contrast': highContrast,
+  tokyonight: tokyoNight,
+  catppuccin: catppuccinMocha,
+  gruvbox: gruvboxDark,
+  nord,
+  dracula,
+  'one-dark': oneDark,
+  matrix,
 } as const
 
 export type ThemeName = keyof typeof THEMES
@@ -231,10 +411,49 @@ const NAMES: readonly ThemeName[] = [
   'solarized-dark',
   'solarized-light',
   'high-contrast',
+  'tokyonight',
+  'catppuccin',
+  'gruvbox',
+  'nord',
+  'dracula',
+  'one-dark',
+  'matrix',
 ] as const
 
 export function themeNames(): readonly ThemeName[] {
   return NAMES
+}
+
+/** One-line description per theme, shared by `/theme list` and the picker. */
+export function describeTheme(name: ThemeName): string {
+  switch (name) {
+    case 'dark':
+      return 'Default dark palette · truecolor'
+    case 'light':
+      return 'Light-mode inverse · for white backgrounds'
+    case 'dark-ansi':
+      return '16-colour ANSI fallback · plain terminals'
+    case 'solarized-dark':
+      return 'Solarized dark · low-eyestrain palette'
+    case 'solarized-light':
+      return 'Solarized light · cream-paper canvas'
+    case 'high-contrast':
+      return 'High-contrast · WCAG AAA accessible'
+    case 'tokyonight':
+      return 'Tokyo Night · blue-violet night palette'
+    case 'catppuccin':
+      return 'Catppuccin Mocha · soft pastel dark'
+    case 'gruvbox':
+      return 'Gruvbox dark · warm retro earth tones'
+    case 'nord':
+      return 'Nord · cool arctic blues'
+    case 'dracula':
+      return 'Dracula · purple-on-charcoal classic'
+    case 'one-dark':
+      return 'One Dark · Atom/VS Code default dark'
+    case 'matrix':
+      return 'Matrix · green phosphor terminal'
+  }
 }
 
 export function isThemeName(value: string): value is ThemeName {

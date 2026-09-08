@@ -47,3 +47,31 @@ describe('expandPastes', () => {
     expect(expandPastes(text, {})).toBe(text)
   })
 })
+
+// ── Bracketed paste ────────────────────────────────────────────────────────
+// A large paste reaches stdin split across however many reads the tty felt
+// like. Judged chunk by chunk it rendered as six chips
+// (`[paste · 10 lines][paste · 36 lines]…`); Ink's bracketed-paste channel
+// hands the whole thing over at once, so one paste has to make one chip.
+
+describe('whole-paste handling', () => {
+  test('one call over the full text yields one chip carrying every line', () => {
+    const text = Array.from({ length: 152 }, (_, i) => `line ${i + 1}`).join('\n')
+    const decision = evaluatePaste(text)
+    expect(decision).not.toBeNull()
+    expect(decision?.lines).toBe(152)
+    expect(decision?.chipMarker).toBe(`[Pasted #${decision?.chipId} — 152 lines]`)
+  })
+
+  test('the chip round-trips back to the exact pasted text', () => {
+    const text = 'first\nsecond\nthird\n'.repeat(40)
+    const decision = evaluatePaste(text)
+    expect(decision).not.toBeNull()
+    const registry = { [decision!.chipId]: { content: decision!.content } }
+    expect(expandPastes(`before ${decision!.chipMarker} after`, registry)).toBe(`before ${text} after`)
+  })
+
+  test('a short paste is still inserted literally, not chipped', () => {
+    expect(evaluatePaste('npm run build')).toBeNull()
+  })
+})

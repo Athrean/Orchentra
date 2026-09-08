@@ -3,9 +3,30 @@ import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { THEMES, loadActiveTheme, saveActiveTheme, themeNames, isThemeName } from '../../src/tui/theme-registry'
+import {
+  THEMES,
+  describeTheme,
+  loadActiveTheme,
+  saveActiveTheme,
+  themeNames,
+  isThemeName,
+} from '../../src/tui/theme-registry'
 
-const BUILTIN_NAMES = ['dark', 'light', 'dark-ansi', 'solarized-dark', 'solarized-light', 'high-contrast'] as const
+const BUILTIN_NAMES = [
+  'dark',
+  'light',
+  'dark-ansi',
+  'solarized-dark',
+  'solarized-light',
+  'high-contrast',
+  'tokyonight',
+  'catppuccin',
+  'gruvbox',
+  'nord',
+  'dracula',
+  'one-dark',
+  'matrix',
+] as const
 
 describe('theme registry', () => {
   let tempHome: string
@@ -147,5 +168,20 @@ describe('theme registry', () => {
     mkdirSync(tempHome, { recursive: true })
     writeFileSync(path, JSON.stringify({ version: 1, activeTheme: 'nonsense' }))
     expect(loadActiveTheme()).toBe('dark')
+  })
+})
+
+describe('theme completeness', () => {
+  test('every theme defines every token', () => {
+    const reference = Object.keys(THEMES.dark).sort()
+    for (const name of themeNames()) {
+      expect(Object.keys(THEMES[name]).sort()).toEqual(reference)
+    }
+  })
+
+  test('every theme has a description', () => {
+    for (const name of themeNames()) {
+      expect(describeTheme(name).length).toBeGreaterThan(0)
+    }
   })
 })

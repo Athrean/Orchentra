@@ -246,7 +246,7 @@ USAGE
   orchentra doctor                        Check auth, provider, and workspace health
   orchentra mcp list                      List configured MCP servers + connection status
   orchentra mcp test <name>               Connect to one MCP server and print its tools
-  orchentra login <provider> [--api-key]  Sign in (anthropic|gemini|openai|xai|dashscope)
+  orchentra login <provider> [--api-key]  Sign in (anthropic|openai|antigravity|gemini|zen|xai|dashscope|github)
   orchentra logout <provider>             Remove stored credentials for a provider
   orchentra reauth                        Re-run the first-run LLM provider setup
   orchentra whoami                        Show signed-in providers and credential sources

@@ -6,7 +6,6 @@ import {
   getCredential,
   importAntigravityCliAuth,
   importCodexCliAuth,
-  listCredentialProviders,
   loadClaudeCodeOauth,
   loginAnthropic,
   loginAntigravity,
@@ -14,6 +13,7 @@ import {
   loginGemini,
   loginWithDeviceFlow,
   MacKeychain,
+  saveCredential,
   saveCredentialAsync,
   tryLoadKeytar,
   type ProviderKey,
@@ -154,9 +154,24 @@ export function createNonInteractiveLoginIo(options: {
   }
 }
 
+/**
+ * Persist a pasted API key. Both stores, deliberately: the keychain is the
+ * secure copy, the file is the one the synchronous provider constructors can
+ * actually read. Keychain-only was the bug behind
+ * `opencode Go API error: 401 {"type":"AuthError","message":"Missing API key."}`
+ * on a key the user had just been told was saved — reading it back needs
+ * Keychain authorization this process does not always have, and an
+ * unauthorized read blocks on a modal until it times out.
+ */
 export async function saveLoginApiKey(provider: ProviderKey, apiKey: string): Promise<void> {
+  saveCredential(provider, { apiKey })
   const shim = await tryLoadKeytar()
-  await saveCredentialAsync(provider, { apiKey }, undefined, shim)
+  if (!shim) return
+  try {
+    await saveCredentialAsync(provider, { apiKey }, undefined, shim)
+  } catch {
+    // Keychain copy is opportunistic — the file write already persisted.
+  }
 }
 
 function providerOptions(): LoginProviderOption[] {
@@ -334,18 +349,21 @@ export async function runLogout(provider: string): Promise<number> {
 
 export async function runAuthStatus(): Promise<number> {
   process.stdout.write(`Credential store: ${credentialsPath()}\n\n`)
-  const signedIn = listCredentialProviders()
-  const rows = LOGIN_PROVIDERS.map((provider) => ({
-    provider,
-    status: describe(provider, signedIn.includes(provider)),
-  }))
+  const rows = LOGIN_PROVIDERS.map((provider) => ({ provider, status: describe(provider) }))
   const width = Math.max(...rows.map((row) => row.provider.length))
   for (const row of rows) process.stdout.write(`  ${row.provider.padEnd(width)}  ${row.status}\n`)
   process.stdout.write('\nEnv vars override stored credentials.\n')
   return 0
 }
 
-function describe(provider: ProviderKey, hasStored: boolean): string {
+/**
+ * `getCredential` is the authority — it reads the file AND the keychain. This
+ * used to be gated on `listCredentialProviders()` first, which reads only the
+ * file, so a key stored by `orchentra login <p> --api-key` (keychain-only)
+ * reported `not signed in` on the very next line while the provider that
+ * needed it worked fine.
+ */
+function describe(provider: ProviderKey): string {
   const envMap: Partial<Record<ProviderKey, readonly string[]>> = {
     anthropic: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
     gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_OAUTH_TOKEN'],
@@ -357,7 +375,6 @@ function describe(provider: ProviderKey, hasStored: boolean): string {
   for (const variable of envMap[provider] ?? []) {
     if (process.env[variable]?.trim()) return `env:${variable}`
   }
-  if (!hasStored) return 'not signed in'
   const credential = getCredential(provider)
   if (!credential) return 'not signed in'
   const bits: string[] = []

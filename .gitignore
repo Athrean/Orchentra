@@ -70,3 +70,7 @@ back-frames
 *.mp4
 .omo/
 .serena/
+
+# Sandboxed test-run home/tmp roots — created by the test harness
+.sandbox-home/
+.sandbox-tmp/

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { Box, useApp, useInput, useStdin, useStdout } from 'ink'
+import { Box, useApp, useInput, usePaste, useStdin, useStdout } from 'ink'
 import { randomUUID } from 'node:crypto'
 import type { AskUserRequest, PermissionMode, RuntimeEvent } from '@orchentra/cli-core'
 import type { LiveCli } from '../live-cli'
@@ -14,7 +14,7 @@ import { expandPastes } from './paste'
 import { appendHistory, loadHistory } from './hooks/useHistory'
 import { useChord } from './hooks/use-chord'
 import { openInEditor } from './external-editor'
-import { handleMainInput } from './input/key-handler'
+import { handleMainInput, insertPrintable } from './input/key-handler'
 import { buildKeybindings } from './keybindings/registry'
 import { loadUserBindings } from './keybindings/load-user-bindings'
 import { InputBox } from './components/InputBox'
@@ -351,6 +351,30 @@ export function Tui(props: TuiProps): React.ReactElement {
     (input, key) => key.ctrl && input === 'e',
     1500,
     openExternalEditor,
+  )
+
+  /**
+   * Bracketed paste. Two bugs share this one root cause, and both are the
+   * terminal's reaction to an app that never announced it could handle a
+   * paste:
+   *
+   *  - A large paste reaches stdin split across however many reads the tty
+   *    felt like, and the keystroke path judged each chunk on its own — so one
+   *    150-line paste rendered as six chips (`[paste · 10 lines][paste · 36
+   *    lines]…`) instead of one.
+   *  - Terminals put up their own "are you sure you want to paste N lines?"
+   *    prompt precisely when the app has NOT enabled bracketed paste mode.
+   *
+   * `usePaste` turns on `\x1b[?2004h` while it is mounted, so the paste
+   * arrives whole, on its own channel, and the terminal stops second-guessing
+   * it. Gated to the main input for the same reason `useInput` is: while a
+   * login card owns the screen, its own handler keeps the keys.
+   */
+  usePaste(
+    (text) => {
+      insertPrintable(stateRef.current, text, dispatch)
+    },
+    { isActive: state.activeFlow === null },
   )
 
   // Keyboard handler — single useInput owns all keys so we can branch on

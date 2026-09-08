@@ -33,7 +33,12 @@ export async function runRepl(options: ReplOptions): Promise<number> {
     const result = await runFirstRunFlow(makeDefaultFirstRunDeps(undefined, shim))
     if (result.kind === 'cancelled') {
       process.stderr.write(
-        'orchentra needs at least one LLM provider configured. Run `orchentra reauth` to try again.\n',
+        'orchentra needs at least one LLM provider configured.\n' +
+          'Run `orchentra reauth` to walk the setup again, or sign in directly:\n' +
+          '  orchentra login anthropic     Claude Pro/Max\n' +
+          '  orchentra login openai        ChatGPT Plus/Pro\n' +
+          '  orchentra login antigravity   Google AI Pro/Ultra\n' +
+          '  orchentra login zen --api-key <key>   opencode Go / Zen\n',
       )
       return 1
     }

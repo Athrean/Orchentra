@@ -1,5 +1,5 @@
 import type { CommandHandler, CommandContext, SlashCommandSpec } from '../registry'
-import { isThemeName, loadActiveTheme, saveActiveTheme, themeNames, type ThemeName } from '../../tui/theme-registry'
+import { describeTheme, isThemeName, loadActiveTheme, saveActiveTheme, themeNames } from '../../tui/theme-registry'
 
 /**
  * `/theme` slash handler. Three call shapes:
@@ -62,22 +62,5 @@ export class ThemeCommand implements CommandHandler {
     if (ctx.ui) ctx.ui({ kind: 'note', text })
     else process.stdout.write(text + '\n')
     return true
-  }
-}
-
-function describeTheme(name: ThemeName): string {
-  switch (name) {
-    case 'dark':
-      return 'Default dark palette · truecolor'
-    case 'light':
-      return 'Light-mode inverse · for white backgrounds'
-    case 'dark-ansi':
-      return '16-colour ANSI fallback · plain terminals'
-    case 'solarized-dark':
-      return 'Solarized dark · low-eyestrain palette'
-    case 'solarized-light':
-      return 'Solarized light · cream-paper canvas'
-    case 'high-contrast':
-      return 'High-contrast · WCAG AAA accessible'
   }
 }

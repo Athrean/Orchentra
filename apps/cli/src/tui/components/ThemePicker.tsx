@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
-import { THEMES, themeNames, type ThemeName } from '../theme-registry'
+import { THEMES, describeTheme, themeNames, type ThemeName } from '../theme-registry'
 import { ThemeProvider, useTheme } from '../use-theme'
 
 export interface ThemePickerProps {
@@ -97,21 +97,4 @@ function ThemePickerBody(props: ThemePickerBodyProps): React.ReactElement {
       <Text dimColor>↑/↓ to move · Enter to select · Esc to cancel</Text>
     </Box>
   )
-}
-
-function describeTheme(name: ThemeName): string {
-  switch (name) {
-    case 'dark':
-      return 'Default dark palette · truecolor'
-    case 'light':
-      return 'Light-mode inverse · for white backgrounds'
-    case 'dark-ansi':
-      return '16-colour ANSI fallback · plain terminals'
-    case 'solarized-dark':
-      return 'Solarized dark · low-eyestrain palette'
-    case 'solarized-light':
-      return 'Solarized light · cream-paper canvas'
-    case 'high-contrast':
-      return 'High-contrast · WCAG AAA accessible'
-  }
 }

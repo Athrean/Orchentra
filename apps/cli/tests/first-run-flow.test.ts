@@ -92,3 +92,88 @@ describe('runFirstRunFlow', () => {
     expect(await runFirstRunFlow(d)).toEqual({ kind: 'cancelled' })
   })
 })
+
+// ── Setting up more than one provider ──────────────────────────────────────
+// First run used to ask for an API key for exactly one of five providers and
+// never offer a browser sign-in, which left the two pure-subscription
+// providers unreachable — Antigravity has no key, and without opencode's key
+// every `go/` model answers 401 AuthError.
+
+describe('runFirstRunFlow setup modes', () => {
+  test("'all' walks every provider and reports the last one signed in", async () => {
+    const attempted: ProviderKey[] = []
+    const d = deps({
+      pickMode: async () => 'all',
+      providers: ['anthropic', 'antigravity', 'zen'],
+      signIn: async (provider) => {
+        attempted.push(provider)
+        return provider !== 'antigravity'
+      },
+    })
+
+    const result: FirstRunResult = await runFirstRunFlow(d)
+
+    expect(attempted).toEqual(['anthropic', 'antigravity', 'zen'])
+    // One refusal mid-walk must not abandon the rest of the list.
+    expect(result).toEqual({ kind: 'saved', provider: 'zen' })
+  })
+
+  test("'all' skips providers already signed in", async () => {
+    const attempted: ProviderKey[] = []
+    const d = deps({
+      pickMode: async () => 'all',
+      providers: ['anthropic', 'zen'],
+      configured: (p) => p === 'anthropic',
+      signIn: async (provider) => {
+        attempted.push(provider)
+        return true
+      },
+    })
+
+    await runFirstRunFlow(d)
+
+    expect(attempted).toEqual(['zen'])
+  })
+
+  test("'all' is cancelled only when nothing at all got configured", async () => {
+    const d = deps({
+      pickMode: async () => 'all',
+      providers: ['anthropic', 'zen'],
+      signIn: async () => false,
+    })
+
+    expect(await runFirstRunFlow(d)).toEqual({ kind: 'cancelled' })
+  })
+
+  test("'one' signs in just the picked provider", async () => {
+    const attempted: ProviderKey[] = []
+    const d = deps({
+      pickMode: async () => 'one',
+      pickProvider: async () => 'antigravity',
+      signIn: async (provider) => {
+        attempted.push(provider)
+        return true
+      },
+    })
+
+    expect(await runFirstRunFlow(d)).toEqual({ kind: 'saved', provider: 'antigravity' })
+    expect(attempted).toEqual(['antigravity'])
+  })
+
+  test("'skip' cancels without touching any provider", async () => {
+    const d = deps({
+      pickMode: async () => 'skip',
+      signIn: async () => {
+        throw new Error('must not sign in after skip')
+      },
+    })
+
+    expect(await runFirstRunFlow(d)).toEqual({ kind: 'cancelled' })
+  })
+
+  test('the key-only flow is unchanged when no mode picker is supplied', async () => {
+    const d = deps({})
+    expect(await runFirstRunFlow(d)).toEqual({ kind: 'saved', provider: 'openai' })
+    expect(calls(d).saved).toEqual([{ provider: 'openai', apiKey: 'sk-test' }])
+  })
+})
