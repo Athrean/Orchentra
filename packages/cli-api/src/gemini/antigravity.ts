@@ -23,9 +23,6 @@ import { MacKeychain } from '../keychain'
 const GOOGLE_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
-const DEFAULT_CLIENT_ID = 'REDACTED-ANTIGRAVITY-CLIENT-ID'
-const DEFAULT_CLIENT_SECRET = 'REDACTED-ANTIGRAVITY-CLIENT-SECRET'
-
 /** Antigravity's Code Assist host. The `daily-` prefix is not a staging marker. */
 export const ANTIGRAVITY_ENDPOINT = 'https://daily-cloudcode-pa.googleapis.com'
 
@@ -46,12 +43,27 @@ const GO_KEYRING_PREFIX = 'go-keyring-base64:'
 /** `extra.source` marker distinguishing an imported CLI login from our own flow. */
 export const ANTIGRAVITY_CLI_SOURCE = 'antigravity-cli-import'
 
+/**
+ * Antigravity's OAuth client is not distributed with Orchentra: a Google
+ * client id/secret pair belongs to whoever registered it, not in a public
+ * repository. Read them from the environment, and say so plainly when unset.
+ */
+function requiredClientEnv(name: string): string {
+  const value = process.env[name]
+  if (value === undefined || value.length === 0) {
+    throw new Error(
+      `Antigravity sign-in needs ${name}. Set ANTIGRAVITY_OAUTH_CLIENT_ID and ANTIGRAVITY_OAUTH_CLIENT_SECRET from the Antigravity client you are authorizing against, or sign in with another provider.`,
+    )
+  }
+  return value
+}
+
 function clientId(): string {
-  return process.env['ANTIGRAVITY_OAUTH_CLIENT_ID'] ?? DEFAULT_CLIENT_ID
+  return requiredClientEnv('ANTIGRAVITY_OAUTH_CLIENT_ID')
 }
 
 function clientSecret(): string {
-  return process.env['ANTIGRAVITY_OAUTH_CLIENT_SECRET'] ?? DEFAULT_CLIENT_SECRET
+  return requiredClientEnv('ANTIGRAVITY_OAUTH_CLIENT_SECRET')
 }
 
 export interface AntigravityLoginOptions {
