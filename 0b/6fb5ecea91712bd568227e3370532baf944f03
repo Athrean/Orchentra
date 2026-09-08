@@ -1,0 +1,49 @@
+.gitignore
+  s_27c10fe9731fec::t_dc9f8bfe6ef491 73-76
+apps/cli/src/args.ts
+  s_27c10fe9731fec::t_4e906ee6b5ac7b 249
+apps/cli/src/auth/first-run-flow.ts
+  s_27c10fe9731fec::t_4d425aa857c23e 3,15-31,34-40,43-45,62-72,84-95,123-141,145-160,205-217
+apps/cli/src/commands/builtin/theme.ts
+  s_27c10fe9731fec::t_583e949c4dd62e 2
+apps/cli/src/commands/run-auth.ts
+  s_27c10fe9731fec::t_d6ba61156806de 16,157-165,167,169-174,352,359-366
+apps/cli/src/repl.ts
+  s_27c10fe9731fec::t_97acf90eaf45f1 36-41
+apps/cli/src/tui/Tui.tsx
+  s_27c10fe9731fec::t_f4269d465fe57c 2,17,356-379
+apps/cli/src/tui/components/ThemePicker.tsx
+  s_27c10fe9731fec::t_3d258423e34c55 3
+apps/cli/src/tui/input/key-handler.ts
+  s_27c10fe9731fec::t_5980591ffb73a9 254-257,259
+apps/cli/src/tui/theme-registry.ts
+  s_27c10fe9731fec::t_5050464457d359 216-388,396-402,414-420,427-458
+apps/cli/tests/first-run-flow.test.ts
+  s_27c10fe9731fec::t_c2777b0e42bd5c 95-179
+apps/cli/tests/tui/paste.test.ts
+  s_27c10fe9731fec::t_937b63fdc4e6fe 50-77
+apps/cli/tests/tui/theme-registry.test.ts
+  s_27c10fe9731fec::t_084207206e7c7f 6-29,173-187
+packages/cli-api/src/credential-store.ts
+  s_27c10fe9731fec::t_a330ea9fd6b31f 1,67-77,80-140,144,153
+packages/cli-api/src/keychain-store.ts
+  s_27c10fe9731fec::t_f427f4aeda96c6 5-6,26,54,97
+packages/cli-api/tests/credential-store.test.ts
+  s_27c10fe9731fec::t_386e012e02c22b 129-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0b6fb5ecea91712bd568227e3370532baf944f03",
+  "prompts": {},
+  "sessions": {
+    "s_27c10fe9731fec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51f32e1c-aae3-4825-a628-32e2848713d9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
