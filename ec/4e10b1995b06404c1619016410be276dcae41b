@@ -1,0 +1,27 @@
+packages/cli-tools/src/mcp/bridge.ts
+  s_1af4fa2151c0e1::t_36fba299b4f17f 31,34
+packages/cli-tools/src/mcp/client.ts
+  s_1af4fa2151c0e1::t_c2d7444e32f823 57-68,80,83-93,120-121
+packages/cli-tools/src/mcp/transport-http.ts
+  s_1af4fa2151c0e1::t_1c74d56cd102a1 27,40,50,59,79,108,117-118,146,151-170
+packages/cli-tools/src/mcp/transport-stdio.ts
+  s_1af4fa2151c0e1::t_b94026b7421332 65,67
+packages/cli-tools/src/mcp/transport.ts
+  s_1af4fa2151c0e1::t_122feb4df16030 11,65,77-78,80-86,89,93-94,102,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ec4e10b1995b06404c1619016410be276dcae41b",
+  "prompts": {},
+  "sessions": {
+    "s_1af4fa2151c0e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf98559e-71c3-48e5-a3d5-a0be08d7c972",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Rishit <104666906+Rish-it@users.noreply.github.com>"
+    }
+  }
+}
