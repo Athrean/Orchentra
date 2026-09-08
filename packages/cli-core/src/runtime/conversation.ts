@@ -22,7 +22,7 @@ import { SNAPSHOT_CONTENT_MARKER, supersedeSnapshots } from './browser-context'
 import { persistOriginalToolOutput, toolResultPath } from './tool-output-recovery'
 import { appendCompactionNote, compactionNotesPath, renderCompactionNote } from './compaction-notes'
 import { FileTraceSink, type TraceSink, type TraceManifest, type TestResultEntry } from './trace'
-import { OptimizationTracker } from './optimization'
+import { capturePrefixShape, OptimizationTracker } from './optimization'
 import type { ConsoleErrorEntry, FailedRequestEntry } from './browser'
 import type { ImageContent } from './image'
 import { billedTokens, cachedTokens, estimatedCostUsd } from './usage'
@@ -612,6 +612,13 @@ export class ConversationRuntime {
         thinkingTokenBudget: this.config.thinkingTokenBudget,
         signal: this.deps.signal,
       }
+      // Provider boundary: the last point where the cacheable prefix is still
+      // ours. Hashing it here covers every provider, not just the one that
+      // marks a cache breakpoint on the wire.
+      this.trace?.optimization.observePrefix(
+        budget.currentSteps,
+        capturePrefixShape(request.systemStatic, request.tools),
+      )
 
       const modelSpanId = this.newId()
       yield* this.emit({

@@ -123,6 +123,10 @@ describe('ConversationRuntime', () => {
     const metrics = trace.manifests[0]!.optimization!
     expect(metrics.cache).toMatchObject({ inputTokens: 300, readTokens: 240, unreportedInputTokens: 0, hitRate: 0.8 })
     expect(metrics.invalidations.browserSnapshots).toBe(1)
+    // The meter runs once per provider call, and a run whose prefix never moved
+    // records that as measured stability rather than as an absent observation.
+    expect(metrics.prefix).toMatchObject({ calls: 3, changes: [] })
+    expect(metrics.prefix.toolSchemaChars).toBeGreaterThan(0)
     expect(
       requests.every(
         (r) =>

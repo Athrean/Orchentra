@@ -34,8 +34,8 @@ export type {
 } from './events'
 
 export { emptyUsage, addUsage, totalTokens } from './events'
-export { OptimizationTracker } from './optimization'
-export type { OptimizationMetrics } from './optimization'
+export { OptimizationTracker, capturePrefixShape, comparePrefixShape } from './optimization'
+export type { OptimizationMetrics, PrefixShape, PrefixChange, PrefixChangeReason } from './optimization'
 export { parseTraceManifest } from './trace'
 export { loadTrajectory, parseTraceEvents, readTraceEvents, readTraceManifest, renderTrajectory } from './trajectory'
 export type { Trajectory, TrajectoryNode } from './trajectory'
