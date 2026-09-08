@@ -18,6 +18,7 @@ export interface HookRunnerOptions {
    * pass `cwd` and let `loadHooks` parse the file.
    */
   readonly config?: HookConfig
+  readonly additionalHooks?: () => readonly import('./types').HookMatch[]
 
   /**
    * Live progress callback fired around each hook that actually runs, so the
@@ -50,6 +51,7 @@ const NOOP_RESULT: HookFireResult = { blocked: false }
 export function createHookRunner(options: HookRunnerOptions): HookRunner {
   const config = options.config ?? loadHooks(options.cwd)
   const onProgress = options.onProgress
+  const active = (): HookConfig => ({ version: 1, hooks: [...config.hooks, ...(options.additionalHooks?.() ?? [])] })
 
   function report(event: 'pre_tool_use' | 'post_tool_use', tool: string, command: string): (ok: boolean) => void {
     if (!onProgress) return () => {}
@@ -61,12 +63,12 @@ export function createHookRunner(options: HookRunnerOptions): HookRunner {
   return {
     allowsSpeculativeTool(toolName): boolean {
       return (
-        matchHooks(config, 'pre_tool_use', toolName).length === 0 &&
-        matchHooks(config, 'post_tool_use', toolName).length === 0
+        matchHooks(active(), 'pre_tool_use', toolName).length === 0 &&
+        matchHooks(active(), 'post_tool_use', toolName).length === 0
       )
     },
     async firePreToolUse(toolName, args): Promise<HookFireResult> {
-      const hooks = matchHooks(config, 'pre_tool_use', toolName)
+      const hooks = matchHooks(active(), 'pre_tool_use', toolName)
       if (hooks.length === 0) return NOOP_RESULT
 
       const annotations: string[] = []
@@ -87,7 +89,9 @@ export function createHookRunner(options: HookRunnerOptions): HookRunner {
     },
 
     async firePostToolUse(toolName, args, resultOrError): Promise<HookFireResult> {
-      const hooks = matchHooks(config, 'post_tool_use', toolName)
+      const hooks = matchHooks(active(), 'post_tool_use', toolName).filter(
+        (hook) => !hook.when || hook.when === (resultOrError instanceof Error ? 'failure' : 'success'),
+      )
       if (hooks.length === 0) return NOOP_RESULT
 
       const ctx: HookExecutionContext = {
@@ -112,7 +116,7 @@ export function createHookRunner(options: HookRunnerOptions): HookRunner {
     async fireLifecycle(event, payload = {}): Promise<readonly string[]> {
       // Lifecycle hooks are silent background notifications: no progress row, and
       // a non-zero exit never blocks. Only their stdout is captured, in order.
-      const hooks = matchLifecycleHooks(config, event)
+      const hooks = matchLifecycleHooks(active(), event)
       if (hooks.length === 0) return []
 
       const annotations: string[] = []

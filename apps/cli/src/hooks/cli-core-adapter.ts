@@ -107,10 +107,15 @@ function parseAnnotations(annotations: readonly string[] | undefined): ParsedAnn
 
 export class CliCoreHookAdapter extends CoreHookRunner {
   private readonly inner: HookRunner
+  private extensionHooks: import('./types').HookMatch[] = []
+
+  setExtensionHooks(hooks: import('./types').HookMatch[]): void {
+    this.extensionHooks = hooks
+  }
 
   constructor(cwd: string, onProgress?: (update: HookProgressUpdate) => void) {
     super()
-    this.inner = createHookRunner({ cwd, onProgress })
+    this.inner = createHookRunner({ cwd, onProgress, additionalHooks: () => this.extensionHooks })
   }
 
   override allowsSpeculativeTool(toolName: string): boolean {

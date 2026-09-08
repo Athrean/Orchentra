@@ -33,6 +33,7 @@ export type LifecycleHookContext = { readonly event: LifecycleHookEvent } & Reco
  * default shell — i.e. it may contain a shell string or an absolute path.
  */
 export interface HookMatch {
+  readonly when?: 'success' | 'failure'
   readonly event: HookEvent
   /** Tool-name filter for tool events (exact names or `*`). Ignored — and
    * defaulted to `[]` — for lifecycle events, which match on `event` alone. */
