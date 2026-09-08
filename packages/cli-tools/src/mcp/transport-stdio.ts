@@ -62,9 +62,9 @@ export class StdioTransport implements Transport {
     this.runStderrLoop()
   }
 
-  async send(request: JsonRpcRequest, timeoutMs: number): Promise<JsonRpcResponse> {
+  async send(request: JsonRpcRequest, timeoutMs: number, signal?: AbortSignal): Promise<JsonRpcResponse> {
     this.ensureOpen()
-    const pending = this.dispatcher.register(request.id, timeoutMs, () => {})
+    const pending = this.dispatcher.register(request.id, timeoutMs, () => {}, signal)
     await this.writeLine(JSON.stringify(request))
     return pending
   }

@@ -24,7 +24,7 @@ export class HttpTransport implements Transport {
     this.state = 'open'
   }
 
-  async send(request: JsonRpcRequest, timeoutMs: number): Promise<JsonRpcResponse> {
+  async send(request: JsonRpcRequest, timeoutMs: number, signal?: AbortSignal): Promise<JsonRpcResponse> {
     if (this.state !== 'open') throw new Error(`HttpTransport: cannot send while in state ${this.state}`)
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -37,7 +37,7 @@ export class HttpTransport implements Transport {
           ...this.opts.headers,
         },
         body: JSON.stringify(request),
-        signal: controller.signal,
+        signal: AbortSignal.any([controller.signal, ...(signal ? [signal] : [])]),
       })
       if (!response.ok) {
         const text = await safeText(response)
@@ -47,7 +47,7 @@ export class HttpTransport implements Transport {
       if (contentType.includes('text/event-stream')) {
         return await readSseResponse(response, request.id)
       }
-      const body = await response.json()
+      const body = JSON.parse(await readBoundedText(response))
       if (!isJsonRpcResponse(body)) {
         throw new Error(`HTTP response is not a JSON-RPC response: ${JSON.stringify(body).slice(0, 200)}`)
       }
@@ -56,6 +56,7 @@ export class HttpTransport implements Transport {
       }
       return body
     } catch (err) {
+      if (signal?.aborted) throw new Error('MCP HTTP request cancelled')
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`MCP HTTP request timed out after ${timeoutMs}ms`)
       }
@@ -75,6 +76,7 @@ export class HttpTransport implements Transport {
         ...this.opts.headers,
       },
       body: JSON.stringify(notification),
+      signal: AbortSignal.timeout(10_000),
     })
     if (!response.ok && response.status !== 202) {
       const text = await safeText(response)
@@ -103,6 +105,7 @@ async function readSseResponse(response: Response, requestId: JsonRpcRequest['id
   const decoder = new TextDecoder()
   const parser = new SseParser()
   let running = true
+  let bytes = 0
   try {
     while (running) {
       const { done, value } = await reader.read()
@@ -111,6 +114,8 @@ async function readSseResponse(response: Response, requestId: JsonRpcRequest['id
         break
       }
       if (!value) continue
+      bytes += value.byteLength
+      if (bytes > 4 * 1024 * 1024) throw new Error('MCP response exceeds 4 MiB')
       const chunk = decoder.decode(value, { stream: true })
       for (const event of parser.push(chunk)) {
         if (event.data.length === 0) continue
@@ -138,8 +143,28 @@ async function readSseResponse(response: Response, requestId: JsonRpcRequest['id
 
 async function safeText(response: Response): Promise<string> {
   try {
-    return await response.text()
+    return await readBoundedText(response)
   } catch {
     return ''
+  }
+}
+
+async function readBoundedText(response: Response): Promise<string> {
+  if (!response.body) return ''
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let bytes = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      bytes += value.byteLength
+      if (bytes > 4 * 1024 * 1024) throw new Error('MCP response exceeds 4 MiB')
+      chunks.push(value)
+    }
+    return Buffer.concat(chunks).toString('utf8')
+  } finally {
+    await reader.cancel().catch(() => {})
+    reader.releaseLock()
   }
 }

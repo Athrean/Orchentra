@@ -54,8 +54,18 @@ export class McpClient {
       }))
   }
 
-  async callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<McpToolsCallResult> {
-    const result = await this.request('tools/call', { name, arguments: args }, timeoutMs ?? this.defaultTimeoutMs)
+  async callTool(
+    name: string,
+    args: Record<string, unknown>,
+    timeoutMs?: number,
+    signal?: AbortSignal,
+  ): Promise<McpToolsCallResult> {
+    const result = await this.request(
+      'tools/call',
+      { name, arguments: args },
+      timeoutMs ?? this.defaultTimeoutMs,
+      signal,
+    )
     return coerceCallResult(result)
   }
 
@@ -67,10 +77,20 @@ export class McpClient {
     return this.initializedResult
   }
 
-  private async request(method: string, params?: unknown, timeoutMs?: number): Promise<unknown> {
+  private async request(method: string, params?: unknown, timeoutMs?: number, signal?: AbortSignal): Promise<unknown> {
     const id = this.nextId++
     const request: JsonRpcRequest = { jsonrpc: JSON_RPC_VERSION, id, method, params }
-    const response = await this.transport.send(request, timeoutMs ?? this.defaultTimeoutMs)
+    signal?.throwIfAborted()
+    const cancel = (): void => {
+      void this.notify('notifications/cancelled', { requestId: id, reason: 'Caller cancelled' }).catch(() => {})
+    }
+    signal?.addEventListener('abort', cancel, { once: true })
+    let response: JsonRpcResponse
+    try {
+      response = await this.transport.send(request, timeoutMs ?? this.defaultTimeoutMs, signal)
+    } finally {
+      signal?.removeEventListener('abort', cancel)
+    }
     if ('error' in response) {
       const err = response.error
       throw new Error(`MCP ${method} error ${err.code}: ${err.message}`)
@@ -97,7 +117,8 @@ function coerceCallResult(value: unknown): McpToolsCallResult {
     return { content: [{ type: 'text', text: String(value) }], isError: true }
   }
   const v = value as { content?: unknown; isError?: unknown }
-  const content = Array.isArray(v.content) ? (v.content as McpToolsCallResult['content']) : []
+  if (!Array.isArray(v.content)) throw new Error('MCP tools/call response is missing content')
+  const content = v.content as McpToolsCallResult['content']
   return {
     content,
     isError: typeof v.isError === 'boolean' ? v.isError : false,

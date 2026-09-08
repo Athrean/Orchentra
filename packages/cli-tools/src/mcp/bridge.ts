@@ -28,10 +28,10 @@ export function buildMcpToolDefinition(options: BridgeToolOptions): ToolDefiniti
     description,
     level: options.level,
     inputSchema: options.spec.inputSchema,
-    async execute(args: unknown, _ctx: ToolContext): Promise<ToolResult> {
+    async execute(args: unknown, ctx: ToolContext): Promise<ToolResult> {
       const input = isObject(args) ? args : {}
       try {
-        const result = await options.client.callTool(options.spec.name, input, options.timeoutMs)
+        const result = await options.client.callTool(options.spec.name, input, options.timeoutMs, ctx.signal)
         const text = coerceContentToText(result.content)
         // Forward image results as visual content blocks. Oversized images are
         // dropped with a clear note appended to the text rather than silently.

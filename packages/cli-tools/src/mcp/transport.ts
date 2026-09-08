@@ -8,7 +8,7 @@ export interface TransportStatus {
 
 export interface Transport {
   start(): Promise<void>
-  send(request: JsonRpcRequest, timeoutMs: number): Promise<JsonRpcResponse>
+  send(request: JsonRpcRequest, timeoutMs: number, signal?: AbortSignal): Promise<JsonRpcResponse>
   sendNotification(notification: JsonRpcNotification): Promise<void>
   close(): Promise<void>
   status(): TransportStatus
@@ -62,6 +62,7 @@ interface PendingRequest {
   resolve: (value: JsonRpcResponse) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
+  cleanup: () => void
 }
 
 export function matchResponseId(message: unknown, id: JsonRpcId): boolean {
@@ -73,14 +74,24 @@ export function matchResponseId(message: unknown, id: JsonRpcId): boolean {
 export class RequestDispatcher {
   private pending = new Map<JsonRpcId, PendingRequest>()
 
-  register(id: JsonRpcId, timeoutMs: number, onTimeout: () => void): Promise<JsonRpcResponse> {
+  register(id: JsonRpcId, timeoutMs: number, onTimeout: () => void, signal?: AbortSignal): Promise<JsonRpcResponse> {
+    signal?.throwIfAborted()
     return new Promise<JsonRpcResponse>((resolve, reject) => {
+      const cleanup = (): void => signal?.removeEventListener('abort', cancel)
+      const cancel = (): void => {
+        clearTimeout(timer)
+        this.pending.delete(id)
+        cleanup()
+        reject(new Error('MCP request cancelled'))
+      }
       const timer = setTimeout(() => {
         this.pending.delete(id)
+        cleanup()
         onTimeout()
         reject(new Error(`MCP request ${String(id)} timed out after ${timeoutMs}ms`))
       }, timeoutMs)
-      this.pending.set(id, { resolve, reject, timer })
+      this.pending.set(id, { resolve, reject, timer, cleanup })
+      signal?.addEventListener('abort', cancel, { once: true })
     })
   }
 
@@ -88,6 +99,7 @@ export class RequestDispatcher {
     const entry = this.pending.get(response.id)
     if (!entry) return false
     clearTimeout(entry.timer)
+    entry.cleanup()
     this.pending.delete(response.id)
     entry.resolve(response)
     return true
@@ -96,6 +108,7 @@ export class RequestDispatcher {
   rejectAll(error: Error): void {
     for (const entry of Array.from(this.pending.values())) {
       clearTimeout(entry.timer)
+      entry.cleanup()
       entry.reject(error)
     }
     this.pending.clear()
