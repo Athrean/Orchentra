@@ -1,7 +1,7 @@
 import type { Provider, ProviderRequest, ProviderStreamEvent, StopReason } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { getCredential, saveCredential, type ProviderKey } from '../credential-store'
-import { buildGeminiRequest, toolCallFromPart } from './client'
+import { buildGeminiRequest, GeminiUsageAccumulator, toolCallFromPart } from './client'
 import { resolveGeminiAccessToken } from './oauth'
 import { ANTIGRAVITY_ENDPOINT, resolveAntigravityAccessToken } from './antigravity'
 import type { GeminiStreamChunk } from './types'
@@ -199,9 +199,7 @@ async function* consumeCodeAssistStream(body: ReadableStream<Uint8Array>): Async
   const parser = new SseParser()
   const decoder = new TextDecoder()
   const reader = body.getReader()
-  let inputTokens = 0
-  let outputTokens = 0
-  let cacheReadTokens = 0
+  const usage = new GeminiUsageAccumulator()
   let stopReason: StopReason = 'end_turn'
   let toolCounter = 0
   let sawToolCall = false
@@ -217,11 +215,7 @@ async function* consumeCodeAssistStream(body: ReadableStream<Uint8Array>): Async
         const chunk = (parsed.response ?? parsed) as GeminiStreamChunk
 
         if (chunk.promptFeedback?.blockReason) stopReason = 'error'
-        if (chunk.usageMetadata) {
-          inputTokens = chunk.usageMetadata.promptTokenCount ?? inputTokens
-          outputTokens = chunk.usageMetadata.candidatesTokenCount ?? outputTokens
-          cacheReadTokens = chunk.usageMetadata.cachedContentTokenCount ?? cacheReadTokens
-        }
+        if (chunk.usageMetadata) usage.record(chunk.usageMetadata)
 
         const candidate = chunk.candidates?.[0]
         if (!candidate) continue
@@ -242,7 +236,7 @@ async function* consumeCodeAssistStream(body: ReadableStream<Uint8Array>): Async
       }
     }
 
-    yield { kind: 'usage', usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens: 0 } }
+    yield usage.event()
     yield { kind: 'finish', stopReason }
   } finally {
     reader.releaseLock()

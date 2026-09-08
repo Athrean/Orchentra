@@ -10,7 +10,14 @@ import type {
 import { assertVisionSupport } from '@orchentra/cli-core'
 import { SseParser } from '../sse'
 import { computeBackoff, DEFAULT_RETRY_CONFIG, type RetryConfig } from '../retry'
-import type { GeminiContent, GeminiFunctionDeclaration, GeminiPart, GeminiRequest, GeminiStreamChunk } from './types'
+import type {
+  GeminiContent,
+  GeminiFunctionDeclaration,
+  GeminiPart,
+  GeminiRequest,
+  GeminiStreamChunk,
+  GeminiUsageMetadata,
+} from './types'
 import { getCredential } from '../credential-store'
 
 export interface GeminiConfig {
@@ -103,10 +110,7 @@ export class GeminiProvider implements Provider {
     const parser = new SseParser()
     const decoder = new TextDecoder()
     const reader = body.getReader()
-    let inputTokens = 0
-    let outputTokens = 0
-    let cacheReadTokens = 0
-    let cacheReadReported = false
+    const usage = new GeminiUsageAccumulator()
     let stopReason: StopReason = 'end_turn'
     let toolCounter = 0
     let sawToolCall = false
@@ -130,12 +134,7 @@ export class GeminiProvider implements Provider {
             stopReason = 'error'
           }
 
-          if (chunk.usageMetadata) {
-            inputTokens = chunk.usageMetadata.promptTokenCount ?? inputTokens
-            outputTokens = chunk.usageMetadata.candidatesTokenCount ?? outputTokens
-            cacheReadTokens = chunk.usageMetadata.cachedContentTokenCount ?? cacheReadTokens
-            cacheReadReported ||= chunk.usageMetadata.cachedContentTokenCount !== undefined
-          }
+          if (chunk.usageMetadata) usage.record(chunk.usageMetadata)
 
           const candidate = chunk.candidates?.[0]
           if (!candidate) continue
@@ -158,21 +157,49 @@ export class GeminiProvider implements Provider {
         }
       }
 
-      yield {
-        kind: 'usage',
-        cacheReadReported,
-        // Gemini's cachedContentTokenCount is a subset of promptTokenCount;
-        // keep Orchentra's accounting categories disjoint.
-        usage: {
-          inputTokens: Math.max(0, inputTokens - cacheReadTokens),
-          outputTokens,
-          cacheReadTokens,
-          cacheCreationTokens: 0,
-        },
-      }
+      yield usage.event()
       yield { kind: 'finish', stopReason }
     } finally {
       reader.releaseLock()
+    }
+  }
+}
+
+/**
+ * Folds Gemini's `usageMetadata` into Orchentra's usage categories.
+ *
+ * Both Gemini transports — the API-key endpoint here and the Code Assist
+ * endpoint in `code-assist.ts` — share it so their reported shape cannot drift
+ * apart. It did drift once: Code Assist reported `promptTokenCount` inclusive
+ * of cached tokens and never set `cacheReadReported`, so the same conversation
+ * double-counted its cached prefix on one transport and not the other, and
+ * every Code Assist run looked cache-unreported to `optimization.ts`.
+ */
+export class GeminiUsageAccumulator {
+  private inputTokens = 0
+  private outputTokens = 0
+  private cacheReadTokens = 0
+  private cacheReadReported = false
+
+  record(meta: GeminiUsageMetadata): void {
+    this.inputTokens = meta.promptTokenCount ?? this.inputTokens
+    this.outputTokens = meta.candidatesTokenCount ?? this.outputTokens
+    this.cacheReadTokens = meta.cachedContentTokenCount ?? this.cacheReadTokens
+    this.cacheReadReported ||= meta.cachedContentTokenCount !== undefined
+  }
+
+  event(): ProviderStreamEvent {
+    return {
+      kind: 'usage',
+      cacheReadReported: this.cacheReadReported,
+      // Gemini's cachedContentTokenCount is a subset of promptTokenCount;
+      // keep Orchentra's accounting categories disjoint.
+      usage: {
+        inputTokens: Math.max(0, this.inputTokens - this.cacheReadTokens),
+        outputTokens: this.outputTokens,
+        cacheReadTokens: this.cacheReadTokens,
+        cacheCreationTokens: 0,
+      },
     }
   }
 }

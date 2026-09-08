@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ProviderRequest, ProviderStreamEvent } from '@orchentra/cli-core'
-import { GeminiCodeAssistProvider, saveCredential, clearCredential, getCredential } from '../src/index'
+import { GeminiCodeAssistProvider, GeminiProvider, saveCredential, clearCredential, getCredential } from '../src/index'
 
 const ENV_KEYS = ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_OAUTH_TOKEN'] as const
 
@@ -151,4 +151,57 @@ describe('GeminiCodeAssistProvider', () => {
     const provider = new GeminiCodeAssistProvider()
     await expect(collect(provider.stream(baseRequest()))).rejects.toThrow(/Not signed in to Gemini/)
   })
+
+  // The two Gemini transports differ only in envelope and host, so identical
+  // usageMetadata must produce an identical usage event. When it did not, Code
+  // Assist counted its cached prefix twice (promptTokenCount is inclusive) and
+  // never set cacheReadReported, making cross-transport comparison meaningless.
+  const parityCases = [
+    {
+      label: 'cache reported',
+      meta: { promptTokenCount: 100, candidatesTokenCount: 5, cachedContentTokenCount: 80 },
+      expected: {
+        kind: 'usage',
+        cacheReadReported: true,
+        usage: { inputTokens: 20, outputTokens: 5, cacheReadTokens: 80, cacheCreationTokens: 0 },
+      },
+    },
+    {
+      label: 'cache absent',
+      meta: { promptTokenCount: 100, candidatesTokenCount: 5 },
+      expected: {
+        kind: 'usage',
+        cacheReadReported: false,
+        usage: { inputTokens: 100, outputTokens: 5, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      },
+    },
+  ]
+
+  for (const { label, meta, expected } of parityCases) {
+    test(`both Gemini transports report the same usage shape (${label})`, async () => {
+      const candidates = [{ content: { role: 'model', parts: [{ text: 'ok' }] }, finishReason: 'STOP' }]
+      globalThis.fetch = (async (url: string) => {
+        if (url.includes(':loadCodeAssist'))
+          return jsonResponse({ allowedTiers: [{ id: 'free-tier', isDefault: true }] })
+        if (url.includes(':onboardUser'))
+          return jsonResponse({ done: true, response: { cloudaicompanionProject: 'proj_parity' } })
+        // Code Assist wraps the payload in a `response` envelope; the API-key
+        // endpoint sends it bare. Same usageMetadata either way.
+        const chunk = url.includes('cloudcode-pa')
+          ? { response: { candidates, usageMetadata: meta } }
+          : { candidates, usageMetadata: meta }
+        return sseResponse(`data: ${JSON.stringify(chunk)}\n\n`)
+      }) as typeof globalThis.fetch
+
+      const usageOf = (events: ProviderStreamEvent[]): ProviderStreamEvent | undefined =>
+        events.find((e) => e.kind === 'usage')
+      const codeAssist = usageOf(await collect(new GeminiCodeAssistProvider().stream(baseRequest())))
+      const apiKey = usageOf(
+        await collect(new GeminiProvider({ apiKey: 'k', baseUrl: 'https://example.test' }).stream(baseRequest())),
+      )
+
+      expect(codeAssist).toEqual(apiKey as ProviderStreamEvent)
+      expect(codeAssist).toEqual(expected as ProviderStreamEvent)
+    })
+  }
 })
